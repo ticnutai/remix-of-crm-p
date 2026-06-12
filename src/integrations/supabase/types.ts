@@ -2989,6 +2989,51 @@ export type Database = {
           },
         ]
       }
+      community_themes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          element_overrides: Json
+          id: string
+          name: string
+          name_he: string
+          primary_hex: string
+          primary_hsl: string
+          secondary_hex: string
+          secondary_hsl: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          element_overrides?: Json
+          id?: string
+          name: string
+          name_he: string
+          primary_hex: string
+          primary_hsl: string
+          secondary_hex: string
+          secondary_hsl: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          element_overrides?: Json
+          id?: string
+          name?: string
+          name_he?: string
+          primary_hex?: string
+          primary_hsl?: string
+          secondary_hex?: string
+          secondary_hsl?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       consultants: {
         Row: {
           company: string | null
