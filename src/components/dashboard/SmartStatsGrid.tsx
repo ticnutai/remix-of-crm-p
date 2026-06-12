@@ -45,6 +45,7 @@ import {
 } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useWidgetLayout } from "./WidgetLayoutManager";
+import { useDashboardTheme } from "./DashboardThemeProvider";
 
 interface SmartStat {
   id: string;
@@ -470,6 +471,8 @@ export function SmartStatsGrid({ className }: { className?: string }) {
   const { stats, isLoading, data } = useSmartDashboardStats();
   const navigate = useNavigate();
   const { isVisible } = useWidgetLayout();
+  const { currentTheme } = useDashboardTheme();
+  const isTranscribeCream = currentTheme === "transcribe-cream";
   const [carouselOptionIds, setCarouselOptionIds] = useSyncedSetting<
     CarouselOptionId[]
   >({
@@ -603,6 +606,16 @@ export function SmartStatsGrid({ className }: { className?: string }) {
     return null;
   }
 
+  const smartCardStyle: React.CSSProperties | undefined = isTranscribeCream
+    ? {
+        background:
+          "linear-gradient(135deg, #faf8f5 0%, rgba(241, 233, 218, 0.35) 100%)",
+        borderColor: "rgba(206, 151, 34, 0.45)",
+        boxShadow:
+          "0 1px 3px rgba(0, 0, 0, 0.06), 0 12px 24px -20px rgba(15, 30, 67, 0.35)",
+      }
+    : undefined;
+
   if (isLoading) {
     const visibleStatCount = Object.values(SMART_STAT_WIDGET_IDS).filter((id) =>
       isVisible(id),
@@ -618,7 +631,11 @@ export function SmartStatsGrid({ className }: { className?: string }) {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {Array.from({ length: loadingCardsCount }, (_, i) => i + 1).map(
             (itemId) => (
-              <Card key={itemId} className="animate-pulse">
+              <Card
+                key={itemId}
+                className={cn("animate-pulse", isTranscribeCream && "border")}
+                style={smartCardStyle}
+              >
                 <CardContent className="p-4">
                   <div className="h-8 bg-muted rounded mb-2" />
                   <div className="h-4 bg-muted rounded w-2/3" />
@@ -639,7 +656,11 @@ export function SmartStatsGrid({ className }: { className?: string }) {
         {isCarouselVisible && currentCarouselStat && (
           <Card
             key={currentCarouselStat.id}
-            className="cursor-pointer border-primary/30 hover:shadow-md transition-shadow"
+            className={cn(
+              "cursor-pointer border-primary/30 hover:shadow-md transition-shadow",
+              isTranscribeCream && "border",
+            )}
+            style={smartCardStyle}
             onClick={() => navigate(currentCarouselStat.href || "/")}
           >
             <CardContent className="p-4 h-full flex flex-col">
@@ -649,10 +670,20 @@ export function SmartStatsGrid({ className }: { className?: string }) {
                 >
                   {currentCarouselStat.icon}
                 </div>
-                <div className="text-2xl font-bold">{currentCarouselStat.value}</div>
+                <div
+                  className="text-2xl font-bold"
+                  style={
+                    isTranscribeCream ? { color: "#111c36" } : undefined
+                  }
+                >
+                  {currentCarouselStat.value}
+                </div>
               </div>
 
-              <div className="text-sm font-medium text-foreground">
+              <div
+                className="text-sm font-medium text-foreground"
+                style={isTranscribeCream ? { color: "#111c36" } : undefined}
+              >
                 {currentCarouselStat.label}
               </div>
 
@@ -661,6 +692,7 @@ export function SmartStatsGrid({ className }: { className?: string }) {
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
+                  style={isTranscribeCream ? { color: "#0f1e43" } : undefined}
                   title="פריט קודם"
                   onClick={(event) => {
                     event.stopPropagation();
@@ -676,6 +708,7 @@ export function SmartStatsGrid({ className }: { className?: string }) {
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
+                  style={isTranscribeCream ? { color: "#0f1e43" } : undefined}
                   title="פריט הבא"
                   onClick={(event) => {
                     event.stopPropagation();
@@ -695,7 +728,9 @@ export function SmartStatsGrid({ className }: { className?: string }) {
             className={cn(
               "hover:shadow-md transition-shadow",
               stat.href && "cursor-pointer",
+              isTranscribeCream && "border",
             )}
+            style={smartCardStyle}
             onClick={stat.href ? () => navigate(stat.href) : undefined}
           >
             <CardContent className="p-4">
@@ -703,9 +738,17 @@ export function SmartStatsGrid({ className }: { className?: string }) {
                 <div className={SMART_ICON_UNIFIED_CLASS}>
                   {stat.icon}
                 </div>
-                <div className="text-2xl font-bold">{stat.value}</div>
+                <div
+                  className="text-2xl font-bold"
+                  style={isTranscribeCream ? { color: "#111c36" } : undefined}
+                >
+                  {stat.value}
+                </div>
               </div>
-              <div className="text-sm font-medium text-foreground">
+              <div
+                className="text-sm font-medium text-foreground"
+                style={isTranscribeCream ? { color: "#111c36" } : undefined}
+              >
                 {stat.label}
               </div>
               {stat.subLabel && (

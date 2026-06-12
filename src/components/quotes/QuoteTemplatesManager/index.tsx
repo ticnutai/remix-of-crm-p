@@ -1,5 +1,5 @@
 // מנהל תבניות הצעות מחיר מתקדם - עם תיקיות
-import React, { useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,10 +29,17 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  List,
+  LayoutGrid,
+  Maximize2,
+  Minimize2,
   Plus,
   Pencil,
   Trash2,
@@ -54,9 +61,18 @@ import {
   Palette,
   GripVertical,
   FolderInput,
+  Rows3,
+  Square,
+  Table2,
+  Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import {
+  isTableAvailable,
+  markTableUnavailable,
+} from "@/lib/supabaseTableCheck";
 import {
   QuoteTemplate,
   QuoteTemplateFolder,
@@ -75,7 +91,104 @@ import {
   getSupportedDocumentTypes,
 } from "./documentImporter";
 
+type FolderLayoutMode = "grid" | "dense" | "list" | "expanded" | "table";
+type TemplateLayoutMode = "regular" | "compact" | "expanded" | "quick";
+
+const FOLDER_LAYOUT_STORAGE_KEY = "quote-templates-folder-layout";
+const TEMPLATE_LAYOUT_STORAGE_KEY = "quote-templates-template-layout";
+
+const FOLDER_LAYOUT_OPTIONS: Array<{
+  value: FolderLayoutMode;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+}> = [
+  {
+    value: "grid",
+    label: "גריד רגיל",
+    description: "3 כרטיסים בשורה בדסקטופ",
+    icon: LayoutGrid,
+  },
+  {
+    value: "dense",
+    label: "גריד צפוף",
+    description: "יותר כרטיסים בשורה",
+    icon: GripVertical,
+  },
+  {
+    value: "list",
+    label: "רשימה",
+    description: "שורה לכל תבנית",
+    icon: List,
+  },
+  {
+    value: "expanded",
+    label: "כרטיס מורחב",
+    description: "פחות כרטיסים עם יותר מקום",
+    icon: Rows3,
+  },
+  {
+    value: "table",
+    label: "טבלה",
+    description: "תצוגת שורות עם עמודות",
+    icon: Table2,
+  },
+];
+
+const TEMPLATE_LAYOUT_OPTIONS: Array<{
+  value: TemplateLayoutMode;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+}> = [
+  {
+    value: "regular",
+    label: "רגיל",
+    description: "התצוגה המלאה הנוכחית",
+    icon: Square,
+  },
+  {
+    value: "compact",
+    label: "קומפקטי",
+    description: "פחות פרטים, יותר צפוף",
+    icon: Minimize2,
+  },
+  {
+    value: "expanded",
+    label: "מורחב",
+    description: "יותר מקום ופרטים",
+    icon: Maximize2,
+  },
+  {
+    value: "quick",
+    label: "מהיר",
+    description: "שם + פתיחה בעורך + שכפול",
+    icon: Zap,
+  },
+];
+
+const parseFolderLayout = (value: string | null): FolderLayoutMode => {
+  if (
+    value === "grid" ||
+    value === "dense" ||
+    value === "list" ||
+    value === "expanded" ||
+    value === "table"
+  ) {
+    return value;
+  }
+  return "grid";
+};
+
+const parseTemplateLayout = (value: string | null): TemplateLayoutMode => {
+  if (value === "regular" || value === "compact" || value === "expanded" || value === "quick") {
+    return value;
+  }
+  return "regular";
+};
+
 export function QuoteTemplatesManager() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -111,6 +224,145 @@ export function QuoteTemplatesManager() {
   );
   const [draggedTemplateId, setDraggedTemplateId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "unfoldered">(null);
+  const [folderLayoutMode, setFolderLayoutMode] = useState<FolderLayoutMode>(
+    () => parseFolderLayout(localStorage.getItem(FOLDER_LAYOUT_STORAGE_KEY)),
+  );
+  const [templateLayoutMode, setTemplateLayoutMode] =
+    useState<TemplateLayoutMode>(
+      () =>
+        parseTemplateLayout(localStorage.getItem(TEMPLATE_LAYOUT_STORAGE_KEY)),
+    );
+  const [cloudViewReady, setCloudViewReady] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem(FOLDER_LAYOUT_STORAGE_KEY, folderLayoutMode);
+  }, [folderLayoutMode]);
+
+  useEffect(() => {
+    localStorage.setItem(TEMPLATE_LAYOUT_STORAGE_KEY, templateLayoutMode);
+  }, [templateLayoutMode]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!user?.id || !isTableAvailable("user_preferences")) {
+      setCloudViewReady(true);
+      return;
+    }
+
+    const loadCloudLayouts = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("user_preferences")
+          .select("view_preferences")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (error) {
+          markTableUnavailable("user_preferences");
+          return;
+        }
+
+        const viewPrefs = (data as any)?.view_preferences;
+        if (!viewPrefs || typeof viewPrefs !== "object") return;
+
+        const savedFolderLayout = parseFolderLayout(
+          typeof viewPrefs.quote_templates_folder_layout === "string"
+            ? viewPrefs.quote_templates_folder_layout
+            : null,
+        );
+        const savedTemplateLayout = parseTemplateLayout(
+          typeof viewPrefs.quote_templates_template_layout === "string"
+            ? viewPrefs.quote_templates_template_layout
+            : null,
+        );
+
+        if (!isMounted) return;
+
+        setFolderLayoutMode(savedFolderLayout);
+        setTemplateLayoutMode(savedTemplateLayout);
+        localStorage.setItem(FOLDER_LAYOUT_STORAGE_KEY, savedFolderLayout);
+        localStorage.setItem(TEMPLATE_LAYOUT_STORAGE_KEY, savedTemplateLayout);
+      } catch {
+        markTableUnavailable("user_preferences");
+      } finally {
+        if (isMounted) setCloudViewReady(true);
+      }
+    };
+
+    loadCloudLayouts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!cloudViewReady || !user?.id || !isTableAvailable("user_preferences")) {
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const { data, error: fetchError } = await supabase
+          .from("user_preferences")
+          .select("view_preferences")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (fetchError) {
+          markTableUnavailable("user_preferences");
+          return;
+        }
+
+        const existingViewPrefs =
+          data && typeof (data as any).view_preferences === "object"
+            ? ((data as any).view_preferences as Record<string, unknown>)
+            : {};
+
+        const mergedViewPrefs = {
+          ...existingViewPrefs,
+          quote_templates_folder_layout: folderLayoutMode,
+          quote_templates_template_layout: templateLayoutMode,
+        };
+
+        const { error: saveError } = await supabase
+          .from("user_preferences")
+          .upsert(
+            {
+              user_id: user.id,
+              view_preferences: mergedViewPrefs as any,
+              updated_at: new Date().toISOString(),
+            } as any,
+            { onConflict: "user_id" },
+          );
+
+        if (saveError) {
+          markTableUnavailable("user_preferences");
+        }
+      } catch {
+        markTableUnavailable("user_preferences");
+      }
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [cloudViewReady, folderLayoutMode, templateLayoutMode, user?.id]);
+
+  const getFolderTemplatesContainerClass = () => {
+    switch (folderLayoutMode) {
+      case "dense":
+        return "grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3";
+      case "list":
+        return "flex flex-col gap-3";
+      case "expanded":
+        return "grid md:grid-cols-1 xl:grid-cols-2 gap-5";
+      case "table":
+        return "";
+      case "grid":
+      default:
+        return "grid md:grid-cols-2 lg:grid-cols-3 gap-4";
+    }
+  };
 
   // שליפת תיקיות
   const { data: folders = [] } = useQuery({
@@ -451,6 +703,14 @@ export function QuoteTemplatesManager() {
     }
   };
 
+  const openTemplateInDocumentEditor = (templateId: string) => {
+    const params = new URLSearchParams({
+      type: "quote",
+      templateId,
+    });
+    window.location.href = `/document-editor?${params.toString()}`;
+  };
+
   const toggleFolderCollapse = (folderId: string) => {
     setCollapsedFolders((prev) => {
       const next = new Set(prev);
@@ -495,6 +755,122 @@ export function QuoteTemplatesManager() {
   // State for open-template choice dialog
   const [openChoiceTemplate, setOpenChoiceTemplate] = useState<QuoteTemplate | null>(null);
 
+  const renderTemplatesTable = (tableTemplates: QuoteTemplate[]) => {
+    return (
+      <div className="overflow-x-auto rounded-md border bg-background [content-visibility:visible] [contain-intrinsic-size:auto]">
+        <table className="w-full min-w-[980px] table-fixed text-sm">
+          <colgroup>
+            <col className="w-[38%]" />
+            <col className="w-[14%]" />
+            <col className="w-[12%]" />
+            <col className="w-[10%]" />
+            <col className="w-[11%]" />
+            <col className="w-[15%]" />
+          </colgroup>
+          <thead className="bg-muted/50 text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2 text-right font-medium">תבנית</th>
+              <th className="px-3 py-2 text-right font-medium">קטגוריה</th>
+              <th className="px-3 py-2 text-right font-medium">שלבים/פריטים</th>
+              <th className="px-3 py-2 text-right font-medium">תוקף</th>
+              <th className="px-3 py-2 text-right font-medium">סה״כ</th>
+              <th className="px-3 py-2 text-right font-medium">פעולות</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tableTemplates.map((template) => {
+              const primaryColor = template.design_settings?.primary_color || "#d8ac27";
+              const stagesCount = (template.stages || []).length;
+              const itemsCount =
+                (template.stages || []).reduce(
+                  (sum, stage) => sum + (stage.items || []).length,
+                  0,
+                ) + (template.items || []).length;
+
+              return (
+                <tr key={template.id} className="border-t hover:bg-muted/30 transition-colors">
+                  <td className="px-3 py-2 align-top min-w-0">
+                    <div
+                      className="text-sm font-semibold leading-snug truncate"
+                      title={template.name}
+                    >
+                      {template.name}
+                    </div>
+                    <div
+                      className="text-xs text-muted-foreground truncate"
+                      title={template.description || "ללא תיאור"}
+                    >
+                      {template.description || "ללא תיאור"}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 align-top whitespace-nowrap">
+                    <Badge
+                      variant="outline"
+                      className="w-fit whitespace-nowrap"
+                      style={{ borderColor: primaryColor, color: primaryColor }}
+                    >
+                      {CATEGORIES.find((c) => c.value === template.category)?.label ||
+                        template.category}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-2 align-top text-muted-foreground whitespace-nowrap">
+                    {stagesCount} / {itemsCount}
+                  </td>
+                  <td className="px-3 py-2 align-top text-muted-foreground whitespace-nowrap">
+                    {template.validity_days} יום
+                  </td>
+                  <td
+                    className="px-3 py-2 align-top font-bold whitespace-nowrap"
+                    style={{ color: primaryColor }}
+                  >
+                    ₪{calculateTotal(template).toLocaleString()}
+                  </td>
+                  <td className="px-3 py-2 align-top whitespace-nowrap">
+                    <div className="flex items-center gap-1 whitespace-nowrap">
+                      <Button
+                        size="sm"
+                        className="h-8 shrink-0 bg-[#d8ac27] text-white hover:bg-[#c49b22]"
+                        onClick={() => setHtmlEditorTemplate(template)}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5 ml-1" />
+                        פתח
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 shrink-0"
+                        title="שכפל וצור הצעת מחיר חדשה"
+                        onClick={() => openTemplateInDocumentEditor(template.id)}
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 shrink-0"
+                        onClick={() => handleEdit(template)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 shrink-0"
+                        onClick={() => setPreviewTemplate(template)}
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   // --- Render template card ---
   const renderTemplateCard = (template: QuoteTemplate) => {
     const primaryColor = template.design_settings?.primary_color || "#d8ac27";
@@ -506,6 +882,19 @@ export function QuoteTemplatesManager() {
       ) + (template.items || []).length;
 
     const isRenaming = renamingTemplateId === template.id;
+    const isCompactLayout = templateLayoutMode === "compact";
+    const isExpandedLayout = templateLayoutMode === "expanded";
+    const isQuickLayout = templateLayoutMode === "quick";
+    const cardHeaderClassName = isCompactLayout
+      ? "p-4 pb-2"
+      : isExpandedLayout
+        ? "p-6 pb-3"
+        : "pb-2";
+    const cardContentClassName = isCompactLayout
+      ? "p-4 pt-1"
+      : isExpandedLayout
+        ? "p-6 pt-2"
+        : undefined;
 
     return (
       <Card
@@ -522,11 +911,13 @@ export function QuoteTemplatesManager() {
         }}
         className={`overflow-hidden hover:shadow-lg transition-all group cursor-move ${
           draggedTemplateId === template.id ? "opacity-40 scale-95" : ""
+          } ${
+          isQuickLayout ? "border-primary/30" : ""
         }`}
       >
         <div className="h-2" style={{ backgroundColor: primaryColor }} />
 
-        <CardHeader className="pb-2">
+        <CardHeader className={cardHeaderClassName}>
           <div className="flex items-start justify-between">
             <div className="flex-1">
               {isRenaming ? (
@@ -560,80 +951,141 @@ export function QuoteTemplatesManager() {
                   </Button>
                 </div>
               ) : (
-                <CardTitle className="text-lg line-clamp-1">
+                <CardTitle
+                  className={
+                    isCompactLayout
+                      ? "text-sm leading-snug line-clamp-2"
+                      : isExpandedLayout
+                        ? "text-base leading-snug line-clamp-2"
+                        : "text-sm md:text-base leading-snug line-clamp-2"
+                  }
+                >
                   {template.name}
                 </CardTitle>
               )}
-              <CardDescription className="mt-1 line-clamp-2">
-                {template.description || "ללא תיאור"}
-              </CardDescription>
+
+              {!isQuickLayout && (
+                <CardDescription
+                  className={`mt-1 ${isExpandedLayout ? "line-clamp-4" : "line-clamp-2"}`}
+                >
+                  {template.description || "ללא תיאור"}
+                </CardDescription>
+              )}
             </div>
 
-            {/* Template actions dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => {
-                    setRenamingTemplateId(template.id);
-                    setRenamingTemplateName(template.name);
-                  }}
-                >
-                  <Pencil className="h-4 w-4 ml-2" />
-                  שנה שם
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setMoveToFolderTemplateId(template.id)}
-                >
-                  <FolderInput className="h-4 w-4 ml-2" />
-                  העבר לתיקייה
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleDuplicate(template)}>
-                  <Copy className="h-4 w-4 ml-2" />
-                  שכפל
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => handleDelete(template.id)}
-                  className="text-destructive"
-                >
-                  <Trash2 className="h-4 w-4 ml-2" />
-                  מחק
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-1">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    title="תצוגת תבניות"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" dir="rtl" className="min-w-56">
+                  <DropdownMenuLabel>תצוגת תבניות</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuRadioGroup
+                    value={templateLayoutMode}
+                    onValueChange={(value) =>
+                      setTemplateLayoutMode(parseTemplateLayout(value))
+                    }
+                  >
+                    {TEMPLATE_LAYOUT_OPTIONS.map((option) => {
+                      const OptionIcon = option.icon;
+                      return (
+                        <DropdownMenuRadioItem key={option.value} value={option.value}>
+                          <div className="w-full text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <span>{option.label}</span>
+                              <OptionIcon className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <div className="text-xs text-muted-foreground">{option.description}</div>
+                          </div>
+                        </DropdownMenuRadioItem>
+                      );
+                    })}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Template actions dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" dir="rtl">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setRenamingTemplateId(template.id);
+                      setRenamingTemplateName(template.name);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4 ml-2" />
+                    שנה שם
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setMoveToFolderTemplateId(template.id)}
+                  >
+                    <FolderInput className="h-4 w-4 ml-2" />
+                    העבר לתיקייה
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleDuplicate(template)}>
+                    <Copy className="h-4 w-4 ml-2" />
+                    שכפל
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => handleDelete(template.id)}
+                    className="text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 ml-2" />
+                    מחק
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
-          <Badge
-            variant="outline"
-            className="w-fit"
-            style={{ borderColor: primaryColor, color: primaryColor }}
-          >
-            {CATEGORIES.find((c) => c.value === template.category)?.label ||
-              template.category}
-          </Badge>
+          {!isQuickLayout && (
+            <Badge
+              variant="outline"
+              className="w-fit"
+              style={{ borderColor: primaryColor, color: primaryColor }}
+            >
+              {CATEGORIES.find((c) => c.value === template.category)?.label ||
+                template.category}
+            </Badge>
+          )}
         </CardHeader>
 
-        <CardContent>
+        <CardContent className={cardContentClassName}>
           <div className="space-y-3">
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span>{stagesCount} שלבים</span>
-              <span>•</span>
-              <span>{itemsCount} פריטים</span>
-              <span>•</span>
-              <span>{template.validity_days} יום</span>
-            </div>
+            {!isQuickLayout && (
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span>{stagesCount} שלבים</span>
+                <span>•</span>
+                <span>{itemsCount} פריטים</span>
+                <span>•</span>
+                <span>{template.validity_days} יום</span>
+              </div>
+            )}
 
             {/* Project details if available */}
-            {template.project_details && (template.project_details.gush || template.project_details.helka || template.project_details.projectName) && (
+            {isExpandedLayout &&
+              template.project_details &&
+              (template.project_details.gush ||
+                template.project_details.helka ||
+                template.project_details.projectName) && (
               <div className="text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1.5 space-y-0.5">
                 {template.project_details.projectName && (
                   <div className="truncate">📋 {template.project_details.projectName}</div>
@@ -644,17 +1096,19 @@ export function QuoteTemplatesManager() {
               </div>
             )}
 
-            <div className="flex items-center justify-between py-2 border-t">
-              <span className="font-medium">סה״כ:</span>
-              <span
-                className="font-bold text-lg"
-                style={{ color: primaryColor }}
-              >
-                ₪{calculateTotal(template).toLocaleString()}
-              </span>
-            </div>
+            {!isQuickLayout && (
+              <div className="flex items-center justify-between py-2 border-t">
+                <span className="font-medium">סה״כ:</span>
+                <span
+                  className={`font-bold ${isCompactLayout ? "text-base" : "text-lg"}`}
+                  style={{ color: primaryColor }}
+                >
+                  ₪{calculateTotal(template).toLocaleString()}
+                </span>
+              </div>
+            )}
 
-            <div className="flex gap-2 flex-wrap">
+            <div className={`flex gap-2 ${isQuickLayout ? "flex-nowrap" : "flex-wrap"}`}>
               <Button
                 size="sm"
                 className="flex-1 bg-[#d8ac27] hover:bg-[#c49b22] text-white"
@@ -663,35 +1117,36 @@ export function QuoteTemplatesManager() {
                 <ExternalLink className="h-4 w-4 ml-1" />
                 פתח בעורך
               </Button>
+
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  // Duplicate as new quote - navigate to editor with template data
-                  const params = new URLSearchParams({
-                    type: 'quote',
-                    templateId: template.id,
-                  });
-                  window.location.href = `/document-editor?${params.toString()}`;
-                }}
+                onClick={() => openTemplateInDocumentEditor(template.id)}
                 title="שכפל וצור הצעת מחיר חדשה"
+                className={isQuickLayout ? "px-4" : undefined}
               >
                 <Copy className="h-4 w-4" />
+                {isQuickLayout ? <span className="mr-1">שכפל</span> : null}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleEdit(template)}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPreviewTemplate(template)}
-              >
-                <Eye className="h-4 w-4" />
-              </Button>
+
+              {!isQuickLayout && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(template)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPreviewTemplate(template)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </CardContent>
@@ -911,58 +1366,101 @@ export function QuoteTemplatesManager() {
                     {folderTemplates.length} תבניות
                   </Badge>
 
-                  {/* Folder actions */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      asChild
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingFolder(folder);
-                          setFolderDialogOpen(true);
-                        }}
+                  <div className="flex items-center gap-1">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        asChild
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <Pencil className="h-4 w-4 ml-2" />
-                        ערוך תיקייה
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const newTemplate = createEmptyTemplate();
-                          newTemplate.folder_id = folder.id;
-                          setEditingTemplate(newTemplate);
-                          setIsDialogOpen(true);
-                        }}
-                      >
-                        <Plus className="h-4 w-4 ml-2" />
-                        תבנית חדשה בתיקייה
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (
-                            confirm(
-                              `למחוק את התיקייה "${folder.name}"? התבניות בתוכה יעברו לרשימה הראשית.`,
-                            )
-                          ) {
-                            deleteFolderMutation.mutate(folder.id);
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          title="תצוגת תיקיות"
+                        >
+                          <LayoutGrid className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" dir="rtl" className="min-w-56">
+                        <DropdownMenuLabel>תצוגת תיקיות</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuRadioGroup
+                          value={folderLayoutMode}
+                          onValueChange={(value) =>
+                            setFolderLayoutMode(parseFolderLayout(value))
                           }
-                        }}
-                        className="text-destructive"
+                        >
+                          {FOLDER_LAYOUT_OPTIONS.map((option) => {
+                            const OptionIcon = option.icon;
+                            return (
+                              <DropdownMenuRadioItem key={option.value} value={option.value}>
+                                <div className="w-full text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <span>{option.label}</span>
+                                    <OptionIcon className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">{option.description}</div>
+                                </div>
+                              </DropdownMenuRadioItem>
+                            );
+                          })}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Folder actions */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        asChild
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <Trash2 className="h-4 w-4 ml-2" />
-                        מחק תיקייה
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" dir="rtl">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingFolder(folder);
+                            setFolderDialogOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4 ml-2" />
+                          ערוך תיקייה
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const newTemplate = createEmptyTemplate();
+                            newTemplate.folder_id = folder.id;
+                            setEditingTemplate(newTemplate);
+                            setIsDialogOpen(true);
+                          }}
+                        >
+                          <Plus className="h-4 w-4 ml-2" />
+                          תבנית חדשה בתיקייה
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (
+                              confirm(
+                                `למחוק את התיקייה "${folder.name}"? התבניות בתוכה יעברו לרשימה הראשית.`,
+                              )
+                            ) {
+                              deleteFolderMutation.mutate(folder.id);
+                            }
+                          }}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 ml-2" />
+                          מחק תיקייה
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
 
                 {/* Folder templates */}
@@ -988,9 +1486,13 @@ export function QuoteTemplatesManager() {
                         </Button>
                       </div>
                     ) : (
-                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {folderTemplates.map(renderTemplateCard)}
-                      </div>
+                      folderLayoutMode === "table" ? (
+                        renderTemplatesTable(folderTemplates)
+                      ) : (
+                        <div className={getFolderTemplatesContainerClass()}>
+                          {folderTemplates.map(renderTemplateCard)}
+                        </div>
+                      )
                     )}
                   </div>
                 )}
@@ -1032,7 +1534,8 @@ export function QuoteTemplatesManager() {
               }}
             >
               {folders.length > 0 && (
-                <div className="flex items-center gap-2 mb-3 text-muted-foreground">
+                <div className="flex items-center justify-between gap-2 mb-3 text-muted-foreground">
+                  <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
                   <span className="text-sm font-medium">
                     תבניות ללא תיקייה ({unfolderedTemplates.length})
@@ -1040,11 +1543,53 @@ export function QuoteTemplatesManager() {
                       <span className="mr-2 text-primary">— שחרר כאן להוצאה מתיקייה</span>
                     )}
                   </span>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        title="תצוגת תיקיות"
+                      >
+                        <LayoutGrid className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" dir="rtl" className="min-w-56">
+                      <DropdownMenuLabel>תצוגת תיקיות</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuRadioGroup
+                        value={folderLayoutMode}
+                        onValueChange={(value) =>
+                          setFolderLayoutMode(parseFolderLayout(value))
+                        }
+                      >
+                        {FOLDER_LAYOUT_OPTIONS.map((option) => {
+                          const OptionIcon = option.icon;
+                          return (
+                            <DropdownMenuRadioItem key={option.value} value={option.value}>
+                              <div className="w-full text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <span>{option.label}</span>
+                                  <OptionIcon className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                                <div className="text-xs text-muted-foreground">{option.description}</div>
+                              </div>
+                            </DropdownMenuRadioItem>
+                          );
+                        })}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               )}
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {unfolderedTemplates.map(renderTemplateCard)}
-              </div>
+              {folderLayoutMode === "table" ? (
+                renderTemplatesTable(unfolderedTemplates)
+              ) : (
+                <div className={getFolderTemplatesContainerClass()}>
+                  {unfolderedTemplates.map(renderTemplateCard)}
+                </div>
+              )}
             </div>
           )}
         </div>

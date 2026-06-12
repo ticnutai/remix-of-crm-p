@@ -98,6 +98,7 @@ const periodConfig: Record<TimePeriod, { label: string; icon: React.ElementType;
 const themeOptions: { id: DashboardTheme; label: string; icon: React.ElementType; colors: string }[] = [
   { id: 'navy-gold', label: 'נייבי זהב', icon: Sparkles, colors: 'bg-[#162C58] border-[#d4af37]' },
   { id: 'modern-dark', label: 'מודרני כהה', icon: Moon, colors: 'bg-gray-900 border-purple-500' },
+  { id: 'transcribe-cream', label: 'קרם נייבי זהב', icon: Sparkles, colors: 'bg-[#faf8f5] border-[#ce9722]' },
   { id: 'classic', label: 'קלאסי', icon: Sun, colors: 'bg-card border-primary' },
 ];
 
@@ -335,23 +336,30 @@ export function WorkHoursTableWidget({ isLoading: externalLoading }: WorkHoursTa
   const frameColorClass = getColorValue(customColors.frameColor, 'border');
   const iconColorClass = getColorValue(customColors.iconColor, 'text');
   const bgColorClass = getColorValue(customColors.bgColor, 'bg');
+  const isTranscribeCream = currentTheme === 'transcribe-cream';
   
   const themeClasses = currentTheme === 'navy-gold' 
     ? `bg-[#162C58] ${frameColorClass}/30`
     : currentTheme === 'modern-dark'
     ? 'bg-gray-900 border-gray-700'
+    : isTranscribeCream
+    ? 'bg-[#faf8f5] border-[rgba(206,151,34,0.45)]'
     : 'bg-card border-border';
 
   const buttonActiveClass = currentTheme === 'navy-gold'
     ? `${getColorValue(customColors.iconColor, 'bg')} text-[#162C58]`
     : currentTheme === 'modern-dark'
     ? 'bg-purple-600 text-white'
+    : isTranscribeCream
+    ? 'bg-[#0f1e43] text-[#fef9ec]'
     : 'bg-primary text-primary-foreground';
 
   const buttonInactiveClass = currentTheme === 'navy-gold'
     ? `bg-[#162C58]/50 ${iconColorClass} hover:${getColorValue(customColors.iconColor, 'bg')}/20`
     : currentTheme === 'modern-dark'
     ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+    : isTranscribeCream
+    ? 'bg-[#f3f1ec] text-[#111c36] border border-[rgba(15,30,67,0.25)] hover:bg-[#ece7dd]'
     : 'bg-muted text-muted-foreground hover:bg-muted/80';
 
   if (externalLoading || isLoading) {
@@ -388,6 +396,8 @@ export function WorkHoursTableWidget({ isLoading: externalLoading }: WorkHoursTa
                 ? `${iconColorClass} hover:bg-[#d4af37]/20` 
                 : currentTheme === 'modern-dark'
                 ? 'text-purple-400 hover:bg-purple-500/20'
+                : isTranscribeCream
+                ? 'text-[#0f1e43] hover:bg-[#f1e9da]'
                 : 'text-primary hover:bg-primary/10'
             }`}
           >
@@ -558,6 +568,8 @@ export function WorkHoursTableWidget({ isLoading: externalLoading }: WorkHoursTa
                 ? `${iconColorClass} hover:bg-[#d4af37]/20` 
                 : currentTheme === 'modern-dark'
                 ? 'text-purple-400 hover:bg-purple-500/20'
+                : isTranscribeCream
+                ? 'text-[#0f1e43] hover:bg-[#f1e9da]'
                 : 'text-primary hover:bg-primary/10'
             }`}
           >
@@ -667,6 +679,8 @@ export function WorkHoursTableWidget({ isLoading: externalLoading }: WorkHoursTa
               <thead className={`sticky top-0 ${
                 currentTheme === 'navy-gold' ? 'bg-[hsl(45,30%,92%)] text-[hsl(220,60%,20%)] border-b-2 border-[hsl(45,80%,50%)]' :
                 currentTheme === 'modern-dark' ? 'bg-gray-800 text-white' : 'bg-muted'
+                } ${
+                isTranscribeCream ? 'bg-[#f3f1ec] text-[#111c36] border-b border-[rgba(15,30,67,0.25)]' : ''
               }`}>
                 <tr>
                   <th className="text-right p-2 font-medium">תאריך</th>
@@ -689,7 +703,7 @@ export function WorkHoursTableWidget({ isLoading: externalLoading }: WorkHoursTa
                       className={`border-t ${
                         currentTheme === 'navy-gold' ? `${frameColorClass}/10 hover:${getColorValue(customColors.iconColor, 'bg')}/5` :
                         currentTheme === 'modern-dark' ? 'border-gray-700 hover:bg-gray-800/50' : 
-                        'border-border hover:bg-muted/50'
+                        isTranscribeCream ? 'border-[rgba(15,30,67,0.12)] hover:bg-[#f3f1ec]' : 'border-border hover:bg-muted/50'
                       }`}
                     >
                       <td 
@@ -707,7 +721,7 @@ export function WorkHoursTableWidget({ isLoading: externalLoading }: WorkHoursTa
                       <td className="p-2 text-center">
                         <Badge 
                           variant="secondary" 
-                          className={`font-mono ${currentTheme === 'navy-gold' ? `${getColorValue(customColors.iconColor, 'bg')} text-[#0a1628]` : ''}`}
+                          className={`font-mono ${currentTheme === 'navy-gold' ? `${getColorValue(customColors.iconColor, 'bg')} text-[#0a1628]` : ''} ${isTranscribeCream ? 'bg-[#0f1e43] text-[#ce9722]' : ''}`}
                         >
                           {formatDuration(minutes)}
                         </Badge>
@@ -731,12 +745,13 @@ export function WorkHoursTableWidget({ isLoading: externalLoading }: WorkHoursTa
                   "font-semibold",
                   currentTheme === 'navy-gold' && 'bg-[hsl(45,30%,90%)] text-[hsl(220,60%,20%)]',
                   currentTheme === 'modern-dark' && 'bg-purple-900/20 text-white',
-                  currentTheme !== 'navy-gold' && currentTheme !== 'modern-dark' && 'bg-primary/10'
+                  isTranscribeCream && 'bg-[#f1e9da] text-[#111c36]',
+                  currentTheme !== 'navy-gold' && currentTheme !== 'modern-dark' && !isTranscribeCream && 'bg-primary/10'
                 )}>
-                  <tr className="border-t-2" style={{ borderColor: currentTheme === 'navy-gold' ? 'hsl(45, 80%, 50%)' : undefined }}>
+                  <tr className="border-t-2" style={{ borderColor: currentTheme === 'navy-gold' ? 'hsl(45, 80%, 50%)' : isTranscribeCream ? 'rgba(15,30,67,0.25)' : undefined }}>
                     <td colSpan={3} className="p-2 text-right">סה״כ:</td>
                     <td className="p-2 text-center">
-                      <Badge className={`font-mono ${currentTheme === 'navy-gold' ? 'bg-[hsl(45,80%,50%)] text-[hsl(220,60%,20%)]' : ''}`}>
+                      <Badge className={`font-mono ${currentTheme === 'navy-gold' ? 'bg-[hsl(45,80%,50%)] text-[hsl(220,60%,20%)]' : ''} ${isTranscribeCream ? 'bg-[#0f1e43] text-[#ce9722]' : ''}`}>
                         {formatDuration(stats.totalMinutes)}
                       </Badge>
                     </td>
@@ -787,20 +802,26 @@ function StatCard({
     ? `bg-[#0f2847] ${frameColorClass}/20`
     : theme === 'modern-dark'
     ? 'bg-gray-800 border-gray-700'
+    : theme === 'transcribe-cream'
+    ? 'bg-[linear-gradient(135deg,#faf8f5_0%,rgba(241,233,218,0.35)_100%)] border-[rgba(206,151,34,0.45)]'
     : 'bg-muted/50 border-border';
 
   // Text color based on theme for proper contrast
   const textColorClass = theme === 'navy-gold' || theme === 'modern-dark'
     ? 'text-white'
+    : theme === 'transcribe-cream'
+    ? 'text-[#111c36]'
     : 'text-foreground';
 
   const suffixColorClass = theme === 'navy-gold' || theme === 'modern-dark'
     ? 'text-white/70'
+    : theme === 'transcribe-cream'
+    ? 'text-[#3a4f76]'
     : 'text-muted-foreground';
 
   return (
     <div className={`rounded-lg border p-3 ${bgClass}`}>
-      <div className={`flex items-center gap-2 mb-1 ${theme === 'navy-gold' ? iconColorClass : 'text-muted-foreground'}`}>
+      <div className={`flex items-center gap-2 mb-1 ${theme === 'navy-gold' ? iconColorClass : theme === 'transcribe-cream' ? 'text-[#0f1e43]' : 'text-muted-foreground'}`}>
         <Icon className="h-4 w-4" />
         <span className="text-xs">{label}</span>
       </div>

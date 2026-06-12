@@ -1,7 +1,7 @@
-// Dashboard Theme Provider - 7 Luxury Styles
+// Dashboard Theme Provider - 8 Luxury Styles
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-export type DashboardTheme = 'navy-gold' | 'modern-dark' | 'classic' | 'elegant-white' | 'mouse-gray' | 'royal-blue' | 'gold-premium';
+export type DashboardTheme = 'navy-gold' | 'modern-dark' | 'classic' | 'transcribe-cream' | 'elegant-white' | 'mouse-gray' | 'royal-blue' | 'gold-premium';
 
 export interface DashboardThemeConfig {
   id: DashboardTheme;
@@ -91,6 +91,29 @@ export const dashboardThemes: Record<DashboardTheme, DashboardThemeConfig> = {
       glow: false,
       gradient: false,
       roundedCorners: 'lg',
+    },
+  },
+  'transcribe-cream': {
+    id: 'transcribe-cream',
+    name: 'קרם נייבי זהב',
+    description: 'עיצוב פרימיום חם בסגנון תמלול: קרם בהיר, נייבי עמוק והדגשות זהב',
+    colors: {
+      background:
+        'radial-gradient(circle at 9% 12%, rgba(206, 151, 34, 0.09) 0%, transparent 38%), radial-gradient(circle at 87% 10%, rgba(15, 30, 67, 0.08) 0%, transparent 44%), linear-gradient(180deg, #f3f1ec 0%, #f3f1ec 100%)',
+      cardBackground: '#faf8f5',
+      headerBackground: '#0f1e43',
+      border: 'rgba(206, 151, 34, 0.45)',
+      accent: '#ce9722',
+      text: '#111c36',
+      textMuted: 'rgba(17, 28, 54, 0.72)',
+      statCardBg: '#faf8f5',
+      chartBg: '#faf8f5',
+    },
+    effects: {
+      reflection: false,
+      glow: true,
+      gradient: true,
+      roundedCorners: '3xl',
     },
   },
   'elegant-white': {

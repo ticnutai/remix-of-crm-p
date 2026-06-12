@@ -11,6 +11,8 @@ import { BackupProvider } from "@/hooks/useBackupRestore";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TimerProvider } from "@/hooks/useTimer";
 import { ThemeProvider } from "@/hooks/useTheme";
+import { DesignModeProvider } from "@/components/design-mode/DesignModeProvider";
+import { DesignModeOverlay } from "@/components/design-mode/DesignModeOverlay";
 import { CloudSyncProvider } from "@/components/CloudSyncProvider";
 import { DataSyncInitializer } from "@/components/DataSyncInitializer";
 import { NetworkRecoveryInitializer } from "@/components/NetworkRecoveryInitializer";
@@ -148,23 +150,24 @@ const App = () => {
         persistOptions={persistOptions}
       >
         <ThemeProvider>
-          <TooltipProvider>
-            <AuthProvider>
-              <DataSyncInitializer />
-              <NetworkRecoveryInitializer />
-              <CloudSyncProvider>
-                <TimerProvider>
-                  <UndoRedoProvider>
-                    <BackupProvider>
-                      <DedupProvider>
-                        <Toaster />
-                        <Sonner />
-                        <BrowserRouter
-                          future={{
-                            v7_startTransition: false,
-                            v7_relativeSplatPath: true,
-                          }}
-                        >
+          <DesignModeProvider>
+            <TooltipProvider>
+              <AuthProvider>
+                <DataSyncInitializer />
+                <NetworkRecoveryInitializer />
+                <CloudSyncProvider>
+                  <TimerProvider>
+                    <UndoRedoProvider>
+                      <BackupProvider>
+                        <DedupProvider>
+                          <Toaster />
+                          <Sonner />
+                          <BrowserRouter
+                            future={{
+                              v7_startTransition: false,
+                              v7_relativeSplatPath: true,
+                            }}
+                          >
                           <Suspense fallback={<div className="min-h-screen bg-background" />}>
                             <Routes>
                               <Route
@@ -394,6 +397,8 @@ const App = () => {
                             </Routes>
                           </Suspense>
 
+                          <DesignModeOverlay />
+
                           <UnifiedDevTools />
 
                           {/* Global Attendance Clock-in FAB */}
@@ -406,14 +411,15 @@ const App = () => {
                           <PWAInstallBanner />
                           <PWAUpdatePrompt />
                           <OfflineIndicator />
-                        </BrowserRouter>
-                      </DedupProvider>
-                    </BackupProvider>
-                  </UndoRedoProvider>
-                </TimerProvider>
-              </CloudSyncProvider>
-            </AuthProvider>
-          </TooltipProvider>
+                          </BrowserRouter>
+                        </DedupProvider>
+                      </BackupProvider>
+                    </UndoRedoProvider>
+                  </TimerProvider>
+                </CloudSyncProvider>
+              </AuthProvider>
+            </TooltipProvider>
+          </DesignModeProvider>
         </ThemeProvider>
       </PersistQueryClientProvider>
     </ErrorBoundary>

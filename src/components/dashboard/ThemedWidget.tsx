@@ -57,6 +57,7 @@ export const ThemedWidget = memo(function ThemedWidget({
 
   const isNavyGold = currentTheme === "navy-gold";
   const isModernDark = currentTheme === "modern-dark";
+  const isTranscribeCream = currentTheme === "transcribe-cream";
 
   // Get navigation path
   const navigationPath = linkTo || WIDGET_NAVIGATION_MAP[widgetId];
@@ -70,6 +71,9 @@ export const ThemedWidget = memo(function ThemedWidget({
   // Widget container styles based on theme
   const containerStyles: React.CSSProperties = {
     backgroundColor: themeConfig.colors.cardBackground,
+    background: isTranscribeCream
+      ? "linear-gradient(to bottom right, #faf8f5 0%, #faf8f5 64%, rgba(241, 233, 218, 0.35) 100%)"
+      : undefined,
     borderColor: themeConfig.colors.border,
     borderWidth: isNavyGold ? "2px" : "1px",
     borderStyle: "solid",
@@ -94,6 +98,8 @@ export const ThemedWidget = memo(function ThemedWidget({
           ? "0 0 25px rgba(180, 140, 50, 0.15), 0 10px 40px -15px rgba(0,0,0,0.2)"
           : isModernDark
             ? "0 0 30px rgba(66, 153, 225, 0.15), 0 10px 40px -15px rgba(0,0,0,0.4)"
+            : isTranscribeCream
+              ? "0 1px 3px rgba(0, 0, 0, 0.06), 0 16px 34px -24px rgba(15, 30, 67, 0.35)"
             : undefined,
       }
     : {};
@@ -111,6 +117,27 @@ export const ThemedWidget = memo(function ThemedWidget({
       )}
       style={{ ...containerStyles, ...glowStyles }}
     >
+      {/* Decorative layers for the transcribe-inspired cream theme */}
+      {isTranscribeCream && (
+        <>
+          <div
+            className="absolute inset-x-0 top-0 h-1 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(to right, rgba(206, 151, 34, 0.2), rgba(206, 151, 34, 1), rgba(206, 151, 34, 0.2))",
+            }}
+          />
+          <div
+            className="absolute -left-12 -top-16 h-44 w-44 rounded-full blur-3xl pointer-events-none"
+            style={{ backgroundColor: "rgba(206, 151, 34, 0.15)" }}
+          />
+          <div
+            className="absolute -bottom-16 -right-10 h-40 w-40 rounded-full blur-3xl pointer-events-none"
+            style={{ backgroundColor: "rgba(15, 30, 67, 0.15)" }}
+          />
+        </>
+      )}
+
       {/* Decorative Corner Ornaments for Navy Gold */}
       {isNavyGold && (
         <>
@@ -204,7 +231,7 @@ export const ThemedWidget = memo(function ThemedWidget({
                   "text-white/70 hover:text-white hover:bg-white/10",
               )}
               style={{
-                color: isNavyGold ? themeConfig.colors.textMuted : undefined,
+                color: isNavyGold || isTranscribeCream ? themeConfig.colors.textMuted : undefined,
               }}
               onClick={() => toggleCollapse(widgetId)}
             >
@@ -273,6 +300,7 @@ export const ThemedStatCard = memo(function ThemedStatCard({
 
   const isNavyGold = currentTheme === "navy-gold";
   const isModernDark = currentTheme === "modern-dark";
+  const isTranscribeCream = currentTheme === "transcribe-cream";
 
   return (
     <div
@@ -285,22 +313,43 @@ export const ThemedStatCard = memo(function ThemedStatCard({
       )}
       onClick={onClick}
       style={{
-        backgroundColor: themeConfig.colors.statCardBg,
+        backgroundColor: isTranscribeCream
+          ? undefined
+          : themeConfig.colors.statCardBg,
+        background: isTranscribeCream
+          ? "linear-gradient(135deg, #faf8f5 0%, rgba(241, 233, 218, 0.35) 100%)"
+          : undefined,
         borderWidth: isNavyGold ? "2px" : "1px",
         borderStyle: "solid",
         borderColor: themeConfig.colors.border,
         borderRadius:
-          themeConfig.effects.roundedCorners === "2xl" ? "1.5rem" : "1rem",
+          themeConfig.effects.roundedCorners === "3xl"
+            ? "1.5rem"
+            : themeConfig.effects.roundedCorners === "2xl"
+              ? "1.5rem"
+              : "1rem",
         animationDelay: `${delay}s`,
         boxShadow: themeConfig.effects.glow
           ? isNavyGold
             ? "0 0 20px rgba(180, 140, 50, 0.1)"
             : isModernDark
               ? "0 0 20px rgba(66, 153, 225, 0.1)"
+              : isTranscribeCream
+                ? "0 1px 3px rgba(0, 0, 0, 0.06), 0 14px 28px -20px rgba(15, 30, 67, 0.3)"
               : undefined
           : undefined,
       }}
     >
+      {isTranscribeCream && (
+        <div
+          className="absolute inset-x-0 top-0 h-0.5 pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(to right, rgba(206, 151, 34, 0.2), rgba(206, 151, 34, 1), rgba(206, 151, 34, 0.2))",
+          }}
+        />
+      )}
+
       {/* Icon Badge */}
       <div
         className={cn(
@@ -309,10 +358,11 @@ export const ThemedStatCard = memo(function ThemedStatCard({
             "bg-gradient-to-br from-[hsl(45,80%,55%)] to-[hsl(45,90%,45%)]",
           isModernDark &&
             "bg-gradient-to-br from-[hsl(210,100%,50%)] to-[hsl(210,100%,40%)]",
+          isTranscribeCream && "border border-[#d4c19b] bg-[#0f1e43]",
         )}
         style={{
           backgroundColor:
-            !isNavyGold && !isModernDark
+            !isNavyGold && !isModernDark && !isTranscribeCream
               ? themeConfig.colors.accent
               : undefined,
         }}
@@ -321,6 +371,8 @@ export const ThemedStatCard = memo(function ThemedStatCard({
           style={{
             color: isNavyGold
               ? "hsl(220, 60%, 18%)"
+              : isTranscribeCream
+                ? "#ce9722"
               : isModernDark
                 ? "white"
                 : "white",

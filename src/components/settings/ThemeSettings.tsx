@@ -1,5 +1,5 @@
 // Theme Settings Component - Advanced Color Schemes with Edit/Delete/Export/Import
-import { Check, Palette, Sparkles, Edit2, Trash2, Download, Upload, Save } from 'lucide-react';
+import { Check, Palette, Sparkles, Edit2, Trash2, Download, Upload, Save, MousePointerClick, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { UserPreferences, themePresets } from '@/hooks/useUserPreferences';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { type DesignOverride, loadOverrides, saveOverrides } from '@/lib/designOverrides';
+import { useDesignMode } from '@/components/design-mode/DesignModeProvider';
 
 interface CustomTheme {
   id: string;
@@ -19,6 +21,7 @@ interface CustomTheme {
   secondary: string;
   primaryHex: string;
   secondaryHex: string;
+  elementOverrides?: DesignOverride[];
 }
 
 interface ThemeSettingsProps {
@@ -28,6 +31,7 @@ interface ThemeSettingsProps {
 }
 
 const CUSTOM_THEMES_KEY = 'ten-arch-custom-themes';
+const ACTIVE_CUSTOM_THEME_KEY = 'ten-arch-active-custom-theme-id';
 
 // Helper to convert hex to HSL
 function hexToHsl(hex: string): string {
@@ -55,6 +59,11 @@ function hexToHsl(hex: string): string {
 }
 
 export function ThemeSettings({ preferences, onSave, saving }: ThemeSettingsProps) {
+  const {
+    enabled: designModeEnabled,
+    setEnabled: setDesignModeEnabled,
+    overrides: liveOverrides,
+  } = useDesignMode();
   const [customPrimary, setCustomPrimary] = useState(preferences.custom_primary_color || '#1B2541');
   const [customSecondary, setCustomSecondary] = useState(preferences.custom_secondary_color || '#C9A962');
   const [customThemeName, setCustomThemeName] = useState('');
@@ -69,12 +78,39 @@ export function ThemeSettings({ preferences, onSave, saving }: ThemeSettingsProp
     const saved = localStorage.getItem(CUSTOM_THEMES_KEY);
     if (saved) {
       try {
-        setCustomThemes(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setCustomThemes(parsed);
+        }
       } catch (e) {
         console.error('Failed to parse custom themes:', e);
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (preferences.theme_preset !== 'custom') return;
+    const activeId = localStorage.getItem(ACTIVE_CUSTOM_THEME_KEY);
+    if (activeId) return;
+
+    const matched = customThemes.find((theme) => theme.primary === preferences.custom_primary_color);
+    if (matched) {
+      localStorage.setItem(ACTIVE_CUSTOM_THEME_KEY, matched.id);
+    }
+  }, [preferences.custom_primary_color, preferences.theme_preset, customThemes]);
+
+  useEffect(() => {
+    if (preferences.theme_preset !== 'custom') return;
+
+    const activeId = localStorage.getItem(ACTIVE_CUSTOM_THEME_KEY);
+    const activeTheme =
+      customThemes.find((theme) => theme.id === activeId) ||
+      customThemes.find((theme) => theme.primary === preferences.custom_primary_color);
+
+    if (!activeTheme) return;
+
+    saveOverrides(Array.isArray(activeTheme.elementOverrides) ? activeTheme.elementOverrides : []);
+  }, [preferences.custom_primary_color, preferences.theme_preset, customThemes]);
 
   // Save custom themes to localStorage
   const saveCustomThemes = (themes: CustomTheme[]) => {
@@ -86,6 +122,8 @@ export function ThemeSettings({ preferences, onSave, saving }: ThemeSettingsProp
     if (isCustom) {
       const theme = customThemes.find(t => t.id === preset);
       if (theme) {
+        localStorage.setItem(ACTIVE_CUSTOM_THEME_KEY, theme.id);
+        saveOverrides(Array.isArray(theme.elementOverrides) ? theme.elementOverrides : []);
         await onSave({ 
           theme_preset: 'custom',
           custom_primary_color: theme.primary, 
@@ -93,6 +131,8 @@ export function ThemeSettings({ preferences, onSave, saving }: ThemeSettingsProp
         });
       }
     } else {
+      localStorage.removeItem(ACTIVE_CUSTOM_THEME_KEY);
+      saveOverrides([]);
       await onSave({ 
         theme_preset: preset, 
         custom_primary_color: null, 
@@ -114,6 +154,7 @@ export function ThemeSettings({ preferences, onSave, saving }: ThemeSettingsProp
       secondary: hexToHsl(customSecondary),
       primaryHex: customPrimary,
       secondaryHex: customSecondary,
+      elementOverrides: loadOverrides(),
     };
 
     saveCustomThemes([...customThemes, newTheme]);
@@ -147,6 +188,10 @@ export function ThemeSettings({ preferences, onSave, saving }: ThemeSettingsProp
 
   const handleDeleteTheme = () => {
     if (!deleteTheme) return;
+    if (localStorage.getItem(ACTIVE_CUSTOM_THEME_KEY) === deleteTheme.id) {
+      localStorage.removeItem(ACTIVE_CUSTOM_THEME_KEY);
+      saveOverrides([]);
+    }
     const updated = customThemes.filter(t => t.id !== deleteTheme.id);
     saveCustomThemes(updated);
     setDeleteTheme(null);
@@ -181,6 +226,9 @@ export function ThemeSettings({ preferences, onSave, saving }: ThemeSettingsProp
           const imported = data.themes.map((t: CustomTheme) => ({
             ...t,
             id: `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            elementOverrides: Array.isArray((t as CustomTheme).elementOverrides)
+              ? (t as CustomTheme).elementOverrides
+              : [],
           }));
           saveCustomThemes([...customThemes, ...imported]);
           toast.success(`יובאו ${imported.length} ערכות נושא`);
@@ -196,12 +244,71 @@ export function ThemeSettings({ preferences, onSave, saving }: ThemeSettingsProp
   };
 
   const isCustomThemeActive = (theme: CustomTheme) => {
+    const activeCustomId = localStorage.getItem(ACTIVE_CUSTOM_THEME_KEY);
+    if (preferences.theme_preset !== 'custom') return false;
+    if (activeCustomId) return activeCustomId === theme.id;
     return preferences.theme_preset === 'custom' && 
            preferences.custom_primary_color === theme.primary;
   };
 
+  const setDesignModeQueryParam = (enabled: boolean) => {
+    const url = new URL(window.location.href);
+    if (enabled) {
+      url.searchParams.set('designMode', '1');
+    } else {
+      url.searchParams.delete('designMode');
+    }
+    window.history.replaceState({}, '', url.toString());
+  };
+
+  const toggleLiveDesignMode = () => {
+    if (designModeEnabled) {
+      setDesignModeEnabled(false);
+      setDesignModeQueryParam(false);
+      toast.success('מצב עיצוב חי כובה');
+      return;
+    }
+
+    setDesignModeEnabled(true);
+    setDesignModeQueryParam(true);
+    toast.success('מצב עיצוב חי הופעל');
+  };
+
+  const openLiveDesignModeInNewTab = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('designMode', '1');
+    window.open(url.toString(), '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div className="space-y-6" dir="rtl">
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <MousePointerClick className="h-5 w-5 text-primary" />
+            מצב עריכה חיה
+          </CardTitle>
+          <CardDescription>
+            ערוך אלמנטים ישירות על המסך, שמור ברמת אלמנט/מחלקה/גלובלי, ואז שמור לערכת נושא.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={toggleLiveDesignMode}>
+              <MousePointerClick className="h-4 w-4 ml-1" />
+              {designModeEnabled ? 'כבה מצב עיצוב חי' : 'הפעל מצב עיצוב חי'}
+            </Button>
+            <Button variant="outline" onClick={openLiveDesignModeInNewTab}>
+              <ExternalLink className="h-4 w-4 ml-1" />
+              פתח בחלון חדש
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            שינויים זמניים במצב חי: {liveOverrides.length}
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Built-in Themes */}
       <Card className="border-border/50">
         <CardHeader>

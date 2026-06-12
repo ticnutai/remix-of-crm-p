@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__claude_ai_Supabase__list_projects",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8081)",
+      "Bash(sed -i 's#localhost:8081#localhost:8080#' verify_payment.py)",
+      "Bash(timeout 100 python verify_payment.py)",
+      "Bash(rm -f verify_payment.py verify_payment.png /tmp/vite-dev2.log /tmp/vite-dev.log)",
+      "Bash(powershell -NoProfile -Command 'Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match '\\\\''vite'\\\\'' } | ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop } catch {} }')",
+      "Bash(git reset *)",
+      "Bash(git commit -m ' *)",
+      "Bash(sleep 2; grep -oE \"localhost:[0-9]+\" /tmp/vd.log | head -1)",
+      "Read(//tmp/**)",
+      "Bash(tail -8 /tmp/vd.log)",
+      "Bash(timeout 110 python verify_sync.py)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8080)",
+      "Bash(timeout 70 python verify_sync.py)",
+      "Bash(grep -vE \"^\\\\s*$\")",
+      "Bash(git fetch *)"
+    ]
+  }
+}

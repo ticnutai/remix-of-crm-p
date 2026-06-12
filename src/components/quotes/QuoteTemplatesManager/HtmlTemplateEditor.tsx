@@ -205,6 +205,43 @@ interface StageTemplateOption {
   description: string | null;
   stages: StageTemplateStageOption[];
 }
+
+type AssignmentSourceTab = "stage-template" | "quote-template" | "all";
+type AssignmentViewMode = "chips" | "cards" | "list";
+
+const ASSIGNMENT_ALL_STAGE_FILTER = "__all_stages__";
+
+const getAssignmentStageIcon = (stageName: string) => {
+  const normalized = stageName.trim();
+
+  if (normalized.includes("התקשרות") || normalized.includes("לקוח")) {
+    return User;
+  }
+  if (
+    normalized.includes("עלות") ||
+    normalized.includes("מחיר") ||
+    normalized.includes("תשלום") ||
+    normalized.includes("הפקדה")
+  ) {
+    return CreditCard;
+  }
+  if (
+    normalized.includes("תצהיר") ||
+    normalized.includes("מסמך") ||
+    normalized.includes("אישור")
+  ) {
+    return FileText;
+  }
+  if (
+    normalized.includes("פרסום") ||
+    normalized.includes("התנגד") ||
+    normalized.includes("מאגר")
+  ) {
+    return Share2;
+  }
+
+  return Layers;
+};
 interface StripLayer {
   url: string;
   color: string;
@@ -1544,24 +1581,46 @@ function PaymentStepEditor({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
-  const [assignmentSourceTab, setAssignmentSourceTab] = useState<
-    "stage-template" | "quote-template"
-  >("stage-template");
+  const [assignmentSourceTab, setAssignmentSourceTab] =
+    useState<AssignmentSourceTab>("stage-template");
   const [assignmentSearch, setAssignmentSearch] = useState("");
-  const [activeStageTemplateTab, setActiveStageTemplateTab] = useState("");
-  const [activeQuoteTemplateTab, setActiveQuoteTemplateTab] = useState("");
+  const [assignmentViewMode, setAssignmentViewMode] =
+    useState<AssignmentViewMode>(() => {
+      try {
+        const stored = localStorage.getItem(
+          `quote-payment-assignment-view:${templateKey || "draft-template"}`,
+        );
+        if (stored === "chips" || stored === "cards" || stored === "list") {
+          return stored;
+        }
+      } catch {
+        // no-op
+      }
+      return "cards";
+    });
+  const [activeStageTemplateTab, setActiveStageTemplateTab] = useState(
+    ASSIGNMENT_ALL_STAGE_FILTER,
+  );
+  const [activeQuoteTemplateTab, setActiveQuoteTemplateTab] = useState(
+    ASSIGNMENT_ALL_STAGE_FILTER,
+  );
   const assignmentSourceStorageKey = useMemo(
     () => `quote-payment-assignment-source:${templateKey || "draft-template"}`,
     [templateKey],
   );
-  const [lastUsedSourceTab, setLastUsedSourceTab] = useState<
-    "stage-template" | "quote-template"
-  >(() => {
+  const assignmentViewStorageKey = useMemo(
+    () => `quote-payment-assignment-view:${templateKey || "draft-template"}`,
+    [templateKey],
+  );
+  const [lastUsedSourceTab, setLastUsedSourceTab] =
+    useState<AssignmentSourceTab>(() => {
     try {
       const stored = localStorage.getItem(
         `quote-payment-assignment-source:${templateKey || "draft-template"}`,
       );
-      return stored === "quote-template" ? "quote-template" : "stage-template";
+      return stored === "quote-template" || stored === "all"
+        ? stored
+        : "stage-template";
     } catch {
       return "stage-template";
     }
@@ -1606,14 +1665,32 @@ function PaymentStepEditor({
   );
 
   useEffect(() => {
-    if (!templateStages.length || activeStageTemplateTab) return;
-    setActiveStageTemplateTab(templateStages[0].id);
+    if (activeStageTemplateTab === ASSIGNMENT_ALL_STAGE_FILTER) return;
+    if (templateStages.some((stage) => stage.id === activeStageTemplateTab)) {
+      return;
+    }
+    setActiveStageTemplateTab(ASSIGNMENT_ALL_STAGE_FILTER);
   }, [templateStages, activeStageTemplateTab]);
 
   useEffect(() => {
-    if (!quoteTemplateStageOptions.length || activeQuoteTemplateTab) return;
-    setActiveQuoteTemplateTab(quoteTemplateStageOptions[0].id);
+    if (activeQuoteTemplateTab === ASSIGNMENT_ALL_STAGE_FILTER) return;
+    if (
+      quoteTemplateStageOptions.some(
+        (stage) => stage.id === activeQuoteTemplateTab,
+      )
+    ) {
+      return;
+    }
+    setActiveQuoteTemplateTab(ASSIGNMENT_ALL_STAGE_FILTER);
   }, [quoteTemplateStageOptions, activeQuoteTemplateTab]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(assignmentViewStorageKey, assignmentViewMode);
+    } catch {
+      // no-op
+    }
+  }, [assignmentViewMode, assignmentViewStorageKey]);
 
   const assignmentSummary =
     step.linkSource === "quote_template" && (step.quoteTemplateItemText || selectedQuoteTask?.title)
@@ -1634,7 +1711,7 @@ function PaymentStepEditor({
       : null;
 
   const rememberSourceTab = useCallback(
-    (sourceTab: "stage-template" | "quote-template") => {
+    (sourceTab: AssignmentSourceTab) => {
       setLastUsedSourceTab(sourceTab);
       try {
         localStorage.setItem(assignmentSourceStorageKey, sourceTab);
@@ -1657,40 +1734,135 @@ function PaymentStepEditor({
   }, [hasQuoteAssignment, hasStageAssignment, lastUsedSourceTab]);
 
   const activeStageTemplateForDialog = useMemo(
-    () =>
-      templateStages.find((stage) => stage.id === activeStageTemplateTab) ||
-      templateStages[0] ||
-      null,
+    () => {
+      if (activeStageTemplateTab === ASSIGNMENT_ALL_STAGE_FILTER) {
+        return null;
+      }
+      return (
+        templateStages.find((stage) => stage.id === activeStageTemplateTab) ||
+        null
+      );
+    },
     [templateStages, activeStageTemplateTab],
   );
 
   const activeQuoteTemplateStageForDialog = useMemo(
-    () =>
-      quoteTemplateStageOptions.find(
-        (stage) => stage.id === activeQuoteTemplateTab,
-      ) ||
-      quoteTemplateStageOptions[0] ||
-      null,
+    () => {
+      if (activeQuoteTemplateTab === ASSIGNMENT_ALL_STAGE_FILTER) {
+        return null;
+      }
+      return (
+        quoteTemplateStageOptions.find(
+          (stage) => stage.id === activeQuoteTemplateTab,
+        ) || null
+      );
+    },
     [quoteTemplateStageOptions, activeQuoteTemplateTab],
+  );
+
+  const stageTemplateFilterOptions = useMemo(
+    () => [
+      {
+        id: ASSIGNMENT_ALL_STAGE_FILTER,
+        name: "כל השלבים",
+        taskCount: templateStages.reduce(
+          (total, stage) => total + (stage.tasks?.length || 0),
+          0,
+        ),
+      },
+      ...templateStages.map((stage) => ({
+        id: stage.id,
+        name: stage.stage_name,
+        taskCount: stage.tasks?.length || 0,
+      })),
+    ],
+    [templateStages],
+  );
+
+  const quoteTemplateFilterOptions = useMemo(
+    () => [
+      {
+        id: ASSIGNMENT_ALL_STAGE_FILTER,
+        name: "כל השלבים",
+        taskCount: quoteTemplateStageOptions.reduce(
+          (total, stage) => total + (stage.tasks?.length || 0),
+          0,
+        ),
+      },
+      ...quoteTemplateStageOptions.map((stage) => ({
+        id: stage.id,
+        name: stage.name,
+        taskCount: stage.tasks?.length || 0,
+      })),
+    ],
+    [quoteTemplateStageOptions],
   );
 
   const normalizedAssignmentSearch = assignmentSearch.trim().toLowerCase();
 
+  const stageTemplateTaskPool = useMemo(() => {
+    if (
+      activeStageTemplateTab === ASSIGNMENT_ALL_STAGE_FILTER ||
+      !activeStageTemplateForDialog
+    ) {
+      return templateStages.flatMap((stage) =>
+        (stage.tasks || []).map((task) => ({
+          ...task,
+          stageId: stage.id,
+          stageName: stage.stage_name,
+        })),
+      );
+    }
+
+    return (activeStageTemplateForDialog.tasks || []).map((task) => ({
+      ...task,
+      stageId: activeStageTemplateForDialog.id,
+      stageName: activeStageTemplateForDialog.stage_name,
+    }));
+  }, [templateStages, activeStageTemplateTab, activeStageTemplateForDialog]);
+
   const filteredStageTemplateTasks = useMemo(() => {
-    const baseTasks = activeStageTemplateForDialog?.tasks || [];
-    if (!normalizedAssignmentSearch) return baseTasks;
-    return baseTasks.filter((task) =>
-      task.title.toLowerCase().includes(normalizedAssignmentSearch),
+    if (!normalizedAssignmentSearch) return stageTemplateTaskPool;
+    return stageTemplateTaskPool.filter((task) =>
+      `${task.title} ${task.stageName}`
+        .toLowerCase()
+        .includes(normalizedAssignmentSearch),
     );
-  }, [activeStageTemplateForDialog, normalizedAssignmentSearch]);
+  }, [stageTemplateTaskPool, normalizedAssignmentSearch]);
+
+  const quoteTemplateItemsPool = useMemo(() => {
+    if (
+      activeQuoteTemplateTab === ASSIGNMENT_ALL_STAGE_FILTER ||
+      !activeQuoteTemplateStageForDialog
+    ) {
+      return quoteTemplateStageOptions.flatMap((stage) =>
+        (stage.tasks || []).map((task) => ({
+          ...task,
+          stageId: stage.id,
+          stageName: stage.name,
+        })),
+      );
+    }
+
+    return (activeQuoteTemplateStageForDialog.tasks || []).map((item) => ({
+      ...item,
+      stageId: activeQuoteTemplateStageForDialog.id,
+      stageName: activeQuoteTemplateStageForDialog.name,
+    }));
+  }, [
+    quoteTemplateStageOptions,
+    activeQuoteTemplateTab,
+    activeQuoteTemplateStageForDialog,
+  ]);
 
   const filteredQuoteTemplateItems = useMemo(() => {
-    const baseItems = activeQuoteTemplateStageForDialog?.tasks || [];
-    if (!normalizedAssignmentSearch) return baseItems;
-    return baseItems.filter((item) =>
-      item.title.toLowerCase().includes(normalizedAssignmentSearch),
+    if (!normalizedAssignmentSearch) return quoteTemplateItemsPool;
+    return quoteTemplateItemsPool.filter((item) =>
+      `${item.title} ${item.stageName}`
+        .toLowerCase()
+        .includes(normalizedAssignmentSearch),
     );
-  }, [activeQuoteTemplateStageForDialog, normalizedAssignmentSearch]);
+  }, [quoteTemplateItemsPool, normalizedAssignmentSearch]);
 
   const assignFromStageTemplate = (
     stage: StageTemplateStageOption,
@@ -1731,6 +1903,136 @@ function PaymentStepEditor({
     });
     rememberSourceTab("quote-template");
     setAssignmentDialogOpen(false);
+  };
+
+  const renderStageFilters = (
+    options: Array<{ id: string; name: string; taskCount: number }>,
+    activeId: string,
+    onSelect: (id: string) => void,
+  ) => {
+    if (assignmentViewMode === "chips") {
+      return (
+        <div className="flex flex-wrap gap-2">
+          {options.map((option) => {
+            const Icon =
+              option.id === ASSIGNMENT_ALL_STAGE_FILTER
+                ? Search
+                : getAssignmentStageIcon(option.name);
+            const isActive = activeId === option.id;
+
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() =>
+                  onSelect(
+                    isActive && option.id !== ASSIGNMENT_ALL_STAGE_FILTER
+                      ? ASSIGNMENT_ALL_STAGE_FILTER
+                      : option.id,
+                  )
+                }
+                className={`inline-flex items-center gap-2 rounded-md border px-3 h-8 text-sm transition-colors ${
+                  isActive
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background hover:bg-accent border-input"
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                <span>{option.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (assignmentViewMode === "cards") {
+      return (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {options.map((option) => {
+            const Icon =
+              option.id === ASSIGNMENT_ALL_STAGE_FILTER
+                ? Search
+                : getAssignmentStageIcon(option.name);
+            const isActive = activeId === option.id;
+
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() =>
+                  onSelect(
+                    isActive && option.id !== ASSIGNMENT_ALL_STAGE_FILTER
+                      ? ASSIGNMENT_ALL_STAGE_FILTER
+                      : option.id,
+                  )
+                }
+                className={`rounded-lg border px-3 py-2 text-right transition-colors ${
+                  isActive
+                    ? "border-primary bg-primary/10"
+                    : "border-input bg-background hover:bg-accent/50"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={`inline-flex h-7 w-7 items-center justify-center rounded-md ${
+                      isActive ? "bg-primary text-primary-foreground" : "bg-muted"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <Badge variant="outline" className="text-[10px] h-5">
+                    {option.taskCount}
+                  </Badge>
+                </div>
+                <div className="mt-2 text-xs font-medium truncate">{option.name}</div>
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-1">
+        {options.map((option) => {
+          const Icon =
+            option.id === ASSIGNMENT_ALL_STAGE_FILTER
+              ? Search
+              : getAssignmentStageIcon(option.name);
+          const isActive = activeId === option.id;
+
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() =>
+                onSelect(
+                  isActive && option.id !== ASSIGNMENT_ALL_STAGE_FILTER
+                    ? ASSIGNMENT_ALL_STAGE_FILTER
+                    : option.id,
+                )
+              }
+              className={`w-full rounded-md border px-3 py-2 text-sm transition-colors ${
+                isActive
+                  ? "border-primary bg-primary/10"
+                  : "border-input bg-background hover:bg-accent/50"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{option.name}</span>
+                </div>
+                <Badge variant="outline" className="text-[10px] h-5">
+                  {option.taskCount}
+                </Badge>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    );
   };
 
   return (
@@ -1938,23 +2240,63 @@ function PaymentStepEditor({
           <Tabs
             value={assignmentSourceTab}
             onValueChange={(value) => {
-              const sourceTab = value as "stage-template" | "quote-template";
+              const sourceTab = value as AssignmentSourceTab;
               setAssignmentSourceTab(sourceTab);
               rememberSourceTab(sourceTab);
             }}
             className="space-y-3"
           >
-            <TabsList className="grid grid-cols-2 w-full">
-              <TabsTrigger value="stage-template">תבנית שלבי לקוח</TabsTrigger>
-              <TabsTrigger value="quote-template">תבנית ההצעה</TabsTrigger>
-            </TabsList>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <TabsList className="grid grid-cols-3 w-full sm:w-auto sm:min-w-[460px]">
+                <TabsTrigger value="stage-template">תבנית שלבי לקוח</TabsTrigger>
+                <TabsTrigger value="quote-template">תבנית ההצעה</TabsTrigger>
+                <TabsTrigger value="all">הכל</TabsTrigger>
+              </TabsList>
+
+              <div className="inline-flex items-center gap-1 rounded-md border bg-muted/30 p-1 self-start">
+                <Button
+                  type="button"
+                  variant={assignmentViewMode === "chips" ? "default" : "ghost"}
+                  size="icon"
+                  className="h-7 w-7"
+                  title="תצוגת צ'יפים"
+                  onClick={() => setAssignmentViewMode("chips")}
+                >
+                  <Menu className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant={assignmentViewMode === "cards" ? "default" : "ghost"}
+                  size="icon"
+                  className="h-7 w-7"
+                  title="תצוגת כרטיסים"
+                  onClick={() => setAssignmentViewMode("cards")}
+                >
+                  <Columns className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant={assignmentViewMode === "list" ? "default" : "ghost"}
+                  size="icon"
+                  className="h-7 w-7"
+                  title="תצוגת רשימה"
+                  onClick={() => setAssignmentViewMode("list")}
+                >
+                  <AlignRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
 
             <div className="relative">
               <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 value={assignmentSearch}
                 onChange={(e) => setAssignmentSearch(e.target.value)}
-                placeholder="חיפוש משימה..."
+                placeholder={
+                  assignmentSourceTab === "all"
+                    ? "חיפוש בכל הטאבים והמקורות..."
+                    : "חיפוש משימה..."
+                }
                 className="pr-9"
               />
             </div>
@@ -1966,38 +2308,30 @@ function PaymentStepEditor({
                 </div>
               ) : (
                 <>
-                  <div className="flex flex-wrap gap-2">
-                    {templateStages.map((stage) => (
-                      <Button
-                        key={stage.id}
-                        type="button"
-                        variant={
-                          (activeStageTemplateForDialog?.id || "") === stage.id
-                            ? "default"
-                            : "outline"
-                        }
-                        size="sm"
-                        className="h-8"
-                        onClick={() => setActiveStageTemplateTab(stage.id)}
-                      >
-                        {stage.stage_name}
-                      </Button>
-                    ))}
-                  </div>
+                  {renderStageFilters(
+                    stageTemplateFilterOptions,
+                    activeStageTemplateTab,
+                    setActiveStageTemplateTab,
+                  )}
 
                   <ScrollArea className="h-56 rounded-md border p-2">
                     <div className="space-y-2">
                       {filteredStageTemplateTasks.length === 0 ? (
                         <p className="text-xs text-muted-foreground px-1 py-2">
-                          לא נמצאו משימות בשלב זה בהתאם לחיפוש.
+                          {activeStageTemplateTab === ASSIGNMENT_ALL_STAGE_FILTER
+                            ? "לא נמצאו משימות בהתאם לחיפוש."
+                            : "לא נמצאו משימות בשלב זה בהתאם לחיפוש."}
                         </p>
                       ) : (
                         filteredStageTemplateTasks.map((task) => {
-                          const stage = activeStageTemplateForDialog;
+                          const stage = templateStages.find(
+                            (stageOption) => stageOption.id === task.stageId,
+                          );
                           if (!stage) return null;
                           const isSelected =
                             step.linkSource === "stage_template" &&
                             step.templateTaskId === task.id;
+                          const Icon = getAssignmentStageIcon(task.stageName);
                           return (
                             <button
                               key={task.id}
@@ -2009,7 +2343,18 @@ function PaymentStepEditor({
                                   : "border-gray-200 hover:bg-gray-50"
                               }`}
                             >
-                              {task.title}
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <Icon className="h-4 w-4 shrink-0" />
+                                  <span className="truncate">{task.title}</span>
+                                </div>
+                                {activeStageTemplateTab ===
+                                  ASSIGNMENT_ALL_STAGE_FILTER && (
+                                  <Badge variant="outline" className="text-[10px] h-5">
+                                    {task.stageName}
+                                  </Badge>
+                                )}
+                              </div>
                             </button>
                           );
                         })
@@ -2027,38 +2372,30 @@ function PaymentStepEditor({
                 </div>
               ) : (
                 <>
-                  <div className="flex flex-wrap gap-2">
-                    {quoteTemplateStageOptions.map((stage) => (
-                      <Button
-                        key={stage.id}
-                        type="button"
-                        variant={
-                          (activeQuoteTemplateStageForDialog?.id || "") === stage.id
-                            ? "default"
-                            : "outline"
-                        }
-                        size="sm"
-                        className="h-8"
-                        onClick={() => setActiveQuoteTemplateTab(stage.id)}
-                      >
-                        {stage.name}
-                      </Button>
-                    ))}
-                  </div>
+                  {renderStageFilters(
+                    quoteTemplateFilterOptions,
+                    activeQuoteTemplateTab,
+                    setActiveQuoteTemplateTab,
+                  )}
 
                   <ScrollArea className="h-56 rounded-md border p-2">
                     <div className="space-y-2">
                       {filteredQuoteTemplateItems.length === 0 ? (
                         <p className="text-xs text-muted-foreground px-1 py-2">
-                          לא נמצאו סעיפים בשלב זה בהתאם לחיפוש.
+                          {activeQuoteTemplateTab === ASSIGNMENT_ALL_STAGE_FILTER
+                            ? "לא נמצאו סעיפים בהתאם לחיפוש."
+                            : "לא נמצאו סעיפים בשלב זה בהתאם לחיפוש."}
                         </p>
                       ) : (
                         filteredQuoteTemplateItems.map((item) => {
-                          const stage = activeQuoteTemplateStageForDialog;
+                          const stage = quoteTemplateStageOptions.find(
+                            (stageOption) => stageOption.id === item.stageId,
+                          );
                           if (!stage) return null;
                           const isSelected =
                             step.linkSource === "quote_template" &&
                             step.quoteTemplateItemId === item.id;
+                          const Icon = getAssignmentStageIcon(item.stageName);
                           return (
                             <button
                               key={item.id}
@@ -2070,11 +2407,160 @@ function PaymentStepEditor({
                                   : "border-gray-200 hover:bg-gray-50"
                               }`}
                             >
-                              {item.title}
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <Icon className="h-4 w-4 shrink-0" />
+                                  <span className="truncate">{item.title}</span>
+                                </div>
+                                {activeQuoteTemplateTab ===
+                                  ASSIGNMENT_ALL_STAGE_FILTER && (
+                                  <Badge variant="outline" className="text-[10px] h-5">
+                                    {item.stageName}
+                                  </Badge>
+                                )}
+                              </div>
                             </button>
                           );
                         })
                       )}
+                    </div>
+                  </ScrollArea>
+                </>
+              )}
+            </TabsContent>
+
+            <TabsContent value="all" className="space-y-3 m-0">
+              {templateStages.length === 0 && quoteTemplateStageOptions.length === 0 ? (
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  אין מקורות זמינים לחיפוש רוחבי.
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="rounded-md border p-2 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        סינון תבנית שלבי לקוח
+                      </p>
+                      {templateStages.length === 0 ? (
+                        <p className="text-xs text-muted-foreground px-1 py-2">
+                          אין תבנית שלבי לקוח זמינה.
+                        </p>
+                      ) : (
+                        renderStageFilters(
+                          stageTemplateFilterOptions,
+                          activeStageTemplateTab,
+                          setActiveStageTemplateTab,
+                        )
+                      )}
+                    </div>
+                    <div className="rounded-md border p-2 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        סינון תבנית ההצעה
+                      </p>
+                      {quoteTemplateStageOptions.length === 0 ? (
+                        <p className="text-xs text-muted-foreground px-1 py-2">
+                          אין שלבים זמינים בתבנית ההצעה.
+                        </p>
+                      ) : (
+                        renderStageFilters(
+                          quoteTemplateFilterOptions,
+                          activeQuoteTemplateTab,
+                          setActiveQuoteTemplateTab,
+                        )
+                      )}
+                    </div>
+                  </div>
+
+                  <ScrollArea className="h-64 rounded-md border p-2">
+                    <div className="space-y-4">
+                      {filteredStageTemplateTasks.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-xs font-semibold text-amber-700 px-1">
+                            תבנית שלבי לקוח ({filteredStageTemplateTasks.length})
+                          </div>
+                          {filteredStageTemplateTasks.map((task) => {
+                            const stage = templateStages.find(
+                              (stageOption) => stageOption.id === task.stageId,
+                            );
+                            if (!stage) return null;
+                            const Icon = getAssignmentStageIcon(task.stageName);
+                            const isSelected =
+                              step.linkSource === "stage_template" &&
+                              step.templateTaskId === task.id;
+
+                            return (
+                              <button
+                                key={`all-stage-${task.id}`}
+                                type="button"
+                                onClick={() => assignFromStageTemplate(stage, task)}
+                                className={`w-full text-right text-sm rounded border px-3 py-2 transition-colors ${
+                                  isSelected
+                                    ? "border-amber-400 bg-amber-50 text-amber-900"
+                                    : "border-gray-200 hover:bg-gray-50"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Icon className="h-4 w-4 shrink-0" />
+                                    <span className="truncate">{task.title}</span>
+                                  </div>
+                                  <Badge variant="outline" className="text-[10px] h-5">
+                                    {task.stageName}
+                                  </Badge>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {filteredQuoteTemplateItems.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-xs font-semibold text-blue-700 px-1">
+                            תבנית ההצעה ({filteredQuoteTemplateItems.length})
+                          </div>
+                          {filteredQuoteTemplateItems.map((item) => {
+                            const stage = quoteTemplateStageOptions.find(
+                              (stageOption) => stageOption.id === item.stageId,
+                            );
+                            if (!stage) return null;
+                            const Icon = getAssignmentStageIcon(item.stageName);
+                            const isSelected =
+                              step.linkSource === "quote_template" &&
+                              step.quoteTemplateItemId === item.id;
+
+                            return (
+                              <button
+                                key={`all-quote-${item.id}`}
+                                type="button"
+                                onClick={() => assignFromQuoteTemplate(stage, item)}
+                                className={`w-full text-right text-sm rounded border px-3 py-2 transition-colors ${
+                                  isSelected
+                                    ? "border-amber-400 bg-amber-50 text-amber-900"
+                                    : "border-gray-200 hover:bg-gray-50"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Icon className="h-4 w-4 shrink-0" />
+                                    <span className="truncate">{item.title}</span>
+                                  </div>
+                                  <Badge variant="outline" className="text-[10px] h-5">
+                                    {item.stageName}
+                                  </Badge>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {filteredStageTemplateTasks.length === 0 &&
+                        filteredQuoteTemplateItems.length === 0 && (
+                          <p className="text-xs text-muted-foreground px-1 py-2">
+                            לא נמצאו תוצאות בחיפוש בכל המקורות.
+                          </p>
+                        )}
                     </div>
                   </ScrollArea>
                 </>
