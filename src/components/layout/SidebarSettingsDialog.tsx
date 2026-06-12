@@ -16,6 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Palette, Type, Sparkles, RotateCcw, Layout, Plus, Pencil, Trash2, Save, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface SidebarTheme {
   backgroundColor: string;
@@ -123,18 +124,45 @@ export interface CustomSidebarTheme {
 }
 
 const CUSTOM_SIDEBAR_THEMES_KEY = 'sidebar-custom-themes';
+const CUSTOM_SIDEBAR_THEMES_CLOUD_KEY = 'sidebar-custom-themes';
+
+interface CustomSidebarThemesStore {
+  themes: CustomSidebarTheme[];
+  lastUpdated?: string;
+}
+
+const normalizeCustomThemes = (value: unknown): CustomSidebarTheme[] => {
+  if (Array.isArray(value)) {
+    return value as CustomSidebarTheme[];
+  }
+
+  if (
+    value &&
+    typeof value === 'object' &&
+    Array.isArray((value as CustomSidebarThemesStore).themes)
+  ) {
+    return (value as CustomSidebarThemesStore).themes;
+  }
+
+  return [];
+};
 
 const loadCustomSidebarThemes = (): CustomSidebarTheme[] => {
   try {
     const saved = localStorage.getItem(CUSTOM_SIDEBAR_THEMES_KEY);
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    return normalizeCustomThemes(JSON.parse(saved));
   } catch {
     return [];
   }
 };
 
 const saveCustomSidebarThemes = (themes: CustomSidebarTheme[]) => {
-  localStorage.setItem(CUSTOM_SIDEBAR_THEMES_KEY, JSON.stringify(themes));
+  const payload: CustomSidebarThemesStore = {
+    themes,
+    lastUpdated: new Date().toISOString(),
+  };
+  localStorage.setItem(CUSTOM_SIDEBAR_THEMES_KEY, JSON.stringify(payload));
 };
 
 interface SidebarSettingsDialogProps {
@@ -157,12 +185,77 @@ export function SidebarSettingsDialog({
   const [editingThemeId, setEditingThemeId] = useState<string | null>(null);
   const [editingThemeName, setEditingThemeName] = useState('');
 
+  const persistCustomThemes = async (themes: CustomSidebarTheme[]) => {
+    saveCustomSidebarThemes(themes);
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      await (supabase as any)
+        .from('user_settings')
+        .upsert(
+          {
+            user_id: user.id,
+            setting_key: CUSTOM_SIDEBAR_THEMES_CLOUD_KEY,
+            setting_value: {
+              themes,
+              lastUpdated: new Date().toISOString(),
+            },
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id,setting_key' },
+        );
+    } catch {
+      // Keep local themes even if cloud sync fails.
+    }
+  };
+
   useEffect(() => {
     setLocalTheme({ ...defaultTheme, ...theme });
   }, [theme]);
 
   useEffect(() => {
-    setCustomThemes(loadCustomSidebarThemes());
+    let isMounted = true;
+
+    const localThemes = loadCustomSidebarThemes();
+    setCustomThemes(localThemes);
+
+    const loadCloudCustomThemes = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) return;
+
+        const { data, error } = await (supabase as any)
+          .from('user_settings')
+          .select('setting_value')
+          .eq('user_id', user.id)
+          .eq('setting_key', CUSTOM_SIDEBAR_THEMES_CLOUD_KEY)
+          .maybeSingle();
+
+        if (error || !isMounted) return;
+
+        const cloudThemes = normalizeCustomThemes(data?.setting_value);
+        if (cloudThemes.length === 0) return;
+
+        setCustomThemes(cloudThemes);
+        saveCustomSidebarThemes(cloudThemes);
+      } catch {
+        // Fall back to local themes silently.
+      }
+    };
+
+    void loadCloudCustomThemes();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleChange = (key: keyof SidebarTheme, value: string | number) => {
@@ -215,10 +308,10 @@ export function SidebarSettingsDialog({
     };
     const updated = [...customThemes, newCustom];
     setCustomThemes(updated);
-    saveCustomSidebarThemes(updated);
+    void persistCustomThemes(updated);
     setNewThemeName('');
     setShowSaveForm(false);
-    toast.success('ערכת הנושא נשמרה בהצלחה');
+    toast.success('ערכת הנושא נשמרה בהצלחה (מקומי + ענן)');
   };
 
   const applyCustomTheme = (custom: CustomSidebarTheme) => {
@@ -240,7 +333,7 @@ export function SidebarSettingsDialog({
       t.id === id ? { ...t, name: editingThemeName.trim(), theme: { ...localTheme } } : t
     );
     setCustomThemes(updated);
-    saveCustomSidebarThemes(updated);
+    void persistCustomThemes(updated);
     setEditingThemeId(null);
     setEditingThemeName('');
     toast.success('ערכת הנושא עודכנה');
@@ -249,7 +342,7 @@ export function SidebarSettingsDialog({
   const deleteCustomTheme = (id: string) => {
     const updated = customThemes.filter(t => t.id !== id);
     setCustomThemes(updated);
-    saveCustomSidebarThemes(updated);
+    void persistCustomThemes(updated);
     toast.success('ערכת הנושא נמחקה');
   };
 
