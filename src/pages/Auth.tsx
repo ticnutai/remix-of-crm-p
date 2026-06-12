@@ -317,7 +317,7 @@ export default function Auth() {
             <Building2 className="h-8 w-8" />
             <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-[3px] w-8 rounded-full bg-accent" />
           </div>
-          <h1 className="text-4xl font-bold tracking-tight text-foreground mb-5">
+          <h1 dir="ltr" className="text-4xl font-bold tracking-tight text-foreground mb-5 text-center flex items-center justify-center">
             <span className="text-accent">ten</span>
             <span className="text-foreground">arch</span>
           </h1>
