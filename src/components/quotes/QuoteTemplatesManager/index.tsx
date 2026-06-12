@@ -510,7 +510,19 @@ export function QuoteTemplatesManager() {
     return (
       <Card
         key={template.id}
-        className="overflow-hidden hover:shadow-lg transition-shadow group"
+        draggable={!isRenaming}
+        onDragStart={(e) => {
+          setDraggedTemplateId(template.id);
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", template.id);
+        }}
+        onDragEnd={() => {
+          setDraggedTemplateId(null);
+          setDragOverFolderId(null);
+        }}
+        className={`overflow-hidden hover:shadow-lg transition-all group cursor-move ${
+          draggedTemplateId === template.id ? "opacity-40 scale-95" : ""
+        }`}
       >
         <div className="h-2" style={{ backgroundColor: primaryColor }} />
 
