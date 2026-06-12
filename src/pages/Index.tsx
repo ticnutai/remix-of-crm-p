@@ -810,10 +810,10 @@ function DashboardContent() {
         </div>
 
         {/* Floating Features Info Button - Bottom Left */}
-        <div className="fixed bottom-4 left-4 z-50">
+        <div className="fixed bottom-4 left-4 z-50 group h-14 w-14 flex items-end justify-start">
           <InfoTooltipButton
             buttonClassName={cn(
-              "h-10 w-10 rounded-full shadow-lg border-2",
+              "h-10 w-10 rounded-full shadow-lg border-2 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-200",
               isNavyGold &&
                 "bg-[hsl(45,30%,95%)] border-[hsl(45,80%,50%)] text-[hsl(220,60%,20%)] hover:bg-[hsl(45,30%,90%)]",
               isModernDark &&
