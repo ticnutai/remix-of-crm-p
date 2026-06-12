@@ -222,7 +222,7 @@ export function DesignModeSaveMenu() {
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="min-w-[250px]" dir="rtl">
+      <DropdownMenuContent align="end" className="min-w-[250px]">
         <DropdownMenuLabel className="text-right text-[11px] text-muted-foreground">
           {activeCustomTheme ? `ערכה פעילה: ${activeCustomTheme.name}` : 'אין ערכה מותאמת פעילה'}
         </DropdownMenuLabel>
