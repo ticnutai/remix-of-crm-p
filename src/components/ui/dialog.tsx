@@ -39,12 +39,14 @@ interface DialogContentProps
   disableResize?: boolean;
   /** Legacy key prop kept for compatibility with existing call sites. */
   dialogKey?: string;
+  /** Optional classes for the internal scroll container. */
+  contentClassName?: string;
 }
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({ className, children, disableDrag, disableResize, dialogKey, ...props }, ref) => {
+>(({ className, children, disableDrag, disableResize, dialogKey, contentClassName, ...props }, ref) => {
   void disableDrag;
   void disableResize;
   void dialogKey;
@@ -63,7 +65,12 @@ const DialogContent = React.forwardRef<
         )}
         {...props}
       >
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 grid gap-4">
+        <div
+          className={cn(
+            "flex-1 overflow-y-auto overflow-x-hidden p-6 grid gap-4",
+            contentClassName,
+          )}
+        >
           {children}
         </div>
 

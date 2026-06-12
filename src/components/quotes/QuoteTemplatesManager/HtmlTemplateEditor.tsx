@@ -138,6 +138,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useClients } from "@/hooks/useClients";
+import { useCloudPreferences } from "@/hooks/useCloudPreferences";
 import { supabase } from "@/integrations/supabase/client";
 import { syncClientStagesFromTemplate } from "@/lib/clientStageTemplateSync";
 import companyHeaderImg from "@/assets/company-header.png";
@@ -208,6 +209,7 @@ interface StageTemplateOption {
 
 type AssignmentSourceTab = "stage-template" | "quote-template" | "all";
 type AssignmentViewMode = "chips" | "cards" | "list";
+type AssignmentCardsLayout = "horizontal" | "vertical";
 
 const ASSIGNMENT_ALL_STAGE_FILTER = "__all_stages__";
 
@@ -1569,6 +1571,7 @@ function PaymentStepEditor({
   templateName,
   quoteTemplateStages = [],
   templateKey,
+  onPreferenceChange,
 }: {
   step: PaymentStep;
   onUpdate: (step: PaymentStep) => void;
@@ -1578,6 +1581,7 @@ function PaymentStepEditor({
   templateName?: string;
   quoteTemplateStages?: TemplateStage[];
   templateKey?: string;
+  onPreferenceChange?: () => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
@@ -1612,6 +1616,29 @@ function PaymentStepEditor({
     () => `quote-payment-assignment-view:${templateKey || "draft-template"}`,
     [templateKey],
   );
+  const assignmentCardsLayoutStorageKey = useMemo(
+    () =>
+      `quote-payment-assignment-cards-layout:${templateKey || "draft-template"}`,
+    [templateKey],
+  );
+  const [assignmentCardsLayout, setAssignmentCardsLayout] =
+    useState<AssignmentCardsLayout>(() => {
+      try {
+        const stored = localStorage.getItem(
+          `quote-payment-assignment-cards-layout:${templateKey || "draft-template"}`,
+        );
+        if (stored === "horizontal" || stored === "vertical") {
+          return stored;
+        }
+      } catch {
+        // no-op
+      }
+      return "horizontal";
+    });
+  const [isMobileViewport, setIsMobileViewport] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 640px)").matches;
+  });
   const [lastUsedSourceTab, setLastUsedSourceTab] =
     useState<AssignmentSourceTab>(() => {
     try {
@@ -1687,10 +1714,42 @@ function PaymentStepEditor({
   useEffect(() => {
     try {
       localStorage.setItem(assignmentViewStorageKey, assignmentViewMode);
+      onPreferenceChange?.();
     } catch {
       // no-op
     }
-  }, [assignmentViewMode, assignmentViewStorageKey]);
+  }, [assignmentViewMode, assignmentViewStorageKey, onPreferenceChange]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mediaQuery = window.matchMedia("(max-width: 640px)");
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
+    updateViewport();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", updateViewport);
+      return () => mediaQuery.removeEventListener("change", updateViewport);
+    }
+
+    mediaQuery.addListener(updateViewport);
+    return () => mediaQuery.removeListener(updateViewport);
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        assignmentCardsLayoutStorageKey,
+        assignmentCardsLayout,
+      );
+      onPreferenceChange?.();
+    } catch {
+      // no-op
+    }
+  }, [assignmentCardsLayout, assignmentCardsLayoutStorageKey, onPreferenceChange]);
+
+  const effectiveCardsLayout: AssignmentCardsLayout = isMobileViewport
+    ? "vertical"
+    : assignmentCardsLayout;
 
   const assignmentSummary =
     step.linkSource === "quote_template" && (step.quoteTemplateItemText || selectedQuoteTask?.title)
@@ -1715,11 +1774,12 @@ function PaymentStepEditor({
       setLastUsedSourceTab(sourceTab);
       try {
         localStorage.setItem(assignmentSourceStorageKey, sourceTab);
+        onPreferenceChange?.();
       } catch {
         // no-op
       }
     },
-    [assignmentSourceStorageKey],
+    [assignmentSourceStorageKey, onPreferenceChange],
   );
 
   const openAssignmentDialog = useCallback(() => {
@@ -2232,7 +2292,11 @@ function PaymentStepEditor({
       )}
 
       <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
-        <DialogContent className="max-w-6xl" dir="rtl">
+        <DialogContent
+          className="max-w-6xl"
+          contentClassName="overflow-x-visible"
+          dir="rtl"
+        >
           <DialogHeader>
             <DialogTitle>שיוך מהיר לשלב תשלום</DialogTitle>
           </DialogHeader>
@@ -2283,6 +2347,27 @@ function PaymentStepEditor({
                   onClick={() => setAssignmentViewMode("list")}
                 >
                   <AlignRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant={effectiveCardsLayout === "vertical" ? "default" : "ghost"}
+                  size="icon"
+                  className="h-7 w-7"
+                  title={
+                    isMobileViewport
+                      ? "במובייל מוצגת תצוגה אנכית קבועה"
+                      : effectiveCardsLayout === "horizontal"
+                        ? "מעבר לתצוגה אנכית"
+                        : "מעבר לתצוגה אופקית"
+                  }
+                  onClick={() =>
+                    setAssignmentCardsLayout((prev) =>
+                      prev === "horizontal" ? "vertical" : "horizontal",
+                    )
+                  }
+                  disabled={isMobileViewport}
+                >
+                  <ArrowLeftRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -2436,9 +2521,12 @@ function PaymentStepEditor({
                 </div>
               ) : (
                 (() => {
-                  // Build Kanban columns grouped by stage name
+                  // Build Kanban columns by source+stage id to avoid merging
+                  // different stages that share the same display name.
                   type Col = {
+                    key: string;
                     name: string;
+                    source: "stage-template" | "quote-template";
                     stageItems: Array<{ stage: any; task: any }>;
                     quoteItems: Array<{ stage: any; item: any }>;
                   };
@@ -2451,22 +2539,38 @@ function PaymentStepEditor({
                     );
                   };
                   templateStages.forEach((stage: any) => {
-                    const key = (stage.stage_name || "").trim();
-                    if (!key) return;
-                    if (!columns.has(key))
-                      columns.set(key, { name: key, stageItems: [], quoteItems: [] });
+                    const name = (stage.stage_name || "").trim();
+                    if (!name) return;
+                    const key = `stage-template:${stage.id || name}`;
+                    if (!columns.has(key)) {
+                      columns.set(key, {
+                        key,
+                        name,
+                        source: "stage-template",
+                        stageItems: [],
+                        quoteItems: [],
+                      });
+                    }
                     (stage.tasks || []).forEach((task: any) => {
-                      if (!matchesSearch(task.title || "", key)) return;
+                      if (!matchesSearch(task.title || "", name)) return;
                       columns.get(key)!.stageItems.push({ stage, task });
                     });
                   });
                   quoteTemplateStageOptions.forEach((stage) => {
-                    const key = (stage.name || "").trim();
-                    if (!key) return;
-                    if (!columns.has(key))
-                      columns.set(key, { name: key, stageItems: [], quoteItems: [] });
+                    const name = (stage.name || "").trim();
+                    if (!name) return;
+                    const key = `quote-template:${stage.id || name}`;
+                    if (!columns.has(key)) {
+                      columns.set(key, {
+                        key,
+                        name,
+                        source: "quote-template",
+                        stageItems: [],
+                        quoteItems: [],
+                      });
+                    }
                     (stage.tasks || []).forEach((item: any) => {
-                      if (!matchesSearch(item.title || "", key)) return;
+                      if (!matchesSearch(item.title || "", name)) return;
                       columns.get(key)!.quoteItems.push({ stage, item });
                     });
                   });
@@ -2495,16 +2599,27 @@ function PaymentStepEditor({
                     );
                   };
                   return (
-                    <ScrollArea className="h-[480px] rounded-md border bg-muted/10">
-                      <div className="flex gap-3 p-3 min-w-max">
+                    <div className="h-[480px] w-full max-w-full overflow-y-auto overflow-x-auto rounded-md border bg-muted/10">
+                      <div
+                        className={
+                          effectiveCardsLayout === "horizontal"
+                            ? "flex gap-3 p-3 min-w-max"
+                            : "flex flex-col gap-3 p-3"
+                        }
+                      >
                         {visibleColumns.map((col) => {
                           const Icon = getAssignmentStageIcon(col.name);
                           const totalCount =
                             col.stageItems.length + col.quoteItems.length;
                           return (
                             <div
-                              key={col.name}
-                              className="w-[260px] shrink-0 rounded-lg border bg-background flex flex-col shadow-sm"
+                              key={col.key}
+                              className={
+                                effectiveCardsLayout === "horizontal"
+                                  ? "w-[260px] shrink-0 rounded-lg border bg-background flex flex-col shadow-sm"
+                                  : "w-full rounded-lg border bg-background flex flex-col shadow-sm"
+                              }
+                              dir="rtl"
                             >
                               <div className="sticky top-0 z-10 flex items-center justify-between gap-2 px-3 py-2 border-b bg-[#162C58] text-white rounded-t-lg">
                                 <div className="flex items-center gap-2 min-w-0">
@@ -2590,7 +2705,7 @@ function PaymentStepEditor({
                           );
                         })}
                       </div>
-                    </ScrollArea>
+                    </div>
                   );
                 })()
               )}
@@ -3229,6 +3344,7 @@ export function HtmlTemplateEditor({
 }: HtmlTemplateEditorProps) {
   const { toast } = useToast();
   const { clients } = useClients();
+  const { saveToCloud } = useCloudPreferences();
   const [editedTemplate, setEditedTemplate] = useState<QuoteTemplate>(template);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
@@ -6586,6 +6702,7 @@ export function HtmlTemplateEditor({
                         templateStages={selectedStageTemplate?.stages || []}
                         templateName={selectedStageTemplate?.name}
                         quoteTemplateStages={editedTemplate.stages || []}
+                        onPreferenceChange={saveToCloud}
                         onUpdate={(updated) =>
                           setPaymentSteps(
                             paymentSteps.map((s) =>

@@ -123,7 +123,12 @@ const SYNC_KEYS = [
 ] as const;
 
 // Additional prefixes for dynamic keys (like dashboard-dynamic-stats-1, dashboard-dynamic-stats-2)
-const SYNC_KEY_PREFIXES = ["dashboard-dynamic-stats-"] as const;
+const SYNC_KEY_PREFIXES = [
+  "dashboard-dynamic-stats-",
+  "quote-payment-assignment-view:",
+  "quote-payment-assignment-source:",
+  "quote-payment-assignment-cards-layout:",
+] as const;
 
 interface CloudPreferences {
   ui_preferences: Record<string, any>;
