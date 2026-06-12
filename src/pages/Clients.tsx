@@ -1616,7 +1616,7 @@ export default function Clients() {
         style={{
           position: "absolute",
           left: "10px",
-          bottom: showActions ? "42px" : "10px",
+          bottom: "10px",
           width: "24px",
           height: "24px",
           borderRadius: "50%",
@@ -1633,7 +1633,6 @@ export default function Clients() {
       </div>
     );
     const [showActions, setShowActions] = useState(false);
-    const hoverTimerRef = React.useRef<NodeJS.Timeout | null>(null);
     const isHighlighted = highlightedClientId === client.id;
     const categoryIconRenderer = category
       ? clientCategoryIconMap[category.icon] || clientCategoryIconMap.FolderOpen
@@ -1679,16 +1678,10 @@ export default function Clients() {
     );
 
     const handleMouseEnter = () => {
-      hoverTimerRef.current = setTimeout(() => {
-        setShowActions(true);
-      }, 2000); // 2 seconds
+      setShowActions(true);
     };
 
     const handleMouseLeave = () => {
-      if (hoverTimerRef.current) {
-        clearTimeout(hoverTimerRef.current);
-        hoverTimerRef.current = null;
-      }
       setShowActions(false);
     };
 
@@ -1841,11 +1834,9 @@ export default function Clients() {
             padding: cardStyle.padding,
           }}
         >
-          {/* Selection Checkbox */}
           <SelectionCheckbox position="top-left" />
 
-          {/* Indicators */}
-          {(category || hasReminder || hasTask || hasMeeting) && (
+          {showActions && (category || hasReminder || hasTask || hasMeeting) && (
             <div className="absolute top-2 right-2 flex gap-1">
               {renderCategoryIndicator(14, 8)}
               {hasReminder && (
@@ -1866,7 +1857,6 @@ export default function Clients() {
             </div>
           )}
 
-          {/* Avatar Circle */}
           <div
             style={{
               width: "70px",
@@ -1901,7 +1891,6 @@ export default function Clients() {
 
           {renderMonthsStatusIcon()}
 
-          {/* Name */}
           <h3
             style={{
               fontSize: "15px",
@@ -1923,12 +1912,11 @@ export default function Clients() {
                 categoryId={client.category_id}
                 categories={categories}
               />
-              {renderMonthsIndicator("compact")}
+              {showActions && renderMonthsIndicator("compact")}
             </span>
           </h3>
 
-          {/* Phone */}
-          {(isValidPhoneForDisplay(client.phone) || ((client as any).additional_phones?.length ?? 0) > 0) && (
+          {showActions && (isValidPhoneForDisplay(client.phone) || ((client as any).additional_phones?.length ?? 0) > 0) && (
             <div
               style={{
                 display: "flex",
@@ -1950,7 +1938,32 @@ export default function Clients() {
             </div>
           )}
 
-          {/* Hover Actions */}
+          {showActions && client.email && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                color: "#64748b",
+                marginTop: "4px",
+                maxWidth: "100%",
+              }}
+            >
+              <Mail style={{ width: "12px", height: "12px", flexShrink: 0 }} />
+              <span
+                style={{
+                  fontSize: "11px",
+                  maxWidth: "120px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {client.email}
+              </span>
+            </div>
+          )}
+
           {showActions && (
             <div className="absolute bottom-2 left-2 flex gap-1">
               {isValidPhoneForDisplay(client.phone) && (
@@ -2084,25 +2097,65 @@ export default function Clients() {
               justifyContent: "center",
             }}
           >
-            {/* Indicators */}
-            {(category || hasReminder || hasTask || hasMeeting) && (
-              <div className="absolute top-3 left-3 flex gap-1">
-                {renderCategoryIndicator(16, 9)}
-                {hasReminder && (
-                  <div className="w-4 h-4 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.55)] flex items-center justify-center">
-                    <Bell className="w-2.5 h-2.5 text-white" />
+            {/* Indicators + Hover Actions */}
+            {showActions && (
+              <div className="absolute top-3 left-3 flex items-center gap-1.5 z-20">
+                {(category || hasReminder || hasTask || hasMeeting) && (
+                  <div className="flex items-center gap-1">
+                    {renderCategoryIndicator(16, 9)}
+                    {hasReminder && (
+                      <div className="w-4 h-4 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.55)] flex items-center justify-center">
+                        <Bell className="w-2.5 h-2.5 text-white" />
+                      </div>
+                    )}
+                    {hasTask && (
+                      <div className="w-4 h-4 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.55)] flex items-center justify-center">
+                        <CheckSquare className="w-2.5 h-2.5 text-white" />
+                      </div>
+                    )}
+                    {hasMeeting && (
+                      <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                        <Calendar className="w-3 h-3 text-white" />
+                      </div>
+                    )}
                   </div>
                 )}
-                {hasTask && (
-                  <div className="w-4 h-4 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.55)] flex items-center justify-center">
-                    <CheckSquare className="w-2.5 h-2.5 text-white" />
-                  </div>
-                )}
-                {hasMeeting && (
-                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-                    <Calendar className="w-3 h-3 text-white" />
-                  </div>
-                )}
+
+                <div className="flex items-center gap-1">
+                  {isValidPhoneForDisplay(client.phone) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        import("@/utils/whatsapp").then(
+                          ({ openWhatsApp, WHATSAPP_TEMPLATES }) => {
+                            openWhatsApp(
+                              client.phone!,
+                              WHATSAPP_TEMPLATES.greeting(client.name),
+                            );
+                          },
+                        );
+                      }}
+                      className="w-5 h-5 rounded-full bg-green-600 flex items-center justify-center hover:bg-green-700"
+                      title="WhatsApp"
+                    >
+                      <MessageCircle className="w-2.5 h-2.5 text-white" />
+                    </button>
+                  )}
+                  <button
+                    onClick={(e) => handleEditClient(e, client.id)}
+                    className="w-5 h-5 rounded-full bg-slate-800 border border-amber-500 flex items-center justify-center hover:bg-amber-500"
+                    title="עריכה"
+                  >
+                    <Pencil className="w-2.5 h-2.5 text-white" />
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteClient(e, client.id)}
+                    className="w-5 h-5 rounded-full bg-red-600 flex items-center justify-center hover:bg-red-700"
+                    title="מחיקה"
+                  >
+                    <Trash2 className="w-2.5 h-2.5 text-white" />
+                  </button>
+                </div>
               </div>
             )}
 
@@ -2120,10 +2173,11 @@ export default function Clients() {
                   categoryId={client.category_id}
                   categories={categories}
                 />
-                {renderMonthsIndicator()}
+                {showActions && renderMonthsIndicator()}
               </span>
             </h3>
 
+            {showActions && (
             <div
               style={{
                 display: "flex",
@@ -2165,44 +2219,10 @@ export default function Clients() {
                 </div>
               )}
             </div>
+            )}
           </div>
 
-          {/* Hover Actions */}
-          {showActions && (
-            <div className="absolute bottom-3 left-3 flex gap-2">
-              {isValidPhoneForDisplay(client.phone) && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    import("@/utils/whatsapp").then(
-                      ({ openWhatsApp, WHATSAPP_TEMPLATES }) => {
-                        openWhatsApp(
-                          client.phone!,
-                          WHATSAPP_TEMPLATES.greeting(client.name),
-                        );
-                      },
-                    );
-                  }}
-                  className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center hover:bg-green-700"
-                  title="WhatsApp"
-                >
-                  <MessageCircle className="w-4 h-4 text-white" />
-                </button>
-              )}
-              <button
-                onClick={(e) => handleEditClient(e, client.id)}
-                className="w-8 h-8 rounded-full bg-slate-800 border-2 border-amber-500 flex items-center justify-center hover:bg-amber-500"
-              >
-                <Pencil className="w-4 h-4 text-white" />
-              </button>
-              <button
-                onClick={(e) => handleDeleteClient(e, client.id)}
-                className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center hover:bg-red-700"
-              >
-                <Trash2 className="w-4 h-4 text-white" />
-              </button>
-            </div>
-          )}
+
         </div>
       );
     }
@@ -2292,7 +2312,7 @@ export default function Clients() {
           <SelectionCheckbox position="top-left" />
 
           {/* Indicators */}
-          {(category || hasReminder || hasTask || hasMeeting) && (
+          {showActions && (category || hasReminder || hasTask || hasMeeting) && (
             <div className="absolute top-3 right-3 flex gap-1.5">
               {renderCategoryIndicator(16, 9)}
               {hasReminder && (
@@ -2371,7 +2391,7 @@ export default function Clients() {
                 categoryId={client.category_id}
                 categories={categories}
               />
-              {renderMonthsIndicator("compact")}
+              {showActions && renderMonthsIndicator("compact")}
             </span>
           </h3>
 
@@ -2387,6 +2407,7 @@ export default function Clients() {
           />
 
           {/* Contact Info */}
+          {showActions && (
           <div
             style={{
               display: "flex",
@@ -2443,6 +2464,7 @@ export default function Clients() {
               </div>
             )}
           </div>
+          )}
 
           {/* Hover Actions - Luxury Style */}
           {showActions && (
@@ -2588,7 +2610,7 @@ export default function Clients() {
 
           {renderMonthsStatusIcon()}
 
-          {renderCategoryIndicator(16, 9)}
+          {showActions && renderCategoryIndicator(16, 9)}
 
           {/* Name */}
           <h3
@@ -2613,7 +2635,7 @@ export default function Clients() {
                 categories={categories}
               />
             </span>
-            {renderMonthsIndicator("compact")}
+            {showActions && renderMonthsIndicator("compact")}
           </h3>
 
           {/* Hover Actions */}
@@ -2686,7 +2708,7 @@ export default function Clients() {
           />
         )}
         {/* Client Indicators - Top Right */}
-        {(category || hasReminder || hasTask || hasMeeting) && (
+        {showActions && (category || hasReminder || hasTask || hasMeeting) && (
           <div
             className="absolute top-2 right-2"
             style={{ display: "flex", gap: "4px", zIndex: 5 }}
@@ -2840,65 +2862,67 @@ export default function Clients() {
                   categoryId={client.category_id}
                   categories={categories}
                 />
-                {renderMonthsIndicator()}
+                {showActions && renderMonthsIndicator()}
               </span>
             </h3>
           </div>
 
           {/* Bottom Section - Contact Info */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: viewMode === "list" ? "row" : "column",
-              gap: "6px",
-            }}
-          >
-            {(isValidPhoneForDisplay(client.phone) || ((client as any).additional_phones?.length ?? 0) > 0) && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  color: "#1e3a5f",
-                }}
-                dir="ltr"
-              >
-                <PhoneWithExtras
-                  phone={client.phone}
-                  additionalPhones={(client as any).additional_phones}
-                  fontSize={14}
-                  iconSize={16}
-                  color="#1e3a5f"
-                />
-              </div>
-            )}
-            {client.email && viewMode !== "compact" && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  color: "#1e3a5f",
-                  ...(viewMode === "list" ? { marginInlineStart: "16px" } : {}),
-                }}
-              >
-                <Mail
-                  style={{ width: "16px", height: "16px", flexShrink: 0 }}
-                />
-                <span
+          {showActions && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: viewMode === "list" ? "row" : "column",
+                gap: "6px",
+              }}
+            >
+              {(isValidPhoneForDisplay(client.phone) || ((client as any).additional_phones?.length ?? 0) > 0) && (
+                <div
                   style={{
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    color: "#1e3a5f",
+                  }}
+                  dir="ltr"
+                >
+                  <PhoneWithExtras
+                    phone={client.phone}
+                    additionalPhones={(client as any).additional_phones}
+                    fontSize={14}
+                    iconSize={16}
+                    color="#1e3a5f"
+                  />
+                </div>
+              )}
+              {client.email && viewMode !== "compact" && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    color: "#1e3a5f",
+                    ...(viewMode === "list" ? { marginInlineStart: "16px" } : {}),
                   }}
                 >
-                  {client.email}
-                </span>
-              </div>
-            )}
-          </div>
+                  <Mail
+                    style={{ width: "16px", height: "16px", flexShrink: 0 }}
+                  />
+                  <span
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: "500",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {client.email}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
