@@ -109,6 +109,8 @@ export function QuoteTemplatesManager() {
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(
     new Set(),
   );
+  const [draggedTemplateId, setDraggedTemplateId] = useState<string | null>(null);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "unfoldered">(null);
 
   // שליפת תיקיות
   const { data: folders = [] } = useQuery({
@@ -508,7 +510,19 @@ export function QuoteTemplatesManager() {
     return (
       <Card
         key={template.id}
-        className="overflow-hidden hover:shadow-lg transition-shadow group"
+        draggable={!isRenaming}
+        onDragStart={(e) => {
+          setDraggedTemplateId(template.id);
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", template.id);
+        }}
+        onDragEnd={() => {
+          setDraggedTemplateId(null);
+          setDragOverFolderId(null);
+        }}
+        className={`overflow-hidden hover:shadow-lg transition-all group cursor-move ${
+          draggedTemplateId === template.id ? "opacity-40 scale-95" : ""
+        }`}
       >
         <div className="h-2" style={{ backgroundColor: primaryColor }} />
 
@@ -834,7 +848,38 @@ export function QuoteTemplatesManager() {
             return (
               <div
                 key={folder.id}
-                className="border rounded-lg overflow-hidden bg-card"
+                className={`border rounded-lg overflow-hidden bg-card transition-all ${
+                  dragOverFolderId === folder.id
+                    ? "ring-2 ring-offset-2 scale-[1.01]"
+                    : ""
+                }`}
+                style={
+                  dragOverFolderId === folder.id
+                    ? { boxShadow: `0 0 0 2px ${folder.color}` }
+                    : undefined
+                }
+                onDragOver={(e) => {
+                  if (!draggedTemplateId) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setDragOverFolderId(folder.id);
+                }}
+                onDragLeave={(e) => {
+                  if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                  setDragOverFolderId(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const id = draggedTemplateId || e.dataTransfer.getData("text/plain");
+                  if (id) {
+                    const t = templates.find((x) => x.id === id);
+                    if (t && t.folder_id !== folder.id) {
+                      moveToFolderMutation.mutate({ templateId: id, folderId: folder.id });
+                    }
+                  }
+                  setDragOverFolderId(null);
+                  setDraggedTemplateId(null);
+                }}
               >
                 {/* Folder header */}
                 <div
@@ -953,14 +998,47 @@ export function QuoteTemplatesManager() {
             );
           })}
 
-          {/* Unfoldered templates */}
-          {unfolderedTemplates.length > 0 && (
-            <div>
+          {/* Unfoldered drop zone (always visible while dragging) */}
+          {(unfolderedTemplates.length > 0 || (draggedTemplateId && folders.length > 0)) && (
+            <div
+              className={`rounded-lg transition-all ${
+                dragOverFolderId === "unfoldered"
+                  ? "ring-2 ring-primary ring-offset-2 bg-primary/5 p-3"
+                  : draggedTemplateId
+                    ? "border-2 border-dashed border-muted-foreground/30 p-3"
+                    : ""
+              }`}
+              onDragOver={(e) => {
+                if (!draggedTemplateId) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                setDragOverFolderId("unfoldered");
+              }}
+              onDragLeave={(e) => {
+                if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                setDragOverFolderId(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const id = draggedTemplateId || e.dataTransfer.getData("text/plain");
+                if (id) {
+                  const t = templates.find((x) => x.id === id);
+                  if (t && t.folder_id) {
+                    moveToFolderMutation.mutate({ templateId: id, folderId: null });
+                  }
+                }
+                setDragOverFolderId(null);
+                setDraggedTemplateId(null);
+              }}
+            >
               {folders.length > 0 && (
                 <div className="flex items-center gap-2 mb-3 text-muted-foreground">
                   <FileText className="h-4 w-4" />
                   <span className="text-sm font-medium">
                     תבניות ללא תיקייה ({unfolderedTemplates.length})
+                    {draggedTemplateId && (
+                      <span className="mr-2 text-primary">— שחרר כאן להוצאה מתיקייה</span>
+                    )}
                   </span>
                 </div>
               )}
