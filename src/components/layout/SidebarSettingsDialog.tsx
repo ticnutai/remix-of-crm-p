@@ -131,6 +131,19 @@ interface CustomSidebarThemesStore {
   lastUpdated?: string;
 }
 
+const dedupeCustomThemesById = (
+  themes: CustomSidebarTheme[],
+): CustomSidebarTheme[] => {
+  const byId = new Map<string, CustomSidebarTheme>();
+
+  for (const theme of themes) {
+    if (!theme?.id) continue;
+    byId.set(theme.id, theme);
+  }
+
+  return Array.from(byId.values());
+};
+
 const normalizeCustomThemes = (value: unknown): CustomSidebarTheme[] => {
   if (Array.isArray(value)) {
     return value as CustomSidebarTheme[];
@@ -242,10 +255,20 @@ export function SidebarSettingsDialog({
         if (error || !isMounted) return;
 
         const cloudThemes = normalizeCustomThemes(data?.setting_value);
-        if (cloudThemes.length === 0) return;
+        const mergedThemes = dedupeCustomThemesById([
+          ...cloudThemes,
+          ...localThemes,
+        ]);
 
-        setCustomThemes(cloudThemes);
-        saveCustomSidebarThemes(cloudThemes);
+        if (mergedThemes.length === 0) return;
+
+        setCustomThemes(mergedThemes);
+        saveCustomSidebarThemes(mergedThemes);
+
+        // If local had additional themes (e.g., created before cloud sync fix), push merged list to cloud.
+        if (mergedThemes.length !== cloudThemes.length) {
+          await persistCustomThemes(mergedThemes);
+        }
       } catch {
         // Fall back to local themes silently.
       }
