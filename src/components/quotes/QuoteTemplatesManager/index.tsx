@@ -998,14 +998,47 @@ export function QuoteTemplatesManager() {
             );
           })}
 
-          {/* Unfoldered templates */}
-          {unfolderedTemplates.length > 0 && (
-            <div>
+          {/* Unfoldered drop zone (always visible while dragging) */}
+          {(unfolderedTemplates.length > 0 || (draggedTemplateId && folders.length > 0)) && (
+            <div
+              className={`rounded-lg transition-all ${
+                dragOverFolderId === "unfoldered"
+                  ? "ring-2 ring-primary ring-offset-2 bg-primary/5 p-3"
+                  : draggedTemplateId
+                    ? "border-2 border-dashed border-muted-foreground/30 p-3"
+                    : ""
+              }`}
+              onDragOver={(e) => {
+                if (!draggedTemplateId) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                setDragOverFolderId("unfoldered");
+              }}
+              onDragLeave={(e) => {
+                if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                setDragOverFolderId(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const id = draggedTemplateId || e.dataTransfer.getData("text/plain");
+                if (id) {
+                  const t = templates.find((x) => x.id === id);
+                  if (t && t.folder_id) {
+                    moveToFolderMutation.mutate({ templateId: id, folderId: null });
+                  }
+                }
+                setDragOverFolderId(null);
+                setDraggedTemplateId(null);
+              }}
+            >
               {folders.length > 0 && (
                 <div className="flex items-center gap-2 mb-3 text-muted-foreground">
                   <FileText className="h-4 w-4" />
                   <span className="text-sm font-medium">
                     תבניות ללא תיקייה ({unfolderedTemplates.length})
+                    {draggedTemplateId && (
+                      <span className="mr-2 text-primary">— שחרר כאן להוצאה מתיקייה</span>
+                    )}
                   </span>
                 </div>
               )}
