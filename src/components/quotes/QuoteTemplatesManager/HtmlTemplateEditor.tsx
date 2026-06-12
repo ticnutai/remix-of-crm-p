@@ -5627,7 +5627,7 @@ export function HtmlTemplateEditor({
         side="right"
         hideClose
         dir="rtl"
-        className="flex flex-col gap-0 overflow-hidden border-0 p-0"
+        className="flex flex-col gap-0 overflow-hidden border-0 p-0 !duration-0 !transition-none data-[state=open]:!animate-none data-[state=closed]:!animate-none"
         style={{
           position: "fixed",
           top: 0,
