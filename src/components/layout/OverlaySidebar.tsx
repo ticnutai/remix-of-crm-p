@@ -50,6 +50,7 @@ import {
 } from "./SidebarSettingsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { prefetchRoute } from "@/hooks/usePrefetch";
 import {
   isTableAvailable,
   markTableUnavailable,
@@ -301,6 +302,10 @@ export function OverlaySidebar({
 
   const isActive = (path: string) => location.pathname === path;
 
+  const warmRoute = useCallback((url: string) => {
+    prefetchRoute(url);
+  }, []);
+
   // Preserve scroll position across route changes
   const navScrollRef = useRef<HTMLDivElement>(null);
   const savedScrollTop = useRef(0);
@@ -473,10 +478,13 @@ export function OverlaySidebar({
                         : "transparent",
                     }}
                     onMouseEnter={(e) => {
+                      warmRoute(item.url);
                       if (!isActive(item.url)) {
                         e.currentTarget.style.backgroundColor = hoverBg;
                       }
                     }}
+                    onFocus={() => warmRoute(item.url)}
+                    onMouseDown={() => warmRoute(item.url)}
                     onMouseLeave={(e) => {
                       if (!isActive(item.url)) {
                         e.currentTarget.style.backgroundColor = "transparent";
@@ -518,10 +526,13 @@ export function OverlaySidebar({
                         : "transparent",
                     }}
                     onMouseEnter={(e) => {
+                      warmRoute(item.url);
                       if (!isActive(item.url)) {
                         e.currentTarget.style.backgroundColor = hoverBg;
                       }
                     }}
+                    onFocus={() => warmRoute(item.url)}
+                    onMouseDown={() => warmRoute(item.url)}
                     onMouseLeave={(e) => {
                       if (!isActive(item.url)) {
                         e.currentTarget.style.backgroundColor = "transparent";

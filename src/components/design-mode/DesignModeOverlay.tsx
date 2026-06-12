@@ -225,6 +225,8 @@ export function DesignModeOverlay() {
       return;
     }
 
+    let isSpacePressed = false;
+
     const resolveElementTarget = (target: EventTarget | null): Element | null => {
       if (!target) return null;
       if (target instanceof Element) return target;
@@ -260,7 +262,7 @@ export function DesignModeOverlay() {
     const onPointerDown = (e: PointerEvent) => {
       const target = resolveElementTarget(e.target);
       if (!target || isOwnUi(target)) return;
-      if (e.ctrlKey || e.metaKey) return;
+      if (e.ctrlKey || e.metaKey || isSpacePressed) return;
       blockEvent(e);
       // Select on pointerdown so React onClick never fires.
       setCollapsed(false);
@@ -278,11 +280,14 @@ export function DesignModeOverlay() {
       const target = resolveElementTarget(e.target);
       if (!target || isOwnUi(target)) return;
       const me = e as MouseEvent;
-      if (me.ctrlKey || me.metaKey) return;
+      if (me.ctrlKey || me.metaKey || isSpacePressed) return;
       blockEvent(e);
     };
 
     const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        isSpacePressed = true;
+      }
       if (e.key === 'Escape') {
         if (selectedEl) setSelectedEl(null);
         else setEnabled(false);
@@ -293,17 +298,31 @@ export function DesignModeOverlay() {
       }
     };
 
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        isSpacePressed = false;
+      }
+    };
+
+    const onWindowBlur = () => {
+      isSpacePressed = false;
+    };
+
     document.addEventListener('mousemove', onMove, true);
     document.addEventListener('pointerdown', onPointerDown, true);
     document.addEventListener('mousedown', swallow, true);
     document.addEventListener('click', swallow, true);
     document.addEventListener('keydown', onKey);
+    document.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onWindowBlur);
     return () => {
       document.removeEventListener('mousemove', onMove, true);
       document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('mousedown', swallow, true);
       document.removeEventListener('click', swallow, true);
       document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onWindowBlur);
     };
   }, [enabled, selectedEl, setEnabled, undoLast]);
 

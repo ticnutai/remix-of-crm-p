@@ -64,7 +64,7 @@ export function usePrefetchOnHover(route: string) {
  */
 export function usePrefetchCommonRoutes() {
   useEffect(() => {
-    // Wait for initial render to complete
+    // Start early to make first navigation feel instant.
     const timeoutId = setTimeout(() => {
       // Prefetch most common routes
       prefetchRoutes([
@@ -74,7 +74,7 @@ export function usePrefetchCommonRoutes() {
         "/my-day",
         "/tasks-meetings",
       ]);
-    }, 2000); // Wait 2 seconds after mount
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, []);
