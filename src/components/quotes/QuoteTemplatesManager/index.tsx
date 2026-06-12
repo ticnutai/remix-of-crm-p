@@ -109,6 +109,8 @@ export function QuoteTemplatesManager() {
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(
     new Set(),
   );
+  const [draggedTemplateId, setDraggedTemplateId] = useState<string | null>(null);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "unfoldered">(null);
 
   // שליפת תיקיות
   const { data: folders = [] } = useQuery({
