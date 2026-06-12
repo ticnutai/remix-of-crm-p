@@ -92,6 +92,7 @@ const queryClient = new QueryClient({
       staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh
       gcTime: 30 * 60 * 1000, // 30 minutes - cache time
       refetchOnWindowFocus: false, // Don't refetch on tab switch
+      refetchOnMount: "always", // Always revalidate when a component mounts
       refetchOnReconnect: "always", // Refetch when connection restored
       retry: 2, // Retry twice on failure
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
@@ -109,8 +110,35 @@ const idbPersister = createIDBPersister();
 const persistOptions = {
   persister: idbPersister,
   maxAge: PERSIST_MAX_AGE,
-  buster: "v1", // Bump to invalidate all cached data
+  buster: "v2", // Bump to invalidate all cached data
+  dehydrateOptions: {
+    // Only persist successful queries whose data is structurally cloneable.
+    shouldDehydrateQuery: (query: { state: { status: string; data: unknown } }) => {
+      if (query.state.status !== "success") return false;
+      const data = query.state.data;
+      if (data === undefined || data === null) return false;
+      // Skip if data contains functions / non-plain values (caught at serialize time)
+      try {
+        const seen = new WeakSet<object>();
+        const hasFn = (v: unknown): boolean => {
+          if (v === null || typeof v !== "object") return typeof v === "function";
+          const o = v as object;
+          if (seen.has(o)) return false;
+          seen.add(o);
+          for (const val of Object.values(v as Record<string, unknown>)) {
+            if (typeof val === "function") return true;
+            if (val && typeof val === "object" && hasFn(val)) return true;
+          }
+          return false;
+        };
+        return !hasFn(data);
+      } catch {
+        return false;
+      }
+    },
+  },
 };
+
 
 const App = () => {
   return (
