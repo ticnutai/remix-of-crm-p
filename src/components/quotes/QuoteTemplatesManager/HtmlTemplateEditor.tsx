@@ -2232,7 +2232,7 @@ function PaymentStepEditor({
       )}
 
       <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
-        <DialogContent className="max-w-3xl" dir="rtl">
+        <DialogContent className="max-w-6xl" dir="rtl">
           <DialogHeader>
             <DialogTitle>שיוך מהיר לשלב תשלום</DialogTitle>
           </DialogHeader>
