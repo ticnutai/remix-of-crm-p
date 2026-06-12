@@ -372,16 +372,43 @@ export function TableToolbar<T>({
                   </h3>
                 </div>
                 <div className="flex items-center gap-1">
-                  {onAddColumn && (
-                    <Button
-                      size="sm"
-                      onClick={(e) => { e.stopPropagation(); onAddColumn(); }}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      className="bg-gradient-to-r from-[#D4AF37] to-[#F4BF37] hover:from-[#F4BF37] hover:to-[#D4AF37] text-[#1e3a8a] font-bold shadow-md h-7 px-2"
-                    >
-                      <Plus className="h-3.5 w-3.5 ml-1" />
-                      הוסף
-                    </Button>
+                  {(onAddColumn || onQuickAddColumns) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          className="bg-gradient-to-r from-[#D4AF37] to-[#F4BF37] hover:from-[#F4BF37] hover:to-[#D4AF37] text-[#1e3a8a] font-bold shadow-md h-7 px-2"
+                        >
+                          <Plus className="h-3.5 w-3.5 ml-1" />
+                          הוסף
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="z-[10080]">
+                        {onAddColumn && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAddColumn();
+                            }}
+                          >
+                            <Plus className="h-4 w-4 ml-2" />
+                            הוסף עמודה חדשה
+                          </DropdownMenuItem>
+                        )}
+                        {onQuickAddColumns && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onQuickAddColumns();
+                            }}
+                          >
+                            <Columns className="h-4 w-4 ml-2" />
+                            הוסף עמודות מהטבלאות
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                   <Button
                     variant="ghost"

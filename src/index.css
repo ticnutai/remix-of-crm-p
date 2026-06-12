@@ -665,6 +665,27 @@
     direction: rtl;
   }
 
+  /* Keep all table header titles aligned to the right edge */
+  table thead th {
+    text-align: right !important;
+  }
+
+  table thead th > div {
+    justify-content: flex-start !important;
+    text-align: right !important;
+  }
+
+  table thead th > div .items-end,
+  table thead th > div.items-end {
+    align-items: flex-start !important;
+    text-align: right !important;
+  }
+
+  table thead th > div .justify-end,
+  table thead th > div.justify-end {
+    justify-content: flex-start !important;
+  }
+
   /* Scrollbar styling */
   .scrollbar-thin {
     scrollbar-width: thin;
