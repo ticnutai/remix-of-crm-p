@@ -302,28 +302,40 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
-      <div className="w-full max-w-md animate-fade-in">
+    <div className="min-h-screen relative flex items-center justify-center bg-background p-4 overflow-hidden" dir="rtl">
+      {/* Ambient background */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-accent/10 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,hsl(var(--background))_75%)]" />
+      </div>
+
+      <div className="relative w-full max-w-md animate-fade-in">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-secondary to-secondary/80 text-secondary-foreground shadow-lg mb-4">
+          <div className="relative inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-primary text-primary-foreground shadow-xl mb-5 ring-1 ring-accent/40">
             <Building2 className="h-8 w-8" />
+            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-[3px] w-8 rounded-full bg-accent" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground">
-            <span className="bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">ten</span>
+          <h1 className="text-4xl font-bold tracking-tight text-foreground">
+            <span className="text-accent">ten</span>
             <span className="text-foreground">arch</span>
           </h1>
-          <p className="text-muted-foreground mt-1">טכנולוגיות מתקדמות</p>
+          <div className="mt-2 flex items-center justify-center gap-3">
+            <span className="h-px w-8 bg-border" />
+            <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">טכנולוגיות מתקדמות</p>
+            <span className="h-px w-8 bg-border" />
+          </div>
         </div>
 
-        <Card className="shadow-xl border-border/50">
-          <CardHeader className="text-center pb-2">
-            <CardTitle className="text-xl">ברוכים הבאים</CardTitle>
-            <CardDescription>
+        <Card className="shadow-2xl border-border/60 backdrop-blur-sm bg-card/95">
+          <CardHeader className="text-center pb-3 pt-6">
+            <CardTitle className="text-2xl font-semibold">ברוכים הבאים</CardTitle>
+            <CardDescription className="text-sm">
               התחבר או הירשם לניהול הלקוחות והפרויקטים שלך
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-2">
             {authView === 'pending' ? (
               <div className="text-center space-y-4 py-6">
                 <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-secondary/20 text-secondary">
