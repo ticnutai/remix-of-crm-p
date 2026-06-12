@@ -312,16 +312,16 @@ export default function Auth() {
 
       <div className="relative w-full max-w-md animate-fade-in">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-10">
           <div className="relative inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-primary text-primary-foreground shadow-xl mb-5 ring-1 ring-accent/40">
             <Building2 className="h-8 w-8" />
             <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-[3px] w-8 rounded-full bg-accent" />
           </div>
-          <h1 className="text-4xl font-bold tracking-tight text-foreground">
+          <h1 className="text-4xl font-bold tracking-tight text-foreground mb-5">
             <span className="text-accent">ten</span>
             <span className="text-foreground">arch</span>
           </h1>
-          <div className="mt-2 flex items-center justify-center gap-3">
+          <div className="flex items-center justify-center gap-3 mt-3">
             <span className="h-px w-8 bg-border" />
             <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">טכנולוגיות מתקדמות</p>
             <span className="h-px w-8 bg-border" />
