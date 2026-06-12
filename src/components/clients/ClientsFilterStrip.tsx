@@ -559,7 +559,7 @@ export function ClientsFilterStrip({
             </Button>
           </PopoverTrigger>
           <PopoverContent
-            className="w-[300px] p-0 overflow-hidden"
+            className="w-[min(92vw,360px)] p-0 overflow-x-hidden"
             dir="rtl"
             align="end"
             collisionPadding={16}
@@ -608,103 +608,105 @@ export function ClientsFilterStrip({
                 </Button>
               </div>
             </div>
-            <div className="p-4 space-y-2">
-              {CLASSIFICATION_OPTIONS.map((cls) => {
-                const isVisible = !(
-                  filters.hiddenClassifications || []
-                ).includes(cls.value);
-                return (
-                  <div
-                    key={cls.value}
-                    className={cn(
-                      "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
-                      isVisible
-                        ? "bg-primary/10 border-primary"
-                        : "bg-muted/30 border-border opacity-60",
-                    )}
-                    onClick={() => toggleClassificationVisibility(cls.value)}
-                  >
-                    <Checkbox
-                      checked={isVisible}
-                      onCheckedChange={() =>
-                        toggleClassificationVisibility(cls.value)
-                      }
-                    />
+            <ScrollArea className="max-h-[70vh] overflow-x-hidden">
+              <div className="p-4 space-y-2 overflow-x-hidden">
+                {CLASSIFICATION_OPTIONS.map((cls) => {
+                  const isVisible = !(
+                    filters.hiddenClassifications || []
+                  ).includes(cls.value);
+                  return (
                     <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0"
-                      style={{
-                        backgroundColor: cls.color + "22",
-                        border: `2px solid ${cls.color}`,
-                      }}
-                    >
-                      {cls.icon}
-                    </div>
-                    <span
+                      key={cls.value}
                       className={cn(
-                        "font-medium flex-1 text-right",
-                        !isVisible && "line-through text-muted-foreground",
+                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all overflow-x-hidden",
+                        isVisible
+                          ? "bg-primary/10 border-primary"
+                          : "bg-muted/30 border-border opacity-60",
                       )}
+                      onClick={() => toggleClassificationVisibility(cls.value)}
                     >
-                      {cls.label}
-                    </span>
-                    {isVisible ? (
-                      <Eye className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </div>
-                );
-              })}
-
-              <div className="border-t pt-3 mt-3">
-                <div className="text-xs font-semibold text-muted-foreground mb-2">
-                  סיווג לפי חודשי ותק
-                </div>
-
-                <div className="space-y-2">
-                  {MONTH_RANGE_OPTIONS.map((opt) => {
-                    const checked = (filters.monthAgeRanges || []).includes(opt.key);
-                    return (
+                      <Checkbox
+                        checked={isVisible}
+                        onCheckedChange={() =>
+                          toggleClassificationVisibility(cls.value)
+                        }
+                      />
                       <div
-                        key={opt.key}
-                        className={cn(
-                          "flex items-center justify-between gap-2 rounded-lg border p-2 cursor-pointer",
-                          checked ? "bg-primary/10 border-primary" : "bg-muted/30 border-border",
-                        )}
-                        onClick={() => toggleMonthRange(opt.key)}
-                        title={opt.hint}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0"
+                        style={{
+                          backgroundColor: cls.color + "22",
+                          border: `2px solid ${cls.color}`,
+                        }}
                       >
-                        <div className="flex items-center gap-2">
-                          <Checkbox checked={checked} />
-                          <span className="text-sm font-medium">{opt.label}</span>
-                        </div>
-                        <Badge variant="secondary">{monthAgeCounts.ranges[opt.key] || 0}</Badge>
+                        {cls.icon}
                       </div>
-                    );
-                  })}
-                </div>
+                      <span
+                        className={cn(
+                          "font-medium flex-1 text-right min-w-0",
+                          !isVisible && "line-through text-muted-foreground",
+                        )}
+                      >
+                        {cls.label}
+                      </span>
+                      {isVisible ? (
+                        <Eye className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      ) : (
+                        <EyeOff className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      )}
+                    </div>
+                  );
+                })}
 
-                <div className="mt-3 space-y-1">
-                  <Label className="text-xs text-muted-foreground">חודש מדויק</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={filters.exactMonth ?? ""}
-                      onChange={(e) => setExactMonth(e.target.value)}
-                      placeholder="לדוגמה: 4"
-                      className="h-8"
-                    />
-                    <Badge variant="outline" className="h-8">
-                      {filters.exactMonth === null
-                        ? "0"
-                        : monthAgeCounts.byExact[filters.exactMonth] || 0}
-                    </Badge>
+                <div className="border-t pt-3 mt-3 overflow-x-hidden">
+                  <div className="text-xs font-semibold text-muted-foreground mb-2">
+                    סיווג לפי זמנים (חודשי ותק)
+                  </div>
+
+                  <div className="space-y-2">
+                    {MONTH_RANGE_OPTIONS.map((opt) => {
+                      const checked = (filters.monthAgeRanges || []).includes(opt.key);
+                      return (
+                        <div
+                          key={opt.key}
+                          className={cn(
+                            "flex items-center justify-between gap-2 rounded-lg border p-2 cursor-pointer overflow-x-hidden",
+                            checked ? "bg-primary/10 border-primary" : "bg-muted/30 border-border",
+                          )}
+                          onClick={() => toggleMonthRange(opt.key)}
+                          title={opt.hint}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Checkbox checked={checked} />
+                            <span className="text-sm font-medium truncate">{opt.label}</span>
+                          </div>
+                          <Badge variant="secondary" className="flex-shrink-0">{monthAgeCounts.ranges[opt.key] || 0}</Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-3 space-y-1">
+                    <Label className="text-xs text-muted-foreground">חודש מדויק</Label>
+                    <div className="flex items-center gap-2 overflow-x-hidden">
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={filters.exactMonth ?? ""}
+                        onChange={(e) => setExactMonth(e.target.value)}
+                        placeholder="לדוגמה: 4"
+                        className="h-8 min-w-0"
+                      />
+                      <Badge variant="outline" className="h-8 flex-shrink-0">
+                        {filters.exactMonth === null
+                          ? "0"
+                          : monthAgeCounts.byExact[filters.exactMonth] || 0}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </ScrollArea>
           </PopoverContent>
         </Popover>
         )}
