@@ -985,7 +985,7 @@ export function QuoteTemplatesManager() {
                     <LayoutGrid className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" dir="rtl" className="min-w-56">
+                <DropdownMenuContent align="end" className="rtl min-w-56">
                   <DropdownMenuLabel>תצוגת תבניות</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuRadioGroup
@@ -1023,7 +1023,7 @@ export function QuoteTemplatesManager() {
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" dir="rtl">
+                <DropdownMenuContent align="end">
                   <DropdownMenuItem
                     onClick={() => {
                       setRenamingTemplateId(template.id);
@@ -1155,7 +1155,7 @@ export function QuoteTemplatesManager() {
   };
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-6">
       {/* Hidden file inputs */}
       <input
         ref={fileInputRef}
@@ -1381,7 +1381,7 @@ export function QuoteTemplatesManager() {
                           <LayoutGrid className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" dir="rtl" className="min-w-56">
+                      <DropdownMenuContent align="end" className="rtl min-w-56">
                         <DropdownMenuLabel>תצוגת תיקיות</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuRadioGroup
@@ -1418,7 +1418,7 @@ export function QuoteTemplatesManager() {
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" dir="rtl">
+                      <DropdownMenuContent align="end">
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1555,7 +1555,7 @@ export function QuoteTemplatesManager() {
                         <LayoutGrid className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" dir="rtl" className="min-w-56">
+                    <DropdownMenuContent align="end" className="rtl min-w-56">
                       <DropdownMenuLabel>תצוגת תיקיות</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuRadioGroup
@@ -1607,7 +1607,7 @@ export function QuoteTemplatesManager() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-md" dir="rtl">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
               {editingFolder?.id ? "עריכת תיקייה" : "תיקייה חדשה"}
@@ -1686,7 +1686,7 @@ export function QuoteTemplatesManager() {
           if (!open) setMoveToFolderTemplateId(null);
         }}
       >
-        <DialogContent className="sm:max-w-sm" dir="rtl">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>העבר לתיקייה</DialogTitle>
           </DialogHeader>
