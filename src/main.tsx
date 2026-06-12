@@ -3,6 +3,15 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
+// Some third-party libs still read process.env in the browser.
+if (!(globalThis as any).process) {
+  (globalThis as any).process = { env: { NODE_ENV: import.meta.env.MODE } };
+} else if (!(globalThis as any).process.env) {
+  (globalThis as any).process.env = { NODE_ENV: import.meta.env.MODE };
+} else if (!(globalThis as any).process.env.NODE_ENV) {
+  (globalThis as any).process.env.NODE_ENV = import.meta.env.MODE;
+}
+
 // Enforce permanent global RTL baseline for the entire app.
 document.documentElement.setAttribute("dir", "rtl");
 document.documentElement.setAttribute("lang", "he");

@@ -105,6 +105,8 @@ function devMigrationsPlugin() {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
+  const nodeEnv = mode === "production" ? "production" : "development";
+
   // Ensure the backend env vars are always available at build time.
   // (Some remix/preview environments can momentarily miss injection.)
   const env = loadEnv(mode, process.cwd(), "");
@@ -134,6 +136,8 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(supabaseUrl),
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY":
         JSON.stringify(supabaseKey),
+      "process.env.NODE_ENV": JSON.stringify(nodeEnv),
+      "process.env": JSON.stringify({ NODE_ENV: nodeEnv }),
     },
     plugins: [
       react(),
@@ -635,6 +639,12 @@ export default defineConfig(({ mode }) => {
       ],
       // Exclude heavy libs from pre-bundling
       exclude: ["xlsx", "jspdf", "html2canvas"],
+      esbuildOptions: {
+        define: {
+          "process.env.NODE_ENV": JSON.stringify(nodeEnv),
+          "process.env": JSON.stringify({ NODE_ENV: nodeEnv }),
+        },
+      },
     },
   };
 });
