@@ -1174,24 +1174,21 @@ export function QuoteTemplatesManager() {
       />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+      <div className="flex items-center justify-start gap-4 flex-nowrap">
+        <div className="shrink-0">
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Layers className="h-6 w-6 text-[#d8ac27]" />
             תבניות הצעות מחיר
           </h2>
-          <p className="text-muted-foreground">
-            נהל תבניות מוכנות עם תיקיות, שלבים, לוח תשלומים ועיצוב מותאם
-          </p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-nowrap">
           <Button
             onClick={() => {
               setEditingFolder({ name: "", color: "#d8ac27" });
               setFolderDialogOpen(true);
             }}
             variant="outline"
-            className="border-primary/50 text-primary hover:bg-primary/10"
+            className="shrink-0 border-primary/50 text-primary hover:bg-primary/10"
           >
             <FolderPlus className="h-4 w-4 ml-2" />
             תיקייה חדשה
@@ -1200,7 +1197,7 @@ export function QuoteTemplatesManager() {
             onClick={() => wordToHtmlInputRef.current?.click()}
             variant="outline"
             disabled={isConverting}
-            className="border-primary text-primary hover:bg-primary/10"
+            className="shrink-0 border-primary text-primary hover:bg-primary/10"
           >
             {isConverting ? (
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent ml-2" />
@@ -1210,24 +1207,25 @@ export function QuoteTemplatesManager() {
             Word → HTML
           </Button>
           <Button
+            onClick={handleNew}
+            className="shrink-0 bg-[#d8ac27] hover:bg-[#c49b22] text-white"
+          >
+            <Plus className="h-4 w-4 ml-2" />
+            תבנית חדשה
+          </Button>
+          <Button
             onClick={handleImportClick}
             variant="outline"
             disabled={isImporting}
-            className="border-[#d8ac27] text-[#d8ac27] hover:bg-[#d8ac27]/10"
+            aria-label="יבוא"
+            title="יבוא"
+            className="shrink-0 border-[#d8ac27] text-[#d8ac27] hover:bg-[#d8ac27]/10"
           >
             {isImporting ? (
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#d8ac27] border-t-transparent ml-2" />
             ) : (
-              <Upload className="h-4 w-4 ml-2" />
+              <Upload className="h-4 w-4" />
             )}
-            יבוא קובץ
-          </Button>
-          <Button
-            onClick={handleNew}
-            className="bg-[#d8ac27] hover:bg-[#c49b22] text-white"
-          >
-            <Plus className="h-4 w-4 ml-2" />
-            תבנית חדשה
           </Button>
         </div>
       </div>

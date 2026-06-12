@@ -1750,6 +1750,8 @@ function PaymentStepEditor({
   const effectiveCardsLayout: AssignmentCardsLayout = isMobileViewport
     ? "vertical"
     : assignmentCardsLayout;
+  const assignmentTabTriggerClass =
+    "h-9 shrink-0 rounded-lg border border-primary/30 bg-background px-3 text-xs font-medium text-foreground transition-colors data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm hover:border-primary/50 hover:bg-primary/5";
 
   const assignmentSummary =
     step.linkSource === "quote_template" && (step.quoteTemplateItemText || selectedQuoteTask?.title)
@@ -2310,11 +2312,11 @@ function PaymentStepEditor({
             }}
             className="space-y-3"
           >
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <TabsList className="grid grid-cols-3 w-full sm:w-auto sm:min-w-[460px]">
-                <TabsTrigger value="stage-template">תבנית שלבי לקוח</TabsTrigger>
-                <TabsTrigger value="quote-template">תבנית ההצעה</TabsTrigger>
-                <TabsTrigger value="all">הכל</TabsTrigger>
+            <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+              <TabsList className="grid grid-cols-3 w-full md:w-auto md:min-w-[460px] gap-2 bg-transparent h-auto p-0">
+                <TabsTrigger value="stage-template" className={assignmentTabTriggerClass}>תבנית שלבי לקוח</TabsTrigger>
+                <TabsTrigger value="quote-template" className={assignmentTabTriggerClass}>תבנית ההצעה</TabsTrigger>
+                <TabsTrigger value="all" className={assignmentTabTriggerClass}>הכל</TabsTrigger>
               </TabsList>
 
               <div className="inline-flex items-center gap-1 rounded-md border bg-muted/30 p-1 self-start">

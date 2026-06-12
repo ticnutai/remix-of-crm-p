@@ -379,6 +379,9 @@ export default function Quotes() {
     setTerminatingContractId(null);
   };
 
+  const primaryTabTriggerClass =
+    "h-11 rounded-lg border border-primary/30 bg-background px-3 text-sm font-medium text-foreground transition-colors data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm hover:border-primary/50 hover:bg-primary/5";
+
   return (
     <AppLayout>
       <div className="p-6 space-y-6 w-full overflow-x-hidden">
@@ -392,27 +395,32 @@ export default function Quotes() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full max-w-3xl grid-cols-5">
-            <TabsTrigger value="quotes" className="gap-2">
+          <TabsList className="grid w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 bg-transparent h-auto p-0">
+            <TabsTrigger value="quotes" className={`${primaryTabTriggerClass} gap-2`}>
               <FileText className="h-4 w-4" />
               הצעות מחיר
             </TabsTrigger>
-            <TabsTrigger value="saved-quotes" className="gap-2">
+            <TabsTrigger value="saved-quotes" className={`${primaryTabTriggerClass} gap-2`}>
               <Archive className="h-4 w-4" />
               הצעות שמורות
               {savedQuotes.length > 0 && (
-                <Badge variant="secondary" className="h-5 px-1.5 text-xs">{savedQuotes.length}</Badge>
+                <Badge
+                  variant="secondary"
+                  className="h-5 px-1.5 text-xs bg-primary/10 text-primary"
+                >
+                  {savedQuotes.length}
+                </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="contracts" className="gap-2">
+            <TabsTrigger value="contracts" className={`${primaryTabTriggerClass} gap-2`}>
               <FileSignature className="h-4 w-4" />
               חוזים
             </TabsTrigger>
-            <TabsTrigger value="ready-templates" className="gap-2">
+            <TabsTrigger value="ready-templates" className={`${primaryTabTriggerClass} gap-2`}>
               <ClipboardList className="h-4 w-4" />
               תבניות מוכנות
             </TabsTrigger>
-            <TabsTrigger value="template-manager" className="gap-2">
+            <TabsTrigger value="template-manager" className={`${primaryTabTriggerClass} gap-2`}>
               <Settings2 className="h-4 w-4" />
               ניהול תבניות
             </TabsTrigger>

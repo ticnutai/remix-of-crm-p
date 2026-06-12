@@ -371,6 +371,8 @@ export default function ClientProfile() {
     localStorage.setItem('client-display-settings', JSON.stringify(updated));
   };
 
+  const [manualTabStartDate, setManualTabStartDate] = useState("");
+
   const [activeTab, setActiveTab] = useState("overview");
   const [activeTableTab, setActiveTableTab] = useState<string | null>(null);
   const [isClientInfoDialogOpen, setIsClientInfoDialogOpen] = useState(false);
@@ -599,7 +601,7 @@ export default function ClientProfile() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("contracts")
-        .select("id, contract_number, title, status, contract_value, start_date, created_at, updated_at")
+        .select("id, contract_number, title, status, contract_value, project_id, signed_date, start_date, created_at, updated_at")
         .eq("client_id", clientId)
         .order("updated_at", { ascending: false })
         .limit(100);
@@ -653,6 +655,132 @@ export default function ClientProfile() {
       (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
     );
   }, [clientSavedQuotes, clientContractsWidget]);
+
+  const contractSignedAnchorDate = useMemo(() => {
+    const latestSignedContract = (clientContractsWidget as any[])
+      .filter((c) => {
+        const status = (c.status || "").toLowerCase();
+        return ["active", "completed", "signed"].includes(status);
+      })
+      .map((c) => c.signed_date)
+      .filter(Boolean)
+      .sort(
+        (a, b) => new Date(b).getTime() - new Date(a).getTime(),
+      )[0];
+
+    return latestSignedContract || null;
+  }, [clientContractsWidget]);
+
+  useEffect(() => {
+    const storedDate = (client as any)?.field_metadata?.tab_counter_start_date;
+    setManualTabStartDate(typeof storedDate === "string" ? storedDate : "");
+  }, [client]);
+
+  const saveManualTabStartDate = useCallback(async () => {
+    if (!clientId) return;
+
+    const currentFieldMetadata =
+      (client as any)?.field_metadata && typeof (client as any).field_metadata === "object"
+        ? { ...(client as any).field_metadata }
+        : {};
+
+    if (manualTabStartDate) {
+      currentFieldMetadata.tab_counter_start_date = manualTabStartDate;
+    } else {
+      delete currentFieldMetadata.tab_counter_start_date;
+    }
+
+    const ok = await updateClient({
+      field_metadata: currentFieldMetadata,
+    } as any);
+
+    if (ok) {
+      toast({
+        title: "מועד התחלה נשמר",
+        description: manualTabStartDate
+          ? "המונה יעבוד ממועד ההתחלה הידני"
+          : "בוטל מועד ידני, חוזר למועד חתימה/פתיחת תיק",
+      });
+    }
+  }, [client, clientId, manualTabStartDate, toast, updateClient]);
+
+  const tabCounterAnchorDate =
+    manualTabStartDate || contractSignedAnchorDate || client?.created_at || null;
+
+  const tabCounterDays = useMemo(() => {
+    if (!tabCounterAnchorDate) return null;
+
+    const anchor = new Date(tabCounterAnchorDate);
+    if (Number.isNaN(anchor.getTime())) return null;
+
+    const diffMs = Date.now() - anchor.getTime();
+    return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+  }, [tabCounterAnchorDate]);
+
+  const tabCounterSourceLabel = manualTabStartDate
+    ? "מועד התחלה ידני"
+    : contractSignedAnchorDate
+      ? "מחתימת החוזה"
+      : "מפתיחת תיק הלקוח";
+
+  const projectCounterById = useMemo(() => {
+    const counters: Record<
+      string,
+      { days: number; source: "signed_contract" | "project_start" | "client_created" }
+    > = {};
+
+    const contracts = (clientContractsWidget as any[]).filter(
+      (c) => c?.project_id && c?.signed_date,
+    );
+
+    const latestSignedByProject: Record<string, string> = {};
+    contracts.forEach((contract) => {
+      const projectId = String(contract.project_id);
+      const signedDate = String(contract.signed_date);
+      const prevDate = latestSignedByProject[projectId];
+      if (!prevDate || new Date(signedDate).getTime() > new Date(prevDate).getTime()) {
+        latestSignedByProject[projectId] = signedDate;
+      }
+    });
+
+    projects.forEach((project) => {
+      const anchorDate =
+        latestSignedByProject[project.id] ||
+        project.start_date ||
+        client?.created_at ||
+        null;
+
+      if (!anchorDate) return;
+
+      const diffMs = Date.now() - new Date(anchorDate).getTime();
+      const days = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+
+      counters[project.id] = {
+        days,
+        source: latestSignedByProject[project.id]
+          ? "signed_contract"
+          : project.start_date
+            ? "project_start"
+            : "client_created",
+      };
+    });
+
+    return counters;
+  }, [client?.created_at, clientContractsWidget, projects]);
+
+  const renderTabCounter = () => {
+    if (tabCounterDays === null) return null;
+
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full border border-[hsl(222,47%,25%)]/40 bg-background/80 px-1.5 py-0.5 text-[10px] font-semibold leading-none"
+        title={`${tabCounterDays} ימים ${tabCounterSourceLabel}`}
+      >
+        <Hash className="h-2.5 w-2.5" />
+        {tabCounterDays}
+      </span>
+    );
+  };
 
   const tasksGroups = useMemo(
     () =>
@@ -1401,6 +1529,7 @@ export default function ClientProfile() {
             >
               <TrendingUp className="h-4 w-4" />
               שלבי עבודה
+              {renderTabCounter()}
             </TabsTrigger>
             <button
               onClick={() => {
@@ -1429,6 +1558,7 @@ export default function ClientProfile() {
             >
               <Clock className="h-4 w-4" />
               לוגי זמן ({timeEntries.length})
+              {renderTabCounter()}
             </TabsTrigger>
             <TabsTrigger
               value="deadlines"
@@ -1436,6 +1566,7 @@ export default function ClientProfile() {
             >
               <Timer className="h-4 w-4" />
               זמנים
+              {renderTabCounter()}
             </TabsTrigger>
             <TabsTrigger
               value="tasks"
@@ -1443,6 +1574,7 @@ export default function ClientProfile() {
             >
               <CheckSquare className="h-4 w-4" />
               משימות ({tasks.length})
+              {renderTabCounter()}
             </TabsTrigger>
             <TabsTrigger
               value="meetings"
@@ -1450,6 +1582,7 @@ export default function ClientProfile() {
             >
               <Calendar className="h-4 w-4" />
               פגישות ({meetings.length})
+              {renderTabCounter()}
             </TabsTrigger>
             <TabsTrigger
               value="files"
@@ -1457,6 +1590,7 @@ export default function ClientProfile() {
             >
               <FileText className="h-4 w-4" />
               קבצים ({files.length})
+              {renderTabCounter()}
             </TabsTrigger>
             <TabsTrigger
               value="messages"
@@ -1464,6 +1598,7 @@ export default function ClientProfile() {
             >
               <MessageSquare className="h-4 w-4" />
               הודעות ({messages.length})
+              {renderTabCounter()}
             </TabsTrigger>
             <TabsTrigger
               value="emails"
@@ -1471,6 +1606,7 @@ export default function ClientProfile() {
             >
               <Mail className="h-4 w-4" />
               מיילים
+              {renderTabCounter()}
             </TabsTrigger>
             <TabsTrigger
               value="quotes-contracts"
@@ -1478,6 +1614,7 @@ export default function ClientProfile() {
             >
               <FileSignature className="h-4 w-4" />
               הצעות וחוזים
+              {renderTabCounter()}
             </TabsTrigger>
             <TabsTrigger
               value="invoices"
@@ -1485,6 +1622,7 @@ export default function ClientProfile() {
             >
               <Receipt className="h-4 w-4" />
               חשבוניות ({invoices.length})
+              {renderTabCounter()}
             </TabsTrigger>
             <TabsTrigger
               value="payments"
@@ -1492,6 +1630,7 @@ export default function ClientProfile() {
             >
               <DollarSign className="h-4 w-4" />
               תשלומים
+              {renderTabCounter()}
             </TabsTrigger>
             <TabsTrigger
               value="custom"
@@ -1499,6 +1638,7 @@ export default function ClientProfile() {
             >
               <Table className="h-4 w-4" />
               טבלאות ({allClientTables.length})
+              {renderTabCounter()}
             </TabsTrigger>
             <TabsTrigger
               value="whatsapp"
@@ -1506,6 +1646,7 @@ export default function ClientProfile() {
             >
               <MessageCircle className="h-4 w-4" />
               WhatsApp ({whatsappMessages.length})
+              {renderTabCounter()}
             </TabsTrigger>
             <TabsTrigger
               value="reminders"
@@ -1513,6 +1654,7 @@ export default function ClientProfile() {
             >
               <Bell className="h-4 w-4" />
               תזכורות ({reminders.length})
+              {renderTabCounter()}
             </TabsTrigger>
 
             {/* Grid View Tab - Shows all custom tabs in grid */}
@@ -1523,6 +1665,7 @@ export default function ClientProfile() {
               >
                 <LayoutGrid className="h-4 w-4" />
                 תצוגת רשת
+                {renderTabCounter()}
               </TabsTrigger>
             )}
 
@@ -1573,6 +1716,7 @@ export default function ClientProfile() {
                       }}
                     />
                     {tab.display_name}
+                    {renderTabCounter()}
                   </TabsTrigger>
                 );
               };
@@ -1734,6 +1878,31 @@ export default function ClientProfile() {
                       onCheckedChange={(v) => updateDisplaySetting('showManageBtn', v)}
                     />
                   </div>
+                  <Separator className="my-2" />
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium">מועד התחלה למונה</span>
+                    <Input
+                      type="date"
+                      value={manualTabStartDate}
+                      onChange={(e) => setManualTabStartDate(e.target.value)}
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" className="h-8" onClick={saveManualTabStartDate}>
+                        שמור
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8"
+                        onClick={() => setManualTabStartDate("")}
+                      >
+                        נקה
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      אם לא מוגדר ידנית: נלקח תאריך חתימה אחרון של חוזה; אם חסר, מתאריך פתיחת תיק הלקוח.
+                    </p>
+                  </div>
                 </div>
               </div>
             </PopoverContent>
@@ -1809,6 +1978,22 @@ export default function ClientProfile() {
                           <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
                             {project.status}
                           </Badge>
+                          {projectCounterById[project.id] && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] gap-1"
+                              title={
+                                projectCounterById[project.id].source === "signed_contract"
+                                  ? "ימים מחתימת חוזה אחרון בפרויקט"
+                                  : projectCounterById[project.id].source === "project_start"
+                                    ? "ימים ממועד תחילת הפרויקט"
+                                    : "ימים ממועד פתיחת תיק הלקוח"
+                              }
+                            >
+                              <Hash className="h-3 w-3" />
+                              {projectCounterById[project.id].days}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     ))}
