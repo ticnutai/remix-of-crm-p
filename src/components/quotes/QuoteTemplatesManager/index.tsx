@@ -848,7 +848,38 @@ export function QuoteTemplatesManager() {
             return (
               <div
                 key={folder.id}
-                className="border rounded-lg overflow-hidden bg-card"
+                className={`border rounded-lg overflow-hidden bg-card transition-all ${
+                  dragOverFolderId === folder.id
+                    ? "ring-2 ring-offset-2 scale-[1.01]"
+                    : ""
+                }`}
+                style={
+                  dragOverFolderId === folder.id
+                    ? { boxShadow: `0 0 0 2px ${folder.color}` }
+                    : undefined
+                }
+                onDragOver={(e) => {
+                  if (!draggedTemplateId) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setDragOverFolderId(folder.id);
+                }}
+                onDragLeave={(e) => {
+                  if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                  setDragOverFolderId(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const id = draggedTemplateId || e.dataTransfer.getData("text/plain");
+                  if (id) {
+                    const t = templates.find((x) => x.id === id);
+                    if (t && t.folder_id !== folder.id) {
+                      moveToFolderMutation.mutate({ templateId: id, folderId: folder.id });
+                    }
+                  }
+                  setDragOverFolderId(null);
+                  setDraggedTemplateId(null);
+                }}
               >
                 {/* Folder header */}
                 <div
