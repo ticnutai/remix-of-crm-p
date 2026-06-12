@@ -49,6 +49,8 @@ export interface ClientFilterState {
   categories: string[];
   tags: string[];
   hiddenClassifications: string[]; // classifications to HIDE from list (empty = show all)
+  monthAgeRanges: Array<"m4_plus" | "m6_plus" | "m8_plus">;
+  exactMonth: number | null;
   sortBy:
     | "name_asc"
     | "name_desc"
@@ -79,6 +81,10 @@ interface ClientsFilterStripProps {
   categories?: ClientCategory[];
   categoryCounts?: Record<string, number>;
   stageCounts?: Record<string, number>;
+  monthAgeCounts?: {
+    ranges: Record<"m4_plus" | "m6_plus" | "m8_plus", number>;
+    byExact: Record<number, number>;
+  };
   allTags?: string[];
   visibleClientsCount?: number;
   onOpenCategoryManager?: () => void;
@@ -102,6 +108,10 @@ export function ClientsFilterStrip({
   categories = [],
   categoryCounts = {},
   stageCounts = {},
+  monthAgeCounts = {
+    ranges: { m4_plus: 0, m6_plus: 0, m8_plus: 0 },
+    byExact: {},
+  },
   allTags = [],
   visibleClientsCount,
   onOpenCategoryManager,
@@ -237,6 +247,39 @@ export function ClientsFilterStrip({
     });
   };
 
+  const MONTH_RANGE_OPTIONS: Array<{
+    key: "m4_plus" | "m6_plus" | "m8_plus";
+    label: string;
+    hint: string;
+  }> = [
+    { key: "m4_plus", label: "4+ חודשים", hint: "לקוחות בני 4 חודשים ומעלה" },
+    { key: "m6_plus", label: "6+ חודשים", hint: "לקוחות בני 6 חודשים ומעלה" },
+    { key: "m8_plus", label: "8+ חודשים", hint: "לקוחות בני 8 חודשים ומעלה" },
+  ];
+
+  const toggleMonthRange = (range: "m4_plus" | "m6_plus" | "m8_plus") => {
+    const current = filters.monthAgeRanges || [];
+    const next = current.includes(range)
+      ? current.filter((r) => r !== range)
+      : [...current, range];
+    onFiltersChange({ ...filters, monthAgeRanges: next });
+  };
+
+  const setExactMonth = (value: string) => {
+    if (!value.trim()) {
+      onFiltersChange({ ...filters, exactMonth: null });
+      return;
+    }
+
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) return;
+    onFiltersChange({ ...filters, exactMonth: Math.floor(parsed) });
+  };
+
+  const clearMonthsFilter = () => {
+    onFiltersChange({ ...filters, monthAgeRanges: [], exactMonth: null });
+  };
+
   const hasActiveFilters =
     filters.stages.length > 0 ||
     filters.dateFilter !== "all" ||
@@ -245,6 +288,8 @@ export function ClientsFilterStrip({
     filters.hasMeetings !== null ||
     filters.categories.length > 0 ||
     filters.tags.length > 0 ||
+    (filters.monthAgeRanges && filters.monthAgeRanges.length > 0) ||
+    filters.exactMonth !== null ||
     (filters.hiddenClassifications && filters.hiddenClassifications.length > 0);
 
   const clearAllFilters = () => {
@@ -257,6 +302,8 @@ export function ClientsFilterStrip({
       categories: [],
       tags: [],
       hiddenClassifications: [],
+      monthAgeRanges: [],
+      exactMonth: null,
       sortBy: filters.sortBy, // Keep sort order when clearing
     });
   };
@@ -547,6 +594,18 @@ export function ClientsFilterStrip({
                   <EyeOff className="h-3 w-3 ml-1" />
                   הסתר הכל
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearMonthsFilter}
+                  disabled={
+                    (filters.monthAgeRanges?.length || 0) === 0 &&
+                    filters.exactMonth === null
+                  }
+                >
+                  <X className="h-3 w-3 ml-1" />
+                  נקה חודשים
+                </Button>
               </div>
             </div>
             <div className="p-4 space-y-2">
@@ -596,6 +655,55 @@ export function ClientsFilterStrip({
                   </div>
                 );
               })}
+
+              <div className="border-t pt-3 mt-3">
+                <div className="text-xs font-semibold text-muted-foreground mb-2">
+                  סיווג לפי חודשי ותק
+                </div>
+
+                <div className="space-y-2">
+                  {MONTH_RANGE_OPTIONS.map((opt) => {
+                    const checked = (filters.monthAgeRanges || []).includes(opt.key);
+                    return (
+                      <div
+                        key={opt.key}
+                        className={cn(
+                          "flex items-center justify-between gap-2 rounded-lg border p-2 cursor-pointer",
+                          checked ? "bg-primary/10 border-primary" : "bg-muted/30 border-border",
+                        )}
+                        onClick={() => toggleMonthRange(opt.key)}
+                        title={opt.hint}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Checkbox checked={checked} />
+                          <span className="text-sm font-medium">{opt.label}</span>
+                        </div>
+                        <Badge variant="secondary">{monthAgeCounts.ranges[opt.key] || 0}</Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-3 space-y-1">
+                  <Label className="text-xs text-muted-foreground">חודש מדויק</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={filters.exactMonth ?? ""}
+                      onChange={(e) => setExactMonth(e.target.value)}
+                      placeholder="לדוגמה: 4"
+                      className="h-8"
+                    />
+                    <Badge variant="outline" className="h-8">
+                      {filters.exactMonth === null
+                        ? "0"
+                        : monthAgeCounts.byExact[filters.exactMonth] || 0}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
             </div>
           </PopoverContent>
         </Popover>

@@ -167,6 +167,24 @@ export default function Clients() {
     [normalizeSearchText],
   );
 
+  const getElapsedMonths = useCallback((fromDate: string | null | undefined) => {
+    if (!fromDate) return 0;
+
+    const start = new Date(fromDate);
+    if (Number.isNaN(start.getTime())) return 0;
+
+    const now = new Date();
+    let months =
+      (now.getFullYear() - start.getFullYear()) * 12 +
+      (now.getMonth() - start.getMonth());
+
+    if (now.getDate() < start.getDate()) {
+      months -= 1;
+    }
+
+    return Math.max(0, months);
+  }, []);
+
   const navigate = useNavigate();
   const { isLoading: authLoading, isAdmin, isManager } = useAuth();
 
@@ -217,6 +235,8 @@ export default function Clients() {
     categories?: string[];
     tags?: string[];
     hiddenClassifications?: string[];
+    monthAgeRanges?: Array<"m4_plus" | "m6_plus" | "m8_plus">;
+    exactMonth?: number | null;
     sortBy?: string;
     showStagesView?: boolean;
     showStatisticsView?: boolean;
@@ -303,6 +323,11 @@ export default function Clients() {
       tags: savedFullFilters.tags ?? prev.tags,
       hiddenClassifications:
         savedFullFilters.hiddenClassifications ?? prev.hiddenClassifications,
+      monthAgeRanges: savedFullFilters.monthAgeRanges ?? prev.monthAgeRanges,
+      exactMonth:
+        savedFullFilters.exactMonth === undefined
+          ? prev.exactMonth
+          : savedFullFilters.exactMonth,
       sortBy: (savedFullFilters.sortBy as any) ?? prev.sortBy,
     }));
     if (savedFullFilters.showStagesView != null) {
@@ -445,6 +470,8 @@ export default function Clients() {
     categories: [],
     tags: [],
     hiddenClassifications: [],
+    monthAgeRanges: [],
+    exactMonth: null,
     sortBy: "date_desc",
   });
 
@@ -461,6 +488,8 @@ export default function Clients() {
   );
   const [categories, setCategories] = useState<ClientCategory[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
+  const [latestContractSignedByClient, setLatestContractSignedByClient] =
+    useState<Record<string, string>>({});
 
   // Quick Classification dialogs
   const [isBulkClassifyOpen, setIsBulkClassifyOpen] = useState(false);
@@ -568,6 +597,40 @@ export default function Clients() {
       });
     }
 
+    // Month-age filter (OR between selected ranges and exact month)
+    if ((filters.monthAgeRanges?.length || 0) > 0 || filters.exactMonth !== null) {
+      result = result.filter((client) => {
+        const anchorDate = latestContractSignedByClient[client.id] || client.created_at;
+        const start = new Date(anchorDate);
+        if (Number.isNaN(start.getTime())) return false;
+
+        const now = new Date();
+        let months =
+          (now.getFullYear() - start.getFullYear()) * 12 +
+          (now.getMonth() - start.getMonth());
+        if (now.getDate() < start.getDate()) months -= 1;
+        months = Math.max(0, months);
+
+        const ranges = filters.monthAgeRanges || [];
+        const rangeMatch = ranges.some((range) => {
+          if (range === "m4_plus") return months >= 4;
+          if (range === "m6_plus") return months >= 6;
+          if (range === "m8_plus") return months >= 8;
+          return false;
+        });
+
+        const exactMatch =
+          filters.exactMonth !== null ? months === filters.exactMonth : false;
+
+        if (ranges.length > 0 && filters.exactMonth !== null) {
+          return rangeMatch || exactMatch;
+        }
+        if (ranges.length > 0) return rangeMatch;
+        if (filters.exactMonth !== null) return exactMatch;
+        return true;
+      });
+    }
+
     // Apply sorting
     result.sort((a, b) => {
       switch (filters.sortBy) {
@@ -608,6 +671,7 @@ export default function Clients() {
     clientsWithReminders,
     clientsWithTasks,
     clientsWithMeetings,
+    latestContractSignedByClient,
   ]);
 
   const scrollToClientCard = useCallback((clientId: string) => {
@@ -720,6 +784,37 @@ export default function Clients() {
 
     return counts;
   }, [clientStages]);
+
+  const monthAgeCounts = useMemo(() => {
+    const counts = {
+      ranges: { m4_plus: 0, m6_plus: 0, m8_plus: 0 } as Record<
+        "m4_plus" | "m6_plus" | "m8_plus",
+        number
+      >,
+      byExact: {} as Record<number, number>,
+    };
+
+    clients.forEach((client) => {
+      const anchorDate = latestContractSignedByClient[client.id] || client.created_at;
+      const start = new Date(anchorDate);
+      if (Number.isNaN(start.getTime())) return;
+
+      const now = new Date();
+      let months =
+        (now.getFullYear() - start.getFullYear()) * 12 +
+        (now.getMonth() - start.getMonth());
+      if (now.getDate() < start.getDate()) months -= 1;
+      months = Math.max(0, months);
+
+      if (months >= 4) counts.ranges.m4_plus += 1;
+      if (months >= 6) counts.ranges.m6_plus += 1;
+      if (months >= 8) counts.ranges.m8_plus += 1;
+
+      counts.byExact[months] = (counts.byExact[months] || 0) + 1;
+    });
+
+    return counts;
+  }, [clients, latestContractSignedByClient]);
 
   // Data fetching effect moved below function declarations
 
@@ -888,7 +983,7 @@ export default function Clients() {
   const fetchFilterData = useCallback(async () => {
     try {
       // Fetch all filter data in parallel
-      const [stagesRes, remindersRes, tasksRes, meetingsRes] =
+      const [stagesRes, remindersRes, tasksRes, meetingsRes, contractsRes] =
         await Promise.all([
           supabase
             .from("client_stages")
@@ -908,7 +1003,24 @@ export default function Clients() {
             .select("client_id")
             .not("client_id", "is", null)
             .gte("start_time", new Date().toISOString()),
+          supabase
+            .from("contracts")
+            .select("client_id, signed_date")
+            .not("client_id", "is", null)
+            .not("signed_date", "is", null),
         ]);
+
+      const latestSignedMap: Record<string, string> = {};
+      (contractsRes.data || []).forEach((contract: any) => {
+        const clientId = contract?.client_id;
+        const signedDate = contract?.signed_date;
+        if (!clientId || !signedDate) return;
+
+        const existing = latestSignedMap[clientId];
+        if (!existing || new Date(signedDate).getTime() > new Date(existing).getTime()) {
+          latestSignedMap[clientId] = signedDate;
+        }
+      });
 
       // Batch all state updates
       React.startTransition(() => {
@@ -926,6 +1038,7 @@ export default function Clients() {
             meetingsRes.data?.map((m) => m.client_id).filter(Boolean) || [],
           ),
         );
+        setLatestContractSignedByClient(latestSignedMap);
       });
     } catch (error) {
       console.error("Error fetching filter data:", error);
@@ -1421,6 +1534,104 @@ export default function Clients() {
     const category = client.category_id
       ? categories.find((c) => c.id === client.category_id)
       : null;
+    const signedContractDate = latestContractSignedByClient[client.id] || null;
+    const monthsAnchorDate = signedContractDate || client.created_at;
+    const monthsSinceStart = getElapsedMonths(monthsAnchorDate);
+    const monthsSourceLabel = signedContractDate
+      ? "מחתימה אחרונה של חוזה"
+      : "ממועד פתיחת תיק הלקוח";
+
+    const getMonthsPalette = (months: number) => {
+      if (months >= 8) {
+        return {
+          icon: "#dc2626",
+          border: "rgba(220, 38, 38, 0.45)",
+          background: "rgba(220, 38, 38, 0.10)",
+        };
+      }
+
+      if (months >= 7) {
+        return {
+          icon: "#16a34a",
+          border: "rgba(22, 163, 74, 0.45)",
+          background: "rgba(22, 163, 74, 0.10)",
+        };
+      }
+
+      if (months >= 6) {
+        return {
+          icon: "#2563eb",
+          border: "rgba(37, 99, 235, 0.45)",
+          background: "rgba(37, 99, 235, 0.10)",
+        };
+      }
+
+      if (months >= 4) {
+        return {
+          icon: "#db2777",
+          border: "rgba(219, 39, 119, 0.45)",
+          background: "rgba(219, 39, 119, 0.10)",
+        };
+      }
+
+      return {
+        icon: "#1e3a5f",
+        border: "rgba(30, 58, 95, 0.25)",
+        background: "rgba(30, 58, 95, 0.10)",
+      };
+    };
+
+    const monthsPalette = getMonthsPalette(monthsSinceStart);
+
+    const renderMonthsIndicator = (
+      variant: "compact" | "regular" = "regular",
+    ) => {
+      const isCompact = variant === "compact";
+
+      return (
+        <span
+          title={`${monthsSinceStart} חודשים ${monthsSourceLabel}`}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            fontSize: isCompact ? "11px" : "12px",
+            fontWeight: 700,
+            color: "#1e3a5f",
+            backgroundColor: "rgba(30, 58, 95, 0.10)",
+            border: "1px solid rgba(30,58,95,0.25)",
+            borderRadius: "999px",
+            padding: isCompact ? "1px 8px" : "2px 9px",
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+          }}
+        >
+          {monthsSinceStart} ח׳
+        </span>
+      );
+    };
+
+    const renderMonthsStatusIcon = () => (
+      <div
+        title={`${monthsSinceStart} חודשים ${monthsSourceLabel}`}
+        style={{
+          position: "absolute",
+          left: "10px",
+          bottom: showActions ? "42px" : "10px",
+          width: "24px",
+          height: "24px",
+          borderRadius: "50%",
+          backgroundColor: monthsPalette.icon,
+          border: `1px solid ${monthsPalette.border}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: `0 0 10px ${monthsPalette.border}`,
+          zIndex: 11,
+        }}
+      >
+        <Clock style={{ width: "12px", height: "12px", color: "#ffffff" }} />
+      </div>
+    );
     const [showActions, setShowActions] = useState(false);
     const hoverTimerRef = React.useRef<NodeJS.Timeout | null>(null);
     const isHighlighted = highlightedClientId === client.id;
@@ -1670,11 +1881,25 @@ export default function Clients() {
             }}
           >
             <span
-              style={{ fontSize: "28px", fontWeight: "700", color: "#d4a843" }}
+              style={{
+                borderRadius: "999px",
+                border: "1.5px solid #d4a843",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "13px",
+                fontWeight: "700",
+                color: "#d4a843",
+                backgroundColor: "rgba(212,168,67,0.08)",
+                padding: "1px 5px",
+                lineHeight: 1,
+              }}
             >
-              {client.name.charAt(0)}
+              {monthsSinceStart}
             </span>
           </div>
+
+          {renderMonthsStatusIcon()}
 
           {/* Name */}
           <h3
@@ -1692,11 +1917,14 @@ export default function Clients() {
               WebkitBoxOrient: "vertical",
             }}
           >
-            <ClientNameWithCategory
-              clientName={client.name}
-              categoryId={client.category_id}
-              categories={categories}
-            />
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+              <ClientNameWithCategory
+                clientName={client.name}
+                categoryId={client.category_id}
+                categories={categories}
+              />
+              {renderMonthsIndicator("compact")}
+            </span>
           </h3>
 
           {/* Phone */}
@@ -1826,15 +2054,25 @@ export default function Clients() {
             >
               <span
                 style={{
-                  fontSize: "28px",
+                  borderRadius: "999px",
+                  border: "1.5px solid #d4a843",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "13px",
                   fontWeight: "700",
                   color: "#d4a843",
+                  backgroundColor: "rgba(212,168,67,0.08)",
+                  padding: "1px 5px",
+                  lineHeight: 1,
                 }}
               >
-                {client.name.charAt(0)}
+                {monthsSinceStart}
               </span>
             </div>
           </div>
+
+          {renderMonthsStatusIcon()}
 
           {/* Right content */}
           <div
@@ -1876,11 +2114,14 @@ export default function Clients() {
                 marginBottom: "8px",
               }}
             >
-              <ClientNameWithCategory
-                clientName={client.name}
-                categoryId={client.category_id}
-                categories={categories}
-              />
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                <ClientNameWithCategory
+                  clientName={client.name}
+                  categoryId={client.category_id}
+                  categories={categories}
+                />
+                {renderMonthsIndicator()}
+              </span>
             </h3>
 
             <div
@@ -2091,15 +2332,24 @@ export default function Clients() {
           >
             <span
               style={{
-                fontSize: "32px",
+                borderRadius: "999px",
+                border: "1.5px solid #d4a843",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "14px",
                 fontWeight: "700",
                 color: "#c9a227",
-                textShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                backgroundColor: "rgba(212,168,67,0.08)",
+                padding: "1px 6px",
+                lineHeight: 1,
               }}
             >
-              {client.name.charAt(0)}
+              {monthsSinceStart}
             </span>
           </div>
+
+          {renderMonthsStatusIcon()}
 
           {/* Name - Navy Blue */}
           <h3
@@ -2115,11 +2365,14 @@ export default function Clients() {
               letterSpacing: "0.3px",
             }}
           >
-            <ClientNameWithCategory
-              clientName={client.name}
-              categoryId={client.category_id}
-              categories={categories}
-            />
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+              <ClientNameWithCategory
+                clientName={client.name}
+                categoryId={client.category_id}
+                categories={categories}
+              />
+              {renderMonthsIndicator("compact")}
+            </span>
           </h3>
 
           {/* Decorative line */}
@@ -2315,11 +2568,25 @@ export default function Clients() {
             }}
           >
             <span
-              style={{ fontSize: "14px", fontWeight: "700", color: "#d4a843" }}
+              style={{
+                borderRadius: "999px",
+                border: "1.5px solid #d4a843",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "11px",
+                fontWeight: "700",
+                color: "#d4a843",
+                backgroundColor: "rgba(212,168,67,0.08)",
+                padding: "1px 4px",
+                lineHeight: 1,
+              }}
             >
-              {client.name.charAt(0)}
+              {monthsSinceStart}
             </span>
           </div>
+
+          {renderMonthsStatusIcon()}
 
           {renderCategoryIndicator(16, 9)}
 
@@ -2329,17 +2596,24 @@ export default function Clients() {
               fontSize: "14px",
               fontWeight: "600",
               color: "#1e3a5f",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "8px",
               flex: 1,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
             }}
           >
-            <ClientNameWithCategory
-              clientName={client.name}
-              categoryId={client.category_id}
-              categories={categories}
-            />
+            <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+              <ClientNameWithCategory
+                clientName={client.name}
+                categoryId={client.category_id}
+                categories={categories}
+              />
+            </span>
+            {renderMonthsIndicator("compact")}
           </h3>
 
           {/* Hover Actions */}
@@ -2478,6 +2752,8 @@ export default function Clients() {
         )}
 
         {/* Hover Action Buttons */}
+        {renderMonthsStatusIcon()}
+
         {showActions && (
           <div
             className="absolute top-2 left-2 transition-opacity duration-200"
@@ -2558,11 +2834,14 @@ export default function Clients() {
                 lineHeight: "1.3",
               }}
             >
-              <ClientNameWithCategory
-                clientName={client.name}
-                categoryId={client.category_id}
-                categories={categories}
-              />
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                <ClientNameWithCategory
+                  clientName={client.name}
+                  categoryId={client.category_id}
+                  categories={categories}
+                />
+                {renderMonthsIndicator()}
+              </span>
             </h3>
           </div>
 
@@ -3311,6 +3590,8 @@ export default function Clients() {
               categories: newFilters.categories,
               tags: newFilters.tags,
               hiddenClassifications: newFilters.hiddenClassifications,
+              monthAgeRanges: newFilters.monthAgeRanges,
+              exactMonth: newFilters.exactMonth,
               sortBy: newFilters.sortBy,
             }));
           }}
@@ -3320,6 +3601,7 @@ export default function Clients() {
           categories={categories}
           categoryCounts={categoryCounts}
           stageCounts={stageCounts}
+          monthAgeCounts={monthAgeCounts}
           allTags={allTags}
           visibleClientsCount={filteredClients.length}
           onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}

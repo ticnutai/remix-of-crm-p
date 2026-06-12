@@ -544,6 +544,8 @@ export default function ClientProfile() {
     [sortedReminders, reminderSortPref.groupBy, resolveUser],
   );
 
+  const MANUAL_CONTRACT_SIGNED_DATE_KEY = "contract_signed_date_manual";
+
   const { data: clientSavedQuotes = [], isLoading: isQuotesWidgetLoading } = useQuery({
     queryKey: ["client-saved-quotes", clientId],
     enabled: !!clientId,
@@ -619,6 +621,72 @@ export default function ClientProfile() {
     converted: "הומר",
     cancelled: "בוטל",
   };
+
+  const { data: clientLegacySignedQuotes = [] } = useQuery({
+    queryKey: ["client-legacy-signed-quotes", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("quotes")
+        .select("id, status, signed_date, created_at, updated_at")
+        .eq("client_id", clientId)
+        .in("status", ["signed", "converted"])
+        .order("updated_at", { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const { data: firstClientFolder = null } = useQuery({
+    queryKey: ["client-first-folder", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_folders")
+        .select("id, created_at")
+        .eq("client_id", clientId)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const autoContractSignedDate = useMemo(() => {
+    const legacyCandidates = (clientLegacySignedQuotes as any[])
+      .map((q) => q?.signed_date || null)
+      .filter(Boolean);
+
+    const savedCandidates = (clientSavedQuotes as any[])
+      .filter((q) => ["signed", "converted"].includes((q.status || "").toLowerCase()))
+      .map((q) => q?.updated_at || q?.created_at || null)
+      .filter(Boolean);
+
+    const allCandidates = [...legacyCandidates, ...savedCandidates].sort(
+      (a, b) => new Date(b).getTime() - new Date(a).getTime(),
+    );
+
+    return allCandidates[0] || null;
+  }, [clientLegacySignedQuotes, clientSavedQuotes]);
+
+  const manualContractSignedDate = useMemo(() => {
+    const customData =
+      (client as any)?.custom_data && typeof (client as any).custom_data === "object"
+        ? ((client as any).custom_data as Record<string, any>)
+        : null;
+    const manualValue = customData?.[MANUAL_CONTRACT_SIGNED_DATE_KEY];
+    return typeof manualValue === "string" && manualValue.trim() ? manualValue : null;
+  }, [client]);
+
+  const contractSignedDateForDisplay =
+    manualContractSignedDate || autoContractSignedDate || null;
+
+  const firstFolderCreatedAtForDisplay =
+    (firstClientFolder as any)?.created_at || client?.created_at || null;
 
   const unsignedSavedQuotes = useMemo(
     () =>
@@ -769,17 +837,7 @@ export default function ClientProfile() {
   }, [client?.created_at, clientContractsWidget, projects]);
 
   const renderTabCounter = () => {
-    if (tabCounterDays === null) return null;
-
-    return (
-      <span
-        className="inline-flex items-center gap-1 rounded-full border border-[hsl(222,47%,25%)]/40 bg-background/80 px-1.5 py-0.5 text-[10px] font-semibold leading-none"
-        title={`${tabCounterDays} ימים ${tabCounterSourceLabel}`}
-      >
-        <Hash className="h-2.5 w-2.5" />
-        {tabCounterDays}
-      </span>
-    );
+    return null;
   };
 
   const tasksGroups = useMemo(
@@ -810,6 +868,7 @@ export default function ClientProfile() {
     helka: "",
     migrash: "",
     taba: "",
+    contract_signed_date_manual: "",
   });
   const [editCustomFieldValues, setEditCustomFieldValues] =
     useState<CustomFieldValues>({});
@@ -870,6 +929,87 @@ export default function ClientProfile() {
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesText, setNotesText] = useState("");
 
+  const normalizeDateInput = useCallback((value?: string | null) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toISOString().slice(0, 10);
+  }, []);
+
+  const formatDisplayDate = useCallback((value?: string | null) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return format(date, "dd/MM/yyyy", { locale: he });
+  }, []);
+
+  const formatDisplayDateTime = useCallback((value?: string | null) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return format(date, "dd/MM/yyyy HH:mm", { locale: he });
+  }, []);
+
+  const { data: contractSignedDateHistory = [] } = useQuery({
+    queryKey: ["client-contract-signed-date-history", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("activity_log")
+        .select("id, user_id, details, created_at")
+        .eq("entity_type", "clients")
+        .eq("entity_id", clientId)
+        .eq("action", "contract_signed_date_manual_changed")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const contractHistoryUserIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (contractSignedDateHistory as any[])
+            .map((entry) => entry.user_id)
+            .filter(Boolean),
+        ),
+      ) as string[],
+    [contractSignedDateHistory],
+  );
+
+  const { data: contractHistoryUsers = [] } = useQuery({
+    queryKey: [
+      "client-contract-signed-date-history-users",
+      contractHistoryUserIds.join(","),
+    ],
+    enabled: contractHistoryUserIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", contractHistoryUserIds);
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const contractHistoryUserNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    (contractHistoryUsers as any[]).forEach((profile) => {
+      if (profile?.id) {
+        map[String(profile.id)] = profile.full_name || "משתמש";
+      }
+    });
+    return map;
+  }, [contractHistoryUsers]);
+
+  const latestContractSignedDateHistory =
+    (contractSignedDateHistory as any[])[0] || null;
+
   // Open edit dialog
   const handleEditClick = () => {
     if (client) {
@@ -889,6 +1029,11 @@ export default function ClientProfile() {
         helka: client.helka || "",
         migrash: client.migrash || "",
         taba: client.taba || "",
+        contract_signed_date_manual: normalizeDateInput(
+          ((client as any)?.custom_data as Record<string, any> | undefined)?.[
+            MANUAL_CONTRACT_SIGNED_DATE_KEY
+          ] || null,
+        ),
       });
       // Load custom field values from client's custom_data
       setEditCustomFieldValues(parseCustomData((client as any).custom_data));
@@ -899,14 +1044,65 @@ export default function ClientProfile() {
   // Save client edits
   const handleSaveEdit = async () => {
     const customData = buildCustomData(editCustomFieldValues);
+    const { contract_signed_date_manual, ...clientFormUpdates } = editForm;
+    const previousManualContractSignedDate = normalizeDateInput(
+      ((client as any)?.custom_data as Record<string, any> | undefined)?.[
+        MANUAL_CONTRACT_SIGNED_DATE_KEY
+      ] || null,
+    );
+    const nextManualContractSignedDate = normalizeDateInput(
+      contract_signed_date_manual,
+    );
+    const didManualContractSignedDateChange =
+      previousManualContractSignedDate !== nextManualContractSignedDate;
+
+    const existingCustomData =
+      (client as any)?.custom_data && typeof (client as any).custom_data === "object"
+        ? { ...((client as any).custom_data as Record<string, any>) }
+        : {};
+
+    for (const def of customFieldDefs) {
+      delete existingCustomData[def.field_key];
+    }
+    delete existingCustomData[MANUAL_CONTRACT_SIGNED_DATE_KEY];
+
+    const mergedCustomData: Record<string, any> = {
+      ...existingCustomData,
+      ...customData,
+    };
+
+    if (contract_signed_date_manual) {
+      mergedCustomData[MANUAL_CONTRACT_SIGNED_DATE_KEY] =
+        contract_signed_date_manual;
+    }
+
     const cleanedAdditional = (editForm.additional_phones || [])
       .map((p) => (p || "").trim())
       .filter((p) => p.length > 0);
-    await updateClient({
-      ...editForm,
+    const updated = await updateClient({
+      ...clientFormUpdates,
       additional_phones: cleanedAdditional,
-      ...(Object.keys(customData).length > 0 ? { custom_data: customData } as any : {}),
+      custom_data: mergedCustomData,
     } as any);
+
+    if (updated && didManualContractSignedDateChange && clientId) {
+      await supabase.from("activity_log").insert({
+        user_id: user?.id || null,
+        action: "contract_signed_date_manual_changed",
+        entity_type: "clients",
+        entity_id: clientId,
+        details: {
+          field: MANUAL_CONTRACT_SIGNED_DATE_KEY,
+          old_value: previousManualContractSignedDate || null,
+          new_value: nextManualContractSignedDate || null,
+        },
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["client-contract-signed-date-history", clientId],
+      });
+    }
+
     setIsEditDialogOpen(false);
   };
 
@@ -1452,6 +1648,34 @@ export default function ClientProfile() {
                     <MapPin className="h-4 w-4" />
                   </div>
                 )}
+                {contractSignedDateForDisplay && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <span>
+                      מועד חתימת חוזה: {formatDisplayDate(contractSignedDateForDisplay)}
+                    </span>
+                    <Calendar className="h-4 w-4" />
+                  </div>
+                )}
+                {latestContractSignedDateHistory && (
+                  <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                    <span>
+                      עדכון ידני אחרון: {formatDisplayDateTime((latestContractSignedDateHistory as any).created_at)}
+                      {" · "}
+                      {(latestContractSignedDateHistory as any).user_id
+                        ? contractHistoryUserNameById[String((latestContractSignedDateHistory as any).user_id)] || "משתמש"
+                        : "מערכת"}
+                    </span>
+                    <Clock className="h-3.5 w-3.5" />
+                  </div>
+                )}
+                {firstFolderCreatedAtForDisplay && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <span>
+                      יצירת תיקייה ראשונה: {formatDisplayDate(firstFolderCreatedAtForDisplay)}
+                    </span>
+                    <FolderOpen className="h-4 w-4" />
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -1978,22 +2202,6 @@ export default function ClientProfile() {
                           <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
                             {project.status}
                           </Badge>
-                          {projectCounterById[project.id] && (
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] gap-1"
-                              title={
-                                projectCounterById[project.id].source === "signed_contract"
-                                  ? "ימים מחתימת חוזה אחרון בפרויקט"
-                                  : projectCounterById[project.id].source === "project_start"
-                                    ? "ימים ממועד תחילת הפרויקט"
-                                    : "ימים ממועד פתיחת תיק הלקוח"
-                              }
-                            >
-                              <Hash className="h-3 w-3" />
-                              {projectCounterById[project.id].days}
-                            </Badge>
-                          )}
                         </div>
                       </div>
                     ))}
@@ -3575,6 +3783,86 @@ export default function ClientProfile() {
                   </div>
                 </div>
               )}
+
+              <div className="border-t pt-4 mt-2 space-y-3">
+                <Label className="text-sm font-semibold mb-1 block">
+                  מידע חוזה ומערכת
+                </Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>מתי נחתם חוזה</Label>
+                    <Input
+                      type="date"
+                      value={editForm.contract_signed_date_manual || normalizeDateInput(autoContractSignedDate)}
+                      onChange={(e) =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          contract_signed_date_manual: e.target.value,
+                        }))
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      ערך ידני גובר על אוטומטי. אם אין ערך ידני, נלקח מתאריך חתימה בהצעות מחיר.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>מועד יצירת תיקייה ראשונה</Label>
+                    <Input
+                      type="date"
+                      value={normalizeDateInput(firstFolderCreatedAtForDisplay)}
+                      readOnly
+                      disabled
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      שדה אוטומטי בלבד (כולל fallback לתאריך יצירת לקוח).
+                    </p>
+                  </div>
+                </div>
+                {contractSignedDateHistory.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">
+                      היסטוריית שינויים (ידני)
+                    </Label>
+                    <div className="rounded-md border border-border/60 bg-muted/20 p-2 space-y-1.5 max-h-28 overflow-y-auto">
+                      {(contractSignedDateHistory as any[]).slice(0, 5).map((entry) => {
+                        const details =
+                          entry?.details && typeof entry.details === "object"
+                            ? (entry.details as Record<string, any>)
+                            : {};
+                        const oldValue = normalizeDateInput(
+                          typeof details.old_value === "string"
+                            ? details.old_value
+                            : null,
+                        );
+                        const newValue = normalizeDateInput(
+                          typeof details.new_value === "string"
+                            ? details.new_value
+                            : null,
+                        );
+                        const userName = entry.user_id
+                          ? contractHistoryUserNameById[String(entry.user_id)] || "משתמש"
+                          : "מערכת";
+
+                        return (
+                          <div
+                            key={entry.id}
+                            className="text-xs text-muted-foreground flex items-center justify-between gap-3"
+                          >
+                            <span className="truncate">
+                              {oldValue || "-"} ← {newValue || "-"}
+                              {" · "}
+                              {userName}
+                            </span>
+                            <span className="shrink-0">
+                              {formatDisplayDateTime(entry.created_at)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* שדות מותאמים אישית */}
               <CustomFieldsSection

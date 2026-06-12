@@ -3494,7 +3494,7 @@ export function ClientStagesBoard({
               >
                 {/* Completed indicator */}
                 {isStageCompleted && (
-                  <div className="absolute top-2 right-2">
+                  <div className="absolute top-2 left-2">
                     <CheckCircle2
                       className="h-6 w-6"
                       style={{ color: effectiveProgressColor }}
