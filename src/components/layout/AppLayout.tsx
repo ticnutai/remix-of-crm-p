@@ -177,7 +177,7 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
           return;
         }
 
-        records = (legacyRows || []) as Array<{
+        records = ((legacyRows || []) as unknown) as Array<{
           id: string;
           work_date: string | null;
           clock_in: string;
