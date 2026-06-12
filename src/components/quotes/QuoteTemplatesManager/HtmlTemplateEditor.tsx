@@ -2232,7 +2232,7 @@ function PaymentStepEditor({
       )}
 
       <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
-        <DialogContent className="max-w-3xl" dir="rtl">
+        <DialogContent className="max-w-6xl" dir="rtl">
           <DialogHeader>
             <DialogTitle>שיוך מהיר לשלב תשלום</DialogTitle>
           </DialogHeader>
@@ -2435,135 +2435,164 @@ function PaymentStepEditor({
                   אין מקורות זמינים לחיפוש רוחבי.
                 </div>
               ) : (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="rounded-md border p-2 space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        סינון תבנית שלבי לקוח
+                (() => {
+                  // Build Kanban columns grouped by stage name
+                  type Col = {
+                    name: string;
+                    stageItems: Array<{ stage: any; task: any }>;
+                    quoteItems: Array<{ stage: any; item: any }>;
+                  };
+                  const columns = new Map<string, Col>();
+                  const matchesSearch = (title: string, stageName: string) => {
+                    if (!normalizedAssignmentSearch) return true;
+                    return (
+                      title.toLowerCase().includes(normalizedAssignmentSearch) ||
+                      stageName.toLowerCase().includes(normalizedAssignmentSearch)
+                    );
+                  };
+                  templateStages.forEach((stage: any) => {
+                    const key = (stage.stage_name || "").trim();
+                    if (!key) return;
+                    if (!columns.has(key))
+                      columns.set(key, { name: key, stageItems: [], quoteItems: [] });
+                    (stage.tasks || []).forEach((task: any) => {
+                      if (!matchesSearch(task.title || "", key)) return;
+                      columns.get(key)!.stageItems.push({ stage, task });
+                    });
+                  });
+                  quoteTemplateStageOptions.forEach((stage) => {
+                    const key = (stage.name || "").trim();
+                    if (!key) return;
+                    if (!columns.has(key))
+                      columns.set(key, { name: key, stageItems: [], quoteItems: [] });
+                    (stage.tasks || []).forEach((item: any) => {
+                      if (!matchesSearch(item.title || "", key)) return;
+                      columns.get(key)!.quoteItems.push({ stage, item });
+                    });
+                  });
+                  const visibleColumns = Array.from(columns.values()).filter(
+                    (c) => c.stageItems.length > 0 || c.quoteItems.length > 0,
+                  );
+                  if (visibleColumns.length === 0) {
+                    return (
+                      <p className="text-xs text-muted-foreground px-1 py-6 text-center">
+                        לא נמצאו תוצאות בחיפוש בכל המקורות.
                       </p>
-                      {templateStages.length === 0 ? (
-                        <p className="text-xs text-muted-foreground px-1 py-2">
-                          אין תבנית שלבי לקוח זמינה.
-                        </p>
-                      ) : (
-                        renderStageFilters(
-                          stageTemplateFilterOptions,
-                          activeStageTemplateTab,
-                          setActiveStageTemplateTab,
-                        )
-                      )}
-                    </div>
-                    <div className="rounded-md border p-2 space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        סינון תבנית ההצעה
-                      </p>
-                      {quoteTemplateStageOptions.length === 0 ? (
-                        <p className="text-xs text-muted-foreground px-1 py-2">
-                          אין שלבים זמינים בתבנית ההצעה.
-                        </p>
-                      ) : (
-                        renderStageFilters(
-                          quoteTemplateFilterOptions,
-                          activeQuoteTemplateTab,
-                          setActiveQuoteTemplateTab,
-                        )
-                      )}
-                    </div>
-                  </div>
-
-                  <ScrollArea className="h-64 rounded-md border p-2">
-                    <div className="space-y-4">
-                      {filteredStageTemplateTasks.length > 0 && (
-                        <div className="space-y-2">
-                          <div className="text-xs font-semibold text-amber-700 px-1">
-                            תבנית שלבי לקוח ({filteredStageTemplateTasks.length})
-                          </div>
-                          {filteredStageTemplateTasks.map((task) => {
-                            const stage = templateStages.find(
-                              (stageOption) => stageOption.id === task.stageId,
-                            );
-                            if (!stage) return null;
-                            const Icon = getAssignmentStageIcon(task.stageName);
-                            const isSelected =
-                              step.linkSource === "stage_template" &&
-                              step.templateTaskId === task.id;
-
-                            return (
-                              <button
-                                key={`all-stage-${task.id}`}
-                                type="button"
-                                onClick={() => assignFromStageTemplate(stage, task)}
-                                className={`w-full text-right text-sm rounded border px-3 py-2 transition-colors ${
-                                  isSelected
-                                    ? "border-amber-400 bg-amber-50 text-amber-900"
-                                    : "border-gray-200 hover:bg-gray-50"
-                                }`}
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <Icon className="h-4 w-4 shrink-0" />
-                                    <span className="truncate">{task.title}</span>
-                                  </div>
-                                  <Badge variant="outline" className="text-[10px] h-5">
-                                    {task.stageName}
-                                  </Badge>
+                    );
+                  }
+                  const highlight = (text: string) => {
+                    if (!normalizedAssignmentSearch) return text;
+                    const idx = text.toLowerCase().indexOf(normalizedAssignmentSearch);
+                    if (idx === -1) return text;
+                    return (
+                      <>
+                        {text.slice(0, idx)}
+                        <mark className="bg-[#d8ac27]/30 text-[#162C58] rounded px-0.5">
+                          {text.slice(idx, idx + normalizedAssignmentSearch.length)}
+                        </mark>
+                        {text.slice(idx + normalizedAssignmentSearch.length)}
+                      </>
+                    );
+                  };
+                  return (
+                    <ScrollArea className="h-[480px] rounded-md border bg-muted/10">
+                      <div className="flex gap-3 p-3 min-w-max">
+                        {visibleColumns.map((col) => {
+                          const Icon = getAssignmentStageIcon(col.name);
+                          const totalCount =
+                            col.stageItems.length + col.quoteItems.length;
+                          return (
+                            <div
+                              key={col.name}
+                              className="w-[260px] shrink-0 rounded-lg border bg-background flex flex-col shadow-sm"
+                            >
+                              <div className="sticky top-0 z-10 flex items-center justify-between gap-2 px-3 py-2 border-b bg-[#162C58] text-white rounded-t-lg">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <Icon className="h-4 w-4 shrink-0 text-[#d8ac27]" />
+                                  <span className="truncate text-sm font-semibold">
+                                    {col.name}
+                                  </span>
                                 </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {filteredQuoteTemplateItems.length > 0 && (
-                        <div className="space-y-2">
-                          <div className="text-xs font-semibold text-blue-700 px-1">
-                            תבנית ההצעה ({filteredQuoteTemplateItems.length})
-                          </div>
-                          {filteredQuoteTemplateItems.map((item) => {
-                            const stage = quoteTemplateStageOptions.find(
-                              (stageOption) => stageOption.id === item.stageId,
-                            );
-                            if (!stage) return null;
-                            const Icon = getAssignmentStageIcon(item.stageName);
-                            const isSelected =
-                              step.linkSource === "quote_template" &&
-                              step.quoteTemplateItemId === item.id;
-
-                            return (
-                              <button
-                                key={`all-quote-${item.id}`}
-                                type="button"
-                                onClick={() => assignFromQuoteTemplate(stage, item)}
-                                className={`w-full text-right text-sm rounded border px-3 py-2 transition-colors ${
-                                  isSelected
-                                    ? "border-amber-400 bg-amber-50 text-amber-900"
-                                    : "border-gray-200 hover:bg-gray-50"
-                                }`}
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <Icon className="h-4 w-4 shrink-0" />
-                                    <span className="truncate">{item.title}</span>
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] h-5 border-[#d8ac27] text-[#d8ac27] bg-transparent"
+                                >
+                                  {totalCount}
+                                </Badge>
+                              </div>
+                              <div className="p-2 space-y-3">
+                                {col.stageItems.length > 0 && (
+                                  <div className="space-y-1">
+                                    <div className="text-[10px] uppercase tracking-wide text-amber-700 font-semibold px-1">
+                                      תבנית שלבים ({col.stageItems.length})
+                                    </div>
+                                    {col.stageItems.map(({ stage, task }) => {
+                                      const isSelected =
+                                        step.linkSource === "stage_template" &&
+                                        step.templateTaskId === task.id;
+                                      return (
+                                        <button
+                                          key={`k-stage-${task.id}`}
+                                          type="button"
+                                          onClick={() => {
+                                            assignFromStageTemplate(stage, task);
+                                            setAssignmentDialogOpen(false);
+                                          }}
+                                          className={`w-full text-right text-xs rounded border px-2 py-1.5 transition-colors flex items-start gap-2 ${
+                                            isSelected
+                                              ? "border-amber-400 bg-amber-50 text-amber-900"
+                                              : "border-amber-200/60 bg-amber-50/40 hover:bg-amber-50 hover:border-amber-300"
+                                          }`}
+                                        >
+                                          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                                          <span className="flex-1 leading-snug">
+                                            {highlight(task.title)}
+                                          </span>
+                                        </button>
+                                      );
+                                    })}
                                   </div>
-                                  <Badge variant="outline" className="text-[10px] h-5">
-                                    {item.stageName}
-                                  </Badge>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {filteredStageTemplateTasks.length === 0 &&
-                        filteredQuoteTemplateItems.length === 0 && (
-                          <p className="text-xs text-muted-foreground px-1 py-2">
-                            לא נמצאו תוצאות בחיפוש בכל המקורות.
-                          </p>
-                        )}
-                    </div>
-                  </ScrollArea>
-                </>
+                                )}
+                                {col.quoteItems.length > 0 && (
+                                  <div className="space-y-1">
+                                    <div className="text-[10px] uppercase tracking-wide text-blue-700 font-semibold px-1">
+                                      תבנית ההצעה ({col.quoteItems.length})
+                                    </div>
+                                    {col.quoteItems.map(({ stage, item }) => {
+                                      const isSelected =
+                                        step.linkSource === "quote_template" &&
+                                        step.quoteTemplateItemId === item.id;
+                                      return (
+                                        <button
+                                          key={`k-quote-${item.id}`}
+                                          type="button"
+                                          onClick={() => {
+                                            assignFromQuoteTemplate(stage, item);
+                                            setAssignmentDialogOpen(false);
+                                          }}
+                                          className={`w-full text-right text-xs rounded border px-2 py-1.5 transition-colors flex items-start gap-2 ${
+                                            isSelected
+                                              ? "border-amber-400 bg-amber-50 text-amber-900"
+                                              : "border-blue-200/60 bg-blue-50/40 hover:bg-blue-50 hover:border-blue-300"
+                                          }`}
+                                        >
+                                          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0" />
+                                          <span className="flex-1 leading-snug">
+                                            {highlight(item.title)}
+                                          </span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </ScrollArea>
+                  );
+                })()
               )}
             </TabsContent>
           </Tabs>
