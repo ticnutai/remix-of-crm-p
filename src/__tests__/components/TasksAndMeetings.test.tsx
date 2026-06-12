@@ -27,6 +27,34 @@ vi.mock("@/hooks/useAuth", () => ({
   }),
 }));
 
+vi.mock("@/hooks/usePermissions", () => ({
+  usePermissions: () => ({ isAdmin: true }),
+}));
+
+vi.mock("@/components/shared/UserFilterMenu", () => ({
+  UserFilterMenu: () => <div data-testid="user-filter-menu" />,
+  useUserFilter: () => ({
+    matches: () => true,
+    selectedUserIds: [],
+    setSelectedUserIds: vi.fn(),
+    clearSelectedUsers: vi.fn(),
+  }),
+}));
+
+vi.mock("@/components/tasks-meetings/EventPreviewDialog", () => ({
+  EventPreviewDialog: () => null,
+}));
+
+vi.mock("@/hooks/useReminders", () => ({
+  useReminders: () => ({
+    reminders: [],
+    loading: false,
+    deleteReminder: vi.fn(),
+    dismissReminder: vi.fn(),
+    fetchReminders: vi.fn(),
+  }),
+}));
+
 const mockCreateTask = vi.fn();
 const mockUpdateTask = vi.fn();
 const mockDeleteTask = vi.fn();
@@ -221,7 +249,10 @@ vi.mock("@/components/layout/sidebar-tasks/QuickAddMeeting", () => ({
   },
 }));
 
-vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
+vi.mock("@/hooks/use-toast", () => ({
+  toast: vi.fn(),
+  useToast: () => ({ toast: vi.fn() }),
+}));
 vi.mock("@/hooks/useTheme", () => ({
   useTheme: () => ({
     theme: "light",

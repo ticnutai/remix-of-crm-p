@@ -212,7 +212,10 @@ vi.mock("@/components/ui/info-tooltip-button", () => ({
   ),
 }));
 
-vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
+vi.mock("@/hooks/use-toast", () => ({
+  toast: vi.fn(),
+  useToast: () => ({ toast: vi.fn() }),
+}));
 vi.mock("@/components/DataTable", () => ({ DataTable: () => <div>DT</div> }));
 
 vi.mock("@/components/ui/tooltip", () => ({
