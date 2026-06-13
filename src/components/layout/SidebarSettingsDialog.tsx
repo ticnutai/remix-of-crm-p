@@ -121,6 +121,8 @@ export interface CustomSidebarTheme {
   id: string;
   name: string;
   theme: SidebarTheme;
+  scope?: 'private' | 'shared';
+  createdBy?: string | null;
 }
 
 const CUSTOM_SIDEBAR_THEMES_KEY = 'sidebar-custom-themes';
@@ -193,10 +195,14 @@ export function SidebarSettingsDialog({
 }: SidebarSettingsDialogProps) {
   const [localTheme, setLocalTheme] = useState<SidebarTheme>({ ...defaultTheme, ...theme });
   const [customThemes, setCustomThemes] = useState<CustomSidebarTheme[]>([]);
+  const [sharedThemes, setSharedThemes] = useState<CustomSidebarTheme[]>([]);
   const [newThemeName, setNewThemeName] = useState('');
+  const [saveThemeScope, setSaveThemeScope] = useState<'private' | 'shared'>('private');
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [editingThemeId, setEditingThemeId] = useState<string | null>(null);
   const [editingThemeName, setEditingThemeName] = useState('');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const persistCustomThemes = async (themes: CustomSidebarTheme[]) => {
     saveCustomSidebarThemes(themes);
@@ -227,6 +233,97 @@ export function SidebarSettingsDialog({
     }
   };
 
+  const loadSharedThemes = async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('shared_sidebar_themes')
+        .select('id, name, theme_json, created_by, updated_at')
+        .order('updated_at', { ascending: false });
+
+      if (error) return;
+
+      const normalized: CustomSidebarTheme[] = (data || [])
+        .filter((row: any) => row?.id && row?.theme_json)
+        .map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          theme: { ...defaultTheme, ...(row.theme_json as SidebarTheme) },
+          scope: 'shared' as const,
+          createdBy: row.created_by || null,
+        }));
+
+      setSharedThemes(normalized);
+    } catch {
+      // Shared themes table may not exist yet in some environments.
+    }
+  };
+
+  const createSharedTheme = async (name: string, theme: SidebarTheme) => {
+    const { data, error } = await (supabase as any)
+      .from('shared_sidebar_themes')
+      .insert({
+        name,
+        theme_json: theme,
+      })
+      .select('id, name, theme_json, created_by')
+      .single();
+
+    if (error) throw error;
+
+    if (data) {
+      setSharedThemes((prev) => [
+        {
+          id: data.id,
+          name: data.name,
+          theme: { ...defaultTheme, ...(data.theme_json as SidebarTheme) },
+          scope: 'shared',
+          createdBy: data.created_by || null,
+        },
+        ...prev.filter((t) => t.id !== data.id),
+      ]);
+    }
+  };
+
+  const updateSharedTheme = async (id: string, name: string, theme: SidebarTheme) => {
+    const { data, error } = await (supabase as any)
+      .from('shared_sidebar_themes')
+      .update({
+        name,
+        theme_json: theme,
+      })
+      .eq('id', id)
+      .select('id, name, theme_json, created_by')
+      .single();
+
+    if (error) throw error;
+
+    if (data) {
+      setSharedThemes((prev) =>
+        prev.map((t) =>
+          t.id === id
+            ? {
+                id: data.id,
+                name: data.name,
+                theme: { ...defaultTheme, ...(data.theme_json as SidebarTheme) },
+                scope: 'shared',
+                createdBy: data.created_by || null,
+              }
+            : t,
+        ),
+      );
+    }
+  };
+
+  const removeSharedTheme = async (id: string) => {
+    const { error } = await (supabase as any)
+      .from('shared_sidebar_themes')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    setSharedThemes((prev) => prev.filter((t) => t.id !== id));
+  };
+
   useEffect(() => {
     setLocalTheme({ ...defaultTheme, ...theme });
   }, [theme]);
@@ -245,6 +342,20 @@ export function SidebarSettingsDialog({
 
         if (!user) return;
 
+        setCurrentUserId(user.id);
+
+        const { data: rolesData } = await (supabase as any)
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id);
+
+        if (isMounted) {
+          const admin = Array.isArray(rolesData)
+            ? rolesData.some((r: any) => r?.role === 'admin')
+            : false;
+          setIsAdmin(admin);
+        }
+
         const { data, error } = await (supabase as any)
           .from('user_settings')
           .select('setting_value')
@@ -260,15 +371,17 @@ export function SidebarSettingsDialog({
           ...localThemes,
         ]);
 
-        if (mergedThemes.length === 0) return;
+        if (mergedThemes.length > 0) {
+          setCustomThemes(mergedThemes);
+          saveCustomSidebarThemes(mergedThemes);
 
-        setCustomThemes(mergedThemes);
-        saveCustomSidebarThemes(mergedThemes);
-
-        // If local had additional themes (e.g., created before cloud sync fix), push merged list to cloud.
-        if (mergedThemes.length !== cloudThemes.length) {
-          await persistCustomThemes(mergedThemes);
+          // If local had additional themes (e.g., created before cloud sync fix), push merged list to cloud.
+          if (mergedThemes.length !== cloudThemes.length) {
+            await persistCustomThemes(mergedThemes);
+          }
         }
+
+        await loadSharedThemes();
       } catch {
         // Fall back to local themes silently.
       }
@@ -301,6 +414,9 @@ export function SidebarSettingsDialog({
     onThemeChange(newTheme);
   };
 
+  const canManageSharedTheme = (theme: CustomSidebarTheme) =>
+    isAdmin || (!!currentUserId && theme.createdBy === currentUserId);
+
   const applyPreset = (preset: typeof colorPresets[0]) => {
     const newTheme = {
       ...localTheme,
@@ -324,17 +440,34 @@ export function SidebarSettingsDialog({
       toast.error('יש להזין שם לערכת הנושא');
       return;
     }
-    const newCustom: CustomSidebarTheme = {
-      id: Date.now().toString(),
-      name: newThemeName.trim(),
-      theme: { ...localTheme },
+
+    const save = async () => {
+      if (saveThemeScope === 'shared') {
+        await createSharedTheme(newThemeName.trim(), { ...localTheme });
+        toast.success('ערכת נושא משותפת נשמרה בהצלחה');
+      } else {
+        const newCustom: CustomSidebarTheme = {
+          id: Date.now().toString(),
+          name: newThemeName.trim(),
+          theme: { ...localTheme },
+          scope: 'private',
+          createdBy: currentUserId,
+        };
+        const updated = [...customThemes, newCustom];
+        setCustomThemes(updated);
+        await persistCustomThemes(updated);
+        toast.success('ערכת נושא אישית נשמרה בהצלחה');
+      }
+
+      setNewThemeName('');
+      setShowSaveForm(false);
+      setSaveThemeScope('private');
     };
-    const updated = [...customThemes, newCustom];
-    setCustomThemes(updated);
-    void persistCustomThemes(updated);
-    setNewThemeName('');
-    setShowSaveForm(false);
-    toast.success('ערכת הנושא נשמרה בהצלחה (מקומי + ענן)');
+
+    void save().catch((error) => {
+      console.error('Failed to save theme:', error);
+      toast.error('לא ניתן לשמור את ערכת הנושא');
+    });
   };
 
   const applyCustomTheme = (custom: CustomSidebarTheme) => {
@@ -352,21 +485,58 @@ export function SidebarSettingsDialog({
       toast.error('יש להזין שם');
       return;
     }
-    const updated = customThemes.map(t =>
-      t.id === id ? { ...t, name: editingThemeName.trim(), theme: { ...localTheme } } : t
-    );
-    setCustomThemes(updated);
-    void persistCustomThemes(updated);
-    setEditingThemeId(null);
-    setEditingThemeName('');
-    toast.success('ערכת הנושא עודכנה');
+
+    const targetShared = sharedThemes.find((t) => t.id === id);
+
+    const save = async () => {
+      if (targetShared) {
+        if (!canManageSharedTheme(targetShared)) {
+          toast.error('אין הרשאה לערוך ערכת נושא משותפת זו');
+          return;
+        }
+        await updateSharedTheme(id, editingThemeName.trim(), { ...localTheme });
+      } else {
+        const updated = customThemes.map((t) =>
+          t.id === id ? { ...t, name: editingThemeName.trim(), theme: { ...localTheme } } : t,
+        );
+        setCustomThemes(updated);
+        await persistCustomThemes(updated);
+      }
+
+      setEditingThemeId(null);
+      setEditingThemeName('');
+      toast.success('ערכת הנושא עודכנה');
+    };
+
+    void save().catch((error) => {
+      console.error('Failed to update theme:', error);
+      toast.error('לא ניתן לעדכן את ערכת הנושא');
+    });
   };
 
   const deleteCustomTheme = (id: string) => {
-    const updated = customThemes.filter(t => t.id !== id);
-    setCustomThemes(updated);
-    void persistCustomThemes(updated);
-    toast.success('ערכת הנושא נמחקה');
+    const targetShared = sharedThemes.find((t) => t.id === id);
+
+    const remove = async () => {
+      if (targetShared) {
+        if (!canManageSharedTheme(targetShared)) {
+          toast.error('אין הרשאה למחוק ערכת נושא משותפת זו');
+          return;
+        }
+        await removeSharedTheme(id);
+      } else {
+        const updated = customThemes.filter((t) => t.id !== id);
+        setCustomThemes(updated);
+        await persistCustomThemes(updated);
+      }
+
+      toast.success('ערכת הנושא נמחקה');
+    };
+
+    void remove().catch((error) => {
+      console.error('Failed to delete theme:', error);
+      toast.error('לא ניתן למחוק את ערכת הנושא');
+    });
   };
 
   return (
@@ -636,21 +806,43 @@ export function SidebarSettingsDialog({
               {/* Save Current as Custom */}
               <div className="mb-4 p-3 border rounded-lg bg-muted/30">
                 {showSaveForm ? (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={newThemeName}
-                      onChange={(e) => setNewThemeName(e.target.value)}
-                      placeholder="שם ערכת הנושא..."
-                      className="flex-1 h-9"
-                      onKeyDown={(e) => e.key === 'Enter' && handleSaveCustomTheme()}
-                    />
-                    <Button size="sm" onClick={handleSaveCustomTheme} className="h-9 gap-1.5">
-                      <Save className="h-3.5 w-3.5" />
-                      שמור
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => { setShowSaveForm(false); setNewThemeName(''); }} className="h-9 w-9 p-0">
-                      <X className="h-4 w-4" />
-                    </Button>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={newThemeName}
+                        onChange={(e) => setNewThemeName(e.target.value)}
+                        placeholder="שם ערכת הנושא..."
+                        className="flex-1 h-9"
+                        onKeyDown={(e) => e.key === 'Enter' && handleSaveCustomTheme()}
+                      />
+                      <Button size="sm" onClick={handleSaveCustomTheme} className="h-9 gap-1.5">
+                        <Save className="h-3.5 w-3.5" />
+                        שמור
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => { setShowSaveForm(false); setNewThemeName(''); setSaveThemeScope('private'); }} className="h-9 w-9 p-0">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={saveThemeScope === 'private' ? 'default' : 'outline'}
+                        className="h-7"
+                        onClick={() => setSaveThemeScope('private')}
+                      >
+                        אישי
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={saveThemeScope === 'shared' ? 'default' : 'outline'}
+                        className="h-7"
+                        onClick={() => setSaveThemeScope('shared')}
+                      >
+                        משותף לכולם
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <Button
@@ -724,6 +916,72 @@ export function SidebarSettingsDialog({
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {sharedThemes.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-sm text-muted-foreground mb-2 font-medium">🌍 ערכות משותפות במערכת</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {sharedThemes.map((custom) => {
+                      const canManageShared = canManageSharedTheme(custom);
+                      return (
+                        <div key={custom.id} className="relative group">
+                          <button
+                            onClick={() => applyCustomTheme(custom)}
+                            className={cn(
+                              "w-full p-3 rounded-lg transition-all hover:scale-105",
+                              "flex flex-col items-center gap-1.5"
+                            )}
+                            style={{
+                              backgroundColor: custom.theme.backgroundColor,
+                              border: `2px solid ${custom.theme.borderColor || custom.theme.activeItemColor}`,
+                            }}
+                          >
+                            <div
+                              className="w-6 h-6 rounded-full"
+                              style={{ backgroundColor: custom.theme.activeItemColor }}
+                            />
+                            {editingThemeId === custom.id ? (
+                              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                <Input
+                                  value={editingThemeName}
+                                  onChange={(e) => setEditingThemeName(e.target.value)}
+                                  className="h-6 text-xs px-1 w-20 bg-background"
+                                  onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') saveEditCustom(custom.id); }}
+                                />
+                                <button onClick={(e) => { e.stopPropagation(); saveEditCustom(custom.id); }} className="p-0.5 rounded hover:bg-white/20">
+                                  <Save className="h-3 w-3" style={{ color: custom.theme.textColor }} />
+                                </button>
+                              </div>
+                            ) : (
+                              <span style={{ color: custom.theme.textColor }} className="text-xs font-medium">
+                                {custom.name}
+                              </span>
+                            )}
+                          </button>
+                          {canManageShared && (
+                            <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); startEditCustom(custom); }}
+                                className="p-1 rounded bg-background/80 hover:bg-background shadow-sm"
+                                title="ערוך שם"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); deleteCustomTheme(custom.id); }}
+                                className="p-1 rounded bg-background/80 hover:bg-destructive/20 hover:text-destructive shadow-sm"
+                                title="מחק"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
