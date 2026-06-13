@@ -170,6 +170,14 @@ export function ClientsFilterStrip({
   const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
   const [sortDialogOpen, setSortDialogOpen] = useState(false);
+  const [sortPopoverSize, setSortPopoverSize] = useSyncedSetting<{
+    width: number;
+    height: number;
+  }>({
+    key: "clients-sort-popover-size",
+    defaultValue: { width: 320, height: 520 },
+    cloud: false,
+  });
   const [classificationDialogOpen, setClassificationDialogOpen] =
     useState(false);
   const [dateTabsManagerOpen, setDateTabsManagerOpen] = useState(false);
@@ -188,6 +196,63 @@ export function ClientsFilterStrip({
     );
   const [addToCategoryId, setAddToCategoryId] = useState<string | null>(null);
   const addToCategory = categories.find((c) => c.id === addToCategoryId);
+
+  type ResizeDirection =
+    | "top"
+    | "right"
+    | "bottom"
+    | "left"
+    | "top-left"
+    | "top-right"
+    | "bottom-left"
+    | "bottom-right";
+
+  const startSortPopoverResize = (
+    direction: ResizeDirection,
+    event: React.MouseEvent,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startWidth = sortPopoverSize?.width ?? 320;
+    const startHeight = sortPopoverSize?.height ?? 520;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const dx = moveEvent.clientX - startX;
+      const dy = moveEvent.clientY - startY;
+
+      let nextWidth = startWidth;
+      let nextHeight = startHeight;
+
+      if (direction.includes("right")) nextWidth = startWidth + dx;
+      if (direction.includes("left")) nextWidth = startWidth - dx;
+      if (direction.includes("bottom")) nextHeight = startHeight + dy;
+      if (direction.includes("top")) nextHeight = startHeight - dy;
+
+      const maxWidth = Math.max(260, Math.floor(window.innerWidth * 0.95));
+      const maxHeight = Math.max(180, Math.floor(window.innerHeight * 0.85));
+
+      const clampedWidth = Math.min(maxWidth, Math.max(260, Math.round(nextWidth)));
+      const clampedHeight = Math.min(maxHeight, Math.max(180, Math.round(nextHeight)));
+
+      setSortPopoverSize({
+        width: clampedWidth,
+        height: clampedHeight,
+      });
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      document.body.style.userSelect = "";
+    };
+
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  };
   // Fetch unique stages from all clients
   useEffect(() => {
     fetchStageDefinitions();
@@ -720,7 +785,16 @@ export function ClientsFilterStrip({
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[260px] p-0" dir="rtl" align="end">
+          <PopoverContent
+            className="relative p-0 overflow-hidden min-w-[260px] min-h-[180px] max-w-[95vw] max-h-[85vh] w-[260px]"
+            dir="rtl"
+            align="end"
+            style={{
+              width: Math.max(260, sortPopoverSize?.width || 320),
+              height: Math.max(180, sortPopoverSize?.height || 520),
+            }}
+          >
+            <div className="h-full overflow-y-auto overflow-x-hidden pr-1">
             <div className="p-3 border-b">
               <div className="flex flex-row-reverse items-center gap-2">
                 <ArrowUpDown className="h-5 w-5 text-primary" />
@@ -924,6 +998,50 @@ export function ClientsFilterStrip({
                   </div>
                 )}
               </div>
+            </div>
+            </div>
+
+            {/* Resize handles: 4 sides + 4 corners */}
+            <div
+              className="absolute top-0 left-2 right-2 h-1.5 cursor-n-resize"
+              onMouseDown={(e) => startSortPopoverResize("top", e)}
+            />
+            <div
+              className="absolute bottom-0 left-2 right-2 h-1.5 cursor-s-resize"
+              onMouseDown={(e) => startSortPopoverResize("bottom", e)}
+            />
+            <div
+              className="absolute top-2 bottom-2 left-0 w-1.5 cursor-w-resize"
+              onMouseDown={(e) => startSortPopoverResize("left", e)}
+            />
+            <div
+              className="absolute top-2 bottom-2 right-0 w-1.5 cursor-e-resize"
+              onMouseDown={(e) => startSortPopoverResize("right", e)}
+            />
+
+            <div
+              className="absolute top-0 left-0 h-3 w-3 cursor-nw-resize"
+              onMouseDown={(e) => startSortPopoverResize("top-left", e)}
+            >
+              <div className="h-full w-full rounded-br bg-primary/20" />
+            </div>
+            <div
+              className="absolute top-0 right-0 h-3 w-3 cursor-ne-resize"
+              onMouseDown={(e) => startSortPopoverResize("top-right", e)}
+            >
+              <div className="h-full w-full rounded-bl bg-primary/20" />
+            </div>
+            <div
+              className="absolute bottom-0 left-0 h-3 w-3 cursor-sw-resize"
+              onMouseDown={(e) => startSortPopoverResize("bottom-left", e)}
+            >
+              <div className="h-full w-full rounded-tr bg-primary/20" />
+            </div>
+            <div
+              className="absolute bottom-0 right-0 h-3 w-3 cursor-se-resize"
+              onMouseDown={(e) => startSortPopoverResize("bottom-right", e)}
+            >
+              <div className="h-full w-full rounded-tl bg-primary/20" />
             </div>
           </PopoverContent>
         </Popover>
