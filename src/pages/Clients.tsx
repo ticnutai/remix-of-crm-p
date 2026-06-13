@@ -3063,50 +3063,15 @@ export default function Clients() {
     return (
       <AppLayout title="לקוחות">
         <div
-          dir="rtl"
           style={{
-            minHeight: "calc(100vh - 120px)",
             display: "flex",
-            flexDirection: "column",
-            gap: "20px",
-            padding: "16px",
-            background:
-              "linear-gradient(180deg, rgba(250,248,245,0.98) 0%, rgba(244,240,233,0.98) 100%)",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "400px",
+            backgroundColor: "#ffffff",
           }}
         >
-          <div
-            style={{
-              height: "78px",
-              borderRadius: "16px",
-              border: "2px solid #d4a843",
-              background: "linear-gradient(180deg, #1e3a5f 0%, #2d5a87 100%)",
-              opacity: 0.92,
-            }}
-          />
-          <div
-            style={{
-              borderRadius: "18px",
-              border: "2px solid #d4a843",
-              backgroundColor: "rgba(255,255,255,0.86)",
-              padding: "20px",
-              display: "grid",
-              gap: "12px",
-            }}
-          >
-            <div style={{ height: "40px", borderRadius: "12px", backgroundColor: "#eef2f7" }} />
-            <div style={{ height: "40px", borderRadius: "12px", backgroundColor: "#eef2f7" }} />
-            <div style={{ height: "40px", borderRadius: "12px", backgroundColor: "#eef2f7" }} />
-            <div
-              style={{
-                color: "#475569",
-                fontSize: "14px",
-                textAlign: "center",
-                paddingTop: "6px",
-              }}
-            >
-              טוען לקוחות...
-            </div>
-          </div>
+          <div style={{ color: "#64748b" }}>טוען...</div>
         </div>
       </AppLayout>
     );
