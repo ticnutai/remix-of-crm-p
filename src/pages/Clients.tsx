@@ -1206,9 +1206,7 @@ export default function Clients() {
   }, []);
 
   const fetchClients = useCallback(async () => {
-    // Only show spinner if we don't already have cached data
-    const hasData = (cachedClientsInit?.length ?? 0) > 0;
-    if (!hasData) setIsLoading(true);
+    setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from("clients")
@@ -1218,21 +1216,13 @@ export default function Clients() {
 
       if (error) throw error;
 
-      const list = (data || []) as Client[];
-      setClients(list);
-      try {
-        localStorage.setItem(CLIENTS_CACHE_KEY, JSON.stringify(list));
-      } catch {
-        /* quota exceeded - ignore */
-      }
+      setClients((data || []) as Client[]);
     } catch (error) {
-      if (!hasData) {
-        toast({
-          title: "שגיאה",
-          description: "לא ניתן לטעון את רשימת הלקוחות",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לטעון את רשימת הלקוחות",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
