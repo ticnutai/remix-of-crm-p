@@ -95,6 +95,10 @@ export function useUserSettings<T>({ key, defaultValue }: UseUserSettingsOptions
     // this result instead of the stale render-time value.
     valueRef.current = newValue;
     setValue(newValue);
+    // Write-through cache so the next page load shows the chosen view instantly.
+    writeLocalCache(key, newValue);
+
+
 
     if (!user?.id) return;
 
