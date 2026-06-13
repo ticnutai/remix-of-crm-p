@@ -59,7 +59,17 @@ interface DynamicStatsWidgetProps {
 
 export function DynamicStatsWidget({ widgetId = 'dynamic-stats' }: DynamicStatsWidgetProps) {
   const { themeConfig, currentTheme } = useDashboardTheme();
-  const [stats, setStats] = useState<DynamicStatConfig[]>([]);
+  const WIDGET_STORAGE_KEY = `dashboard-dynamic-stats-${widgetId}`;
+
+  // Lazy initial state: קוראים מ-localStorage ברנדור הראשון כדי למנוע הבזק של תצוגה ריקה
+  const [stats, setStats] = useState<DynamicStatConfig[]>(() => {
+    try {
+      const saved = localStorage.getItem(WIDGET_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState<string>('');
   const [columnData, setColumnData] = useState<Record<string, Record<string, number>>>({});
@@ -69,23 +79,13 @@ export function DynamicStatsWidget({ widgetId = 'dynamic-stats' }: DynamicStatsW
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
 
-  const WIDGET_STORAGE_KEY = `dashboard-dynamic-stats-${widgetId}`;
-
-  // Load saved stats from localStorage
+  // Write-through: שמירת stats ל-localStorage בכל שינוי
   useEffect(() => {
-    const saved = localStorage.getItem(WIDGET_STORAGE_KEY);
-    if (saved) {
-      try {
-        setStats(JSON.parse(saved));
-      } catch {
-        setStats([]);
-      }
+    try {
+      localStorage.setItem(WIDGET_STORAGE_KEY, JSON.stringify(stats));
+    } catch {
+      /* quota / private mode */
     }
-  }, [WIDGET_STORAGE_KEY]);
-
-  // Save stats to localStorage
-  useEffect(() => {
-    localStorage.setItem(WIDGET_STORAGE_KEY, JSON.stringify(stats));
   }, [stats, WIDGET_STORAGE_KEY]);
 
   // Load custom columns from database
