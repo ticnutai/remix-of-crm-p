@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Target, Plus, Check, Trash2, Edit2, Save, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { lsCacheOptions, lsWrite } from '@/lib/lsQueryCache';
 import { useToast } from '@/hooks/use-toast';
 
 interface WeeklyGoal {
