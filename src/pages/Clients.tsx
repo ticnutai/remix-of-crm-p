@@ -3081,10 +3081,6 @@ export default function Clients() {
 
   // No early-return loading screen — render the page immediately.
   // Data hydrates from localStorage cache, then refreshes in background.
-  // Only true first-time visit (no cache, no clients) will see a minimal inline skeleton elsewhere.
-      </AppLayout>
-    );
-  }
 
   return (
     <AppLayout title="לקוחות">
