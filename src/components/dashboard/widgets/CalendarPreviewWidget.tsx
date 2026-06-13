@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { lsCacheOptions, lsWrite } from '@/lib/lsQueryCache';
 import { Calendar, Clock, MapPin, Users, ExternalLink, Video } from 'lucide-react';
 import { format, isToday, isTomorrow, addDays, startOfDay, endOfDay } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -48,6 +49,7 @@ export function CalendarPreviewWidget() {
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ['upcoming_events'],
+    ...lsCacheOptions<CalendarEvent[]>('upcoming_events'),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('calendar_events')
@@ -68,10 +70,12 @@ export function CalendarPreviewWidget() {
         .limit(10);
       
       if (error) throw error;
-      return (data || []).map((e: any) => ({
+      const mapped = (data || []).map((e: any) => ({
         ...e,
         client: e.clients,
       })) as CalendarEvent[];
+      lsWrite('upcoming_events', mapped);
+      return mapped;
     }
   });
 

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Target, Plus, Check, Trash2, Edit2, Save, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { lsCacheOptions, lsWrite } from '@/lib/lsQueryCache';
 import { useToast } from '@/hooks/use-toast';
 
 interface WeeklyGoal {
@@ -58,6 +59,7 @@ export function WeeklyGoalsWidget() {
 
   const { data: goals = [], isLoading } = useQuery({
     queryKey: ['weekly_goals', weekStart],
+    ...lsCacheOptions<WeeklyGoal[]>('weekly_goals:' + weekStart),
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('weekly_goals')
@@ -66,7 +68,9 @@ export function WeeklyGoalsWidget() {
         .order('created_at', { ascending: true });
       
       if (error) throw error;
-      return data as WeeklyGoal[];
+      const result = data as WeeklyGoal[];
+      lsWrite('weekly_goals:' + weekStart, result);
+      return result;
     }
   });
 

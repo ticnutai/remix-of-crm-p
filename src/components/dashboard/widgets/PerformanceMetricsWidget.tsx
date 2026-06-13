@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { lsCacheOptions, lsWrite, lsRead } from '@/lib/lsQueryCache';
 import {
   TrendingUp,
   Target,
@@ -32,6 +33,7 @@ interface Metric {
 export function PerformanceMetricsWidget() {
   const { data: metrics = [], isLoading } = useQuery({
     queryKey: ['performance_metrics'],
+    ...lsCacheOptions<Metric[]>('performance_metrics'),
     queryFn: async () => {
       const today = new Date();
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -118,7 +120,7 @@ export function PerformanceMetricsWidget() {
         quotes: 10,
       };
 
-      return [
+      const result: Metric[] = [
         {
           id: 'revenue',
           label: 'הכנסות החודש',
@@ -163,7 +165,10 @@ export function PerformanceMetricsWidget() {
           icon: <Target className="h-4 w-4" />,
           color: 'text-orange-500',
         },
-      ] as Metric[];
+      ];
+      // serialize without React icons for LS
+      lsWrite('performance_metrics', result.map(m => ({ ...m, icon: null as any })));
+      return result;
     }
   });
 
@@ -195,7 +200,8 @@ export function PerformanceMetricsWidget() {
     return `${metric.target}${metric.unit}`;
   };
 
-  if (isLoading) {
+  // לא חוסמים על isLoading — אם יש קאש מציגים אותו, ובכל מקרה הכרטיסיות יציגו ערכים מתעדכנים
+  if (isLoading && metrics.length === 0) {
     return (
       <Card>
         <CardContent className="p-4">
