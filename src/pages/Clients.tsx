@@ -3057,11 +3057,38 @@ export default function Clients() {
     );
   };
 
-  // No early-return loading screen — render the page immediately.
-  // Data hydrates from localStorage cache, then refreshes in background.
+  // No blocking spinner — show a thin animated top progress bar while loading.
 
   return (
     <AppLayout title="לקוחות">
+      {/* Top progress bar — runs while fetching */}
+      {(authLoading || isLoading) && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "3px",
+            zIndex: 9999,
+            overflow: "hidden",
+            background: "rgba(22, 44, 88, 0.08)",
+            pointerEvents: "none",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: "40%",
+              background:
+                "linear-gradient(90deg, transparent 0%, #d8ac27 50%, transparent 100%)",
+              animation: "clients-progress-slide 1.1s ease-in-out infinite",
+            }}
+          />
+          <style>{`@keyframes clients-progress-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }`}</style>
+        </div>
+      )}
       {/* Page Layout - Header strip above framed content */}
       <div
         dir="rtl"
