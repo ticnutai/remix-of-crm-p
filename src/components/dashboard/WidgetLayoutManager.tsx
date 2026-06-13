@@ -74,6 +74,30 @@ const STORAGE_KEY = 'widget-layouts-v3';
 const GAP_STORAGE_KEY = 'widget-grid-gap';
 const DASHBOARD_THEME_KEY = 'dashboard-theme';
 
+// Merge a saved layout array with DEFAULT_LAYOUTS so every widget exists.
+const mergeWithDefaults = (saved: WidgetLayout[]): WidgetLayout[] =>
+  DEFAULT_LAYOUTS.map((def) => {
+    const savedLayout = saved.find((p) => p.id === def.id);
+    return savedLayout ? { ...def, ...savedLayout } : def;
+  });
+
+// Read cached layouts from localStorage synchronously (used as initial state to
+// avoid a flash of the default layout before the cloud/localStorage value loads).
+const getInitialLayouts = (): WidgetLayout[] => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return mergeWithDefaults(parsed);
+      }
+    }
+  } catch (e) {
+    console.error('[WidgetLayout] Error reading cached layouts:', e);
+  }
+  return DEFAULT_LAYOUTS;
+};
+
 // Size cycle order
 const SIZE_CYCLE: WidgetSize[] = ['small', 'medium', 'large', 'full'];
 
@@ -153,7 +177,7 @@ const CLOUD_SETTING_KEY = 'dashboard-widget-layouts';
 // Provider Component
 export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [layouts, setLayouts] = useState<WidgetLayout[]>(DEFAULT_LAYOUTS);
+  const [layouts, setLayouts] = useState<WidgetLayout[]>(getInitialLayouts);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);

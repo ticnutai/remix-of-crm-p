@@ -240,6 +240,12 @@ const DEFAULT_CLIENT_DATE_RANGE_TABS: DateRangeTabItem[] = [
   },
 ];
 
+// In-memory cache of the last loaded clients list. Survives SPA navigation
+// (the module stays alive while the app is mounted) so returning to the Clients
+// tab renders the previous list instantly while a fresh fetch refreshes it in
+// the background — no empty-state flash or "old skeleton".
+let clientsCache: Client[] | null = null;
+
 export default function Clients() {
   const normalizeSearchText = useCallback(
     (value: string) => value.toLowerCase().trim().replace(/\s+/g, " "),
@@ -287,8 +293,8 @@ export default function Clients() {
     syncClientsToSheets,
   } = useGoogleSheets();
 
-  const [clients, setClients] = useState<Client[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [clients, setClients] = useState<Client[]>(() => clientsCache ?? []);
+  const [isLoading, setIsLoading] = useState(() => clientsCache === null);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Persistent view settings from cloud
@@ -1206,7 +1212,10 @@ export default function Clients() {
   }, []);
 
   const fetchClients = useCallback(async () => {
-    setIsLoading(true);
+    // Only show the loading bar when we have nothing cached to display yet.
+    if (clientsCache === null) {
+      setIsLoading(true);
+    }
     try {
       const PAGE_SIZE = 200;
 
@@ -1221,6 +1230,7 @@ export default function Clients() {
 
       const initial = (firstPage || []) as Client[];
       setClients(initial);
+      clientsCache = initial;
       setIsLoading(false); // progress bar disappears, page is interactive
 
       // Background: stream the rest in batches without blocking the UI
@@ -1240,6 +1250,7 @@ export default function Clients() {
             const seen = new Set(prev.map((c) => c.id));
             const merged = [...prev];
             for (const c of batch) if (!seen.has(c.id)) merged.push(c);
+            clientsCache = merged;
             return merged;
           });
 
@@ -3918,12 +3929,14 @@ export default function Clients() {
                         fontWeight: "500",
                       }}
                     >
-                      {searchQuery ||
-                      filters.stages.length > 0 ||
-                      filters.dateFilter !== "all" ||
-                      filters.hasReminders ||
-                      filters.hasTasks ||
-                      filters.hasMeetings
+                      {isLoading
+                        ? "טוען לקוחות..."
+                        : searchQuery ||
+                          filters.stages.length > 0 ||
+                          filters.dateFilter !== "all" ||
+                          filters.hasReminders ||
+                          filters.hasTasks ||
+                          filters.hasMeetings
                         ? "לא נמצאו לקוחות התואמים לסינון"
                         : "אין לקוחות במערכת"}
                     </p>

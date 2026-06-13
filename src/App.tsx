@@ -28,6 +28,8 @@ import { withErrorBoundary } from "@/components/RouteErrorBoundary";
 import { DedupProvider } from "@/contexts/DedupContext";
 import { AutoPreload } from "@/components/AutoPreload";
 import { AttendanceFAB } from "@/components/attendance/AttendanceFAB";
+import { DashboardThemeProvider } from "@/components/dashboard/DashboardThemeProvider";
+import { WidgetLayoutProvider } from "@/components/dashboard/WidgetLayoutManager";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -162,6 +164,8 @@ const App = () => {
                         <DedupProvider>
                           <Toaster />
                           <Sonner />
+                          <DashboardThemeProvider>
+                          <WidgetLayoutProvider>
                           <BrowserRouter
                             future={{
                               v7_startTransition: false,
@@ -422,6 +426,8 @@ const App = () => {
                           <PWAUpdatePrompt />
                           <OfflineIndicator />
                           </BrowserRouter>
+                          </WidgetLayoutProvider>
+                          </DashboardThemeProvider>
                         </DedupProvider>
                       </BackupProvider>
                     </UndoRedoProvider>

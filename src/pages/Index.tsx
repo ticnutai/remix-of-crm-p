@@ -13,7 +13,6 @@ import {
   ProjectsStatusChart,
   WorkHoursChart,
   WorkHoursTableWidget,
-  DashboardThemeProvider,
   useDashboardTheme,
   DashboardSettingsDialog,
   ThemedWidget,
@@ -22,7 +21,6 @@ import {
   DynamicStatsWidget,
   SmartStatsGrid,
   // Unified Widget System
-  WidgetLayoutProvider,
   useWidgetLayout,
   WidgetContainer,
   WidgetGrid,
@@ -876,15 +874,11 @@ function DashboardContent() {
   );
 }
 
-// Main Index Component with Providers (unified - no WidgetManagerProvider needed)
+// Main Index Component. The dashboard providers (DashboardThemeProvider,
+// WidgetLayoutProvider) are now mounted once at the app root (App.tsx) so they
+// persist across navigation instead of remounting on every visit to "/".
 const Index = () => {
-  return (
-    <DashboardThemeProvider>
-      <WidgetLayoutProvider>
-        <DashboardContent />
-      </WidgetLayoutProvider>
-    </DashboardThemeProvider>
-  );
+  return <DashboardContent />;
 };
 
 export default Index;
