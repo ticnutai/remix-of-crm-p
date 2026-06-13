@@ -46,6 +46,8 @@ import { toast } from "@/hooks/use-toast";
 import {
   ClientsFilterStrip,
   ClientFilterState,
+  type DateRangeTabItem,
+  type ClientDateRangeConfig,
 } from "@/components/clients/ClientsFilterStrip";
 import { ClientQuickClassify } from "@/components/clients/ClientQuickClassify";
 import SmartComboField from "@/components/clients/SmartComboField";
@@ -112,6 +114,74 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+function isDateInCustomRange(
+  createdAt: Date,
+  range: ClientDateRangeConfig,
+  now: Date,
+): boolean {
+  if (range.kind === "relative") {
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const start = new Date(end);
+    if (range.unit === "days") {
+      start.setDate(start.getDate() - range.amount);
+    } else if (range.unit === "weeks") {
+      start.setDate(start.getDate() - range.amount * 7);
+    } else {
+      start.setMonth(start.getMonth() - range.amount);
+    }
+    return createdAt >= start && createdAt < end;
+  }
+
+  if (range.kind === "fixed") {
+    const from = new Date(range.from);
+    const to = new Date(range.to);
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return true;
+    const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+    const end = new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1);
+    return createdAt >= start && createdAt < end;
+  }
+
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  let start: Date;
+  let end: Date;
+
+  switch (range.preset) {
+    case "last_week": {
+      const day = now.getDay();
+      const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
+      end = weekStart;
+      start = new Date(weekStart);
+      start.setDate(start.getDate() - 7);
+      break;
+    }
+    case "current_quarter": {
+      const quarterStartMonth = Math.floor(month / 3) * 3;
+      start = new Date(year, quarterStartMonth, 1);
+      end = new Date(year, quarterStartMonth + 3, 1);
+      break;
+    }
+    case "last_year": {
+      start = new Date(year - 1, 0, 1);
+      end = new Date(year, 0, 1);
+      break;
+    }
+    case "previous_month": {
+      start = new Date(year, month - 1, 1);
+      end = new Date(year, month, 1);
+      break;
+    }
+    case "current_month":
+    default: {
+      start = new Date(year, month, 1);
+      end = new Date(year, month + 1, 1);
+      break;
+    }
+  }
+
+  return createdAt >= start && createdAt < end;
+}
+
 interface Client {
   id: string;
   name: string;
@@ -148,6 +218,27 @@ const clientCategoryIconMap: Record<
   Handshake: (props) => <Handshake {...props} />,
   FolderOpen: (props) => <FolderOpen {...props} />,
 };
+
+const DEFAULT_CLIENT_DATE_RANGE_TABS: DateRangeTabItem[] = [
+  {
+    id: "range-30-days",
+    name: "30 ימים",
+    scope: "private",
+    range: { kind: "relative", amount: 30, unit: "days" },
+  },
+  {
+    id: "range-90-days",
+    name: "90 ימים",
+    scope: "private",
+    range: { kind: "relative", amount: 90, unit: "days" },
+  },
+  {
+    id: "range-180-days",
+    name: "180 ימים",
+    scope: "private",
+    range: { kind: "relative", amount: 180, unit: "days" },
+  },
+];
 
 export default function Clients() {
   const normalizeSearchText = useCallback(
@@ -237,6 +328,8 @@ export default function Clients() {
     hiddenClassifications?: string[];
     monthAgeRanges?: Array<"m4_plus" | "m6_plus" | "m8_plus">;
     exactMonth?: number | null;
+    customDateRange?: ClientDateRangeConfig | null;
+    activeDateTabId?: string | null;
     sortBy?: string;
     showStagesView?: boolean;
     showStatisticsView?: boolean;
@@ -252,11 +345,21 @@ export default function Clients() {
   const [showStagesView, setShowStagesViewLocal] = useState(false);
   const [showStatisticsView, setShowStatisticsViewLocal] = useState(false);
   const [showAccessView, setShowAccessView] = useSyncedSetting<boolean>({ key: "clients-show-access-view", defaultValue: false });
+  const [dateRangeTabs, setDateRangeTabs] = useSyncedSetting<DateRangeTabItem[]>({
+    key: "clients-date-range-tabs-v1",
+    defaultValue: DEFAULT_CLIENT_DATE_RANGE_TABS,
+  });
   const [autoJumpToFirstResult, setAutoJumpToFirstResult] =
     useSyncedSetting<boolean>({
       key: "clients-auto-jump-first-result",
       defaultValue: true,
     });
+
+  useEffect(() => {
+    if (!dateRangeTabs || dateRangeTabs.length === 0) {
+      setDateRangeTabs(DEFAULT_CLIENT_DATE_RANGE_TABS);
+    }
+  }, [dateRangeTabs, setDateRangeTabs]);
 
   // Wrapper: persist showStagesView to cloud
   const setShowStagesView = useCallback(
@@ -328,6 +431,14 @@ export default function Clients() {
         savedFullFilters.exactMonth === undefined
           ? prev.exactMonth
           : savedFullFilters.exactMonth,
+      customDateRange:
+        savedFullFilters.customDateRange === undefined
+          ? prev.customDateRange
+          : savedFullFilters.customDateRange,
+      activeDateTabId:
+        savedFullFilters.activeDateTabId === undefined
+          ? prev.activeDateTabId
+          : savedFullFilters.activeDateTabId,
       sortBy: (savedFullFilters.sortBy as any) ?? prev.sortBy,
     }));
     if (savedFullFilters.showStagesView != null) {
@@ -472,6 +583,8 @@ export default function Clients() {
     hiddenClassifications: [],
     monthAgeRanges: [],
     exactMonth: null,
+    customDateRange: null,
+    activeDateTabId: null,
     sortBy: "date_desc",
   });
 
@@ -532,7 +645,14 @@ export default function Clients() {
     }
 
     // Date filter
-    if (filters.dateFilter !== "all") {
+    if (filters.customDateRange) {
+      const now = new Date();
+      result = result.filter((client) => {
+        const createdAt = new Date(client.created_at);
+        if (Number.isNaN(createdAt.getTime())) return false;
+        return isDateInCustomRange(createdAt, filters.customDateRange!, now);
+      });
+    } else if (filters.dateFilter !== "all") {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -656,6 +776,17 @@ export default function Clients() {
           const classCompare = classA.localeCompare(classB, "he");
           if (classCompare !== 0) return classCompare;
           return a.name.localeCompare(b.name, "he");
+        }
+        case "classification_desc": {
+          const classA = (a.classification || "תתת").localeCompare("", "he")
+            ? a.classification || "תתת"
+            : "תתת";
+          const classB = (b.classification || "תתת").localeCompare("", "he")
+            ? b.classification || "תתת"
+            : "תתת";
+          const classCompare = classB.localeCompare(classA, "he");
+          if (classCompare !== 0) return classCompare;
+          return b.name.localeCompare(a.name, "he");
         }
         default:
           return 0;
@@ -3616,9 +3747,13 @@ export default function Clients() {
               hiddenClassifications: newFilters.hiddenClassifications,
               monthAgeRanges: newFilters.monthAgeRanges,
               exactMonth: newFilters.exactMonth,
+              customDateRange: newFilters.customDateRange,
+              activeDateTabId: newFilters.activeDateTabId,
               sortBy: newFilters.sortBy,
             }));
           }}
+          dateRangeTabs={dateRangeTabs}
+          onDateRangeTabsChange={setDateRangeTabs}
           clientsWithReminders={clientsWithReminders}
           clientsWithTasks={clientsWithTasks}
           clientsWithMeetings={clientsWithMeetings}

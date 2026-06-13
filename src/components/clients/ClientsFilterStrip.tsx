@@ -6,6 +6,13 @@ import { AddClientsToCategoryDialog } from './AddClientsToCategoryDialog';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -37,8 +44,38 @@ import {
   ShieldCheck,
   Eye,
   EyeOff,
+  Copy,
+  GripVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+export type ClientDateRangeConfig =
+  | {
+      kind: "relative";
+      amount: number;
+      unit: "days" | "weeks" | "months";
+    }
+  | {
+      kind: "fixed";
+      from: string;
+      to: string;
+    }
+  | {
+      kind: "advanced";
+      preset:
+        | "last_week"
+        | "current_quarter"
+        | "last_year"
+        | "current_month"
+        | "previous_month";
+    };
+
+export interface DateRangeTabItem {
+  id: string;
+  name: string;
+  scope: "private" | "shared";
+  range: ClientDateRangeConfig;
+}
 
 export interface ClientFilterState {
   stages: string[];
@@ -51,12 +88,15 @@ export interface ClientFilterState {
   hiddenClassifications: string[]; // classifications to HIDE from list (empty = show all)
   monthAgeRanges: Array<"m4_plus" | "m6_plus" | "m8_plus">;
   exactMonth: number | null;
+  customDateRange: ClientDateRangeConfig | null;
+  activeDateTabId: string | null;
   sortBy:
     | "name_asc"
     | "name_desc"
     | "date_desc"
     | "date_asc"
-    | "classification_asc";
+    | "classification_asc"
+    | "classification_desc";
 }
 
 interface ClientStageDefinition {
@@ -89,6 +129,8 @@ interface ClientsFilterStripProps {
   visibleClientsCount?: number;
   onOpenCategoryManager?: () => void;
   onUpdate?: () => void;
+  dateRangeTabs?: DateRangeTabItem[];
+  onDateRangeTabsChange?: (tabs: DateRangeTabItem[]) => void;
 }
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -116,6 +158,8 @@ export function ClientsFilterStrip({
   visibleClientsCount,
   onOpenCategoryManager,
   onUpdate,
+  dateRangeTabs = [],
+  onDateRangeTabsChange,
 }: ClientsFilterStripProps) {
   const [stageDefinitions, setStageDefinitions] = useState<
     ClientStageDefinition[]
@@ -128,6 +172,20 @@ export function ClientsFilterStrip({
   const [sortDialogOpen, setSortDialogOpen] = useState(false);
   const [classificationDialogOpen, setClassificationDialogOpen] =
     useState(false);
+  const [dateTabsManagerOpen, setDateTabsManagerOpen] = useState(false);
+  const [dateTabEditorOpen, setDateTabEditorOpen] = useState(false);
+  const [editingDateTabId, setEditingDateTabId] = useState<string | null>(null);
+  const [tabNameInput, setTabNameInput] = useState("");
+  const [tabScopeInput, setTabScopeInput] = useState<"private" | "shared">("private");
+  const [rangeKindInput, setRangeKindInput] = useState<ClientDateRangeConfig["kind"]>("relative");
+  const [relativeAmountInput, setRelativeAmountInput] = useState(30);
+  const [relativeUnitInput, setRelativeUnitInput] = useState<"days" | "weeks" | "months">("days");
+  const [fixedFromInput, setFixedFromInput] = useState("");
+  const [fixedToInput, setFixedToInput] = useState("");
+  const [advancedPresetInput, setAdvancedPresetInput] =
+    useState<Extract<ClientDateRangeConfig, { kind: "advanced" }>["preset"]>(
+      "current_month",
+    );
   const [addToCategoryId, setAddToCategoryId] = useState<string | null>(null);
   const addToCategory = categories.find((c) => c.id === addToCategoryId);
   // Fetch unique stages from all clients
@@ -178,8 +236,172 @@ export function ClientsFilterStrip({
   };
 
   const setDateFilter = (value: ClientFilterState["dateFilter"]) => {
-    onFiltersChange({ ...filters, dateFilter: value });
+    onFiltersChange({
+      ...filters,
+      dateFilter: value,
+      activeDateTabId: null,
+      customDateRange: null,
+    });
     setDateDialogOpen(false);
+  };
+
+  const rangeLabel = (range: ClientDateRangeConfig): string => {
+    if (range.kind === "relative") {
+      const unitLabel =
+        range.unit === "days"
+          ? "ימים"
+          : range.unit === "weeks"
+            ? "שבועות"
+            : "חודשים";
+      return `${range.amount} ${unitLabel} אחרונים`;
+    }
+    if (range.kind === "fixed") {
+      return `${range.from || "?"} עד ${range.to || "?"}`;
+    }
+    const advancedMap: Record<
+      Extract<ClientDateRangeConfig, { kind: "advanced" }>["preset"],
+      string
+    > = {
+      last_week: "שבוע שעבר",
+      current_quarter: "רבעון נוכחי",
+      last_year: "שנה קודמת",
+      current_month: "חודש נוכחי",
+      previous_month: "חודש קודם",
+    };
+    return advancedMap[range.preset];
+  };
+
+  const applyDateTab = (tab: DateRangeTabItem) => {
+    onFiltersChange({
+      ...filters,
+      dateFilter: "all",
+      customDateRange: tab.range,
+      activeDateTabId: tab.id,
+    });
+  };
+
+  const resetTabEditor = () => {
+    setEditingDateTabId(null);
+    setTabNameInput("");
+    setTabScopeInput("private");
+    setRangeKindInput("relative");
+    setRelativeAmountInput(30);
+    setRelativeUnitInput("days");
+    setFixedFromInput("");
+    setFixedToInput("");
+    setAdvancedPresetInput("current_month");
+  };
+
+  const openCreateDateTabEditor = () => {
+    resetTabEditor();
+    setDateTabEditorOpen(true);
+  };
+
+  const openEditDateTabEditor = (tab: DateRangeTabItem) => {
+    setEditingDateTabId(tab.id);
+    setTabNameInput(tab.name);
+    setTabScopeInput(tab.scope);
+    setRangeKindInput(tab.range.kind);
+    if (tab.range.kind === "relative") {
+      setRelativeAmountInput(tab.range.amount);
+      setRelativeUnitInput(tab.range.unit);
+    }
+    if (tab.range.kind === "fixed") {
+      setFixedFromInput(tab.range.from);
+      setFixedToInput(tab.range.to);
+    }
+    if (tab.range.kind === "advanced") {
+      setAdvancedPresetInput(tab.range.preset);
+    }
+    setDateTabEditorOpen(true);
+  };
+
+  const saveDateTabEditor = () => {
+    if (!onDateRangeTabsChange) return;
+    const cleanedName = tabNameInput.trim();
+    if (!cleanedName) return;
+
+    let nextRange: ClientDateRangeConfig;
+    if (rangeKindInput === "relative") {
+      nextRange = {
+        kind: "relative",
+        amount: Math.max(1, Math.floor(relativeAmountInput || 1)),
+        unit: relativeUnitInput,
+      };
+    } else if (rangeKindInput === "fixed") {
+      if (!fixedFromInput || !fixedToInput) return;
+      nextRange = {
+        kind: "fixed",
+        from: fixedFromInput,
+        to: fixedToInput,
+      };
+    } else {
+      nextRange = {
+        kind: "advanced",
+        preset: advancedPresetInput,
+      };
+    }
+
+    const baseTab: DateRangeTabItem = {
+      id: editingDateTabId || `tab-${Date.now()}`,
+      name: cleanedName,
+      scope: tabScopeInput,
+      range: nextRange,
+    };
+
+    if (editingDateTabId) {
+      onDateRangeTabsChange(
+        dateRangeTabs.map((tab) => (tab.id === editingDateTabId ? baseTab : tab)),
+      );
+      if (filters.activeDateTabId === editingDateTabId) {
+        onFiltersChange({ ...filters, customDateRange: nextRange });
+      }
+    } else {
+      onDateRangeTabsChange([...dateRangeTabs, baseTab]);
+      onFiltersChange({
+        ...filters,
+        dateFilter: "all",
+        activeDateTabId: baseTab.id,
+        customDateRange: baseTab.range,
+      });
+    }
+
+    setDateTabEditorOpen(false);
+    resetTabEditor();
+  };
+
+  const removeDateTab = (tabId: string) => {
+    if (!onDateRangeTabsChange) return;
+    onDateRangeTabsChange(dateRangeTabs.filter((tab) => tab.id !== tabId));
+    if (filters.activeDateTabId === tabId) {
+      onFiltersChange({
+        ...filters,
+        activeDateTabId: null,
+        customDateRange: null,
+      });
+    }
+  };
+
+  const duplicateDateTab = (tab: DateRangeTabItem) => {
+    if (!onDateRangeTabsChange) return;
+    const copy: DateRangeTabItem = {
+      ...tab,
+      id: `tab-${Date.now()}`,
+      name: `${tab.name} (עותק)`,
+    };
+    onDateRangeTabsChange([...dateRangeTabs, copy]);
+  };
+
+  const moveDateTab = (tabId: string, direction: "up" | "down") => {
+    if (!onDateRangeTabsChange) return;
+    const idx = dateRangeTabs.findIndex((tab) => tab.id === tabId);
+    if (idx < 0) return;
+    const nextIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (nextIdx < 0 || nextIdx >= dateRangeTabs.length) return;
+    const nextTabs = [...dateRangeTabs];
+    const [item] = nextTabs.splice(idx, 1);
+    nextTabs.splice(nextIdx, 0, item);
+    onDateRangeTabsChange(nextTabs);
   };
 
   const toggleHasReminders = () => {
@@ -288,6 +510,7 @@ export function ClientsFilterStrip({
     filters.hasMeetings !== null ||
     filters.categories.length > 0 ||
     filters.tags.length > 0 ||
+    !!filters.customDateRange ||
     (filters.monthAgeRanges && filters.monthAgeRanges.length > 0) ||
     filters.exactMonth !== null ||
     (filters.hiddenClassifications && filters.hiddenClassifications.length > 0);
@@ -304,6 +527,8 @@ export function ClientsFilterStrip({
       hiddenClassifications: [],
       monthAgeRanges: [],
       exactMonth: null,
+      customDateRange: null,
+      activeDateTabId: null,
       sortBy: filters.sortBy, // Keep sort order when clearing
     });
   };
@@ -316,13 +541,58 @@ export function ClientsFilterStrip({
     older: "ישן יותר",
   };
 
-  const sortByLabels: Record<ClientFilterState["sortBy"], string> = {
-    date_desc: "חדשים ראשון",
-    date_asc: "ישנים ראשון",
-    name_asc: "שם",
-    name_desc: "שם",
-    classification_asc: "סיווג",
+  type SortFieldBase = "date" | "name" | "classification";
+  type SortDirection = "asc" | "desc";
+
+  const SORT_FIELD_LABELS: Record<SortFieldBase, string> = {
+    date: "תאריך",
+    name: "שם",
+    classification: "סיווג",
   };
+
+  const parseSortBy = (
+    sortBy: ClientFilterState["sortBy"],
+  ): { field: SortFieldBase; direction: SortDirection } => {
+    switch (sortBy) {
+      case "date_asc":
+        return { field: "date", direction: "asc" };
+      case "date_desc":
+        return { field: "date", direction: "desc" };
+      case "name_asc":
+        return { field: "name", direction: "asc" };
+      case "name_desc":
+        return { field: "name", direction: "desc" };
+      case "classification_desc":
+        return { field: "classification", direction: "desc" };
+      case "classification_asc":
+      default:
+        return { field: "classification", direction: "asc" };
+    }
+  };
+
+  const composeSortBy = (
+    field: SortFieldBase,
+    direction: SortDirection,
+  ): ClientFilterState["sortBy"] => {
+    if (field === "date") return direction === "asc" ? "date_asc" : "date_desc";
+    if (field === "name") return direction === "asc" ? "name_asc" : "name_desc";
+    return direction === "asc" ? "classification_asc" : "classification_desc";
+  };
+
+  const getDirectionLabel = (
+    field: SortFieldBase,
+    direction: SortDirection,
+  ): string => {
+    if (field === "date") return direction === "asc" ? "ישנים ראשון" : "חדשים ראשון";
+    return direction === "asc" ? "עולה" : "יורד";
+  };
+
+  const currentSort = parseSortBy(filters.sortBy);
+  const activeDateRangeTab =
+    dateRangeTabs.find((tab) => tab.id === filters.activeDateTabId) || null;
+  const currentSortSummary = `${SORT_FIELD_LABELS[currentSort.field]} ${
+    currentSort.direction === "asc" ? "↑" : "↓"
+  }`;
 
   const filteredTags = allTags.filter((tag) =>
     tag.toLowerCase().includes(tagSearch.toLowerCase()),
@@ -438,11 +708,14 @@ export function ClientsFilterStrip({
               )}
             >
               <ArrowUpDown className="h-4 w-4" />
-              {sortByLabels[filters.sortBy]}
+              {currentSortSummary}
               {filters.dateFilter !== "all" && (
                 <span className="text-[10px] opacity-80">
                   · {dateFilterLabels[filters.dateFilter]}
                 </span>
+              )}
+              {activeDateRangeTab && (
+                <span className="text-[10px] opacity-80">· {activeDateRangeTab.name}</span>
               )}
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
@@ -470,29 +743,106 @@ export function ClientsFilterStrip({
                 מיין לפי
               </div>
               <div className="space-y-1 mt-1">
-                {(
-                  Object.entries(sortByLabels) as [
-                    ClientFilterState["sortBy"],
-                    string,
-                  ][]
-                ).map(([value, label]) => (
-                  <Button
-                    key={value}
-                    variant={filters.sortBy === value ? "default" : "ghost"}
-                    size="sm"
-                    className="w-full justify-start gap-2 h-8"
-                    onClick={() => {
-                      onFiltersChange({ ...filters, sortBy: value });
-                    }}
-                  >
-                    {value.includes("date") ? (
-                      <CalendarDays className="h-4 w-4" />
-                    ) : (
-                      <SortAsc className="h-4 w-4" />
-                    )}
-                    {label}
-                  </Button>
-                ))}
+                {[
+                  {
+                    field: "date" as const,
+                    icon: CalendarDays,
+                    defaultDirection: "desc" as const,
+                  },
+                  {
+                    field: "name" as const,
+                    icon: SortAsc,
+                    defaultDirection: "asc" as const,
+                  },
+                  {
+                    field: "classification" as const,
+                    icon: SortAsc,
+                    defaultDirection: "asc" as const,
+                  },
+                ].map(({ field, icon: Icon, defaultDirection }) => {
+                  const isActiveField = currentSort.field === field;
+                  const activeDirection = isActiveField
+                    ? currentSort.direction
+                    : defaultDirection;
+
+                  return (
+                    <div
+                      key={field}
+                      className={cn(
+                        "group flex items-center gap-1 rounded-md border p-1",
+                        isActiveField
+                          ? "border-primary/40 bg-primary/5"
+                          : "border-transparent hover:border-border",
+                      )}
+                    >
+                      <Button
+                        variant={isActiveField ? "default" : "ghost"}
+                        size="sm"
+                        className="flex-1 justify-start gap-2 h-8"
+                        onClick={() => {
+                          onFiltersChange({
+                            ...filters,
+                            sortBy: composeSortBy(field, defaultDirection),
+                          });
+                        }}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span>{SORT_FIELD_LABELS[field]}</span>
+                        <span className="text-[11px] opacity-80 mr-auto">
+                          {activeDirection === "asc" ? "↑" : "↓"}
+                        </span>
+                      </Button>
+
+                      <div
+                        className={cn(
+                          "flex items-center gap-1 transition-opacity",
+                          isActiveField
+                            ? "opacity-100"
+                            : "opacity-0 group-hover:opacity-100",
+                        )}
+                      >
+                        <Button
+                          type="button"
+                          variant={
+                            isActiveField && currentSort.direction === "asc"
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          className="h-7 px-2 text-[11px]"
+                          onClick={() => {
+                            onFiltersChange({
+                              ...filters,
+                              sortBy: composeSortBy(field, "asc"),
+                            });
+                          }}
+                          title={getDirectionLabel(field, "asc")}
+                        >
+                          ↑
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={
+                            isActiveField && currentSort.direction === "desc"
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          className="h-7 px-2 text-[11px]"
+                          onClick={() => {
+                            onFiltersChange({
+                              ...filters,
+                              sortBy: composeSortBy(field, "desc"),
+                            });
+                          }}
+                          title={getDirectionLabel(field, "desc")}
+                        >
+                          ↓
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -512,15 +862,67 @@ export function ClientsFilterStrip({
                     size="sm"
                     className="h-8 text-xs"
                     onClick={() => {
-                      onFiltersChange({
-                        ...filters,
-                        dateFilter: value as ClientFilterState["dateFilter"],
-                      });
+                      setDateFilter(value as ClientFilterState["dateFilter"]);
                     }}
                   >
                     {label}
                   </Button>
                 ))}
+              </div>
+
+              <div className="mt-3 border-t pt-2">
+                <div className="flex items-center justify-between px-2 py-1">
+                  <div className="text-[11px] font-semibold text-muted-foreground">טאבי טווח מותאמים</div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-[11px]"
+                      onClick={openCreateDateTabEditor}
+                    >
+                      <Plus className="h-3 w-3 ml-1" />
+                      חדש
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-[11px]"
+                      onClick={() => setDateTabsManagerOpen(true)}
+                    >
+                      נהל
+                    </Button>
+                  </div>
+                </div>
+
+                {dateRangeTabs.length === 0 ? (
+                  <div className="px-2 py-2 text-[11px] text-muted-foreground">
+                    אין טאבים מותאמים. אפשר ליצור טווחים כמו 30/90/180 ימים.
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-1 px-2 py-1">
+                    {dateRangeTabs.map((tab) => {
+                      const active = filters.activeDateTabId === tab.id;
+                      return (
+                        <Button
+                          key={tab.id}
+                          type="button"
+                          variant={active ? "default" : "outline"}
+                          size="sm"
+                          className="h-7 px-2 text-[11px]"
+                          title={rangeLabel(tab.range)}
+                          onClick={() => applyDateTab(tab)}
+                        >
+                          {tab.name}
+                          <span className="text-[10px] opacity-70 mr-1">
+                            {tab.scope === "shared" ? "צוות" : "פרטי"}
+                          </span>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </PopoverContent>
@@ -1167,6 +1569,260 @@ export function ClientsFilterStrip({
           }}
         />
       )}
+
+      <Dialog open={dateTabsManagerOpen} onOpenChange={setDateTabsManagerOpen}>
+        <DialogContent dir="rtl" className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle>ניהול טאבי טווח תאריכים</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-2 max-h-[60vh] overflow-auto">
+            {dateRangeTabs.length === 0 ? (
+              <div className="rounded-md border p-4 text-sm text-muted-foreground">
+                אין טאבים. אפשר להוסיף טאב חדש עם כפתור "חדש".
+              </div>
+            ) : (
+              dateRangeTabs.map((tab, idx) => (
+                <div key={tab.id} className="flex items-center gap-2 rounded-md border p-2">
+                  <GripVertical className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{tab.name}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {rangeLabel(tab.range)} · {tab.scope === "shared" ? "משותף" : "פרטי"}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={() => moveDateTab(tab.id, "up")}
+                      disabled={idx === 0}
+                    >
+                      ↑
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={() => moveDateTab(tab.id, "down")}
+                      disabled={idx === dateRangeTabs.length - 1}
+                    >
+                      ↓
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={() => openEditDateTabEditor(tab)}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={() => duplicateDateTab(tab)}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-destructive"
+                      onClick={() => removeDateTab(tab.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={openCreateDateTabEditor}>
+              <Plus className="h-4 w-4 ml-1" />
+              טאב חדש
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={dateTabEditorOpen}
+        onOpenChange={(open) => {
+          setDateTabEditorOpen(open);
+          if (!open) resetTabEditor();
+        }}
+      >
+        <DialogContent dir="rtl" className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>{editingDateTabId ? "עריכת טאב" : "טאב חדש"}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>שם הטאב</Label>
+              <Input
+                value={tabNameInput}
+                onChange={(e) => setTabNameInput(e.target.value)}
+                placeholder="לדוגמה: 90 ימים"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>הרשאה</Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant={tabScopeInput === "private" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setTabScopeInput("private")}
+                >
+                  פרטי
+                </Button>
+                <Button
+                  type="button"
+                  variant={tabScopeInput === "shared" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setTabScopeInput("shared")}
+                >
+                  משותף
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>סוג טווח</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant={rangeKindInput === "relative" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setRangeKindInput("relative")}
+                >
+                  יחסי
+                </Button>
+                <Button
+                  type="button"
+                  variant={rangeKindInput === "fixed" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setRangeKindInput("fixed")}
+                >
+                  קבוע
+                </Button>
+                <Button
+                  type="button"
+                  variant={rangeKindInput === "advanced" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setRangeKindInput("advanced")}
+                >
+                  מתקדם
+                </Button>
+              </div>
+            </div>
+
+            {rangeKindInput === "relative" && (
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="number"
+                  min={1}
+                  value={relativeAmountInput}
+                  onChange={(e) => setRelativeAmountInput(Number(e.target.value) || 1)}
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant={relativeUnitInput === "days" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setRelativeUnitInput("days")}
+                  >
+                    ימים
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={relativeUnitInput === "weeks" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setRelativeUnitInput("weeks")}
+                  >
+                    שבועות
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={relativeUnitInput === "months" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setRelativeUnitInput("months")}
+                  >
+                    חודשים
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {rangeKindInput === "fixed" && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">מתאריך</Label>
+                  <Input
+                    type="date"
+                    value={fixedFromInput}
+                    onChange={(e) => setFixedFromInput(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">עד תאריך</Label>
+                  <Input
+                    type="date"
+                    value={fixedToInput}
+                    onChange={(e) => setFixedToInput(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            {rangeKindInput === "advanced" && (
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: "current_month", label: "חודש נוכחי" },
+                  { key: "previous_month", label: "חודש קודם" },
+                  { key: "last_week", label: "שבוע שעבר" },
+                  { key: "current_quarter", label: "רבעון נוכחי" },
+                  { key: "last_year", label: "שנה קודמת" },
+                ].map((preset) => (
+                  <Button
+                    key={preset.key}
+                    type="button"
+                    variant={advancedPresetInput === preset.key ? "default" : "outline"}
+                    size="sm"
+                    onClick={() =>
+                      setAdvancedPresetInput(
+                        preset.key as Extract<ClientDateRangeConfig, { kind: "advanced" }>['preset'],
+                      )
+                    }
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDateTabEditorOpen(false)}>
+              ביטול
+            </Button>
+            <Button type="button" onClick={saveDateTabEditor}>
+              שמור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

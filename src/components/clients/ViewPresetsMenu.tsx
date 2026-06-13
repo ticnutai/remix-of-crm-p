@@ -48,6 +48,7 @@ export type ClientsSortBy =
   | "name_asc"
   | "name_desc"
   | "classification_asc"
+  | "classification_desc"
   | "date_asc"
   | "date_desc";
 
