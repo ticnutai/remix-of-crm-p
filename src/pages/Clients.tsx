@@ -287,8 +287,20 @@ export default function Clients() {
     syncClientsToSheets,
   } = useGoogleSheets();
 
-  const [clients, setClients] = useState<Client[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Hydrate clients instantly from cache (stale-while-revalidate)
+  const CLIENTS_CACHE_KEY = "clients_cache_v1";
+  const cachedClientsInit = (() => {
+    try {
+      const raw = localStorage.getItem(CLIENTS_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? (parsed as Client[]) : null;
+    } catch {
+      return null;
+    }
+  })();
+  const [clients, setClients] = useState<Client[]>(cachedClientsInit || []);
+  const [isLoading, setIsLoading] = useState(!cachedClientsInit);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Persistent view settings from cloud
