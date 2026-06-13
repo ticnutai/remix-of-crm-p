@@ -87,6 +87,11 @@ function KPICard({ title, value, change, icon, color = 'bg-primary' }: KPICardPr
 function useDashboardStats() {
   return useQuery({
     queryKey: ['dashboard_stats'],
+    // שמירת תוצאות בזיכרון — ניווט חזרה לדשבורד מציג נתונים מיידית
+    staleTime: 5 * 60 * 1000, // 5 דקות
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const today = new Date();
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -103,17 +108,17 @@ function useDashboardStats() {
         tasksRes,
         contractsRes,
       ] = await Promise.all([
-        supabase.from('clients').select('id, created_at', { count: 'exact' }),
-        supabase.from('projects').select('id, status, budget', { count: 'exact' }),
+        supabase.from('clients').select('id', { count: 'exact', head: true }),
+        supabase.from('projects').select('id, status, budget'),
         supabase.from('invoices')
-          .select('total_amount, status')
+          .select('amount, status')
           .gte('issue_date', startOfMonth.toISOString()),
         supabase.from('invoices')
-          .select('total_amount, status')
+          .select('amount, status')
           .gte('issue_date', startOfLastMonth.toISOString())
           .lte('issue_date', endOfLastMonth.toISOString()),
         supabase.from('quotes')
-          .select('id, status, total_amount')
+          .select('id, status')
           .gte('created_at', startOfMonth.toISOString()),
         (supabase as any).from('tasks')
           .select('id, status, priority, due_date'),
@@ -179,40 +184,44 @@ function useDashboardStats() {
 function useRevenueChart() {
   return useQuery({
     queryKey: ['revenue_chart'],
+    staleTime: 10 * 60 * 1000, // 10 דקות
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
-      const months = [];
+      // שאילתה אחת על כל 6 החודשים במקום 6 שאילתות נפרדות
+      const now = new Date();
+      const rangeStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+      const { data: invoices } = await supabase
+        .from('invoices')
+        .select('amount, issue_date, status')
+        .eq('status', 'paid')
+        .gte('issue_date', rangeStart.toISOString())
+        .lte('issue_date', rangeEnd.toISOString());
+
+      // קיבוץ לפי חודש בצד הלקוח
+      const months: { name: string; revenue: number; key: string }[] = [];
       for (let i = 5; i >= 0; i--) {
-        const date = new Date();
-        date.setMonth(date.getMonth() - i);
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         months.push({
-          year: date.getFullYear(),
-          month: date.getMonth(),
-          name: date.toLocaleDateString('he-IL', { month: 'short' }),
+          key: `${d.getFullYear()}-${d.getMonth()}`,
+          name: d.toLocaleDateString('he-IL', { month: 'short' }),
+          revenue: 0,
         });
       }
-      
-      const data = await Promise.all(
-        months.map(async ({ year, month, name }) => {
-          const start = new Date(year, month, 1);
-          const end = new Date(year, month + 1, 0);
-          
-          const { data: invoices } = await supabase
-            .from('invoices')
-            .select('amount')
-            .eq('status', 'paid')
-            .gte('issue_date', start.toISOString())
-            .lte('issue_date', end.toISOString());
-          
-          const total = invoices?.reduce((sum: number, i: any) => sum + (i.amount || 0), 0) || 0;
-          
-          return { name, revenue: total };
-        })
-      );
-      
-      return data;
+      (invoices || []).forEach((inv: any) => {
+        const d = new Date(inv.issue_date);
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        const bucket = months.find((m) => m.key === key);
+        if (bucket) bucket.revenue += inv.amount || 0;
+      });
+      return months.map(({ name, revenue }) => ({ name, revenue }));
     }
   });
 }
+
 
 export function ManagerDashboard() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
