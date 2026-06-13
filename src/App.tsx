@@ -168,7 +168,17 @@ const App = () => {
                               v7_relativeSplatPath: true,
                             }}
                           >
-                          <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                          <Suspense
+                            fallback={
+                              <div
+                                className="min-h-screen"
+                                style={{
+                                  background:
+                                    "linear-gradient(180deg, rgba(250,248,245,0.98) 0%, rgba(244,240,233,0.98) 100%)",
+                                }}
+                              />
+                            }
+                          >
                             <Routes>
                               <Route
                                 path="/"
