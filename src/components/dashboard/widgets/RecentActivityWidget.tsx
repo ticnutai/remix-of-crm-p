@@ -78,6 +78,7 @@ export function RecentActivityWidget() {
 
   const { data: activities = [], isLoading } = useQuery({
     queryKey: ['recent_activity'],
+    ...lsCacheOptions<ActivityItem[]>('recent_activity'),
     queryFn: async () => {
       // Fetch recent items from multiple tables
       const now = new Date();
@@ -174,9 +175,11 @@ export function RecentActivityWidget() {
       });
 
       // Sort by date
-      return activityItems.sort((a, b) => 
+      const sorted = activityItems.sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       ).slice(0, 15);
+      lsWrite('recent_activity', sorted);
+      return sorted;
     },
     refetchInterval: 60000, // Refresh every minute
   });
