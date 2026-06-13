@@ -3079,20 +3079,9 @@ export default function Clients() {
     );
   };
 
-  if (authLoading || isLoading) {
-    return (
-      <AppLayout title="לקוחות">
-        <div
-          dir="rtl"
-          className="flex flex-col items-center justify-center gap-4 animate-in fade-in duration-200"
-          style={{ minHeight: "calc(100vh - 160px)" }}
-        >
-          <div className="relative h-12 w-12">
-            <div className="absolute inset-0 rounded-full border-2 border-[#162C58]/15" />
-            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#d8ac27] animate-spin" />
-          </div>
-          <div className="text-sm text-muted-foreground">טוען לקוחות...</div>
-        </div>
+  // No early-return loading screen — render the page immediately.
+  // Data hydrates from localStorage cache, then refreshes in background.
+  // Only true first-time visit (no cache, no clients) will see a minimal inline skeleton elsewhere.
       </AppLayout>
     );
   }
