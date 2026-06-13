@@ -3064,49 +3064,14 @@ export default function Clients() {
       <AppLayout title="לקוחות">
         <div
           dir="rtl"
-          style={{
-            minHeight: "calc(100vh - 120px)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "20px",
-            padding: "16px",
-            background:
-              "linear-gradient(180deg, rgba(250,248,245,0.98) 0%, rgba(244,240,233,0.98) 100%)",
-          }}
+          className="flex flex-col items-center justify-center gap-4 animate-in fade-in duration-200"
+          style={{ minHeight: "calc(100vh - 160px)" }}
         >
-          <div
-            style={{
-              height: "78px",
-              borderRadius: "16px",
-              border: "2px solid #d4a843",
-              background: "linear-gradient(180deg, #1e3a5f 0%, #2d5a87 100%)",
-              opacity: 0.92,
-            }}
-          />
-          <div
-            style={{
-              borderRadius: "18px",
-              border: "2px solid #d4a843",
-              backgroundColor: "rgba(255,255,255,0.86)",
-              padding: "20px",
-              display: "grid",
-              gap: "12px",
-            }}
-          >
-            <div style={{ height: "40px", borderRadius: "12px", backgroundColor: "#eef2f7" }} />
-            <div style={{ height: "40px", borderRadius: "12px", backgroundColor: "#eef2f7" }} />
-            <div style={{ height: "40px", borderRadius: "12px", backgroundColor: "#eef2f7" }} />
-            <div
-              style={{
-                color: "#475569",
-                fontSize: "14px",
-                textAlign: "center",
-                paddingTop: "6px",
-              }}
-            >
-              טוען לקוחות...
-            </div>
+          <div className="relative h-12 w-12">
+            <div className="absolute inset-0 rounded-full border-2 border-[#162C58]/15" />
+            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#d8ac27] animate-spin" />
           </div>
+          <div className="text-sm text-muted-foreground">טוען לקוחות...</div>
         </div>
       </AppLayout>
     );
