@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -12,6 +12,15 @@ export function useUserSettings<T>({ key, defaultValue }: UseUserSettingsOptions
   const [value, setValue] = useState<T>(defaultValue);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Mirror of the latest value, updated synchronously. This prevents stale-closure
+  // clobbering when several updater functions from the same hook run in one tick
+  // (e.g. setViewMode + setSortBy called together) — each chained call must see the
+  // result of the previous one, not the value captured at render time.
+  const valueRef = useRef<T>(value);
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   // Load settings from database
   useEffect(() => {
@@ -50,9 +59,12 @@ export function useUserSettings<T>({ key, defaultValue }: UseUserSettingsOptions
   // Save settings to database
   const updateValue = useCallback(async (newValueOrUpdater: T | ((prev: T) => T)) => {
     const newValue = typeof newValueOrUpdater === 'function' 
-      ? (newValueOrUpdater as (prev: T) => T)(value)
+      ? (newValueOrUpdater as (prev: T) => T)(valueRef.current)
       : newValueOrUpdater;
-    
+
+    // Update the ref synchronously so any chained call in the same tick builds on
+    // this result instead of the stale render-time value.
+    valueRef.current = newValue;
     setValue(newValue);
 
     if (!user?.id) return;
@@ -81,7 +93,7 @@ export function useUserSettings<T>({ key, defaultValue }: UseUserSettingsOptions
     } finally {
       setIsSaving(false);
     }
-  }, [user?.id, key, value]);
+  }, [user?.id, key]);
 
   return {
     value,
