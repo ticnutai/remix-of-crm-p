@@ -224,7 +224,7 @@ function useRevenueChart() {
 
 
 export function ManagerDashboard() {
-  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { data: stats } = useDashboardStats();
   const { data: revenueData = [] } = useRevenueChart();
   const { isSupported, subscribe } = usePushNotifications(undefined);
   const [showForecast, setShowForecast] = useSyncedSetting<boolean>({ key: 'dashboard-show-forecast', defaultValue: false });
