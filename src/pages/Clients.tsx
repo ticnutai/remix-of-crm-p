@@ -1218,25 +1218,33 @@ export default function Clients() {
   }, []);
 
   const fetchClients = useCallback(async () => {
-    setIsLoading(true);
+    // Only show spinner if we don't already have cached data
+    const hasData = clientsRef.current.length > 0;
+    if (!hasData) setIsLoading(true);
     try {
-      // Fetch all clients without default limit (Supabase defaults to 1000)
-      const { data, error, count } = await supabase
+      const { data, error } = await supabase
         .from("clients")
         .select("*", { count: "exact" })
         .order("created_at", { ascending: false })
-        .limit(5000); // Ensure we get all clients
+        .limit(5000);
 
       if (error) throw error;
 
-      setClients((data || []) as Client[]);
-      // filteredClients is now computed automatically via useMemo
+      const list = (data || []) as Client[];
+      setClients(list);
+      try {
+        localStorage.setItem(CLIENTS_CACHE_KEY, JSON.stringify(list));
+      } catch {
+        /* quota exceeded - ignore */
+      }
     } catch (error) {
-      toast({
-        title: "שגיאה",
-        description: "לא ניתן לטעון את רשימת הלקוחות",
-        variant: "destructive",
-      });
+      if (!hasData) {
+        toast({
+          title: "שגיאה",
+          description: "לא ניתן לטעון את רשימת הלקוחות",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
