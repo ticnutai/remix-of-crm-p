@@ -7,22 +7,46 @@ interface UseUserSettingsOptions<T> {
   defaultValue: T;
 }
 
+const LS_PREFIX = 'us_cache:';
+
+function readLocalCache<T>(key: string): T | undefined {
+  try {
+    const raw = localStorage.getItem(LS_PREFIX + key);
+    if (raw == null) return undefined;
+    return JSON.parse(raw) as T;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeLocalCache<T>(key: string, value: T) {
+  try {
+    localStorage.setItem(LS_PREFIX + key, JSON.stringify(value));
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
 export function useUserSettings<T>({ key, defaultValue }: UseUserSettingsOptions<T>) {
   const { user } = useAuth();
-  const [value, setValue] = useState<T>(defaultValue);
-  const [isLoading, setIsLoading] = useState(true);
+  // Lazy-init from localStorage cache — eliminates "flash of default view"
+  // by making the persisted value available on the very first render.
+  const [value, setValue] = useState<T>(() => {
+    const cached = readLocalCache<T>(key);
+    return cached !== undefined ? cached : defaultValue;
+  });
+  // If we have a cached value, we're not "loading" from the UI's perspective.
+  const [isLoading, setIsLoading] = useState(() => readLocalCache<T>(key) === undefined);
   const [isSaving, setIsSaving] = useState(false);
 
   // Mirror of the latest value, updated synchronously. This prevents stale-closure
-  // clobbering when several updater functions from the same hook run in one tick
-  // (e.g. setViewMode + setSortBy called together) — each chained call must see the
-  // result of the previous one, not the value captured at render time.
+  // clobbering when several updater functions from the same hook run in one tick.
   const valueRef = useRef<T>(value);
   useEffect(() => {
     valueRef.current = value;
   }, [value]);
 
-  // Load settings from database
+  // Background sync from database (refreshes cache from cloud)
   useEffect(() => {
     const loadSettings = async () => {
       if (!user?.id) {
@@ -44,7 +68,12 @@ export function useUserSettings<T>({ key, defaultValue }: UseUserSettingsOptions
         }
 
         if (data?.setting_value !== undefined) {
-          setValue(data.setting_value as T);
+          const cloudValue = data.setting_value as T;
+          // Only re-render if cloud value differs from cached value.
+          if (JSON.stringify(cloudValue) !== JSON.stringify(valueRef.current)) {
+            setValue(cloudValue);
+          }
+          writeLocalCache(key, cloudValue);
         }
       } catch (err) {
         console.error('Failed to load settings:', err);
@@ -66,6 +95,10 @@ export function useUserSettings<T>({ key, defaultValue }: UseUserSettingsOptions
     // this result instead of the stale render-time value.
     valueRef.current = newValue;
     setValue(newValue);
+    // Write-through cache so the next page load shows the chosen view instantly.
+    writeLocalCache(key, newValue);
+
+
 
     if (!user?.id) return;
 
