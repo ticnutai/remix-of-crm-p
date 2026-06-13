@@ -1192,22 +1192,74 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
 
   if (loading) {
     return (
-      <div className={cn("space-y-3", className)}>
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-9 w-40" />
-          <Skeleton className="h-9 w-24" />
+      <div
+        className={cn("space-y-3 w-full animate-in fade-in duration-300", className)}
+        dir="rtl"
+        style={{ textAlign: "right" }}
+      >
+        {/* Header skeleton — mirrors the real toolbar */}
+        <div className="flex items-center justify-between gap-2 bg-card/50 backdrop-blur p-2 rounded-lg border">
+          <div className="flex items-center gap-1.5">
+            <div className="h-8 w-20 rounded-md bg-[#162C58]/15 animate-pulse" />
+            <div className="h-8 w-20 rounded-md bg-muted animate-pulse" />
+            <div className="h-8 w-20 rounded-md bg-muted animate-pulse" />
+            <div className="h-8 w-8 rounded-md bg-muted animate-pulse" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-8 w-32 rounded-md bg-muted animate-pulse" />
+            <div className="h-8 w-24 rounded-md bg-[#d8ac27]/30 animate-pulse" />
+          </div>
         </div>
-        {[1, 2, 3].map((i) => (
-          <Card key={i}>
-            <CardHeader className="py-3">
-              <Skeleton className="h-5 w-32" />
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </CardContent>
-          </Card>
-        ))}
+
+        {/* Stage cards skeleton — looks like real stage groups */}
+        <div className="space-y-3">
+          {[
+            { rows: 3, w: "40%" },
+            { rows: 2, w: "32%" },
+            { rows: 4, w: "48%" },
+          ].map((cfg, i) => (
+            <Card
+              key={i}
+              className="overflow-hidden border-[#162C58]/10 shadow-sm"
+            >
+              <CardHeader className="py-3 px-4 bg-gradient-to-l from-[#162C58]/5 to-transparent border-b border-[#162C58]/10">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-md bg-[#162C58]/15 animate-pulse" />
+                    <div className="h-4 w-28 rounded bg-[#162C58]/20 animate-pulse" />
+                    <div className="h-5 w-8 rounded-full bg-[#d8ac27]/30 animate-pulse" />
+                  </div>
+                  <div className="h-7 w-7 rounded-md bg-muted animate-pulse" />
+                </div>
+              </CardHeader>
+              <CardContent className="p-2 space-y-1.5">
+                {Array.from({ length: cfg.rows }).map((_, r) => (
+                  <div
+                    key={r}
+                    className="flex items-center gap-3 p-2 rounded-md bg-muted/30"
+                  >
+                    <div className="h-8 w-8 rounded-full bg-[#162C58]/15 animate-pulse" />
+                    <div className="flex-1 space-y-1.5">
+                      <div
+                        className="h-3.5 rounded bg-foreground/15 animate-pulse"
+                        style={{ width: cfg.w }}
+                      />
+                      <div className="h-2.5 w-24 rounded bg-foreground/10 animate-pulse" />
+                    </div>
+                    <div className="h-2 w-24 rounded-full bg-[#d8ac27]/20 animate-pulse hidden sm:block" />
+                    <div className="h-7 w-7 rounded-md bg-muted animate-pulse" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Subtle hint */}
+        <div className="flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground">
+          <div className="h-1.5 w-1.5 rounded-full bg-[#d8ac27] animate-pulse" />
+          <span>טוען לקוחות...</span>
+        </div>
       </div>
     );
   }
