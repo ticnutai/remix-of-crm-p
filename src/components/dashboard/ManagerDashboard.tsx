@@ -244,9 +244,9 @@ export function ManagerDashboard() {
     revenue: item.revenue,
   }));
   
-  if (statsLoading) {
-    return <div className="flex justify-center p-8">טוען...</div>;
-  }
+  // לא חוסמים את כל הדשבורד על טעינת stats — מציגים שלד מיידי
+  // עם optional chaining (stats?.) במקום מסך טעינה ריק
+
   
   return (
     <div className="p-4 space-y-6">
