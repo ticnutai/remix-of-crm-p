@@ -84,11 +84,36 @@ function KPICard({ title, value, change, icon, color = 'bg-primary' }: KPICardPr
   );
 }
 
+// ===== localStorage cache helpers =====
+const LS_STATS_KEY = 'dashboard_stats_cache_v1';
+const LS_REVENUE_KEY = 'dashboard_revenue_cache_v1';
+
+function readLS<T>(key: string): T | undefined {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+function writeLS<T>(key: string, value: T) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* ignore */
+  }
+}
+
 function useDashboardStats() {
   return useQuery({
     queryKey: ['dashboard_stats'],
-    // שמירת תוצאות בזיכרון — ניווט חזרה לדשבורד מציג נתונים מיידית
-    staleTime: 5 * 60 * 1000, // 5 דקות
+    // טעינה מיידית מ-localStorage כדי להציג את כל הדשבורד בבת אחת
+    initialData: () => readLS<any>(LS_STATS_KEY),
+    initialDataUpdatedAt: () => {
+      const raw = localStorage.getItem(LS_STATS_KEY + ':ts');
+      return raw ? Number(raw) : 0;
+    },
+    staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
     placeholderData: (prev) => prev,
@@ -98,7 +123,6 @@ function useDashboardStats() {
       const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
       const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
       
-      // Fetch all data in parallel
       const [
         clientsRes,
         projectsRes,
@@ -126,7 +150,6 @@ function useDashboardStats() {
           .select('id, status, contract_value'),
       ]);
       
-      // Calculate stats
       const totalClients = clientsRes.count || 0;
       const activeProjects = projectsRes.data?.filter(p => p.status === 'active').length || 0;
       
@@ -153,7 +176,7 @@ function useDashboardStats() {
         ?.filter((c: any) => c.status === 'active')
         .reduce((sum: number, c: any) => sum + (c.contract_value || 0), 0) || 0;
       
-      return {
+      const result = {
         totalClients,
         activeProjects,
         revenueThisMonth,
@@ -163,7 +186,6 @@ function useDashboardStats() {
         overdueTasks,
         activeContracts,
         contractsValue,
-        // For charts
         tasksByStatus: [
           { name: 'לביצוע', value: tasksRes.data?.filter((t: any) => t.status === 'todo').length || 0 },
           { name: 'בתהליך', value: tasksRes.data?.filter((t: any) => t.status === 'in_progress').length || 0 },
@@ -177,6 +199,11 @@ function useDashboardStats() {
           { name: 'דחוף', value: tasksRes.data?.filter((t: any) => t.priority === 'urgent').length || 0 },
         ],
       };
+
+      // write-through cache
+      writeLS(LS_STATS_KEY, result);
+      localStorage.setItem(LS_STATS_KEY + ':ts', String(Date.now()));
+      return result;
     }
   });
 }
@@ -184,12 +211,16 @@ function useDashboardStats() {
 function useRevenueChart() {
   return useQuery({
     queryKey: ['revenue_chart'],
-    staleTime: 10 * 60 * 1000, // 10 דקות
+    initialData: () => readLS<{ name: string; revenue: number }[]>(LS_REVENUE_KEY),
+    initialDataUpdatedAt: () => {
+      const raw = localStorage.getItem(LS_REVENUE_KEY + ':ts');
+      return raw ? Number(raw) : 0;
+    },
+    staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
     placeholderData: (prev) => prev,
     queryFn: async () => {
-      // שאילתה אחת על כל 6 החודשים במקום 6 שאילתות נפרדות
       const now = new Date();
       const rangeStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
       const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
@@ -201,7 +232,6 @@ function useRevenueChart() {
         .gte('issue_date', rangeStart.toISOString())
         .lte('issue_date', rangeEnd.toISOString());
 
-      // קיבוץ לפי חודש בצד הלקוח
       const months: { name: string; revenue: number; key: string }[] = [];
       for (let i = 5; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -217,7 +247,10 @@ function useRevenueChart() {
         const bucket = months.find((m) => m.key === key);
         if (bucket) bucket.revenue += inv.amount || 0;
       });
-      return months.map(({ name, revenue }) => ({ name, revenue }));
+      const result = months.map(({ name, revenue }) => ({ name, revenue }));
+      writeLS(LS_REVENUE_KEY, result);
+      localStorage.setItem(LS_REVENUE_KEY + ':ts', String(Date.now()));
+      return result;
     }
   });
 }
