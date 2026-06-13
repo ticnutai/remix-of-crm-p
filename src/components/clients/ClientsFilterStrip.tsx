@@ -170,7 +170,7 @@ export function ClientsFilterStrip({
   const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
   const [sortDialogOpen, setSortDialogOpen] = useState(false);
-  const [sortPopoverSize, setSortPopoverSize] = useSyncedSetting<{
+  const [persistedSortPopoverSize, setPersistedSortPopoverSize] = useSyncedSetting<{
     width: number;
     height: number;
   }>({
@@ -178,6 +178,22 @@ export function ClientsFilterStrip({
     defaultValue: { width: 320, height: 520 },
     cloud: false,
   });
+  const [persistedSortPopoverOffset, setPersistedSortPopoverOffset] = useSyncedSetting<{
+    x: number;
+    y: number;
+  }>({
+    key: "clients-sort-popover-offset",
+    defaultValue: { x: 0, y: 0 },
+    cloud: false,
+  });
+  const [sortPopoverSize, setSortPopoverSize] = useState<{
+    width: number;
+    height: number;
+  }>(persistedSortPopoverSize || { width: 320, height: 520 });
+  const [sortPopoverOffset, setSortPopoverOffset] = useState<{
+    x: number;
+    y: number;
+  }>(persistedSortPopoverOffset || { x: 0, y: 0 });
   const [classificationDialogOpen, setClassificationDialogOpen] =
     useState(false);
   const [dateTabsManagerOpen, setDateTabsManagerOpen] = useState(false);
@@ -207,6 +223,16 @@ export function ClientsFilterStrip({
     | "bottom-left"
     | "bottom-right";
 
+  useEffect(() => {
+    if (!sortDialogOpen) return;
+    setSortPopoverSize(persistedSortPopoverSize || { width: 320, height: 520 });
+    setSortPopoverOffset(persistedSortPopoverOffset || { x: 0, y: 0 });
+  }, [
+    sortDialogOpen,
+    persistedSortPopoverSize,
+    persistedSortPopoverOffset,
+  ]);
+
   const startSortPopoverResize = (
     direction: ResizeDirection,
     event: React.MouseEvent,
@@ -218,6 +244,12 @@ export function ClientsFilterStrip({
     const startY = event.clientY;
     const startWidth = sortPopoverSize?.width ?? 320;
     const startHeight = sortPopoverSize?.height ?? 520;
+    const startOffsetX = sortPopoverOffset?.x ?? 0;
+    const startOffsetY = sortPopoverOffset?.y ?? 0;
+    let lastWidth = startWidth;
+    let lastHeight = startHeight;
+    let lastOffsetX = startOffsetX;
+    let lastOffsetY = startOffsetY;
 
     const onMouseMove = (moveEvent: MouseEvent) => {
       const dx = moveEvent.clientX - startX;
@@ -225,28 +257,102 @@ export function ClientsFilterStrip({
 
       let nextWidth = startWidth;
       let nextHeight = startHeight;
+      let nextOffsetX = startOffsetX;
+      let nextOffsetY = startOffsetY;
 
       if (direction.includes("right")) nextWidth = startWidth + dx;
-      if (direction.includes("left")) nextWidth = startWidth - dx;
+      if (direction.includes("left")) {
+        nextWidth = startWidth - dx;
+      }
       if (direction.includes("bottom")) nextHeight = startHeight + dy;
-      if (direction.includes("top")) nextHeight = startHeight - dy;
+      if (direction.includes("top")) {
+        nextHeight = startHeight - dy;
+      }
 
       const maxWidth = Math.max(260, Math.floor(window.innerWidth * 0.95));
       const maxHeight = Math.max(180, Math.floor(window.innerHeight * 0.85));
+      const minWidth = 260;
+      const minHeight = 180;
 
-      const clampedWidth = Math.min(maxWidth, Math.max(260, Math.round(nextWidth)));
-      const clampedHeight = Math.min(maxHeight, Math.max(180, Math.round(nextHeight)));
+      const clampedWidth = Math.min(maxWidth, Math.max(minWidth, Math.round(nextWidth)));
+      const clampedHeight = Math.min(maxHeight, Math.max(minHeight, Math.round(nextHeight)));
+
+      // Keep opposite edge visually fixed for top/left resize by moving the popover.
+      if (direction.includes("left")) {
+        nextOffsetX = startOffsetX + (startWidth - clampedWidth);
+      }
+      if (direction.includes("top")) {
+        nextOffsetY = startOffsetY + (startHeight - clampedHeight);
+      }
 
       setSortPopoverSize({
         width: clampedWidth,
         height: clampedHeight,
       });
+      setSortPopoverOffset({ x: nextOffsetX, y: nextOffsetY });
+
+      lastWidth = clampedWidth;
+      lastHeight = clampedHeight;
+      lastOffsetX = nextOffsetX;
+      lastOffsetY = nextOffsetY;
     };
 
     const onMouseUp = () => {
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
       document.body.style.userSelect = "";
+
+      setPersistedSortPopoverSize({
+        width: Math.max(260, lastWidth || 320),
+        height: Math.max(180, lastHeight || 520),
+      });
+      setPersistedSortPopoverOffset({
+        x: lastOffsetX || 0,
+        y: lastOffsetY || 0,
+      });
+    };
+
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  };
+
+  const startSortPopoverDrag = (event: React.MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (target.closest("button")) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startOffsetX = sortPopoverOffset?.x ?? 0;
+    const startOffsetY = sortPopoverOffset?.y ?? 0;
+    let lastOffsetX = startOffsetX;
+    let lastOffsetY = startOffsetY;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const dx = moveEvent.clientX - startX;
+      const dy = moveEvent.clientY - startY;
+
+      setSortPopoverOffset({
+        x: Math.round(startOffsetX + dx),
+        y: Math.round(startOffsetY + dy),
+      });
+
+      lastOffsetX = Math.round(startOffsetX + dx);
+      lastOffsetY = Math.round(startOffsetY + dy);
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      document.body.style.userSelect = "";
+
+      setPersistedSortPopoverOffset({
+        x: lastOffsetX || 0,
+        y: lastOffsetY || 0,
+      });
     };
 
     document.body.style.userSelect = "none";
@@ -786,16 +892,21 @@ export function ClientsFilterStrip({
             </Button>
           </PopoverTrigger>
           <PopoverContent
-            className="relative p-0 overflow-hidden min-w-[260px] min-h-[180px] max-w-[95vw] max-h-[85vh] w-[260px]"
+            className="relative p-0 overflow-hidden min-w-[260px] min-h-[180px] max-w-[95vw] max-h-[85vh] w-[260px] transition-none"
             dir="rtl"
             align="end"
             style={{
               width: Math.max(260, sortPopoverSize?.width || 320),
               height: Math.max(180, sortPopoverSize?.height || 520),
+              transform: `translate(${sortPopoverOffset?.x || 0}px, ${sortPopoverOffset?.y || 0}px)`,
             }}
           >
             <div className="h-full overflow-y-auto overflow-x-hidden pr-1">
-            <div className="p-3 border-b">
+            <div
+              className="p-3 border-b cursor-move select-none"
+              onMouseDown={startSortPopoverDrag}
+              title="אפשר לגרור את החלון"
+            >
               <div className="flex flex-row-reverse items-center gap-2">
                 <ArrowUpDown className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold">מיון וסינון תאריכים</h3>
