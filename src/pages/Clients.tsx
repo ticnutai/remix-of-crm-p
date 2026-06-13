@@ -1208,22 +1208,51 @@ export default function Clients() {
   const fetchClients = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      const PAGE_SIZE = 200;
+
+      // First page — render immediately so the UI feels instant
+      const { data: firstPage, error: firstErr } = await supabase
         .from("clients")
-        .select("*", { count: "exact" })
+        .select("*")
         .order("created_at", { ascending: false })
-        .limit(5000);
+        .range(0, PAGE_SIZE - 1);
 
-      if (error) throw error;
+      if (firstErr) throw firstErr;
 
-      setClients((data || []) as Client[]);
+      const initial = (firstPage || []) as Client[];
+      setClients(initial);
+      setIsLoading(false); // progress bar disappears, page is interactive
+
+      // Background: stream the rest in batches without blocking the UI
+      if (initial.length === PAGE_SIZE) {
+        let offset = PAGE_SIZE;
+        while (true) {
+          const { data: page, error: pageErr } = await supabase
+            .from("clients")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .range(offset, offset + PAGE_SIZE - 1);
+          if (pageErr) break;
+          const batch = (page || []) as Client[];
+          if (batch.length === 0) break;
+
+          setClients((prev) => {
+            const seen = new Set(prev.map((c) => c.id));
+            const merged = [...prev];
+            for (const c of batch) if (!seen.has(c.id)) merged.push(c);
+            return merged;
+          });
+
+          if (batch.length < PAGE_SIZE) break;
+          offset += PAGE_SIZE;
+        }
+      }
     } catch (error) {
       toast({
         title: "שגיאה",
         description: "לא ניתן לטעון את רשימת הלקוחות",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   }, [toast]);
