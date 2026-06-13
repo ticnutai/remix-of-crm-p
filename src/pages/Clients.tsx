@@ -1219,7 +1219,7 @@ export default function Clients() {
 
   const fetchClients = useCallback(async () => {
     // Only show spinner if we don't already have cached data
-    const hasData = clientsRef.current.length > 0;
+    const hasData = (cachedClientsInit?.length ?? 0) > 0;
     if (!hasData) setIsLoading(true);
     try {
       const { data, error } = await supabase
