@@ -81,6 +81,7 @@ import { exportQuoteToPDF } from '@/lib/pdf-export';
 import { SignatureDialog, SignatureData } from '@/components/signature';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { applySignedQuoteToClient } from '@/lib/applySignedQuoteToClient';
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   draft: { label: 'טיוטה', color: 'bg-muted text-muted-foreground', icon: FileText },
@@ -167,12 +168,35 @@ export default function Quotes() {
 
       if (error) throw error;
 
+      // Auto-materialize: stages + tasks + payments + contract on client page
+      let summary = "ההצעה סומנה כנחתמה ועוברת ל'הצעה חתומה' בעמוד הלקוח";
+      if (savedQuote.client_id) {
+        try {
+          const r = await applySignedQuoteToClient(
+            { ...savedQuote, status: "signed" },
+            user.id,
+          );
+          const parts: string[] = [];
+          if (r.stagesAdded) parts.push(`${r.stagesAdded} שלבים`);
+          if (r.tasksAdded) parts.push(`${r.tasksAdded} משימות`);
+          if (r.paymentsAdded) parts.push(`${r.paymentsAdded} תשלומים`);
+          if (r.contractCreated) parts.push("חוזה");
+          if (parts.length) summary = `נוצרו אוטומטית בעמוד הלקוח: ${parts.join(", ")}`;
+          await queryClient.invalidateQueries({ queryKey: ["client-stages"] });
+          await queryClient.invalidateQueries({ queryKey: ["client-payment-stages"] });
+          await queryClient.invalidateQueries({ queryKey: ["contracts"] });
+          await queryClient.invalidateQueries({ queryKey: ["client-payment-links"] });
+        } catch (autoErr: any) {
+          console.error("auto-apply signed quote failed", autoErr);
+        }
+      }
+
       await queryClient.invalidateQueries({ queryKey: ["saved-quotes"] });
       await queryClient.invalidateQueries({ queryKey: ["client-saved-quotes"] });
 
       toast({
         title: "סומן כנחתם",
-        description: "ההצעה סומנה כנחתמה ועוברת ל'הצעה חתומה' בעמוד הלקוח",
+        description: summary,
       });
     } catch (err: any) {
       toast({
