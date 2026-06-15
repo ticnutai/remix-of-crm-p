@@ -81,6 +81,7 @@ import { exportQuoteToPDF } from '@/lib/pdf-export';
 import { SignatureDialog, SignatureData } from '@/components/signature';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { applySignedQuoteToClient } from '@/lib/applySignedQuoteToClient';
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   draft: { label: 'טיוטה', color: 'bg-muted text-muted-foreground', icon: FileText },
