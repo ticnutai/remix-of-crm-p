@@ -198,6 +198,10 @@ export default function Quotes() {
         title: "סומן כנחתם",
         description: summary,
       });
+
+      if (savedQuote.client_id) {
+        navigate(`/client-profile/${savedQuote.client_id}`);
+      }
     } catch (err: any) {
       toast({
         title: "שגיאה בסימון חתימה",
