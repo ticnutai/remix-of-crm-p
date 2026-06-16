@@ -134,6 +134,26 @@ export function useQuoteDocument(initialData?: Partial<QuoteDocumentData>) {
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isDirty, setIsDirty] = useState(false);
 
+  // Autosave draft to localStorage (debounced 1.5s) — persists per-quote design tweaks locally
+  // until a successful cloud save clears the draft.
+  const autosaveTimer = useRef<number | null>(null);
+  useEffect(() => {
+    if (!isDirty) return;
+    if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = window.setTimeout(() => {
+      try {
+        const key = `quote-draft-${originalQuoteId || 'new'}`;
+        window.localStorage.setItem(
+          key,
+          JSON.stringify({ savedAt: Date.now(), data: document })
+        );
+      } catch {}
+    }, 1500);
+    return () => {
+      if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+    };
+  }, [document, isDirty, originalQuoteId]);
+
   const updateDocument = useCallback((updates: Partial<QuoteDocumentData>) => {
     setDocument(prev => {
       const newDoc = { ...prev, ...updates };
