@@ -42,6 +42,9 @@ import { AdvancedDesignSettings } from "./AdvancedDesignSettings";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import { FrameDesignPanel } from "../QuoteTemplatesManager/FrameDesignPanel";
 import { DEFAULT_FRAME_SETTINGS } from "../QuoteTemplatesManager/frameStyles";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Sparkles as SparkleIcon, RotateCcw, Upload as UploadIcon } from "lucide-react";
 
 interface EditorSidebarProps {
   document: QuoteDocumentData;
@@ -400,12 +403,15 @@ export function EditorSidebar({
               <div className="flex items-center gap-2">
                 <Palette className="h-4 w-4" />
                 מסגרות ורקע (התאמה להצעה זו)
+                {(document as any).frameDesign && (
+                  <span className="inline-block w-2 h-2 rounded-full bg-[#d8ac27]" aria-label="override פעיל" />
+                )}
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <FrameDesignPanel
-                value={(document as any).frameDesign || DEFAULT_FRAME_SETTINGS}
-                onChange={(v) => onUpdate({ frameDesign: v } as any)}
+              <FrameDesignOverrideSection
+                document={document}
+                onUpdate={onUpdate}
               />
             </AccordionContent>
           </AccordionItem>
