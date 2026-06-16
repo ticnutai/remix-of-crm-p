@@ -7033,6 +7033,7 @@ export type Database = {
           created_by: string
           currency: string | null
           description: string | null
+          design_overrides: Json
           discount_amount: number | null
           discount_percentage: number | null
           estimated_hours: number | null
@@ -7078,6 +7079,7 @@ export type Database = {
           created_by?: string
           currency?: string | null
           description?: string | null
+          design_overrides?: Json
           discount_amount?: number | null
           discount_percentage?: number | null
           estimated_hours?: number | null
@@ -7123,6 +7125,7 @@ export type Database = {
           created_by?: string
           currency?: string | null
           description?: string | null
+          design_overrides?: Json
           discount_amount?: number | null
           discount_percentage?: number | null
           estimated_hours?: number | null
