@@ -40,6 +40,8 @@ import { Client } from "@/hooks/useClients";
 import { LogoUploadSection } from "./LogoUploadSection";
 import { AdvancedDesignSettings } from "./AdvancedDesignSettings";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
+import { FrameDesignPanel } from "../QuoteTemplatesManager/FrameDesignPanel";
+import { DEFAULT_FRAME_SETTINGS } from "../QuoteTemplatesManager/frameStyles";
 
 interface EditorSidebarProps {
   document: QuoteDocumentData;
