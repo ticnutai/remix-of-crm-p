@@ -3502,6 +3502,86 @@ export function HtmlTemplateEditor({
   });
   const [isConvertingFile, setIsConvertingFile] = useState(false);
 
+  // === Autosave (טיוטה אוטומטית: localStorage מיידי + ענן כל 2 שניות) ===
+  const draftKey = template.id || `new::${template.name || "draft"}`;
+  const draftSnapshot = useMemo(
+    () => ({
+      editedTemplate,
+      paymentSteps,
+      designSettings,
+      textBoxes,
+      upgrades,
+      pricingTiers,
+      projectDetails,
+      selectedTier,
+    }),
+    [
+      editedTemplate,
+      paymentSteps,
+      designSettings,
+      textBoxes,
+      upgrades,
+      pricingTiers,
+      projectDetails,
+      selectedTier,
+    ],
+  );
+  const {
+    status: autosaveStatus,
+    lastSavedAt: autosaveLastSavedAt,
+    loadLocalDraft,
+    loadCloudDraft,
+    clearDraft,
+  } = useQuoteDraftAutosave({
+    key: draftKey,
+    snapshot: draftSnapshot,
+    enabled: open,
+  });
+
+  // שחזור אוטומטי בפתיחה - LS מיידי, ענן אם חדש יותר
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      restoredRef.current = false;
+      return;
+    }
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+
+    const applyDraft = (data: any, source: "local" | "cloud") => {
+      if (!data || typeof data !== "object") return;
+      try {
+        if (data.editedTemplate) setEditedTemplate(data.editedTemplate);
+        if (Array.isArray(data.paymentSteps)) setPaymentSteps(data.paymentSteps);
+        if (data.designSettings) setDesignSettings(data.designSettings);
+        if (Array.isArray(data.textBoxes)) setTextBoxes(data.textBoxes);
+        if (Array.isArray(data.upgrades)) setUpgrades(data.upgrades);
+        if (Array.isArray(data.pricingTiers)) setPricingTiers(data.pricingTiers);
+        if (data.projectDetails) setProjectDetails(data.projectDetails);
+        if (typeof data.selectedTier === "string") setSelectedTier(data.selectedTier);
+        toast({
+          title: source === "cloud" ? "טיוטה שוחזרה מהענן" : "טיוטה שוחזרה",
+          description: "הצעת המחיר שוחזרה למצב שבו עזבת אותה",
+        });
+      } catch (err) {
+        console.warn("Could not restore quote draft:", err);
+      }
+    };
+
+    const local = loadLocalDraft();
+    if (local) applyDraft(local, "local");
+
+    // Cloud restore - אם יש בענן ושונה ממה ששוחזר מקומי
+    (async () => {
+      const cloud = await loadCloudDraft();
+      if (cloud && JSON.stringify(cloud) !== JSON.stringify(local)) {
+        applyDraft(cloud, "cloud");
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+
   // === Strip Maker State ===
   const stripMakerInputRef = useRef<HTMLInputElement>(null);
   const [stripSourceImage, setStripSourceImage] = useState<string | null>(null);
