@@ -4434,7 +4434,7 @@ export function HtmlTemplateEditor({
               const itemAlign = item.textAlign
                 ? `text-align: ${item.textAlign};`
                 : "";
-              return `<li style="padding: 5px 0; color: ${itemColor}; font-family: '${itemFont}', sans-serif; font-size: ${itemSize}px; ${itemBold} ${itemItalic} ${itemUnderline} ${itemAlign}">✓ ${item.text}</li>`;
+              return `<li style="padding: 5px 0; color: ${itemColor}; font-family: '${itemFont}', sans-serif; font-size: ${itemSize}px; ${itemBold} ${itemItalic} ${itemUnderline} ${itemAlign}">✓ <span data-editable="stage.${stage.id}.item.${item.id}.text">${item.text}</span></li>`;
             })
             .join("")}
         </ul>
