@@ -9580,11 +9580,12 @@ export function HtmlTemplateEditor({
                     תצוגה מקדימה - המיקום של תיבות הטקסט מסומן
                   </div>
                   <div className="h-[calc(100%-24px)] bg-white rounded-lg shadow-lg overflow-hidden">
-                    <iframe
-                      srcDoc={generateHtmlContent()}
+                    <PreviewIframe
+                      html={debouncedPreviewHtml}
                       title="תצוגה מקדימה"
                       className="w-full h-full border-0"
                       style={{ minHeight: "100%" }}
+                      onInlineEdit={handleInlineEdit}
                     />
                   </div>
                 </div>
