@@ -7810,6 +7810,14 @@ export function HtmlTemplateEditor({
                     </p>
                   </div>
                 </div>
+
+                {/* Frame Design Panel - מסגרות, רקע, כותרות, header/footer */}
+                <div className="bg-white rounded-xl border p-6 shadow-sm">
+                  <FrameDesignPanel
+                    value={designSettings.frameDesign || DEFAULT_FRAME_SETTINGS}
+                    onChange={(v) => setDesignSettings({ ...designSettings, frameDesign: v })}
+                  />
+                </div>
               </div>
             </ScrollArea>
           </TabsContent>
