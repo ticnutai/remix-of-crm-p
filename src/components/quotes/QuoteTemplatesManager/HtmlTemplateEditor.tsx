@@ -1572,6 +1572,7 @@ function PaymentStepEditor({
   quoteTemplateStages = [],
   templateKey,
   onPreferenceChange,
+  basePrice = 0,
 }: {
   step: PaymentStep;
   onUpdate: (step: PaymentStep) => void;
@@ -1582,6 +1583,7 @@ function PaymentStepEditor({
   quoteTemplateStages?: TemplateStage[];
   templateKey?: string;
   onPreferenceChange?: () => void;
+  basePrice?: number;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
@@ -2128,13 +2130,29 @@ function PaymentStepEditor({
         <div className="flex items-center gap-2">
           <Input
             type="number"
+            value={Math.round((basePrice * (step.percentage || 0)) / 100)}
+            onChange={(e) => {
+              const amt = parseFloat(e.target.value) || 0;
+              const pct = basePrice > 0
+                ? Math.round((amt / basePrice) * 10000) / 100
+                : 0;
+              onUpdate({ ...step, percentage: pct });
+            }}
+            className="w-24 text-center"
+            min={0}
+            title="סכום בש״ח - עדכון דו-כיווני עם האחוז"
+          />
+          <span className="text-gray-500">₪</span>
+          <Input
+            type="number"
             value={step.percentage}
             onChange={(e) =>
-              onUpdate({ ...step, percentage: parseInt(e.target.value) || 0 })
+              onUpdate({ ...step, percentage: parseFloat(e.target.value) || 0 })
             }
             className="w-16 text-center"
             min={0}
             max={100}
+            step="0.01"
           />
           <span className="text-gray-500">%</span>
           <Button
@@ -5123,7 +5141,22 @@ export function HtmlTemplateEditor({
     (sum, s) => sum + s.percentage,
     0,
   );
-  const basePrice = editedTemplate.base_price || 35000;
+  // המחיר הפעיל: עדיפות לחבילה הנבחרת בטאב "תוכן" -> סיכום ההצעה
+  const selectedTierObj = (pricingTiers as any[]).find((t) => t?.name === selectedTier);
+  const basePrice = (selectedTierObj && Number(selectedTierObj.price) > 0)
+    ? Number(selectedTierObj.price)
+    : (editedTemplate.base_price || 35000);
+
+  // סנכרון אוטומטי - המחיר של החבילה הנבחרת נשמר ב-base_price כדי שיישמר ויעבור הלאה (חוזה/חתימה)
+  useEffect(() => {
+    if (selectedTierObj && Number(selectedTierObj.price) > 0) {
+      const tierPrice = Number(selectedTierObj.price);
+      if ((editedTemplate.base_price || 0) !== tierPrice) {
+        setEditedTemplate((prev: any) => ({ ...prev, base_price: tierPrice }));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTier, selectedTierObj?.price]);
 
   // Extended font options with more Hebrew fonts
   const fontOptions = [
@@ -6705,6 +6738,7 @@ export function HtmlTemplateEditor({
                         templateName={selectedStageTemplate?.name}
                         quoteTemplateStages={editedTemplate.stages || []}
                         onPreferenceChange={saveToCloud}
+                        basePrice={basePrice}
                         onUpdate={(updated) =>
                           setPaymentSteps(
                             paymentSteps.map((s) =>
