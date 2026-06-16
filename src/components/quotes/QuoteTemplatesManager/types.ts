@@ -77,6 +77,7 @@ export interface QuoteTemplateFolder {
   color: string;
   icon: string;
   sort_order: number;
+  parent_id?: string | null;
   created_by?: string;
   created_at: string;
   updated_at: string;

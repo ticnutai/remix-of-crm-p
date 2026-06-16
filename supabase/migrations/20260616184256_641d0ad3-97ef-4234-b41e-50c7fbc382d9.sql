@@ -1,0 +1,2 @@
+ALTER TABLE public.quote_template_folders ADD COLUMN IF NOT EXISTS parent_id uuid REFERENCES public.quote_template_folders(id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_quote_template_folders_parent_id ON public.quote_template_folders(parent_id);

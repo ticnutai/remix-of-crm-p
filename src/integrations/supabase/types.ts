@@ -6842,6 +6842,7 @@ export type Database = {
           icon: string | null
           id: string
           name: string
+          parent_id: string | null
           sort_order: number | null
           updated_at: string | null
         }
@@ -6852,6 +6853,7 @@ export type Database = {
           icon?: string | null
           id?: string
           name: string
+          parent_id?: string | null
           sort_order?: number | null
           updated_at?: string | null
         }
@@ -6862,10 +6864,19 @@ export type Database = {
           icon?: string | null
           id?: string
           name?: string
+          parent_id?: string | null
           sort_order?: number | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quote_template_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "quote_template_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quote_template_versions: {
         Row: {
