@@ -7,6 +7,17 @@ import React, {
   useMemo,
 } from "react";
 import { PreviewIframe, type InlineEditPayload } from "./PreviewIframe";
+import { FrameDesignPanel } from "./FrameDesignPanel";
+import {
+  DEFAULT_FRAME_SETTINGS,
+  borderToCss,
+  backgroundToBodyCss,
+  sectionTitleHtml,
+  fixedHeaderHtml,
+  fixedFooterHtml,
+  decorativeCornersHtml,
+  type FrameDesignSettings,
+} from "./frameStyles";
 import { useDebouncedValue } from "@/hooks/useDebounce";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Button } from "@/components/ui/button";
@@ -296,6 +307,8 @@ interface DesignSettings {
   stripProcessed?: boolean;
   originalLogoUrl?: string; // Original logo before AI processing
   vatDisplayMode?: "plus-vat" | "breakdown"; // How VAT is displayed in the quote
+  // Frame design (borders, background, section titles, fixed header/footer)
+  frameDesign?: import("./frameStyles").FrameDesignSettings;
 }
 interface TextBox {
   id: string;
@@ -4462,10 +4475,14 @@ export function HtmlTemplateEditor({
         .join("");
     };
 
+    const fd: FrameDesignSettings = { ...DEFAULT_FRAME_SETTINGS, ...(designSettings.frameDesign || {}) };
+    const stageCornersHtml = decorativeCornersHtml(fd.stageBorder);
+
     const stages = editedTemplate.stages
       .map(
         (stage) => `
-      <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: ${designSettings.borderRadius}px;">
+      <div class="stage-card" style="margin-bottom: 20px;">
+        ${stageCornersHtml}
         <h3 style="color: ${designSettings.primaryColor}; font-family: ${designSettings.fontFamily};">${stage.icon ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;margin-left:6px;${stage.iconColor ? `background:${stage.iconColor}20;border:1px solid ${stage.iconColor};` : ""}">${stage.icon}</span>` : ""} <span data-editable="stage.${stage.id}.name">${stage.name}</span></h3>
         <ul style="list-style: none; padding: 0;">
           ${stage.items
@@ -4541,8 +4558,8 @@ export function HtmlTemplateEditor({
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&family=Assistant:wght@200;300;400;500;600;700;800&family=Rubik:wght@300;400;500;600;700&family=Alef:wght@400;700&family=David+Libre:wght@400;500;700&family=Frank+Ruhl+Libre:wght@300;400;500;700&family=Varela+Round&family=Noto+Sans+Hebrew:wght@300;400;500;600;700&family=Secular+One&family=Suez+One&family=Amatic+SC:wght@400;700&display=swap" rel="stylesheet">
   <title>${editedTemplate.name}</title>
   <style>
-    body { font-family: '${designSettings.fontFamily}', sans-serif; font-size: ${designSettings.fontSize}px; margin: 0; padding: 0; background: #f5f5f5; }
-    .container { max-width: 800px; margin: 0 auto; background: white; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+    body { font-family: '${designSettings.fontFamily}', sans-serif; font-size: ${designSettings.fontSize}px; margin: 0; padding: 0; ${backgroundToBodyCss(fd.background)} }
+    .container { max-width: 800px; margin: 0 auto; background: white; position: relative; ${borderToCss(fd.documentBorder)} }
     .header { background: ${designSettings.headerBackground}; color: white; padding: 40px; text-align: center; }
     .content { padding: 40px; }
     .project-details { background: #f9f9f9; padding: 20px; border-radius: ${designSettings.borderRadius}px; margin-bottom: 30px; }
@@ -4555,10 +4572,19 @@ export function HtmlTemplateEditor({
     .footer { text-align: center; padding: 30px; background: #f9f9f9; color: #666; font-size: 14px; }
     .full-width-header { padding: 0 !important; overflow: hidden; background: transparent !important; margin: 0; }
     .full-width-header img { width: 100%; height: auto; display: block; object-fit: fill; object-position: center; margin: 0 auto; }
+    .stage-card { position: relative; ${borderToCss(fd.stageBorder)} }
+    .summary-card { position: relative; margin-top: 30px; ${borderToCss(fd.summaryBorder)} }
+    @media print {
+      .quote-fixed-header, .quote-fixed-footer { position: fixed; left: 0; right: 0; }
+      .quote-fixed-header { top: 0; }
+      .quote-fixed-footer { bottom: 0; }
+    }
   </style>
 </head>
 <body>
+  ${fixedHeaderHtml(fd.fixedHeader, designSettings.logoUrl)}
   <div class="container">
+    ${decorativeCornersHtml(fd.documentBorder)}
     ${
       designSettings.showLogo &&
       designSettings.logoUrl &&
@@ -4649,27 +4675,30 @@ export function HtmlTemplateEditor({
       
       ${renderTextBoxes("before-stages")}
       
-      <h2 style="color: ${designSettings.primaryColor};">שלבי העבודה</h2>
+      ${sectionTitleHtml("שלבי העבודה", fd.sectionTitle, "margin: 30px 0 16px;")}
       ${stages}
       
       ${renderTextBoxes("after-stages")}
       
-      <h2 style="color: ${designSettings.primaryColor}; margin-top: 40px;">סדר תשלומים</h2>
-      <table class="payments">
-        <thead><tr><th>שלב</th><th>אחוז</th><th>סכום (נטו)</th>${isVatBreakdown ? "<th>מע״מ</th><th>סה״כ (ברוטו)</th>" : ""}</tr></thead>
-        <tbody>${payments}</tbody>
-        <tfoot>
-          <tr style="font-weight: bold; background: #f0f0f0;">
-            <td style="padding: 12px;">סה"כ</td>
-            <td style="padding: 12px; text-align: center;">100%</td>
-            <td style="padding: 12px; text-align: left;">₪${basePrice.toLocaleString()}</td>
-            ${isVatBreakdown ? `
-            <td style="padding: 12px; text-align: left; color: #666;">₪${totalVat.toLocaleString()}</td>
-            <td style="padding: 12px; text-align: left; font-weight: bold; font-size: 1.1em;">₪${totalGross.toLocaleString()}</td>` : ""}
-          </tr>
-        </tfoot>
-      </table>
-      ${isVatBreakdown ? `<p style="margin-top: 8px; font-size: 12px; color: #888;">* המע״מ יחושב בכל שלב תשלום בהתאם לשיעור המע״מ התקף במועד התשלום בפועל.</p>` : ""}
+      ${sectionTitleHtml("סדר תשלומים", fd.sectionTitle, "margin: 40px 0 16px;")}
+      <div class="summary-card">
+        ${decorativeCornersHtml(fd.summaryBorder)}
+        <table class="payments">
+          <thead><tr><th>שלב</th><th>אחוז</th><th>סכום (נטו)</th>${isVatBreakdown ? "<th>מע״מ</th><th>סה״כ (ברוטו)</th>" : ""}</tr></thead>
+          <tbody>${payments}</tbody>
+          <tfoot>
+            <tr style="font-weight: bold; background: #f0f0f0;">
+              <td style="padding: 12px;">סה"כ</td>
+              <td style="padding: 12px; text-align: center;">100%</td>
+              <td style="padding: 12px; text-align: left;">₪${basePrice.toLocaleString()}</td>
+              ${isVatBreakdown ? `
+              <td style="padding: 12px; text-align: left; color: #666;">₪${totalVat.toLocaleString()}</td>
+              <td style="padding: 12px; text-align: left; font-weight: bold; font-size: 1.1em;">₪${totalGross.toLocaleString()}</td>` : ""}
+            </tr>
+          </tfoot>
+        </table>
+        ${isVatBreakdown ? `<p style="margin-top: 8px; font-size: 12px; color: #888;">* המע״מ יחושב בכל שלב תשלום בהתאם לשיעור המע״מ התקף במועד התשלום בפועל.</p>` : ""}
+      </div>
       
       ${renderTextBoxes("after-payments")}
       
@@ -4682,6 +4711,7 @@ export function HtmlTemplateEditor({
       ${designSettings.companyAddress} | ${designSettings.companyPhone} | ${designSettings.companyEmail}
     </div>
   </div>
+  ${fixedFooterHtml(fd.fixedFooter)}
 </body>
 </html>`;
   }, [editedTemplate, designSettings, paymentSteps, projectDetails, textBoxes]);
@@ -7796,6 +7826,14 @@ export function HtmlTemplateEditor({
                       The quick brown fox jumps over the lazy dog
                     </p>
                   </div>
+                </div>
+
+                {/* Frame Design Panel - מסגרות, רקע, כותרות, header/footer */}
+                <div className="bg-white rounded-xl border p-6 shadow-sm">
+                  <FrameDesignPanel
+                    value={designSettings.frameDesign || DEFAULT_FRAME_SETTINGS}
+                    onChange={(v) => setDesignSettings({ ...designSettings, frameDesign: v })}
+                  />
                 </div>
               </div>
             </ScrollArea>
