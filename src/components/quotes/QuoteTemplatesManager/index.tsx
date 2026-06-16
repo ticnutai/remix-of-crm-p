@@ -1375,210 +1375,302 @@ export function QuoteTemplatesManager() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {/* Folders */}
-          {folders.map((folder) => {
-            const folderTemplates = templatesByFolder[folder.id] || [];
-            const isCollapsed = collapsedFolders.has(folder.id);
+          {/* Folders - recursive tree */}
+          {(() => {
+            const renderFolderNode = (
+              folder: QuoteTemplateFolder,
+              depth: number,
+            ): React.ReactNode => {
+              const folderTemplates = templatesByFolder[folder.id] || [];
+              const childFolders = (childFoldersByParent[folder.id] || []).slice().sort(
+                (a, b) => (a.sort_order || 0) - (b.sort_order || 0),
+              );
+              const isCollapsed = collapsedFolders.has(folder.id);
+              const deepCount = countTemplatesDeep(folder.id);
+              const isDropTarget = dragOverFolderId === folder.id;
+              const canAcceptFolder =
+                draggedFolderId &&
+                draggedFolderId !== folder.id &&
+                !getDescendantIds(draggedFolderId).has(folder.id);
+
+              return (
+                <div
+                  key={folder.id}
+                  className={`border rounded-lg overflow-hidden bg-card transition-all ${
+                    isDropTarget ? "ring-2 ring-offset-2 scale-[1.005]" : ""
+                  }`}
+                  style={
+                    isDropTarget
+                      ? { boxShadow: `0 0 0 2px ${folder.color}` }
+                      : undefined
+                  }
+                  onDragOver={(e) => {
+                    if (!draggedTemplateId && !canAcceptFolder) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.dataTransfer.dropEffect = "move";
+                    setDragOverFolderId(folder.id);
+                  }}
+                  onDragLeave={(e) => {
+                    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                    setDragOverFolderId(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (draggedTemplateId) {
+                      const t = templates.find((x) => x.id === draggedTemplateId);
+                      if (t && t.folder_id !== folder.id) {
+                        moveToFolderMutation.mutate({
+                          templateId: draggedTemplateId,
+                          folderId: folder.id,
+                        });
+                      }
+                    } else if (draggedFolderId && canAcceptFolder) {
+                      moveFolderMutation.mutate({
+                        folderId: draggedFolderId,
+                        newParentId: folder.id,
+                      });
+                    }
+                    setDragOverFolderId(null);
+                    setDraggedTemplateId(null);
+                    setDraggedFolderId(null);
+                  }}
+                >
+                  {/* Folder header (draggable) */}
+                  <div
+                    className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                    style={{ borderRight: `4px solid ${folder.color}` }}
+                    draggable
+                    onDragStart={(e) => {
+                      e.stopPropagation();
+                      setDraggedFolderId(folder.id);
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("application/x-folder-id", folder.id);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedFolderId(null);
+                      setDragOverFolderId(null);
+                    }}
+                    onClick={() => toggleFolderCollapse(folder.id)}
+                  >
+                    {isCollapsed ? (
+                      <ChevronLeft className="h-5 w-5 text-muted-foreground shrink-0" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground shrink-0" />
+                    )}
+
+                    {isCollapsed ? (
+                      <Folder
+                        className="h-5 w-5 shrink-0"
+                        style={{ color: folder.color }}
+                      />
+                    ) : (
+                      <FolderOpen
+                        className="h-5 w-5 shrink-0"
+                        style={{ color: folder.color }}
+                      />
+                    )}
+
+                    <span className="font-semibold flex-1 truncate">{folder.name}</span>
+
+                    <Badge variant="secondary" className="text-xs">
+                      {deepCount} תבניות
+                    </Badge>
+                    {childFolders.length > 0 && (
+                      <Badge variant="outline" className="text-xs">
+                        {childFolders.length} תתי-תיקיות
+                      </Badge>
+                    )}
+
+                    <div className="flex items-center gap-1">
+                      {/* Add subfolder */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        title="תת-תיקייה חדשה"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingFolder({
+                            name: "",
+                            color: folder.color,
+                            parent_id: folder.id,
+                          });
+                          setFolderDialogOpen(true);
+                        }}
+                      >
+                        <FolderPlus className="h-4 w-4" />
+                      </Button>
+
+                      {/* Folder actions */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          asChild
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingFolder(folder);
+                              setFolderDialogOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4 ml-2" />
+                            ערוך תיקייה
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingFolder({
+                                name: "",
+                                color: folder.color,
+                                parent_id: folder.id,
+                              });
+                              setFolderDialogOpen(true);
+                            }}
+                          >
+                            <FolderPlus className="h-4 w-4 ml-2" />
+                            תת-תיקייה חדשה
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const newTemplate = createEmptyTemplate();
+                              newTemplate.folder_id = folder.id;
+                              setEditingTemplate(newTemplate);
+                              setIsDialogOpen(true);
+                            }}
+                          >
+                            <Plus className="h-4 w-4 ml-2" />
+                            תבנית חדשה בתיקייה
+                          </DropdownMenuItem>
+                          {folder.parent_id && (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                moveFolderMutation.mutate({
+                                  folderId: folder.id,
+                                  newParentId: null,
+                                });
+                              }}
+                            >
+                              <FolderOpen className="h-4 w-4 ml-2" />
+                              העבר לרמה הראשית
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (
+                                confirm(
+                                  `למחוק את התיקייה "${folder.name}"? התבניות בתוכה יעברו לרשימה הראשית, ותתי-התיקיות יימחקו.`,
+                                )
+                              ) {
+                                deleteFolderMutation.mutate(folder.id);
+                              }
+                            }}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 ml-2" />
+                            מחק תיקייה
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+
+                  {/* Folder body */}
+                  {!isCollapsed && (
+                    <div className="p-4 pt-2 bg-muted/10 space-y-3">
+                      {/* Subfolders first */}
+                      {childFolders.length > 0 && (
+                        <div className="space-y-3 pr-4 border-r-2 border-dashed border-muted">
+                          {childFolders.map((sub) => renderFolderNode(sub, depth + 1))}
+                        </div>
+                      )}
+
+                      {/* Templates */}
+                      {folderTemplates.length === 0 && childFolders.length === 0 ? (
+                        <div className="text-center py-6 text-muted-foreground text-sm">
+                          <Folder className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                          <p>אין תבניות בתיקייה זו</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => {
+                              const newTemplate = createEmptyTemplate();
+                              newTemplate.folder_id = folder.id;
+                              setEditingTemplate(newTemplate);
+                              setIsDialogOpen(true);
+                            }}
+                          >
+                            <Plus className="h-4 w-4 ml-1" />
+                            הוסף תבנית
+                          </Button>
+                        </div>
+                      ) : folderTemplates.length > 0 ? (
+                        folderLayoutMode === "table" ? (
+                          renderTemplatesTable(folderTemplates)
+                        ) : (
+                          <div className={getFolderTemplatesContainerClass()}>
+                            {folderTemplates.map(renderTemplateCard)}
+                          </div>
+                        )
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              );
+            };
+
+            const sortedRoots = rootFolders.slice().sort(
+              (a, b) => (a.sort_order || 0) - (b.sort_order || 0),
+            );
 
             return (
-              <div
-                key={folder.id}
-                className={`border rounded-lg overflow-hidden bg-card transition-all ${
-                  dragOverFolderId === folder.id
-                    ? "ring-2 ring-offset-2 scale-[1.01]"
-                    : ""
-                }`}
-                style={
-                  dragOverFolderId === folder.id
-                    ? { boxShadow: `0 0 0 2px ${folder.color}` }
-                    : undefined
-                }
-                onDragOver={(e) => {
-                  if (!draggedTemplateId) return;
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "move";
-                  setDragOverFolderId(folder.id);
-                }}
-                onDragLeave={(e) => {
-                  if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-                  setDragOverFolderId(null);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const id = draggedTemplateId || e.dataTransfer.getData("text/plain");
-                  if (id) {
-                    const t = templates.find((x) => x.id === id);
-                    if (t && t.folder_id !== folder.id) {
-                      moveToFolderMutation.mutate({ templateId: id, folderId: folder.id });
-                    }
-                  }
-                  setDragOverFolderId(null);
-                  setDraggedTemplateId(null);
-                }}
-              >
-                {/* Folder header */}
-                <div
-                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                  style={{ borderRight: `4px solid ${folder.color}` }}
-                  onClick={() => toggleFolderCollapse(folder.id)}
-                >
-                  {isCollapsed ? (
-                    <ChevronLeft className="h-5 w-5 text-muted-foreground shrink-0" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5 text-muted-foreground shrink-0" />
-                  )}
-
-                  {isCollapsed ? (
-                    <Folder
-                      className="h-5 w-5 shrink-0"
-                      style={{ color: folder.color }}
-                    />
-                  ) : (
-                    <FolderOpen
-                      className="h-5 w-5 shrink-0"
-                      style={{ color: folder.color }}
-                    />
-                  )}
-
-                  <span className="font-semibold flex-1">{folder.name}</span>
-
-                  <Badge variant="secondary" className="text-xs">
-                    {folderTemplates.length} תבניות
-                  </Badge>
-
-                  <div className="flex items-center gap-1">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        asChild
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          title="תצוגת תיקיות"
-                        >
-                          <LayoutGrid className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="rtl min-w-56">
-                        <DropdownMenuLabel>תצוגת תיקיות</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuRadioGroup
-                          value={folderLayoutMode}
-                          onValueChange={(value) =>
-                            setFolderLayoutMode(parseFolderLayout(value))
-                          }
-                        >
-                          {FOLDER_LAYOUT_OPTIONS.map((option) => {
-                            const OptionIcon = option.icon;
-                            return (
-                              <DropdownMenuRadioItem key={option.value} value={option.value}>
-                                <div className="w-full text-right">
-                                  <div className="flex items-center justify-end gap-2">
-                                    <span>{option.label}</span>
-                                    <OptionIcon className="h-4 w-4 text-muted-foreground" />
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">{option.description}</div>
-                                </div>
-                              </DropdownMenuRadioItem>
-                            );
-                          })}
-                        </DropdownMenuRadioGroup>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Folder actions */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        asChild
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingFolder(folder);
-                            setFolderDialogOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4 ml-2" />
-                          ערוך תיקייה
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const newTemplate = createEmptyTemplate();
-                            newTemplate.folder_id = folder.id;
-                            setEditingTemplate(newTemplate);
-                            setIsDialogOpen(true);
-                          }}
-                        >
-                          <Plus className="h-4 w-4 ml-2" />
-                          תבנית חדשה בתיקייה
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (
-                              confirm(
-                                `למחוק את התיקייה "${folder.name}"? התבניות בתוכה יעברו לרשימה הראשית.`,
-                              )
-                            ) {
-                              deleteFolderMutation.mutate(folder.id);
-                            }
-                          }}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 ml-2" />
-                          מחק תיקייה
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-
-                {/* Folder templates */}
-                {!isCollapsed && (
-                  <div className="p-4 pt-2 bg-muted/10">
-                    {folderTemplates.length === 0 ? (
-                      <div className="text-center py-6 text-muted-foreground text-sm">
-                        <Folder className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                        <p>אין תבניות בתיקייה זו</p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="mt-2"
-                          onClick={() => {
-                            const newTemplate = createEmptyTemplate();
-                            newTemplate.folder_id = folder.id;
-                            setEditingTemplate(newTemplate);
-                            setIsDialogOpen(true);
-                          }}
-                        >
-                          <Plus className="h-4 w-4 ml-1" />
-                          הוסף תבנית
-                        </Button>
-                      </div>
-                    ) : (
-                      folderLayoutMode === "table" ? (
-                        renderTemplatesTable(folderTemplates)
-                      ) : (
-                        <div className={getFolderTemplatesContainerClass()}>
-                          {folderTemplates.map(renderTemplateCard)}
-                        </div>
-                      )
-                    )}
+              <>
+                {sortedRoots.map((f) => renderFolderNode(f, 0))}
+                {/* Root drop zone for folders being dragged out of a parent */}
+                {draggedFolderId && (
+                  <div
+                    className={`rounded-lg border-2 border-dashed py-3 text-center text-sm transition-all ${
+                      dragOverFolderId === "root"
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-muted-foreground/30 text-muted-foreground"
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      setDragOverFolderId("root");
+                    }}
+                    onDragLeave={() => setDragOverFolderId(null)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (draggedFolderId) {
+                        moveFolderMutation.mutate({
+                          folderId: draggedFolderId,
+                          newParentId: null,
+                        });
+                      }
+                      setDragOverFolderId(null);
+                      setDraggedFolderId(null);
+                    }}
+                  >
+                    שחרר כאן להעברה לרמה הראשית
                   </div>
                 )}
-              </div>
+              </>
             );
-          })}
+          })()}
+
 
           {/* Unfoldered drop zone (always visible while dragging) */}
           {(unfolderedTemplates.length > 0 || (draggedTemplateId && folders.length > 0)) && (
