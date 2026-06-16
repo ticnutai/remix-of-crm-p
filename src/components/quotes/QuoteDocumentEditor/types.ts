@@ -126,6 +126,8 @@ export interface QuoteDocumentData {
   // Advanced Design
   design3D?: DesignSettings3D;
   fontSettings?: AdvancedFontSettings;
+  // Frame design (borders, background, section titles, fixed header/footer) - per-quote override
+  frameDesign?: import("../QuoteTemplatesManager/frameStyles").FrameDesignSettings;
 
   // Section-specific text styles
   sectionStyles?: Partial<Record<SectionKey, SectionTextStyle>>;

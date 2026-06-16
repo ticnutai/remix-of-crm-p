@@ -40,6 +40,8 @@ import { Client } from "@/hooks/useClients";
 import { LogoUploadSection } from "./LogoUploadSection";
 import { AdvancedDesignSettings } from "./AdvancedDesignSettings";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
+import { FrameDesignPanel } from "../QuoteTemplatesManager/FrameDesignPanel";
+import { DEFAULT_FRAME_SETTINGS } from "../QuoteTemplatesManager/frameStyles";
 
 interface EditorSidebarProps {
   document: QuoteDocumentData;
@@ -392,7 +394,22 @@ export function EditorSidebar({
             </AccordionContent>
           </AccordionItem>
 
-          {/* Custom Fields */}
+          {/* Frame Design Override (per-quote) */}
+          <AccordionItem value="frame-design">
+            <AccordionTrigger className="text-sm">
+              <div className="flex items-center gap-2">
+                <Palette className="h-4 w-4" />
+                מסגרות ורקע (התאמה להצעה זו)
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <FrameDesignPanel
+                value={(document as any).frameDesign || DEFAULT_FRAME_SETTINGS}
+                onChange={(v) => onUpdate({ frameDesign: v } as any)}
+              />
+            </AccordionContent>
+          </AccordionItem>
+
           <AccordionItem value="customFields">
             <AccordionTrigger className="text-sm">
               <div className="flex items-center gap-2">
