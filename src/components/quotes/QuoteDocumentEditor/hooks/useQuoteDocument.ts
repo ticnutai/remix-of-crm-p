@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { QuoteDocumentData, QuoteDocumentItem } from '../types';
 import { format, addDays } from 'date-fns';
 import { Quote, QuoteItem } from '@/hooks/useQuotes';
@@ -240,9 +240,21 @@ export function useQuoteDocument(initialData?: Partial<QuoteDocumentData>) {
     setIsDirty(true);
   }, []);
 
-  // Load existing quote into the editor
+  // Load existing quote into the editor — restore localStorage draft if it exists & newer
   const loadQuote = useCallback((quote: Quote) => {
     const documentData = convertQuoteToDocument(quote);
+    try {
+      const raw = window.localStorage.getItem(`quote-draft-${quote.id}`);
+      if (raw) {
+        const draft = JSON.parse(raw);
+        if (draft && draft.data) {
+          setDocument({ ...documentData, ...draft.data });
+          setOriginalQuoteId(quote.id);
+          setIsDirty(true);
+          return;
+        }
+      }
+    } catch {}
     setDocument(documentData);
     setOriginalQuoteId(quote.id);
     setIsDirty(false);
