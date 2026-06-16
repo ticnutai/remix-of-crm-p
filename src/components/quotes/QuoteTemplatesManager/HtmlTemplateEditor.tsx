@@ -4572,8 +4572,8 @@ export function HtmlTemplateEditor({
       ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition !== "full-width" ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoWidth || designSettings.logoSize || 120}px; ${designSettings.logoHeight ? `height: ${designSettings.logoHeight}px; object-fit: contain;` : "height: auto;"} margin-bottom: 15px;">` : ""}
       ${
         designSettings.logoPosition !== "full-width"
-          ? `<h1 style="margin: 0; font-size: 32px; color: ${designSettings.primaryColor};">${editedTemplate.name}</h1>
-      <p style="opacity: 0.7; margin: 10px 0 0;">${editedTemplate.description || ""}</p>`
+          ? `<h1 data-editable="template.name" style="margin: 0; font-size: 32px; color: ${designSettings.primaryColor};">${editedTemplate.name}</h1>
+      <p data-editable="template.description" style="opacity: 0.7; margin: 10px 0 0;">${editedTemplate.description || ""}</p>`
           : ""
       }
     </div>`
