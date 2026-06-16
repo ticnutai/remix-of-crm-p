@@ -1,68 +1,41 @@
-## מטרה
-להרחיב את מערכת ה-HR/Payroll הקיימת לתלוש שכר ישראלי מלא ומדויק, **בלי כפילויות** - להישען על כל מה שכבר קיים (מס, ביטל"א, פנסיה, השתלמות, נוכחות, חופשות, גרסאות חוק) ולהשלים רק את החסר.
 
-## עקרון מנחה
-לא מוחקים שום קוד קיים. רק:
-- מוסיפים עמודות חסרות ל-`employees`
-- מרחיבים `calcPayroll` עם רכיבים חדשים (הבראה, נסיעות לפי ק"מ, שווי רכב/טלפון/ביגוד)
-- מחליפים את `EmployeeEditDialog` הקיים ב-Wizard מודרני עם 6 טאבים
-- מוסיפים מודול PDF לתלוש שכר
-- מוסיפים עוזר AI שמזהה חסרים ומציע ערכים
+## מטרות
+1. ביטול הבהוב/קפיצה של ה-iframe בכל תו שמוקלד בעורך.
+2. אפשרות לערוך טקסט ישירות בתוך התצוגה המקדימה (hover מסגרת זהב → קליק → contentEditable → blur שומר).
 
----
+## שינויים ב-`HtmlTemplateEditor.tsx`
 
-## שלב 1 - הרחבת DB (migration אחד)
+### A. ביטול re-render אגרסיבי של ה-preview (debounce 300ms)
+1. **memoization של ה-HTML**: לעטוף את `generateHtmlContent()` ב-`useMemo` עם תלויות מפורשות (`editedTemplate`, `paymentSteps`, `designSettings`, `textBoxes`, `pricingTiers`, `selectedTier`, `projectDetails`, `upgrades`).
+2. **debounce ל-srcDoc**: hook חדש `useDebouncedValue(html, 300)` — ה-iframe יקבל רק את הערך ה-debounced.
+3. **קומפוננטה ממומויזת `PreviewIframe`** (קובץ חדש `PreviewIframe.tsx`): `React.memo` שמקבל `html`, `device`, `className`. רק היא תרונדר מחדש כשה-HTML ה-debounced משתנה — לא כל העורך הגדול.
+4. החלפת כל 5 השימושים הקיימים ב-`<iframe srcDoc={generateHtmlContent()}>` ל-`<PreviewIframe html={debouncedHtml} ... />`.
 
-הוספת עמודות חסרות ל-`employees`:
+### B. עריכה inline בתוך ה-preview
+1. בתוך ה-HTML שנוצר ב-`generateHtmlContent`, להוסיף לכל טקסט עריך (כותרות, פסקאות, שם חבילה, תיאור שלב תשלום וכו') `data-editable="path.to.field"` ו-`data-field-id`.
+2. ב-`PreviewIframe` להזריק ל-iframe סקריפט קטן שעושה:
+   - CSS: על hover של `[data-editable]` → מסגרת זהב `2px solid #d8ac27` + cursor pointer.
+   - on click → `contentEditable=true` + focus.
+   - on blur / Enter → `postMessage({type:'inline-edit', field, value})` להורה, ואז `contentEditable=false`.
+3. בהורה: `useEffect` שמאזין ל-`message` ומעדכן את ה-state המתאים (`editedTemplate.title`, `paymentSteps[i].description` וכו') לפי `field path`. עדכון ה-state יפעיל autosave הקיים.
+4. כדי שהעריכה עצמה לא תגרום ל-srcDoc rebuild מיידי שיאפס את הסמן — בזמן `contentEditable=true` נסמן flag `isEditingInline` שדוחה את ה-debounce עד blur.
 
-**אישי:**
-- `gender` TEXT CHECK('male','female','other')
-- `marital_status` TEXT CHECK('single','married','divorced','widowed','separated')
-- `children_count` INTEGER DEFAULT 0
-- `children_data` JSONB (מערך {name, birth_date, has_custody})
-- `spouse_works` BOOLEAN
-- `spouse_id_number` TEXT
+### C. רשימת שדות שיהפכו לעריכים inline (שלב ראשון)
+- כותרת ראשית של ההצעה
+- שם לקוח / שם פרויקט בכותרת
+- שם כל חבילה (`pricingTier.name`) + תיאור
+- שם שלב תשלום + תיאור
+- טקסט של `textBoxes`
+- פוטר/תנאים
 
-**כתובת ומוצא:**
-- `address_street`, `address_city`, `address_zip` TEXT
-- `address_lat`, `address_lng` NUMERIC
-- `country_of_origin` TEXT
-- `aliyah_date` DATE (עולה חדש - 1/3/4.5 נק' זיכוי לפי שנה)
-- `disability_pct` NUMERIC(5,2)
+(שדות מספריים כמו מחיר/אחוז נשארים בעורך — לא ניגעים בלוגיקה.)
 
-**השכלה ומקצוע:**
-- `academic_degree` TEXT, `degree_completion_year` INTEGER
-- `profession_code` TEXT
+## קבצים
+- **חדש**: `src/components/quotes/QuoteTemplatesManager/PreviewIframe.tsx` (קומפוננטה ממומויזת + הזרקת סקריפט inline-edit).
+- **חדש**: `src/hooks/useDebouncedValue.ts` (אם לא קיים).
+- **ערוך**: `src/components/quotes/QuoteTemplatesManager/HtmlTemplateEditor.tsx` — memo+debounce ל-HTML, החלפת iframes, listener ל-postMessage, הוספת `data-editable` בתוך `generateHtmlContent`.
 
-**העסקה:**
-- `position_ratio_pct` NUMERIC(5,2) DEFAULT 100  (יחס משרה)
-- `work_distance_km` NUMERIC(6,2)  (לחישוב נסיעות אוטומטי)
-- `has_company_car` BOOLEAN, `company_car_value` NUMERIC
-- `has_company_phone` BOOLEAN, `company_phone_value` NUMERIC
-- `clothing_allowance_annual` NUMERIC
-- `recuperation_days_used` NUMERIC(5,2) DEFAULT 0
-
-**בנק (פירוק):**
-- `bank_code` TEXT, `bank_branch` TEXT, `bank_account_number` TEXT
-
-**פנסיה/השתלמות מורחב:**
-- `pension_fund_name` TEXT, `pension_policy_number` TEXT
-- `study_fund_name` TEXT, `study_fund_policy_number` TEXT
-
-טבלה חדשה `payroll_recuperation_rates`:
-- שנה, ערך יום הבראה לפי מגזר (ברירת מחדל 471₪ ל-2026)
-
----
-
-## שלב 2 - הרחבת `src/lib/payroll.ts`
-
-**פונקציות חדשות (לא מחליפות קיימות):**
-
-1. `calcTaxCreditPoints(employee, year)` - חישוב אוטומטי לפי חוק:
-   - תושב = 2.25
-   - אישה = +0.5
-   - ילד 0-5 = +2.5 לכל ילד (לאם) / +1 (לאב עם משמורת)
-   - ילד 6-17 = +1
-   - הורה יחיד = +1
-   - עולה חדש = 3/2/1 לפי שנה מעלייה
-   - סיום תואר ראשון = +1 (3 שנים) / שני = +0
+## סיכון / הערות
+- הקובץ ב-12k שורות — אעבוד בעדכונים ממוקדים (line_replace), לא בכתיבה מחדש.
+- הזרקת הסקריפט תיעשה בתוך ה-HTML עצמו (`<script>`) שמתנגן בתוך ה-iframe; התקשורת להורה דרך `window.parent.postMessage` עם origin check.
+- לא נוגעים ב-autosave/מחירים/לוגיקה עסקית — רק presentation + עריכת טקסט.
