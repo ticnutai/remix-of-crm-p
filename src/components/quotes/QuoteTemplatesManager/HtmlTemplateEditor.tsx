@@ -139,6 +139,7 @@ import {
 } from "@/components/ui/popover";
 import { useClients } from "@/hooks/useClients";
 import { useCloudPreferences } from "@/hooks/useCloudPreferences";
+import { useQuoteDraftAutosave } from "@/hooks/useQuoteDraftAutosave";
 import { supabase } from "@/integrations/supabase/client";
 import { syncClientStagesFromTemplate } from "@/lib/clientStageTemplateSync";
 import companyHeaderImg from "@/assets/company-header.png";
@@ -3501,6 +3502,86 @@ export function HtmlTemplateEditor({
   });
   const [isConvertingFile, setIsConvertingFile] = useState(false);
 
+  // === Autosave (טיוטה אוטומטית: localStorage מיידי + ענן כל 2 שניות) ===
+  const draftKey = template.id || `new::${template.name || "draft"}`;
+  const draftSnapshot = useMemo(
+    () => ({
+      editedTemplate,
+      paymentSteps,
+      designSettings,
+      textBoxes,
+      upgrades,
+      pricingTiers,
+      projectDetails,
+      selectedTier,
+    }),
+    [
+      editedTemplate,
+      paymentSteps,
+      designSettings,
+      textBoxes,
+      upgrades,
+      pricingTiers,
+      projectDetails,
+      selectedTier,
+    ],
+  );
+  const {
+    status: autosaveStatus,
+    lastSavedAt: autosaveLastSavedAt,
+    loadLocalDraft,
+    loadCloudDraft,
+    clearDraft,
+  } = useQuoteDraftAutosave({
+    key: draftKey,
+    snapshot: draftSnapshot,
+    enabled: open,
+  });
+
+  // שחזור אוטומטי בפתיחה - LS מיידי, ענן אם חדש יותר
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      restoredRef.current = false;
+      return;
+    }
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+
+    const applyDraft = (data: any, source: "local" | "cloud") => {
+      if (!data || typeof data !== "object") return;
+      try {
+        if (data.editedTemplate) setEditedTemplate(data.editedTemplate);
+        if (Array.isArray(data.paymentSteps)) setPaymentSteps(data.paymentSteps);
+        if (data.designSettings) setDesignSettings(data.designSettings);
+        if (Array.isArray(data.textBoxes)) setTextBoxes(data.textBoxes);
+        if (Array.isArray(data.upgrades)) setUpgrades(data.upgrades);
+        if (Array.isArray(data.pricingTiers)) setPricingTiers(data.pricingTiers);
+        if (data.projectDetails) setProjectDetails(data.projectDetails);
+        if (typeof data.selectedTier === "string") setSelectedTier(data.selectedTier);
+        toast({
+          title: source === "cloud" ? "טיוטה שוחזרה מהענן" : "טיוטה שוחזרה",
+          description: "הצעת המחיר שוחזרה למצב שבו עזבת אותה",
+        });
+      } catch (err) {
+        console.warn("Could not restore quote draft:", err);
+      }
+    };
+
+    const local = loadLocalDraft();
+    if (local) applyDraft(local, "local");
+
+    // Cloud restore - אם יש בענן ושונה ממה ששוחזר מקומי
+    (async () => {
+      const cloud = await loadCloudDraft();
+      if (cloud && JSON.stringify(cloud) !== JSON.stringify(local)) {
+        applyDraft(cloud, "cloud");
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+
   // === Strip Maker State ===
   const stripMakerInputRef = useRef<HTMLInputElement>(null);
   const [stripSourceImage, setStripSourceImage] = useState<string | null>(null);
@@ -4271,6 +4352,8 @@ export function HtmlTemplateEditor({
       }
 
       toast({ title: "נשמר בהצלחה ☁️", description: "ההצעה נשמרה בתבנית ובהצעות השמורות" });
+      // ניקוי טיוטת autosave אחרי שמירה מפורשת מוצלחת
+      try { await clearDraft(); } catch { /* no-op */ }
     } catch (err: any) {
       console.error("Save error:", err);
       toast({
@@ -11530,6 +11613,31 @@ export function HtmlTemplateEditor({
                 </PopoverContent>
               </Popover>
 
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground px-2" title="טיוטה אוטומטית - נשמרת בענן תוך כדי עריכה">
+                {autosaveStatus === "saving" && (
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    שומר...
+                  </span>
+                )}
+                {autosaveStatus === "saved" && (
+                  <span className="flex items-center gap-1 text-emerald-600">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    נשמר ✓
+                    {autosaveLastSavedAt && (
+                      <span className="opacity-70">
+                        {autosaveLastSavedAt.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
+                  </span>
+                )}
+                {autosaveStatus === "error" && (
+                  <span className="flex items-center gap-1 text-destructive">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-destructive" />
+                    שגיאה בשמירה אוטומטית
+                  </span>
+                )}
+              </div>
               <Button
                 className="bg-[#DAA520] hover:bg-[#B8860B] text-white"
                 size="sm"
