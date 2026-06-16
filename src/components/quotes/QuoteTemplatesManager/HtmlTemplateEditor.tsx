@@ -6,6 +6,8 @@ import React, {
   useEffect,
   useMemo,
 } from "react";
+import { PreviewIframe, type InlineEditPayload } from "./PreviewIframe";
+import { useDebouncedValue } from "@/hooks/useDebounce";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -4405,8 +4407,8 @@ export function HtmlTemplateEditor({
           const textDecor = tb.isUnderline ? "text-decoration: underline;" : "";
           const textAlign = `text-align: ${tb.textAlign || "right"};`;
           return `<div style="margin: 15px 0; padding: 15px; background: ${bgColor}; border: 2px solid ${borderColor}; border-radius: ${designSettings.borderRadius}px;">
-          ${tb.title ? `<h4 style="margin: 0 0 8px 0; color: ${designSettings.primaryColor}; font-family: ${fontFamily};">${s.icon} ${tb.title}</h4>` : ""}
-          <div style="color: ${textColor}; white-space: pre-wrap; font-size: ${fontSize}px; font-family: ${fontFamily}; ${fontWeight} ${fontStyle} ${textDecor} ${textAlign}">${tb.content}</div>
+          ${tb.title ? `<h4 data-editable="textbox.${tb.id}.title" style="margin: 0 0 8px 0; color: ${designSettings.primaryColor}; font-family: ${fontFamily};">${s.icon} ${tb.title}</h4>` : ""}
+          <div data-editable="textbox.${tb.id}.content" style="color: ${textColor}; white-space: pre-wrap; font-size: ${fontSize}px; font-family: ${fontFamily}; ${fontWeight} ${fontStyle} ${textDecor} ${textAlign}">${tb.content}</div>
         </div>`;
         })
         .join("");
@@ -4416,7 +4418,7 @@ export function HtmlTemplateEditor({
       .map(
         (stage) => `
       <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: ${designSettings.borderRadius}px;">
-        <h3 style="color: ${designSettings.primaryColor}; font-family: ${designSettings.fontFamily};">${stage.icon || "📋"} ${stage.name}</h3>
+        <h3 style="color: ${designSettings.primaryColor}; font-family: ${designSettings.fontFamily};">${stage.icon || "📋"} <span data-editable="stage.${stage.id}.name">${stage.name}</span></h3>
         <ul style="list-style: none; padding: 0;">
           ${stage.items
             .map((item) => {
@@ -4432,7 +4434,7 @@ export function HtmlTemplateEditor({
               const itemAlign = item.textAlign
                 ? `text-align: ${item.textAlign};`
                 : "";
-              return `<li style="padding: 5px 0; color: ${itemColor}; font-family: '${itemFont}', sans-serif; font-size: ${itemSize}px; ${itemBold} ${itemItalic} ${itemUnderline} ${itemAlign}">✓ ${item.text}</li>`;
+              return `<li style="padding: 5px 0; color: ${itemColor}; font-family: '${itemFont}', sans-serif; font-size: ${itemSize}px; ${itemBold} ${itemItalic} ${itemUnderline} ${itemAlign}">✓ <span data-editable="stage.${stage.id}.item.${item.id}.text">${item.text}</span></li>`;
             })
             .join("")}
         </ul>
@@ -4456,7 +4458,7 @@ export function HtmlTemplateEditor({
           if (isVatBreakdown) {
             return `
       <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;">${step.name}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee;"><span data-editable="paystep.${step.id}.name">${step.name}</span></td>
         <td style="padding: 10px; text-align: center;">${step.percentage}%</td>
         <td style="padding: 10px; text-align: left;">₪${stepAmount.toLocaleString()}</td>
         <td style="padding: 10px; text-align: left; color: #666; font-size: 13px;">₪${stepVat.toLocaleString()}${vatLabel}</td>
@@ -4465,7 +4467,7 @@ export function HtmlTemplateEditor({
           } else {
             return `
       <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;">${step.name}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee;"><span data-editable="paystep.${step.id}.name">${step.name}</span></td>
         <td style="padding: 10px; text-align: center;">${step.percentage}%</td>
         <td style="padding: 10px; text-align: left;">₪${stepAmount.toLocaleString()}</td>
       </tr>`;
@@ -4560,8 +4562,8 @@ export function HtmlTemplateEditor({
       ${designSettings.showLogo && designSettings.logoUrl && (!designSettings.logoPosition || designSettings.logoPosition === "inside-header") ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoWidth || designSettings.logoSize || 120}px; ${designSettings.logoHeight ? `height: ${designSettings.logoHeight}px; object-fit: contain;` : "height: auto;"} margin-bottom: 15px;">` : ""}
       ${
         designSettings.logoPosition !== "full-width"
-          ? `<h1 style="margin: 0; font-size: 32px;">${editedTemplate.name}</h1>
-      <p style="opacity: 0.9; margin: 10px 0 0;">${editedTemplate.description || ""}</p>`
+          ? `<h1 data-editable="template.name" style="margin: 0; font-size: 32px;">${editedTemplate.name}</h1>
+      <p data-editable="template.description" style="opacity: 0.9; margin: 10px 0 0;">${editedTemplate.description || ""}</p>`
           : ""
       }
     </div>`
@@ -4570,8 +4572,8 @@ export function HtmlTemplateEditor({
       ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition !== "full-width" ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoWidth || designSettings.logoSize || 120}px; ${designSettings.logoHeight ? `height: ${designSettings.logoHeight}px; object-fit: contain;` : "height: auto;"} margin-bottom: 15px;">` : ""}
       ${
         designSettings.logoPosition !== "full-width"
-          ? `<h1 style="margin: 0; font-size: 32px; color: ${designSettings.primaryColor};">${editedTemplate.name}</h1>
-      <p style="opacity: 0.7; margin: 10px 0 0;">${editedTemplate.description || ""}</p>`
+          ? `<h1 data-editable="template.name" style="margin: 0; font-size: 32px; color: ${designSettings.primaryColor};">${editedTemplate.name}</h1>
+      <p data-editable="template.description" style="opacity: 0.7; margin: 10px 0 0;">${editedTemplate.description || ""}</p>`
           : ""
       }
     </div>`
@@ -4635,6 +4637,76 @@ export function HtmlTemplateEditor({
 </body>
 </html>`;
   }, [editedTemplate, designSettings, paymentSteps, projectDetails, textBoxes]);
+
+  // Memoize live HTML output to avoid rebuilding identical string on unrelated renders
+  const liveHtml = useMemo(() => generateHtmlContent(), [generateHtmlContent]);
+  // Debounce the HTML fed into the preview iframe to prevent flicker while typing
+  const debouncedPreviewHtml = useDebouncedValue(liveHtml, 300);
+
+  // Inline-edit dispatcher: maps a data-editable path coming from the preview
+  // iframe back to the relevant editor state. Paths used:
+  //   template.name | template.description
+  //   stage.<id>.name | stage.<id>.item.<itemId>.text
+  //   paystep.<id>.name
+  //   textbox.<id>.title | textbox.<id>.content
+  const handleInlineEdit = useCallback(({ path, value }: InlineEditPayload) => {
+    const v = (value ?? "").replace(/\u00A0/g, " ");
+    if (path === "template.name") {
+      setEditedTemplate((prev: any) => ({ ...prev, name: v }));
+      return;
+    }
+    if (path === "template.description") {
+      setEditedTemplate((prev: any) => ({ ...prev, description: v }));
+      return;
+    }
+    const stageMatch = path.match(/^stage\.([^.]+)\.name$/);
+    if (stageMatch) {
+      const sid = stageMatch[1];
+      setEditedTemplate((prev: any) => ({
+        ...prev,
+        stages: (prev.stages || []).map((s: any) =>
+          String(s.id) === sid ? { ...s, name: v } : s,
+        ),
+      }));
+      return;
+    }
+    const itemMatch = path.match(/^stage\.([^.]+)\.item\.([^.]+)\.text$/);
+    if (itemMatch) {
+      const sid = itemMatch[1];
+      const iid = itemMatch[2];
+      setEditedTemplate((prev: any) => ({
+        ...prev,
+        stages: (prev.stages || []).map((s: any) =>
+          String(s.id) === sid
+            ? {
+                ...s,
+                items: (s.items || []).map((it: any) =>
+                  String(it.id) === iid ? { ...it, text: v } : it,
+                ),
+              }
+            : s,
+        ),
+      }));
+      return;
+    }
+    const payMatch = path.match(/^paystep\.([^.]+)\.name$/);
+    if (payMatch) {
+      const pid = payMatch[1];
+      setPaymentSteps((prev: any[]) =>
+        prev.map((p) => (String(p.id) === pid ? { ...p, name: v } : p)),
+      );
+      return;
+    }
+    const tbMatch = path.match(/^textbox\.([^.]+)\.(title|content)$/);
+    if (tbMatch) {
+      const tid = tbMatch[1];
+      const field = tbMatch[2];
+      setTextBoxes((prev: any[]) =>
+        prev.map((tb) => (String(tb.id) === tid ? { ...tb, [field]: v } : tb)),
+      );
+    }
+  }, []);
+
 
   // Helper: convert image URL to base64 data URL for standalone exports
   const convertImageToBase64 = (url: string): Promise<string> => {
@@ -9508,11 +9580,12 @@ export function HtmlTemplateEditor({
                     תצוגה מקדימה - המיקום של תיבות הטקסט מסומן
                   </div>
                   <div className="h-[calc(100%-24px)] bg-white rounded-lg shadow-lg overflow-hidden">
-                    <iframe
-                      srcDoc={generateHtmlContent()}
+                    <PreviewIframe
+                      html={debouncedPreviewHtml}
                       title="תצוגה מקדימה"
                       className="w-full h-full border-0"
                       style={{ minHeight: "100%" }}
+                      onInlineEdit={handleInlineEdit}
                     />
                   </div>
                 </div>
@@ -11035,8 +11108,8 @@ export function HtmlTemplateEditor({
                       </div>
                     </ScrollArea>
                   ) : (
-                    <iframe
-                      srcDoc={generateHtmlContent()}
+                    <PreviewIframe
+                      html={debouncedPreviewHtml}
                       title="תצוגה מקדימה"
                       className="w-full border-0"
                       style={{
@@ -11047,6 +11120,7 @@ export function HtmlTemplateEditor({
                               ? "1000px"
                               : "100%",
                       }}
+                      onInlineEdit={handleInlineEdit}
                     />
                   )}
 
@@ -11511,11 +11585,12 @@ export function HtmlTemplateEditor({
               <ResizablePanel defaultSize={50} minSize={30}>
                 <div className="h-full bg-gray-100 p-4">
                   <div className="h-full bg-white rounded-lg shadow-lg overflow-hidden">
-                    <iframe
-                      srcDoc={generateHtmlContent()}
+                    <PreviewIframe
+                      html={debouncedPreviewHtml}
                       title="תצוגה מקדימה חיה"
                       className="w-full h-full border-0"
                       style={{ minHeight: "100%" }}
+                      onInlineEdit={handleInlineEdit}
                     />
                   </div>
                 </div>
