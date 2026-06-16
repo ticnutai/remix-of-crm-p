@@ -4475,10 +4475,14 @@ export function HtmlTemplateEditor({
         .join("");
     };
 
+    const fd: FrameDesignSettings = { ...DEFAULT_FRAME_SETTINGS, ...(designSettings.frameDesign || {}) };
+    const stageCornersHtml = decorativeCornersHtml(fd.stageBorder);
+
     const stages = editedTemplate.stages
       .map(
         (stage) => `
-      <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: ${designSettings.borderRadius}px;">
+      <div class="stage-card" style="margin-bottom: 20px;">
+        ${stageCornersHtml}
         <h3 style="color: ${designSettings.primaryColor}; font-family: ${designSettings.fontFamily};">${stage.icon ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;margin-left:6px;${stage.iconColor ? `background:${stage.iconColor}20;border:1px solid ${stage.iconColor};` : ""}">${stage.icon}</span>` : ""} <span data-editable="stage.${stage.id}.name">${stage.name}</span></h3>
         <ul style="list-style: none; padding: 0;">
           ${stage.items
