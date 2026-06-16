@@ -11585,11 +11585,12 @@ export function HtmlTemplateEditor({
               <ResizablePanel defaultSize={50} minSize={30}>
                 <div className="h-full bg-gray-100 p-4">
                   <div className="h-full bg-white rounded-lg shadow-lg overflow-hidden">
-                    <iframe
-                      srcDoc={generateHtmlContent()}
+                    <PreviewIframe
+                      html={debouncedPreviewHtml}
                       title="תצוגה מקדימה חיה"
                       className="w-full h-full border-0"
                       style={{ minHeight: "100%" }}
+                      onInlineEdit={handleInlineEdit}
                     />
                   </div>
                 </div>
