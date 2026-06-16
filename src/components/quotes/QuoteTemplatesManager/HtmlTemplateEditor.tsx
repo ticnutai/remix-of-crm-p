@@ -4674,27 +4674,30 @@ export function HtmlTemplateEditor({
       
       ${renderTextBoxes("before-stages")}
       
-      <h2 style="color: ${designSettings.primaryColor};">שלבי העבודה</h2>
+      ${sectionTitleHtml("שלבי העבודה", fd.sectionTitle, "margin: 30px 0 16px;")}
       ${stages}
       
       ${renderTextBoxes("after-stages")}
       
-      <h2 style="color: ${designSettings.primaryColor}; margin-top: 40px;">סדר תשלומים</h2>
-      <table class="payments">
-        <thead><tr><th>שלב</th><th>אחוז</th><th>סכום (נטו)</th>${isVatBreakdown ? "<th>מע״מ</th><th>סה״כ (ברוטו)</th>" : ""}</tr></thead>
-        <tbody>${payments}</tbody>
-        <tfoot>
-          <tr style="font-weight: bold; background: #f0f0f0;">
-            <td style="padding: 12px;">סה"כ</td>
-            <td style="padding: 12px; text-align: center;">100%</td>
-            <td style="padding: 12px; text-align: left;">₪${basePrice.toLocaleString()}</td>
-            ${isVatBreakdown ? `
-            <td style="padding: 12px; text-align: left; color: #666;">₪${totalVat.toLocaleString()}</td>
-            <td style="padding: 12px; text-align: left; font-weight: bold; font-size: 1.1em;">₪${totalGross.toLocaleString()}</td>` : ""}
-          </tr>
-        </tfoot>
-      </table>
-      ${isVatBreakdown ? `<p style="margin-top: 8px; font-size: 12px; color: #888;">* המע״מ יחושב בכל שלב תשלום בהתאם לשיעור המע״מ התקף במועד התשלום בפועל.</p>` : ""}
+      ${sectionTitleHtml("סדר תשלומים", fd.sectionTitle, "margin: 40px 0 16px;")}
+      <div class="summary-card">
+        ${decorativeCornersHtml(fd.summaryBorder)}
+        <table class="payments">
+          <thead><tr><th>שלב</th><th>אחוז</th><th>סכום (נטו)</th>${isVatBreakdown ? "<th>מע״מ</th><th>סה״כ (ברוטו)</th>" : ""}</tr></thead>
+          <tbody>${payments}</tbody>
+          <tfoot>
+            <tr style="font-weight: bold; background: #f0f0f0;">
+              <td style="padding: 12px;">סה"כ</td>
+              <td style="padding: 12px; text-align: center;">100%</td>
+              <td style="padding: 12px; text-align: left;">₪${basePrice.toLocaleString()}</td>
+              ${isVatBreakdown ? `
+              <td style="padding: 12px; text-align: left; color: #666;">₪${totalVat.toLocaleString()}</td>
+              <td style="padding: 12px; text-align: left; font-weight: bold; font-size: 1.1em;">₪${totalGross.toLocaleString()}</td>` : ""}
+            </tr>
+          </tfoot>
+        </table>
+        ${isVatBreakdown ? `<p style="margin-top: 8px; font-size: 12px; color: #888;">* המע״מ יחושב בכל שלב תשלום בהתאם לשיעור המע״מ התקף במועד התשלום בפועל.</p>` : ""}
+      </div>
       
       ${renderTextBoxes("after-payments")}
       
@@ -4707,6 +4710,7 @@ export function HtmlTemplateEditor({
       ${designSettings.companyAddress} | ${designSettings.companyPhone} | ${designSettings.companyEmail}
     </div>
   </div>
+  ${fixedFooterHtml(fd.fixedFooter)}
 </body>
 </html>`;
   }, [editedTemplate, designSettings, paymentSteps, projectDetails, textBoxes]);
