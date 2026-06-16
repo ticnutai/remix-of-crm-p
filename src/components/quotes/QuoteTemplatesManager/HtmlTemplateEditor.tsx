@@ -11108,8 +11108,8 @@ export function HtmlTemplateEditor({
                       </div>
                     </ScrollArea>
                   ) : (
-                    <iframe
-                      srcDoc={generateHtmlContent()}
+                    <PreviewIframe
+                      html={debouncedPreviewHtml}
                       title="תצוגה מקדימה"
                       className="w-full border-0"
                       style={{
@@ -11120,6 +11120,7 @@ export function HtmlTemplateEditor({
                               ? "1000px"
                               : "100%",
                       }}
+                      onInlineEdit={handleInlineEdit}
                     />
                   )}
 
