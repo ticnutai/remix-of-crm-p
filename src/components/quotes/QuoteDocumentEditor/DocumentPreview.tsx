@@ -627,5 +627,6 @@ export function DocumentPreview({
         )}
       </div>
     </div>
+    </div>
   );
 }
