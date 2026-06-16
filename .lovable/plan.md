@@ -1,41 +1,84 @@
+# מערכת עיצוב מסגרות ורקעים מתקדמת
 
-## מטרות
-1. ביטול הבהוב/קפיצה של ה-iframe בכל תו שמוקלד בעורך.
-2. אפשרות לערוך טקסט ישירות בתוך התצוגה המקדימה (hover מסגרת זהב → קליק → contentEditable → blur שומר).
+הרחבת מערכת העיצוב הקיימת (`DesignSettings`) לכלול שליטה מלאה במסגרות, רקעים, כותרות ופוטר — עם override ברמת הצעה בודדת.
 
-## שינויים ב-`HtmlTemplateEditor.tsx`
+## 1. הרחבת סכמת `DesignSettings` (types.ts)
 
-### A. ביטול re-render אגרסיבי של ה-preview (debounce 300ms)
-1. **memoization של ה-HTML**: לעטוף את `generateHtmlContent()` ב-`useMemo` עם תלויות מפורשות (`editedTemplate`, `paymentSteps`, `designSettings`, `textBoxes`, `pricingTiers`, `selectedTier`, `projectDetails`, `upgrades`).
-2. **debounce ל-srcDoc**: hook חדש `useDebouncedValue(html, 300)` — ה-iframe יקבל רק את הערך ה-debounced.
-3. **קומפוננטה ממומויזת `PreviewIframe`** (קובץ חדש `PreviewIframe.tsx`): `React.memo` שמקבל `html`, `device`, `className`. רק היא תרונדר מחדש כשה-HTML ה-debounced משתנה — לא כל העורך הגדול.
-4. החלפת כל 5 השימושים הקיימים ב-`<iframe srcDoc={generateHtmlContent()}>` ל-`<PreviewIframe html={debouncedHtml} ... />`.
+```ts
+// חבילת מסגרת (משתמשת גם להצעה כולה וגם לשלב)
+interface BorderConfig {
+  style: "none" | "solid" | "dashed" | "dotted" | "double" | "groove" | "ridge" | "decorative-gold" | "shadow-only";
+  width: number;       // 0-10 px
+  color: string;       // hex
+  radius: number;      // 0-32 px
+  padding: number;     // 0-40 px
+  shadow: "none" | "sm" | "md" | "lg" | "xl" | "glow-gold";
+  decorativeCorners?: boolean; // פינות זהב דקורטיביות
+}
 
-### B. עריכה inline בתוך ה-preview
-1. בתוך ה-HTML שנוצר ב-`generateHtmlContent`, להוסיף לכל טקסט עריך (כותרות, פסקאות, שם חבילה, תיאור שלב תשלום וכו') `data-editable="path.to.field"` ו-`data-field-id`.
-2. ב-`PreviewIframe` להזריק ל-iframe סקריפט קטן שעושה:
-   - CSS: על hover של `[data-editable]` → מסגרת זהב `2px solid #d8ac27` + cursor pointer.
-   - on click → `contentEditable=true` + focus.
-   - on blur / Enter → `postMessage({type:'inline-edit', field, value})` להורה, ואז `contentEditable=false`.
-3. בהורה: `useEffect` שמאזין ל-`message` ומעדכן את ה-state המתאים (`editedTemplate.title`, `paymentSteps[i].description` וכו') לפי `field path`. עדכון ה-state יפעיל autosave הקיים.
-4. כדי שהעריכה עצמה לא תגרום ל-srcDoc rebuild מיידי שיאפס את הסמן — בזמן `contentEditable=true` נסמן flag `isEditingInline` שדוחה את ה-debounce עד blur.
+// חדש בתוך DesignSettings:
+document_border: BorderConfig;          // מסגרת ראשית להצעה כולה
+stage_border:    BorderConfig;          // מסגרת לכל שלב
+summary_border:  BorderConfig;          // מסגרת לקלף סיכום מחיר
+background: {
+  type: "solid" | "gradient" | "paper";
+  color1: string;
+  color2?: string;          // לגרדיאנט
+  direction?: "to-b" | "to-br" | "to-r";
+  paperTone?: "warm" | "cool" | "ivory";
+};
+section_title: {
+  style: "plain" | "gold-bar" | "gold-underline" | "filled" | "boxed";
+  barColor: string;
+  textColor: string;
+};
+fixed_header: { enabled: boolean; height: number; content: "logo" | "company" | "both" };
+fixed_footer: { enabled: boolean; text: string; showPageNumbers: boolean };
+```
 
-### C. רשימת שדות שיהפכו לעריכים inline (שלב ראשון)
-- כותרת ראשית של ההצעה
-- שם לקוח / שם פרויקט בכותרת
-- שם כל חבילה (`pricingTier.name`) + תיאור
-- שם שלב תשלום + תיאור
-- טקסט של `textBoxes`
-- פוטר/תנאים
+## 2. UI — DesignSettingsSection (טאב חדש "מסגרות")
 
-(שדות מספריים כמו מחיר/אחוז נשארים בעורך — לא ניגעים בלוגיקה.)
+טאב חמישי בשם **"מסגרות"** עם:
+- אקורדיון: מסגרת הצעה / מסגרת שלב / מסגרת סיכום
+- בכל אחד: בורר סגנון (פרסטים ויזואליים 9), עובי (slider), צבע (color picker עם זהב כברירת מחדל), רדיוס (slider), צל (dropdown), פינות זהב (switch)
+- כפתור "החל על כולם" — מעתיק את ההגדרה למסגרות האחרות
+- 6 פרסטים מוכנים: "קלאסי", "יוקרתי זהב", "מודרני", "מינימלי", "קישוטי", "ספרותי"
 
-## קבצים
-- **חדש**: `src/components/quotes/QuoteTemplatesManager/PreviewIframe.tsx` (קומפוננטה ממומויזת + הזרקת סקריפט inline-edit).
-- **חדש**: `src/hooks/useDebouncedValue.ts` (אם לא קיים).
-- **ערוך**: `src/components/quotes/QuoteTemplatesManager/HtmlTemplateEditor.tsx` — memo+debounce ל-HTML, החלפת iframes, listener ל-postMessage, הוספת `data-editable` בתוך `generateHtmlContent`.
+טאב **"רקע"** (חדש): סוג רקע + צבעים + כיוון גרדיאנט + טון נייר.
 
-## סיכון / הערות
-- הקובץ ב-12k שורות — אעבוד בעדכונים ממוקדים (line_replace), לא בכתיבה מחדש.
-- הזרקת הסקריפט תיעשה בתוך ה-HTML עצמו (`<script>`) שמתנגן בתוך ה-iframe; התקשורת להורה דרך `window.parent.postMessage` עם origin check.
-- לא נוגעים ב-autosave/מחירים/לוגיקה עסקית — רק presentation + עריכת טקסט.
+טאב **"כותרות"** (חדש): סגנון כותרות שלבים (5 אפשרויות ויזואליות).
+
+## 3. רינדור — PreviewIframe + generator
+
+הרחבת מחולל ה-HTML:
+- `<body>` עם background לפי `background.type`
+- עטיפת `.quote-document` עם `document_border` (כולל פסאודו-אלמנטים `::before/::after` לפינות זהב דקורטיביות)
+- כל `.stage-card` עם `stage_border`
+- כותרת שלב לפי `section_title.style` (סרגל זהב צמוד מימין / קו תחתון / רקע מלא / מסגרת)
+- `fixed_header`/`fixed_footer` ב-`position: sticky` + `@media print` קבועים
+
+## 4. Override ברמת הצעה
+
+בעורך הצעה בודדת (`QuoteEditor`):
+- כפתור "🎨 התאמת עיצוב להצעה זו" פותח dialog עם אותו `DesignSettingsSection`
+- ההצעה שומרת `design_overrides: Partial<DesignSettings>` ב-jsonb
+- ב-merge: `effective = { ...templateDesign, ...overrides }`
+
+## 5. Migration
+
+הוספת עמודה `design_overrides jsonb default '{}'::jsonb` ל-`quotes`.
+ערכי ברירת מחדל ל-`DesignSettings` הקיים — backward compatible (כל השדות החדשים אופציונליים עם defaults במחולל).
+
+## פרטים טכניים
+- כל הצבעים נשמרים כ-hex ב-DB, אבל ב-CSS שמייצרים — `hsl()` ישיר על הערך (לא טוקנים, כי זה תוכן יוצא ל-PDF/אורח חיצוני).
+- `decorative-gold` ממומש ע"י 4 SVG פינות מוטמעות inline (לא חיצוני, לתאימות PDF).
+- `paper` background = SVG טקסטורה inline base64.
+- שמירה על ה-`border_style` הישן כ-deprecated, ממופה אוטומטית לסכמה החדשה ב-loader.
+
+## קבצים שיווצרו / יערכו
+- `types.ts` — סכמה חדשה + DEFAULT_BORDER + DESIGN_PRESETS
+- `DesignSettingsSection.tsx` — 3 טאבים חדשים (Borders / Background / Headings)
+- `BorderConfigEditor.tsx` (חדש) — קומפוננטה רב-שימושית למסגרת אחת
+- `PreviewIframe.tsx` / generator — שימוש בהגדרות החדשות
+- `QuoteEditor` — כפתור Override + dialog
+- migration ל-`quotes.design_overrides`
