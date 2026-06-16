@@ -296,6 +296,8 @@ interface DesignSettings {
   stripProcessed?: boolean;
   originalLogoUrl?: string; // Original logo before AI processing
   vatDisplayMode?: "plus-vat" | "breakdown"; // How VAT is displayed in the quote
+  // Frame design (borders, background, section titles, fixed header/footer)
+  frameDesign?: import("./frameStyles").FrameDesignSettings;
 }
 interface TextBox {
   id: string;
