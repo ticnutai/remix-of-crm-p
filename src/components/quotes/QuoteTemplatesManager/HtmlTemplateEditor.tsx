@@ -4558,8 +4558,8 @@ export function HtmlTemplateEditor({
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&family=Assistant:wght@200;300;400;500;600;700;800&family=Rubik:wght@300;400;500;600;700&family=Alef:wght@400;700&family=David+Libre:wght@400;500;700&family=Frank+Ruhl+Libre:wght@300;400;500;700&family=Varela+Round&family=Noto+Sans+Hebrew:wght@300;400;500;600;700&family=Secular+One&family=Suez+One&family=Amatic+SC:wght@400;700&display=swap" rel="stylesheet">
   <title>${editedTemplate.name}</title>
   <style>
-    body { font-family: '${designSettings.fontFamily}', sans-serif; font-size: ${designSettings.fontSize}px; margin: 0; padding: 0; background: #f5f5f5; }
-    .container { max-width: 800px; margin: 0 auto; background: white; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+    body { font-family: '${designSettings.fontFamily}', sans-serif; font-size: ${designSettings.fontSize}px; margin: 0; padding: 0; ${backgroundToBodyCss(fd.background)} }
+    .container { max-width: 800px; margin: 0 auto; background: white; position: relative; ${borderToCss(fd.documentBorder)} }
     .header { background: ${designSettings.headerBackground}; color: white; padding: 40px; text-align: center; }
     .content { padding: 40px; }
     .project-details { background: #f9f9f9; padding: 20px; border-radius: ${designSettings.borderRadius}px; margin-bottom: 30px; }
@@ -4572,9 +4572,17 @@ export function HtmlTemplateEditor({
     .footer { text-align: center; padding: 30px; background: #f9f9f9; color: #666; font-size: 14px; }
     .full-width-header { padding: 0 !important; overflow: hidden; background: transparent !important; margin: 0; }
     .full-width-header img { width: 100%; height: auto; display: block; object-fit: fill; object-position: center; margin: 0 auto; }
+    .stage-card { position: relative; ${borderToCss(fd.stageBorder)} }
+    .summary-card { position: relative; margin-top: 30px; ${borderToCss(fd.summaryBorder)} }
+    @media print {
+      .quote-fixed-header, .quote-fixed-footer { position: fixed; left: 0; right: 0; }
+      .quote-fixed-header { top: 0; }
+      .quote-fixed-footer { bottom: 0; }
+    }
   </style>
 </head>
 <body>
+  ${fixedHeaderHtml(fd.fixedHeader, designSettings.logoUrl)}
   <div class="container">
     ${
       designSettings.showLogo &&
