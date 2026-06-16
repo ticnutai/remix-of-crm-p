@@ -5123,7 +5123,22 @@ export function HtmlTemplateEditor({
     (sum, s) => sum + s.percentage,
     0,
   );
-  const basePrice = editedTemplate.base_price || 35000;
+  // המחיר הפעיל: עדיפות לחבילה הנבחרת בטאב "תוכן" -> סיכום ההצעה
+  const selectedTierObj = (pricingTiers as any[]).find((t) => t?.name === selectedTier);
+  const basePrice = (selectedTierObj && Number(selectedTierObj.price) > 0)
+    ? Number(selectedTierObj.price)
+    : (editedTemplate.base_price || 35000);
+
+  // סנכרון אוטומטי - המחיר של החבילה הנבחרת נשמר ב-base_price כדי שיישמר ויעבור הלאה (חוזה/חתימה)
+  useEffect(() => {
+    if (selectedTierObj && Number(selectedTierObj.price) > 0) {
+      const tierPrice = Number(selectedTierObj.price);
+      if ((editedTemplate.base_price || 0) !== tierPrice) {
+        setEditedTemplate((prev: any) => ({ ...prev, base_price: tierPrice }));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTier, selectedTierObj?.price]);
 
   // Extended font options with more Hebrew fonts
   const fontOptions = [
