@@ -13,6 +13,7 @@ export interface TemplateStage {
   id: string;
   name: string;
   icon?: string;
+  iconColor?: string;
   items: TemplateStageItem[];
   isExpanded?: boolean;
 }
