@@ -4458,7 +4458,7 @@ export function HtmlTemplateEditor({
           if (isVatBreakdown) {
             return `
       <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;">${step.name}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee;"><span data-editable="paystep.${step.id}.name">${step.name}</span></td>
         <td style="padding: 10px; text-align: center;">${step.percentage}%</td>
         <td style="padding: 10px; text-align: left;">₪${stepAmount.toLocaleString()}</td>
         <td style="padding: 10px; text-align: left; color: #666; font-size: 13px;">₪${stepVat.toLocaleString()}${vatLabel}</td>
