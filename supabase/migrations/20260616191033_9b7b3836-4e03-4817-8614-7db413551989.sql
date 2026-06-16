@@ -1,0 +1,1 @@
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS design_overrides jsonb NOT NULL DEFAULT '{}'::jsonb;
