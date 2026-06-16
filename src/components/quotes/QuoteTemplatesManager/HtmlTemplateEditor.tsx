@@ -4584,6 +4584,7 @@ export function HtmlTemplateEditor({
 <body>
   ${fixedHeaderHtml(fd.fixedHeader, designSettings.logoUrl)}
   <div class="container">
+    ${decorativeCornersHtml(fd.documentBorder)}
     ${
       designSettings.showLogo &&
       designSettings.logoUrl &&
