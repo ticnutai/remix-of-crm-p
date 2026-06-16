@@ -771,6 +771,58 @@ export function QuoteTemplatesManager() {
     {},
   );
 
+  // Tree helpers for nested folders
+  const childFoldersByParent = folders.reduce<Record<string, QuoteTemplateFolder[]>>(
+    (acc, f) => {
+      const key = f.parent_id || "__root__";
+      (acc[key] = acc[key] || []).push(f);
+      return acc;
+    },
+    {},
+  );
+  const rootFolders = childFoldersByParent["__root__"] || [];
+
+  // Returns set of descendant ids (including self) to prevent cycles when dragging folders
+  const getDescendantIds = (folderId: string): Set<string> => {
+    const result = new Set<string>([folderId]);
+    const walk = (id: string) => {
+      (childFoldersByParent[id] || []).forEach((child) => {
+        if (!result.has(child.id)) {
+          result.add(child.id);
+          walk(child.id);
+        }
+      });
+    };
+    walk(folderId);
+    return result;
+  };
+
+  // Recursive count of templates in folder + all subfolders
+  const countTemplatesDeep = (folderId: string): number => {
+    let count = (templatesByFolder[folderId] || []).length;
+    (childFoldersByParent[folderId] || []).forEach((c) => {
+      count += countTemplatesDeep(c.id);
+    });
+    return count;
+  };
+
+  // For "Move to Folder" dialog - flatten tree with depth
+  const flattenFolderTree = (
+    parentId: string | null = null,
+    depth = 0,
+  ): Array<{ folder: QuoteTemplateFolder; depth: number }> => {
+    const list = (childFoldersByParent[parentId || "__root__"] || []).slice().sort(
+      (a, b) => (a.sort_order || 0) - (b.sort_order || 0),
+    );
+    const result: Array<{ folder: QuoteTemplateFolder; depth: number }> = [];
+    list.forEach((f) => {
+      result.push({ folder: f, depth });
+      result.push(...flattenFolderTree(f.id, depth + 1));
+    });
+    return result;
+  };
+
+
   const calculateTotal = (template: QuoteTemplate) => {
     // Prefer base_price (set in editor), fallback to items sum
     if (template.base_price && template.base_price > 0) {
