@@ -1572,6 +1572,7 @@ function PaymentStepEditor({
   quoteTemplateStages = [],
   templateKey,
   onPreferenceChange,
+  basePrice = 0,
 }: {
   step: PaymentStep;
   onUpdate: (step: PaymentStep) => void;
@@ -1582,6 +1583,7 @@ function PaymentStepEditor({
   quoteTemplateStages?: TemplateStage[];
   templateKey?: string;
   onPreferenceChange?: () => void;
+  basePrice?: number;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
