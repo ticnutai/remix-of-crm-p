@@ -11613,6 +11613,31 @@ export function HtmlTemplateEditor({
                 </PopoverContent>
               </Popover>
 
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground px-2" title="טיוטה אוטומטית - נשמרת בענן תוך כדי עריכה">
+                {autosaveStatus === "saving" && (
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    שומר...
+                  </span>
+                )}
+                {autosaveStatus === "saved" && (
+                  <span className="flex items-center gap-1 text-emerald-600">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    נשמר ✓
+                    {autosaveLastSavedAt && (
+                      <span className="opacity-70">
+                        {autosaveLastSavedAt.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
+                  </span>
+                )}
+                {autosaveStatus === "error" && (
+                  <span className="flex items-center gap-1 text-destructive">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-destructive" />
+                    שגיאה בשמירה אוטומטית
+                  </span>
+                )}
+              </div>
               <Button
                 className="bg-[#DAA520] hover:bg-[#B8860B] text-white"
                 size="sm"
