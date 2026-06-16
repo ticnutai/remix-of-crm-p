@@ -4352,6 +4352,8 @@ export function HtmlTemplateEditor({
       }
 
       toast({ title: "נשמר בהצלחה ☁️", description: "ההצעה נשמרה בתבנית ובהצעות השמורות" });
+      // ניקוי טיוטת autosave אחרי שמירה מפורשת מוצלחת
+      try { await clearDraft(); } catch { /* no-op */ }
     } catch (err: any) {
       console.error("Save error:", err);
       toast({
