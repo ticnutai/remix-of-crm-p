@@ -4407,8 +4407,8 @@ export function HtmlTemplateEditor({
           const textDecor = tb.isUnderline ? "text-decoration: underline;" : "";
           const textAlign = `text-align: ${tb.textAlign || "right"};`;
           return `<div style="margin: 15px 0; padding: 15px; background: ${bgColor}; border: 2px solid ${borderColor}; border-radius: ${designSettings.borderRadius}px;">
-          ${tb.title ? `<h4 style="margin: 0 0 8px 0; color: ${designSettings.primaryColor}; font-family: ${fontFamily};">${s.icon} ${tb.title}</h4>` : ""}
-          <div style="color: ${textColor}; white-space: pre-wrap; font-size: ${fontSize}px; font-family: ${fontFamily}; ${fontWeight} ${fontStyle} ${textDecor} ${textAlign}">${tb.content}</div>
+          ${tb.title ? `<h4 data-editable="textbox.${tb.id}.title" style="margin: 0 0 8px 0; color: ${designSettings.primaryColor}; font-family: ${fontFamily};">${s.icon} ${tb.title}</h4>` : ""}
+          <div data-editable="textbox.${tb.id}.content" style="color: ${textColor}; white-space: pre-wrap; font-size: ${fontSize}px; font-family: ${fontFamily}; ${fontWeight} ${fontStyle} ${textDecor} ${textAlign}">${tb.content}</div>
         </div>`;
         })
         .join("");
