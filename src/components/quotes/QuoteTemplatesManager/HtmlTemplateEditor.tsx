@@ -1435,40 +1435,88 @@ function StageEditor({
     setIsEditingName(false);
   };
   const stageIcons = [
-    "📋",
-    "🔍",
-    "📐",
-    "✏️",
-    "📁",
-    "🏗️",
-    "🔧",
-    "✅",
-    "📊",
-    "🎯",
+    "📋", "🔍", "📐", "✏️", "📁", "🏗️", "🔧", "✅", "📊", "🎯",
+    "🏠", "🏢", "🛠️", "📝", "💡", "🎨", "📦", "🚧", "⚙️", "🔑",
+    "📌", "⭐", "🏆", "💼", "📅", "💰", "🔔", "🎉", "🚀", "🧭",
+  ];
+  const iconColors = [
+    null, "#d8ac27", "#162C58", "#ef4444", "#10b981", "#3b82f6",
+    "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4", "#84cc16", "#6b7280",
   ];
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="flex items-center gap-3 p-4 bg-gradient-to-l from-gray-50 to-white">
         <Popover>
           <PopoverTrigger asChild>
-            <button className="text-xl hover:scale-110 transition-transform cursor-pointer">
-              {stage.icon || "📋"}
+            <button
+              className="text-xl hover:scale-110 transition-transform cursor-pointer rounded-lg w-9 h-9 flex items-center justify-center"
+              style={
+                stage.iconColor
+                  ? { backgroundColor: stage.iconColor + "20", border: `1px solid ${stage.iconColor}` }
+                  : undefined
+              }
+            >
+              {stage.icon ? (
+                <span style={stage.iconColor ? { filter: "none" } : undefined}>{stage.icon}</span>
+              ) : (
+                <span className="text-muted-foreground text-sm">+</span>
+              )}
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-2" dir="rtl">
-            <div className="grid grid-cols-5 gap-1">
-              {stageIcons.map((icon) => (
-                <button
-                  key={icon}
-                  className="p-2 hover:bg-gray-100 rounded text-xl"
-                  onClick={() => onUpdate({ ...stage, icon })}
-                >
-                  {icon}
-                </button>
-              ))}
+          <PopoverContent className="w-72 p-3 rtl" align="start">
+            <div className="space-y-3">
+              <div>
+                <div className="text-xs font-medium text-muted-foreground mb-2">בחר אייקון</div>
+                <div className="grid grid-cols-6 gap-1">
+                  {stageIcons.map((icon) => (
+                    <button
+                      key={icon}
+                      className={`p-2 hover:bg-gray-100 rounded text-xl ${stage.icon === icon ? "bg-[#d8ac27]/20 ring-1 ring-[#d8ac27]" : ""}`}
+                      onClick={() => onUpdate({ ...stage, icon })}
+                    >
+                      {icon}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-muted-foreground mb-2">צבע רקע אייקון</div>
+                <div className="flex flex-wrap gap-1">
+                  {iconColors.map((color, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => onUpdate({ ...stage, iconColor: color || undefined })}
+                      className={`w-7 h-7 rounded-full border-2 flex items-center justify-center ${
+                        (stage.iconColor || null) === color ? "border-gray-900" : "border-gray-200"
+                      }`}
+                      style={{ backgroundColor: color || "transparent" }}
+                      title={color || "ללא"}
+                    >
+                      {!color && <X className="h-3 w-3 text-gray-400" />}
+                    </button>
+                  ))}
+                  <input
+                    type="color"
+                    value={stage.iconColor || "#d8ac27"}
+                    onChange={(e) => onUpdate({ ...stage, iconColor: e.target.value })}
+                    className="w-7 h-7 rounded-full border-2 border-gray-200 cursor-pointer p-0"
+                    title="צבע מותאם"
+                  />
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-red-500 hover:bg-red-50"
+                onClick={() => onUpdate({ ...stage, icon: undefined, iconColor: undefined })}
+              >
+                <Trash2 className="h-3 w-3 ml-1" />
+                הסר אייקון
+              </Button>
             </div>
           </PopoverContent>
         </Popover>
+
         {isEditingName ? (
           <Input
             value={stageName}
