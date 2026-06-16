@@ -223,7 +223,8 @@ export function QuoteTemplatesManager() {
     new Set(),
   );
   const [draggedTemplateId, setDraggedTemplateId] = useState<string | null>(null);
-  const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "unfoldered">(null);
+  const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "unfoldered" | "root">(null);
   const [folderLayoutMode, setFolderLayoutMode] = useState<FolderLayoutMode>(
     () => parseFolderLayout(localStorage.getItem(FOLDER_LAYOUT_STORAGE_KEY)),
   );
