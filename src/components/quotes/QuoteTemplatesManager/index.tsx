@@ -1822,6 +1822,37 @@ export function QuoteTemplatesManager() {
                 ))}
               </div>
             </div>
+            {/* Parent folder picker */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                תיקיית אב (אופציונלי)
+              </label>
+              <select
+                className="w-full border rounded-md px-3 py-2 bg-background text-sm"
+                value={editingFolder?.parent_id || ""}
+                onChange={(e) =>
+                  setEditingFolder((prev) =>
+                    prev
+                      ? { ...prev, parent_id: e.target.value || null }
+                      : prev,
+                  )
+                }
+              >
+                <option value="">— ללא (רמה ראשית) —</option>
+                {flattenFolderTree().map(({ folder: f, depth }) => {
+                  // Prevent selecting self or own descendant
+                  const disabled =
+                    editingFolder?.id &&
+                    getDescendantIds(editingFolder.id).has(f.id);
+                  return (
+                    <option key={f.id} value={f.id} disabled={!!disabled}>
+                      {"— ".repeat(depth)}
+                      {f.name}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
           </div>
           <DialogFooter>
             <Button
