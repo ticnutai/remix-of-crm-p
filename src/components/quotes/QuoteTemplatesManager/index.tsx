@@ -418,7 +418,12 @@ export function QuoteTemplatesManager() {
       if (folder.id) {
         const { error } = await (supabase as any)
           .from("quote_template_folders")
-          .update({ name: folder.name, color: folder.color, icon: folder.icon })
+          .update({
+            name: folder.name,
+            color: folder.color,
+            icon: folder.icon,
+            parent_id: folder.parent_id ?? null,
+          })
           .eq("id", folder.id);
         if (error) throw error;
       } else {
@@ -429,6 +434,7 @@ export function QuoteTemplatesManager() {
               name: folder.name,
               color: folder.color || "#d8ac27",
               sort_order: folders.length,
+              parent_id: folder.parent_id ?? null,
             },
           ]);
         if (error) throw error;
@@ -446,6 +452,29 @@ export function QuoteTemplatesManager() {
         description: err.message,
         variant: "destructive",
       });
+    },
+  });
+
+  // Move folder to a new parent (or to root when newParentId is null)
+  const moveFolderMutation = useMutation({
+    mutationFn: async ({
+      folderId,
+      newParentId,
+    }: {
+      folderId: string;
+      newParentId: string | null;
+    }) => {
+      const { error } = await (supabase as any)
+        .from("quote_template_folders")
+        .update({ parent_id: newParentId })
+        .eq("id", folderId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quote-template-folders"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "שגיאה", description: err.message, variant: "destructive" });
     },
   });
 
