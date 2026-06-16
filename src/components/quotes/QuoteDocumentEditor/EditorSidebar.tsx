@@ -538,3 +538,113 @@ export function EditorSidebar({
     </div>
   );
 }
+
+// ──────────────────────────────────────────────────────────────────
+// Per-quote frame design override section: banner + reset + apply-to-template
+// ──────────────────────────────────────────────────────────────────
+function FrameDesignOverrideSection({
+  document,
+  onUpdate,
+}: {
+  document: QuoteDocumentData;
+  onUpdate: (updates: Partial<QuoteDocumentData>) => void;
+}) {
+  const { toast } = useToast();
+  const [applying, setApplying] = useState(false);
+  const hasOverride = !!(document as any).frameDesign;
+  const currentValue = (document as any).frameDesign || DEFAULT_FRAME_SETTINGS;
+
+  const handleReset = () => {
+    onUpdate({ frameDesign: undefined } as any);
+    toast({ title: "אופס לעיצוב התבנית", description: "ההצעה תשתמש כעת בעיצוב ברירת המחדל של התבנית" });
+  };
+
+  const handleApplyToTemplate = async () => {
+    if (!document.id) {
+      toast({ title: "שמרי תחילה את ההצעה", variant: "destructive" });
+      return;
+    }
+    setApplying(true);
+    try {
+      const { data: quote, error: qErr } = await (supabase as any)
+        .from("quotes")
+        .select("quote_template_id")
+        .eq("id", document.id)
+        .single();
+      if (qErr) throw qErr;
+      const templateId = quote?.quote_template_id;
+      if (!templateId) {
+        toast({
+          title: "אין תבנית מקושרת",
+          description: "ההצעה הזו לא נוצרה מתבנית. לא ניתן להחיל על תבנית.",
+          variant: "destructive",
+        });
+        setApplying(false);
+        return;
+      }
+      const { data: tpl, error: tErr } = await (supabase as any)
+        .from("quote_templates")
+        .select("design_settings")
+        .eq("id", templateId)
+        .single();
+      if (tErr) throw tErr;
+      const nextDesign = { ...(tpl?.design_settings || {}), frameDesign: currentValue };
+      const { error: uErr } = await (supabase as any)
+        .from("quote_templates")
+        .update({ design_settings: nextDesign })
+        .eq("id", templateId);
+      if (uErr) throw uErr;
+      toast({ title: "הוחל על התבנית", description: "כל הצעה חדשה מהתבנית תקבל את העיצוב הזה" });
+    } catch (e: any) {
+      toast({ title: "שגיאה בהחלה על התבנית", description: e?.message || "נסי שוב", variant: "destructive" });
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {hasOverride && (
+        <div
+          className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs"
+          style={{ borderColor: "#d8ac27", backgroundColor: "rgba(216,172,39,0.08)" }}
+        >
+          <div className="flex items-center gap-2">
+            <SparkleIcon className="h-4 w-4" style={{ color: "#d8ac27" }} />
+            <span>עיצוב מותאם להצעה זו פעיל</span>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleReset}
+            className="h-7 px-2 gap-1"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            איפוס
+          </Button>
+        </div>
+      )}
+
+      <FrameDesignPanel
+        value={currentValue}
+        onChange={(v) => onUpdate({ frameDesign: v } as any)}
+      />
+
+      <Separator />
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-full gap-2"
+        onClick={handleApplyToTemplate}
+        disabled={applying || !document.id || !hasOverride}
+        title={!hasOverride ? "אין שינוי להחיל" : !document.id ? "שמרי תחילה את ההצעה" : ""}
+      >
+        <UploadIcon className="h-3.5 w-3.5" />
+        {applying ? "מחיל..." : "החל עיצוב זה על כל ההצעות מהתבנית"}
+      </Button>
+    </div>
+  );
+}
