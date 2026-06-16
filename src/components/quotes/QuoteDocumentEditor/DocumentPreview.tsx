@@ -141,18 +141,35 @@ export function DocumentPreview({
     );
   };
 
+  const fd = { ...DEFAULT_FRAME_SETTINGS, ...((doc as any).frameDesign || {}) };
+  const docBorderStyle = cssStringToReactStyle(borderToCss(fd.documentBorder));
+  const bgWrapperStyle = cssStringToReactStyle(backgroundToBodyCss(fd.background));
+  const showDecorativeCorners = fd.documentBorder?.style === "decorative-gold";
+  const cornerColor = fd.documentBorder?.color || "#d8ac27";
+
   return (
-    <div
-      className="bg-white shadow-xl mx-auto"
-      style={{
-        width: 210 * 3.78, // A4 width in pixels at 96dpi
-        minHeight: 297 * 3.78, // A4 height
-        transform: `scale(${scale})`,
-        transformOrigin: "top center",
-        fontFamily: doc.fontFamily || "Heebo",
-        direction: "rtl",
-      }}
-    >
+    <div className="mx-auto" style={bgWrapperStyle as React.CSSProperties}>
+      <div
+        className="bg-white shadow-xl mx-auto"
+        style={{
+          width: 210 * 3.78, // A4 width in pixels at 96dpi
+          minHeight: 297 * 3.78, // A4 height
+          transform: `scale(${scale})`,
+          transformOrigin: "top center",
+          fontFamily: doc.fontFamily || "Heebo",
+          direction: "rtl",
+          position: "relative",
+          ...docBorderStyle,
+        }}
+      >
+        {showDecorativeCorners && (
+          <>
+            <span style={{ position: "absolute", top: 8, right: 8, width: 24, height: 24, borderTop: `2px solid ${cornerColor}`, borderRight: `2px solid ${cornerColor}` }} />
+            <span style={{ position: "absolute", top: 8, left: 8, width: 24, height: 24, borderTop: `2px solid ${cornerColor}`, borderLeft: `2px solid ${cornerColor}` }} />
+            <span style={{ position: "absolute", bottom: 8, right: 8, width: 24, height: 24, borderBottom: `2px solid ${cornerColor}`, borderRight: `2px solid ${cornerColor}` }} />
+            <span style={{ position: "absolute", bottom: 8, left: 8, width: 24, height: 24, borderBottom: `2px solid ${cornerColor}`, borderLeft: `2px solid ${cornerColor}` }} />
+          </>
+        )}
       {/* Logo Above Header */}
       {doc.showLogo &&
         doc.companyLogo &&
