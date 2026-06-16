@@ -9,6 +9,26 @@ import {
   DEFAULT_SECTION_STYLE,
 } from "./types";
 import { TextFormatPopover, SECTION_LABELS } from "./TextFormatPopover";
+import {
+  DEFAULT_FRAME_SETTINGS,
+  borderToCss,
+  backgroundToBodyCss,
+} from "../QuoteTemplatesManager/frameStyles";
+
+// Parse a CSS declaration string ("border: ...; padding: ...;") into a React style object
+function cssStringToReactStyle(css: string): React.CSSProperties {
+  const style: any = {};
+  css.split(";").forEach((decl) => {
+    const idx = decl.indexOf(":");
+    if (idx === -1) return;
+    const prop = decl.slice(0, idx).trim();
+    const val = decl.slice(idx + 1).trim();
+    if (!prop || !val) return;
+    const camel = prop.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+    style[camel] = val;
+  });
+  return style;
+}
 
 interface DocumentPreviewProps {
   document: QuoteDocumentData;
