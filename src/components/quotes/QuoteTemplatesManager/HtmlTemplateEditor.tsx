@@ -139,6 +139,7 @@ import {
 } from "@/components/ui/popover";
 import { useClients } from "@/hooks/useClients";
 import { useCloudPreferences } from "@/hooks/useCloudPreferences";
+import { useQuoteDraftAutosave } from "@/hooks/useQuoteDraftAutosave";
 import { supabase } from "@/integrations/supabase/client";
 import { syncClientStagesFromTemplate } from "@/lib/clientStageTemplateSync";
 import companyHeaderImg from "@/assets/company-header.png";
