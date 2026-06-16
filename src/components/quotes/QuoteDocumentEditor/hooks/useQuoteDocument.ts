@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { QuoteDocumentData, QuoteDocumentItem } from '../types';
 import { format, addDays } from 'date-fns';
 import { Quote, QuoteItem } from '@/hooks/useQuotes';
@@ -69,6 +69,8 @@ const convertQuoteToDocument = (quote: Quote): QuoteDocumentData => {
     total: item.total || 0,
   }));
 
+  const overrides = ((quote as any).design_overrides || {}) as Record<string, any>;
+
   return {
     id: quote.id,
     title: quote.title || 'הצעת מחיר',
@@ -112,6 +114,12 @@ const convertQuoteToDocument = (quote: Quote): QuoteDocumentData => {
     showVat: true,
     showPaymentTerms: true,
     showSignature: true,
+
+    // Restore per-quote design overrides from cloud
+    frameDesign: overrides.frameDesign ?? undefined,
+    design3D: overrides.design3D ?? undefined,
+    fontSettings: overrides.fontSettings ?? undefined,
+    sectionStyles: overrides.sectionStyles ?? undefined,
   };
 };
 
@@ -125,6 +133,26 @@ export function useQuoteDocument(initialData?: Partial<QuoteDocumentData>) {
   const [history, setHistory] = useState<QuoteDocumentData[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isDirty, setIsDirty] = useState(false);
+
+  // Autosave draft to localStorage (debounced 1.5s) — persists per-quote design tweaks locally
+  // until a successful cloud save clears the draft.
+  const autosaveTimer = useRef<number | null>(null);
+  useEffect(() => {
+    if (!isDirty) return;
+    if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = window.setTimeout(() => {
+      try {
+        const key = `quote-draft-${originalQuoteId || 'new'}`;
+        window.localStorage.setItem(
+          key,
+          JSON.stringify({ savedAt: Date.now(), data: document })
+        );
+      } catch {}
+    }, 1500);
+    return () => {
+      if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+    };
+  }, [document, isDirty, originalQuoteId]);
 
   const updateDocument = useCallback((updates: Partial<QuoteDocumentData>) => {
     setDocument(prev => {
@@ -232,9 +260,21 @@ export function useQuoteDocument(initialData?: Partial<QuoteDocumentData>) {
     setIsDirty(true);
   }, []);
 
-  // Load existing quote into the editor
+  // Load existing quote into the editor — restore localStorage draft if it exists & newer
   const loadQuote = useCallback((quote: Quote) => {
     const documentData = convertQuoteToDocument(quote);
+    try {
+      const raw = window.localStorage.getItem(`quote-draft-${quote.id}`);
+      if (raw) {
+        const draft = JSON.parse(raw);
+        if (draft && draft.data) {
+          setDocument({ ...documentData, ...draft.data });
+          setOriginalQuoteId(quote.id);
+          setIsDirty(true);
+          return;
+        }
+      }
+    } catch {}
     setDocument(documentData);
     setOriginalQuoteId(quote.id);
     setIsDirty(false);

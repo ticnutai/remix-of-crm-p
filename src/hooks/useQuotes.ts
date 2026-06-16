@@ -58,6 +58,9 @@ export interface Quote {
   created_by: string;
   created_at: string;
   updated_at: string;
+  quote_template_id?: string;
+  // Per-quote design overrides (frameDesign, design3D, fontSettings, sectionStyles) — jsonb in DB
+  design_overrides?: Record<string, any>;
   // Joined data
   clients?: { name: string; email?: string; phone?: string };
   projects?: { name: string };

@@ -87,7 +87,17 @@ export function QuoteEditorSheet({
           valid_until: document.validUntil,
           notes: document.notes,
           terms_and_conditions: document.terms,
+          design_overrides: {
+            frameDesign: document.frameDesign ?? null,
+            design3D: document.design3D ?? null,
+            fontSettings: document.fontSettings ?? null,
+            sectionStyles: document.sectionStyles ?? null,
+          },
         });
+        // Clear local autosave draft after successful cloud save
+        try {
+          window.localStorage.removeItem(`quote-draft-${originalQuoteId}`);
+        } catch {}
         toast({ title: 'נשמר בהצלחה', description: 'הצעת המחיר עודכנה' });
         onSaved?.();
       } else {
