@@ -69,7 +69,16 @@ export function QuoteDocumentEditor() {
           valid_until: document.validUntil,
           notes: document.notes,
           terms_and_conditions: document.terms,
+          design_overrides: {
+            frameDesign: document.frameDesign ?? null,
+            design3D: document.design3D ?? null,
+            fontSettings: document.fontSettings ?? null,
+            sectionStyles: document.sectionStyles ?? null,
+          },
         });
+        try {
+          window.localStorage.removeItem(`quote-draft-${originalQuoteId}`);
+        } catch {}
       } else {
         toast({
           title: "שים לב",

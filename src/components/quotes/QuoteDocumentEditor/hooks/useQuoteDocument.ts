@@ -69,6 +69,8 @@ const convertQuoteToDocument = (quote: Quote): QuoteDocumentData => {
     total: item.total || 0,
   }));
 
+  const overrides = ((quote as any).design_overrides || {}) as Record<string, any>;
+
   return {
     id: quote.id,
     title: quote.title || 'הצעת מחיר',
@@ -112,6 +114,12 @@ const convertQuoteToDocument = (quote: Quote): QuoteDocumentData => {
     showVat: true,
     showPaymentTerms: true,
     showSignature: true,
+
+    // Restore per-quote design overrides from cloud
+    frameDesign: overrides.frameDesign ?? undefined,
+    design3D: overrides.design3D ?? undefined,
+    fontSettings: overrides.fontSettings ?? undefined,
+    sectionStyles: overrides.sectionStyles ?? undefined,
   };
 };
 
