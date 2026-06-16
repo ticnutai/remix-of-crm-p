@@ -2130,13 +2130,29 @@ function PaymentStepEditor({
         <div className="flex items-center gap-2">
           <Input
             type="number"
+            value={Math.round((basePrice * (step.percentage || 0)) / 100)}
+            onChange={(e) => {
+              const amt = parseFloat(e.target.value) || 0;
+              const pct = basePrice > 0
+                ? Math.round((amt / basePrice) * 10000) / 100
+                : 0;
+              onUpdate({ ...step, percentage: pct });
+            }}
+            className="w-24 text-center"
+            min={0}
+            title="סכום בש״ח - עדכון דו-כיווני עם האחוז"
+          />
+          <span className="text-gray-500">₪</span>
+          <Input
+            type="number"
             value={step.percentage}
             onChange={(e) =>
-              onUpdate({ ...step, percentage: parseInt(e.target.value) || 0 })
+              onUpdate({ ...step, percentage: parseFloat(e.target.value) || 0 })
             }
             className="w-16 text-center"
             min={0}
             max={100}
+            step="0.01"
           />
           <span className="text-gray-500">%</span>
           <Button
