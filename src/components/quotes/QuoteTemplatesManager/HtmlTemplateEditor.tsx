@@ -4638,6 +4638,76 @@ export function HtmlTemplateEditor({
 </html>`;
   }, [editedTemplate, designSettings, paymentSteps, projectDetails, textBoxes]);
 
+  // Memoize live HTML output to avoid rebuilding identical string on unrelated renders
+  const liveHtml = useMemo(() => generateHtmlContent(), [generateHtmlContent]);
+  // Debounce the HTML fed into the preview iframe to prevent flicker while typing
+  const debouncedPreviewHtml = useDebouncedValue(liveHtml, 300);
+
+  // Inline-edit dispatcher: maps a data-editable path coming from the preview
+  // iframe back to the relevant editor state. Paths used:
+  //   template.name | template.description
+  //   stage.<id>.name | stage.<id>.item.<itemId>.text
+  //   paystep.<id>.name
+  //   textbox.<id>.title | textbox.<id>.content
+  const handleInlineEdit = useCallback(({ path, value }: InlineEditPayload) => {
+    const v = (value ?? "").replace(/\u00A0/g, " ");
+    if (path === "template.name") {
+      setEditedTemplate((prev: any) => ({ ...prev, name: v }));
+      return;
+    }
+    if (path === "template.description") {
+      setEditedTemplate((prev: any) => ({ ...prev, description: v }));
+      return;
+    }
+    const stageMatch = path.match(/^stage\.([^.]+)\.name$/);
+    if (stageMatch) {
+      const sid = stageMatch[1];
+      setEditedTemplate((prev: any) => ({
+        ...prev,
+        stages: (prev.stages || []).map((s: any) =>
+          String(s.id) === sid ? { ...s, name: v } : s,
+        ),
+      }));
+      return;
+    }
+    const itemMatch = path.match(/^stage\.([^.]+)\.item\.([^.]+)\.text$/);
+    if (itemMatch) {
+      const sid = itemMatch[1];
+      const iid = itemMatch[2];
+      setEditedTemplate((prev: any) => ({
+        ...prev,
+        stages: (prev.stages || []).map((s: any) =>
+          String(s.id) === sid
+            ? {
+                ...s,
+                items: (s.items || []).map((it: any) =>
+                  String(it.id) === iid ? { ...it, text: v } : it,
+                ),
+              }
+            : s,
+        ),
+      }));
+      return;
+    }
+    const payMatch = path.match(/^paystep\.([^.]+)\.name$/);
+    if (payMatch) {
+      const pid = payMatch[1];
+      setPaymentSteps((prev: any[]) =>
+        prev.map((p) => (String(p.id) === pid ? { ...p, name: v } : p)),
+      );
+      return;
+    }
+    const tbMatch = path.match(/^textbox\.([^.]+)\.(title|content)$/);
+    if (tbMatch) {
+      const tid = tbMatch[1];
+      const field = tbMatch[2];
+      setTextBoxes((prev: any[]) =>
+        prev.map((tb) => (String(tb.id) === tid ? { ...tb, [field]: v } : tb)),
+      );
+    }
+  }, []);
+
+
   // Helper: convert image URL to base64 data URL for standalone exports
   const convertImageToBase64 = (url: string): Promise<string> => {
     return new Promise((resolve) => {
