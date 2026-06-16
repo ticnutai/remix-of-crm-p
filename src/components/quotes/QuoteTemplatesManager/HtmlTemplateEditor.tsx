@@ -6738,6 +6738,7 @@ export function HtmlTemplateEditor({
                         templateName={selectedStageTemplate?.name}
                         quoteTemplateStages={editedTemplate.stages || []}
                         onPreferenceChange={saveToCloud}
+                        basePrice={basePrice}
                         onUpdate={(updated) =>
                           setPaymentSteps(
                             paymentSteps.map((s) =>
