@@ -98,6 +98,7 @@ const FOLDER_LAYOUT_STORAGE_KEY = "quote-templates-folder-layout";
 const UNGROUPED_LAYOUT_STORAGE_KEY = "quote-templates-ungrouped-layout";
 const FOLDER_CARD_STYLE_STORAGE_KEY = "quote-templates-folder-card-style";
 const UNGROUPED_CARD_STYLE_STORAGE_KEY = "quote-templates-ungrouped-card-style";
+const COLLAPSED_FOLDERS_STORAGE_KEY = "quote-templates-collapsed-folders";
 
 const FOLDER_LAYOUT_OPTIONS: Array<{
   value: FolderLayoutMode;
@@ -189,6 +190,15 @@ const parseTemplateLayout = (value: string | null): TemplateLayoutMode => {
   return "regular";
 };
 
+const parseCollapsedFolders = (raw: string | null): Set<string> => {
+  if (!raw) return new Set();
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return new Set(parsed.filter((x) => typeof x === "string"));
+  } catch { /* ignore */ }
+  return new Set();
+};
+
 export function QuoteTemplatesManager() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -222,7 +232,7 @@ export function QuoteTemplatesManager() {
     string | null
   >(null);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(
-    new Set(),
+    () => parseCollapsedFolders(localStorage.getItem(COLLAPSED_FOLDERS_STORAGE_KEY)),
   );
   const [draggedTemplateId, setDraggedTemplateId] = useState<string | null>(null);
   const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
@@ -256,6 +266,10 @@ export function QuoteTemplatesManager() {
   useEffect(() => {
     localStorage.setItem(UNGROUPED_CARD_STYLE_STORAGE_KEY, ungroupedCardStyle);
   }, [ungroupedCardStyle]);
+
+  useEffect(() => {
+    localStorage.setItem(COLLAPSED_FOLDERS_STORAGE_KEY, JSON.stringify(Array.from(collapsedFolders)));
+  }, [collapsedFolders]);
 
   useEffect(() => {
     let isMounted = true;
@@ -312,6 +326,13 @@ export function QuoteTemplatesManager() {
         localStorage.setItem(UNGROUPED_LAYOUT_STORAGE_KEY, savedUngroupedLayout);
         localStorage.setItem(FOLDER_CARD_STYLE_STORAGE_KEY, savedFolderCardStyle);
         localStorage.setItem(UNGROUPED_CARD_STYLE_STORAGE_KEY, savedUngroupedCardStyle);
+
+        const cloudCollapsed = viewPrefs.quote_templates_collapsed_folders;
+        if (Array.isArray(cloudCollapsed)) {
+          const collSet = new Set<string>(cloudCollapsed.filter((x: any) => typeof x === "string"));
+          setCollapsedFolders(collSet);
+          localStorage.setItem(COLLAPSED_FOLDERS_STORAGE_KEY, JSON.stringify(Array.from(collSet)));
+        }
       } catch {
         markTableUnavailable("user_preferences");
       } finally {
@@ -355,6 +376,7 @@ export function QuoteTemplatesManager() {
           quote_templates_ungrouped_layout: ungroupedLayoutMode,
           quote_templates_folder_card_style: folderCardStyle,
           quote_templates_ungrouped_card_style: ungroupedCardStyle,
+          quote_templates_collapsed_folders: Array.from(collapsedFolders),
         };
 
         const { error: saveError } = await supabase
@@ -377,7 +399,7 @@ export function QuoteTemplatesManager() {
     }, 700);
 
     return () => clearTimeout(timer);
-  }, [cloudViewReady, folderLayoutMode, ungroupedLayoutMode, folderCardStyle, ungroupedCardStyle, user?.id]);
+  }, [cloudViewReady, folderLayoutMode, ungroupedLayoutMode, folderCardStyle, ungroupedCardStyle, collapsedFolders, user?.id]);
 
   const getFolderTemplatesContainerClass = () => {
     switch (folderLayoutMode) {
