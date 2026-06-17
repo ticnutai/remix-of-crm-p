@@ -30,6 +30,9 @@ export interface TemplateStageItem {
   isItalic?: boolean;
   isUnderline?: boolean;
   textAlign?: "right" | "center" | "left";
+  // Icon options (undefined = default ✓, "" = no icon)
+  icon?: string;
+  iconColor?: string;
 }
 
 export interface PaymentStep {

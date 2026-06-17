@@ -1165,6 +1165,34 @@ function ProjectDetailsEditor({
   );
 }
 
+const ITEM_ICON_OPTIONS = [
+  { value: "✓", label: "וי" },
+  { value: "•", label: "נקודה" },
+  { value: "▸", label: "חץ" },
+  { value: "★", label: "כוכב" },
+  { value: "◆", label: "יהלום" },
+  { value: "–", label: "קו" },
+  { value: "→", label: "חץ ימין" },
+  { value: "▶", label: "משולש" },
+  { value: "📌", label: "פין" },
+  { value: "✅", label: "וי ירוק" },
+  { value: "🔹", label: "כחול" },
+  { value: "🔸", label: "כתום" },
+  { value: "💠", label: "תכלת" },
+  { value: "", label: "ללא" },
+];
+
+const ITEM_ICON_COLORS = [
+  "#DAA520",
+  "#d8ac27",
+  "#374151",
+  "#1e40af",
+  "#b91c1c",
+  "#15803d",
+  "#7e22ce",
+  "#000000",
+];
+
 function EditableItem({
   item,
   onUpdate,
@@ -1176,6 +1204,7 @@ function EditableItem({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [showFormatting, setShowFormatting] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const [text, setText] = useState(item.text);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -1360,10 +1389,64 @@ function EditableItem({
         </div>
       </div>
     );
+  const currentIcon = item.icon === undefined ? "✓" : item.icon;
+  const currentIconColor = item.iconColor || "#DAA520";
+
   return (
     <div className="flex items-center gap-2 py-2 group hover:bg-gray-50 rounded-lg px-1">
       <GripVertical className="h-4 w-4 text-gray-300 cursor-grab" />
-      <span className="text-[#DAA520] text-lg">✓</span>
+      <Popover open={showIconPicker} onOpenChange={setShowIconPicker}>
+        <PopoverTrigger asChild>
+          <button
+            className="text-lg min-w-[22px] hover:opacity-70 transition-opacity cursor-pointer leading-none"
+            style={{ color: currentIconColor }}
+            title="לחץ לשינוי אייקון"
+          >
+            {currentIcon === "" ? (
+              <span className="text-[10px] text-gray-300 border border-dashed border-gray-300 rounded px-0.5">–</span>
+            ) : (
+              currentIcon
+            )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-3 space-y-3" align="start" side="bottom">
+          <p className="text-xs font-medium text-gray-500 mb-1">סמל</p>
+          <div className="grid grid-cols-7 gap-1">
+            {ITEM_ICON_OPTIONS.map((opt) => (
+              <button
+                key={opt.value + opt.label}
+                className={`w-8 h-8 flex items-center justify-center rounded text-base hover:bg-gray-100 transition-colors ${currentIcon === opt.value ? "bg-gray-200 ring-1 ring-gray-400" : ""}`}
+                onClick={() => { onUpdate({ ...item, icon: opt.value }); setShowIconPicker(false); }}
+                title={opt.label}
+              >
+                {opt.value === "" ? (
+                  <span className="text-[10px] text-gray-400">ללא</span>
+                ) : (
+                  opt.value
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="h-px bg-gray-200" />
+          <p className="text-xs font-medium text-gray-500">צבע האייקון</p>
+          <div className="flex gap-1 flex-wrap">
+            {ITEM_ICON_COLORS.map((c) => (
+              <button
+                key={c}
+                className={`w-6 h-6 rounded border-2 hover:scale-110 transition-transform ${currentIconColor === c ? "border-gray-900" : "border-transparent"}`}
+                style={{ backgroundColor: c }}
+                onClick={() => onUpdate({ ...item, iconColor: c })}
+              />
+            ))}
+            <Input
+              type="color"
+              value={currentIconColor}
+              onChange={(e) => onUpdate({ ...item, iconColor: e.target.value })}
+              className="w-7 h-6 p-0 border-0 cursor-pointer"
+            />
+          </div>
+        </PopoverContent>
+      </Popover>
       <span
         className="flex-1 cursor-pointer hover:text-[#B8860B]"
         onClick={() => setIsEditing(true)}
@@ -4499,7 +4582,12 @@ export function HtmlTemplateEditor({
               const itemAlign = item.textAlign
                 ? `text-align: ${item.textAlign};`
                 : "";
-              return `<li style="padding: 5px 0; color: ${itemColor}; font-family: '${itemFont}', sans-serif; font-size: ${itemSize}px; ${itemBold} ${itemItalic} ${itemUnderline} ${itemAlign}">✓ <span data-editable="stage.${stage.id}.item.${item.id}.text">${item.text}</span></li>`;
+              const itemIcon = item.icon === undefined ? "✓" : item.icon;
+              const itemIconColor = item.iconColor || itemColor;
+              const iconHtml = itemIcon
+                ? `<span style="color:${itemIconColor};margin-left:6px;">${itemIcon}</span>`
+                : "";
+              return `<li style="padding: 5px 0; color: ${itemColor}; font-family: '${itemFont}', sans-serif; font-size: ${itemSize}px; ${itemBold} ${itemItalic} ${itemUnderline} ${itemAlign}">${iconHtml}<span data-editable="stage.${stage.id}.item.${item.id}.text">${item.text}</span></li>`;
             })
             .join("")}
         </ul>
