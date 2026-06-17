@@ -1564,6 +1564,7 @@ function SectionHeaderRow({
   onDelete,
   onMoveUp,
   onMoveDown,
+  onAddStageBelow,
   isFirst,
   isLast,
 }: {
@@ -1572,6 +1573,7 @@ function SectionHeaderRow({
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onAddStageBelow: () => void;
   isFirst: boolean;
   isLast: boolean;
 }) {
@@ -1583,40 +1585,51 @@ function SectionHeaderRow({
   const save = () => { onUpdate({ ...stage, name }); setIsEditing(false); };
 
   return (
-    <div className="flex items-center gap-2 py-3 px-3 group bg-gradient-to-l from-indigo-50 to-white rounded-lg border border-indigo-200">
-      <GripVertical className="h-4 w-4 text-indigo-300 cursor-grab flex-shrink-0" />
-      <Heading2 className="h-4 w-4 text-indigo-500 flex-shrink-0" />
-      {isEditing ? (
-        <input
-          ref={inputRef}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={save}
-          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { setName(stage.name); setIsEditing(false); } }}
-          className="flex-1 text-lg font-bold bg-transparent border-b-2 border-indigo-400 outline-none"
-          dir="rtl"
-        />
-      ) : (
-        <h3
-          className="flex-1 text-lg font-bold text-indigo-700 cursor-pointer hover:text-indigo-500"
-          onClick={() => setIsEditing(true)}
+    <div className="flex items-center justify-between gap-2 mt-4 group">
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <GripVertical className="h-4 w-4 text-gray-300 cursor-grab flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={save}
+            onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { setName(stage.name); setIsEditing(false); } }}
+            className="text-xl font-bold bg-transparent border-b-2 border-[#DAA520] outline-none flex-1"
+            dir="rtl"
+          />
+        ) : (
+          <h2
+            className="text-xl font-bold cursor-pointer hover:text-[#B8860B] flex items-center gap-1 group/title"
+            onClick={() => setIsEditing(true)}
+            title="לחץ לעריכת כותרת"
+          >
+            {stage.name}
+            <Pencil className="h-3 w-3 opacity-0 group-hover/title:opacity-40 transition-opacity" />
+          </h2>
+        )}
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-[#DAA520] text-[#B8860B] hover:bg-[#DAA520]/10"
+          onClick={onAddStageBelow}
         >
-          {stage.name}
-        </h3>
-      )}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onMoveUp} disabled={isFirst}>
-          <ChevronUp className="h-3 w-3" />
+          <Plus className="h-4 w-4 ml-1" />
+          הוסף שלב
         </Button>
-        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onMoveDown} disabled={isLast}>
-          <ChevronDown className="h-3 w-3" />
-        </Button>
-        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setIsEditing(true)} title="ערוך כותרת">
-          <Pencil className="h-3 w-3" />
-        </Button>
-        <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={onDelete}>
-          <Trash2 className="h-3 w-3" />
-        </Button>
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onMoveUp} disabled={isFirst}>
+            <ChevronUp className="h-3 w-3" />
+          </Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onMoveDown} disabled={isLast}>
+            <ChevronDown className="h-3 w-3" />
+          </Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:text-red-600" onClick={onDelete}>
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -4986,9 +4999,7 @@ export function HtmlTemplateEditor({
       .map(
         (stage) => {
           if (stage.isSection) {
-            return `<div style="margin: 28px 0 10px; padding-bottom: 8px; border-bottom: 2px solid ${designSettings.primaryColor}40;">
-              <h3 style="color: ${designSettings.primaryColor}; font-family: '${designSettings.fontFamily}', sans-serif; font-size: 20px; font-weight: 700; margin: 0;">${stage.name}</h3>
-            </div>`;
+            return sectionTitleHtml(stage.name, fd.sectionTitle, "margin: 28px 0 10px;");
           }
           return `
       <div class="stage-card" style="margin-bottom: 20px;">
@@ -5491,6 +5502,19 @@ export function HtmlTemplateEditor({
         },
       ],
     });
+  const addStageAfterSection = (sectionId: string) => {
+    const idx = editedTemplate.stages.findIndex(s => s.id === sectionId);
+    const newStage: TemplateStage = {
+      id: Date.now().toString(),
+      name: "שלב חדש",
+      icon: "📋",
+      items: [{ id: (Date.now() + 1).toString(), text: "פריט חדש" }],
+      itemDisplayMode: "check",
+    };
+    const next = [...editedTemplate.stages];
+    next.splice(idx + 1, 0, newStage);
+    setEditedTemplate({ ...editedTemplate, stages: next });
+  };
   const addPaymentStep = () =>
     setPaymentSteps([
       ...paymentSteps,
@@ -7442,14 +7466,23 @@ export function HtmlTemplateEditor({
                           onDelete={() => deleteStage(stage.id)}
                           onMoveUp={() => moveStage(stage.id, "up")}
                           onMoveDown={() => moveStage(stage.id, "down")}
+                          onAddStageBelow={() => addStageAfterSection(stage.id)}
                           isFirst={index === 0}
                           isLast={index === editedTemplate.stages.length - 1}
                         />
                       );
                     }
+                    // Check if this stage is "under" a section header
+                    const parentSectionIdx = (() => {
+                      for (let i = index - 1; i >= 0; i--) {
+                        if (editedTemplate.stages[i].isSection) return i;
+                      }
+                      return -1;
+                    })();
+                    const isUnderSection = parentSectionIdx >= 0;
                     return (
+                    <div key={stage.id} className={isUnderSection ? "mr-6 border-r-2 border-[#DAA520]/20 pr-1" : ""}>
                     <StageEditor
-                      key={stage.id}
                       stage={stage}
                       onUpdate={(updated) => updateStage(stage.id, updated)}
                       onDelete={() => deleteStage(stage.id)}
@@ -7488,6 +7521,7 @@ export function HtmlTemplateEditor({
                         }]);
                       }}
                     />
+                    </div>
                     );
                   })}
                 </div>
