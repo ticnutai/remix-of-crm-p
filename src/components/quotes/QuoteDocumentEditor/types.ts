@@ -5,8 +5,18 @@ export interface SectionTextStyle {
   fontFamily: string;
   fontSize: number;
   fontColor: string;
-  textAlign: "right" | "center" | "left";
+  textAlign: "right" | "center" | "left" | "justify";
   fontWeight: "normal" | "bold";
+  // Advanced typography
+  italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+  lineHeight?: number; // 1.0 - 3.0
+  letterSpacing?: number; // px
+  paragraphSpacing?: number; // px (margin-bottom)
+  textIndent?: number; // px
+  backgroundColor?: string; // highlight color, "" = none
+  textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
 }
 
 export type SectionKey =
@@ -27,21 +37,112 @@ export const DEFAULT_SECTION_STYLE: SectionTextStyle = {
   fontColor: "#000000",
   textAlign: "right",
   fontWeight: "normal",
+  italic: false,
+  underline: false,
+  strikethrough: false,
+  lineHeight: 1.6,
+  letterSpacing: 0,
+  paragraphSpacing: 0,
+  textIndent: 0,
+  backgroundColor: "",
+  textTransform: "none",
 };
 
-export const HEBREW_FONTS = [
-  { value: "Heebo", label: "Heebo" },
-  { value: "Assistant", label: "Assistant" },
-  { value: "Rubik", label: "Rubik" },
-  { value: "Alef", label: "Alef" },
-  { value: "David Libre", label: "David Libre" },
-  { value: "Frank Ruhl Libre", label: "Frank Ruhl Libre" },
-  { value: "Varela Round", label: "Varela Round" },
-  { value: "Open Sans Hebrew", label: "Open Sans" },
-  { value: "Noto Sans Hebrew", label: "Noto Sans Hebrew" },
-  { value: "Secular One", label: "Secular One" },
-  { value: "Suez One", label: "Suez One" },
-  { value: "Amatic SC", label: "Amatic SC" },
+// Style presets for quick formatting
+export interface SectionStylePreset {
+  id: string;
+  label: string;
+  description: string;
+  style: Partial<SectionTextStyle>;
+}
+
+export const SECTION_STYLE_PRESETS: SectionStylePreset[] = [
+  {
+    id: "formal",
+    label: "פורמלי",
+    description: "מסמך עסקי קלאסי",
+    style: {
+      fontFamily: "Frank Ruhl Libre",
+      fontSize: 14,
+      fontColor: "#1a1a1a",
+      fontWeight: "normal",
+      lineHeight: 1.7,
+      letterSpacing: 0,
+    },
+  },
+  {
+    id: "modern",
+    label: "מודרני",
+    description: "נקי ואוורירי",
+    style: {
+      fontFamily: "Heebo",
+      fontSize: 14,
+      fontColor: "#222222",
+      fontWeight: "normal",
+      lineHeight: 1.8,
+      letterSpacing: 0.3,
+    },
+  },
+  {
+    id: "bold-title",
+    label: "כותרת בולטת",
+    description: "מודגש וגדול",
+    style: {
+      fontFamily: "Heebo",
+      fontSize: 24,
+      fontColor: "#162C58",
+      fontWeight: "bold",
+      lineHeight: 1.2,
+      letterSpacing: -0.5,
+    },
+  },
+  {
+    id: "minimal",
+    label: "מינימלי",
+    description: "קטן ועדין",
+    style: {
+      fontFamily: "Assistant",
+      fontSize: 12,
+      fontColor: "#555555",
+      fontWeight: "normal",
+      lineHeight: 1.5,
+      letterSpacing: 0,
+    },
+  },
+];
+
+export const HEBREW_FONTS: { value: string; label: string; category?: string }[] = [
+  // System fonts (always available)
+  { value: "Arial, sans-serif", label: "Arial", category: "מערכת" },
+  { value: "'Times New Roman', serif", label: "Times New Roman", category: "מערכת" },
+  { value: "Tahoma, sans-serif", label: "Tahoma", category: "מערכת" },
+  { value: "Verdana, sans-serif", label: "Verdana", category: "מערכת" },
+  { value: "Georgia, serif", label: "Georgia", category: "מערכת" },
+  { value: "'David', serif", label: "David", category: "מערכת" },
+  { value: "'Narkisim', serif", label: "Narkisim", category: "מערכת" },
+  { value: "'FrankRuehl', serif", label: "Frank Ruehl (System)", category: "מערכת" },
+  { value: "'Miriam', sans-serif", label: "Miriam", category: "מערכת" },
+  { value: "'Courier New', monospace", label: "Courier New", category: "מערכת" },
+  // Google Fonts - Sans-serif Hebrew
+  { value: "Heebo", label: "Heebo", category: "Google Sans" },
+  { value: "Assistant", label: "Assistant", category: "Google Sans" },
+  { value: "Rubik", label: "Rubik", category: "Google Sans" },
+  { value: "Alef", label: "Alef", category: "Google Sans" },
+  { value: "Varela Round", label: "Varela Round", category: "Google Sans" },
+  { value: "Open Sans Hebrew", label: "Open Sans Hebrew", category: "Google Sans" },
+  { value: "Noto Sans Hebrew", label: "Noto Sans Hebrew", category: "Google Sans" },
+  { value: "Miriam Libre", label: "Miriam Libre", category: "Google Sans" },
+  { value: "M PLUS Rounded 1c", label: "M PLUS Rounded", category: "Google Sans" },
+  // Google Fonts - Serif Hebrew
+  { value: "David Libre", label: "David Libre", category: "Google Serif" },
+  { value: "Frank Ruhl Libre", label: "Frank Ruhl Libre", category: "Google Serif" },
+  { value: "Noto Serif Hebrew", label: "Noto Serif Hebrew", category: "Google Serif" },
+  // Display / Decorative
+  { value: "Secular One", label: "Secular One", category: "דקורטיבי" },
+  { value: "Suez One", label: "Suez One", category: "דקורטיבי" },
+  { value: "Amatic SC", label: "Amatic SC", category: "דקורטיבי" },
+  { value: "Karantina", label: "Karantina", category: "דקורטיבי" },
+  { value: "Bellefair", label: "Bellefair", category: "דקורטיבי" },
 ];
 
 export interface DesignSettings3D {

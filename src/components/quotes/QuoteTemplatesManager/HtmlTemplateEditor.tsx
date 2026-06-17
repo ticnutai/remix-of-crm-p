@@ -335,17 +335,36 @@ interface TextBox {
 
 // Hebrew fonts available in text boxes
 const HEBREW_FONTS = [
+  // System
+  { value: "Arial, sans-serif", label: "Arial" },
+  { value: "'Times New Roman', serif", label: "Times New Roman" },
+  { value: "Tahoma, sans-serif", label: "Tahoma" },
+  { value: "Verdana, sans-serif", label: "Verdana" },
+  { value: "Georgia, serif", label: "Georgia" },
+  { value: "'David', serif", label: "David" },
+  { value: "'Narkisim', serif", label: "Narkisim" },
+  { value: "'FrankRuehl', serif", label: "Frank Ruehl (System)" },
+  { value: "'Miriam', sans-serif", label: "Miriam" },
+  { value: "'Courier New', monospace", label: "Courier New" },
+  // Google Sans
   { value: "Heebo", label: "Heebo" },
   { value: "Assistant", label: "Assistant" },
   { value: "Rubik", label: "Rubik" },
   { value: "Alef", label: "Alef" },
-  { value: "David Libre", label: "David Libre" },
-  { value: "Frank Ruhl Libre", label: "Frank Ruhl" },
   { value: "Varela Round", label: "Varela Round" },
-  { value: "Noto Sans Hebrew", label: "Noto Sans" },
+  { value: "Noto Sans Hebrew", label: "Noto Sans Hebrew" },
+  { value: "Miriam Libre", label: "Miriam Libre" },
+  { value: "M PLUS Rounded 1c", label: "M PLUS Rounded" },
+  // Google Serif
+  { value: "David Libre", label: "David Libre" },
+  { value: "Frank Ruhl Libre", label: "Frank Ruhl Libre" },
+  { value: "Noto Serif Hebrew", label: "Noto Serif Hebrew" },
+  // Decorative
   { value: "Secular One", label: "Secular One" },
   { value: "Suez One", label: "Suez One" },
   { value: "Amatic SC", label: "Amatic SC" },
+  { value: "Karantina", label: "Karantina" },
+  { value: "Bellefair", label: "Bellefair" },
 ];
 interface QuoteVersion {
   id: string;
