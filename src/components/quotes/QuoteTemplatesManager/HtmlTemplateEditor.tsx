@@ -331,6 +331,8 @@ interface TextBox {
   isUnderline?: boolean;
   textAlign?: "right" | "center" | "left";
   fontFamily?: string;
+  lineHeight?: number;
+  letterSpacing?: number;
 }
 
 // Hebrew fonts available in text boxes
@@ -1216,10 +1218,14 @@ function EditableItem({
   item,
   onUpdate,
   onDelete,
+  isSelected,
+  onToggleSelect,
 }: {
   item: TemplateStageItem;
   onUpdate: (item: TemplateStageItem) => void;
   onDelete: () => void;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [showFormatting, setShowFormatting] = useState(false);
@@ -1412,8 +1418,17 @@ function EditableItem({
   const currentIconColor = item.iconColor || "#DAA520";
 
   return (
-    <div className="flex items-center gap-2 py-2 group hover:bg-gray-50 rounded-lg px-1">
+    <div className={`flex items-center gap-2 py-2 group hover:bg-gray-50 rounded-lg px-1 ${isSelected ? "bg-blue-50" : ""}`}>
       <GripVertical className="h-4 w-4 text-gray-300 cursor-grab" />
+      {onToggleSelect && (
+        <button
+          onClick={onToggleSelect}
+          className={`w-4 h-4 rounded border-2 flex-shrink-0 transition-colors ${isSelected ? "bg-[#DAA520] border-[#DAA520]" : "border-gray-300 opacity-0 group-hover:opacity-100"}`}
+          title="בחר פריט"
+        >
+          {isSelected && <span className="text-white text-[9px] flex items-center justify-center w-full h-full leading-none">✓</span>}
+        </button>
+      )}
       <Popover open={showIconPicker} onOpenChange={setShowIconPicker}>
         <PopoverTrigger asChild>
           <button
@@ -1525,6 +1540,23 @@ function StageEditor({
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
   const [stageName, setStageName] = useState(stage.name);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+
+  const toggleItemSelect = (id: string) => {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const deleteSelectedItems = () => {
+    onUpdate({ ...stage, items: stage.items.filter((i) => !selectedItemIds.has(i.id)) });
+    setSelectedItemIds(new Set());
+  };
+  const applyFontToSelected = (font: string) => {
+    onUpdate({ ...stage, items: stage.items.map((i) => selectedItemIds.has(i.id) ? { ...i, fontFamily: font } : i) });
+  };
+
   const updateItem = (itemId: string, updatedItem: TemplateStageItem) => {
     onUpdate({
       ...stage,
@@ -1701,6 +1733,25 @@ function StageEditor({
       </div>
       {isExpanded && (
         <div className="border-t border-gray-100">
+          {selectedItemIds.size > 0 && (
+            <div className="flex items-center gap-2 px-4 py-1.5 bg-blue-50 border-b border-blue-100 text-xs">
+              <span className="font-medium text-blue-700">{selectedItemIds.size} נבחרו</span>
+              <Select onValueChange={applyFontToSelected}>
+                <SelectTrigger className="h-6 w-28 text-xs"><SelectValue placeholder="שנה גופן" /></SelectTrigger>
+                <SelectContent>
+                  {HEBREW_FONTS.slice(0, 12).map((f) => (
+                    <SelectItem key={f.value} value={f.value} style={{ fontFamily: f.value }}>{f.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <button onClick={deleteSelectedItems} className="flex items-center gap-1 text-red-600 hover:text-red-700 font-medium">
+                <Trash2 className="h-3 w-3" /> מחק
+              </button>
+              <button onClick={() => setSelectedItemIds(new Set())} className="text-gray-400 hover:text-gray-600 mr-auto">
+                בטל בחירה
+              </button>
+            </div>
+          )}
           <div className="p-4 space-y-1">
             {stage.items.map((item) => (
               <EditableItem
@@ -1708,6 +1759,8 @@ function StageEditor({
                 item={item}
                 onUpdate={(updatedItem) => updateItem(item.id, updatedItem)}
                 onDelete={() => deleteItem(item.id)}
+                isSelected={selectedItemIds.has(item.id)}
+                onToggleSelect={() => toggleItemSelect(item.id)}
               />
             ))}
           </div>
@@ -2966,12 +3019,16 @@ function TextBoxEditor({
   onDelete,
   onDuplicate,
   dragHandleProps,
+  isSelected,
+  onToggleSelect,
 }: {
   textBox: TextBox;
   onUpdate: (textBox: TextBox) => void;
   onDelete: () => void;
   onDuplicate?: () => void;
   dragHandleProps?: any;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -3002,13 +3059,13 @@ function TextBoxEditor({
 
   return (
     <div
-      className={`rounded-lg border-2 p-3 ${styleColors[textBox.style]} transition-all hover:shadow-md`}
+      className={`rounded-lg border-2 p-3 ${isSelected ? "border-blue-400 bg-blue-50/50" : styleColors[textBox.style]} transition-all hover:shadow-md`}
       style={{
-        backgroundColor: textBox.customBg || undefined,
-        borderColor: textBox.customBorder || undefined,
+        backgroundColor: isSelected ? undefined : (textBox.customBg || undefined),
+        borderColor: isSelected ? undefined : (textBox.customBorder || undefined),
       }}
     >
-      {/* Top bar: drag handle + title + controls */}
+      {/* Top bar: drag handle + checkbox + title + controls */}
       <div className="flex items-center gap-2">
         {/* Drag Handle */}
         <div
@@ -3017,6 +3074,16 @@ function TextBoxEditor({
         >
           <GripVertical className="h-4 w-4 text-gray-400" />
         </div>
+        {/* Multi-select checkbox */}
+        {onToggleSelect && (
+          <button
+            onClick={onToggleSelect}
+            className={`w-4 h-4 rounded border-2 flex-shrink-0 transition-colors ${isSelected ? "bg-[#DAA520] border-[#DAA520]" : "border-gray-300"}`}
+            title="בחר תיבה"
+          >
+            {isSelected && <span className="text-white text-[9px] flex items-center justify-center w-full h-full leading-none">✓</span>}
+          </button>
+        )}
 
         <Input
           value={textBox.title}
@@ -3332,6 +3399,32 @@ function TextBoxEditor({
                 ))}
               </SelectContent>
             </Select>
+            <div className="w-px h-4 bg-gray-300 mx-1" />
+            <Label className="text-xs" title="מרווח בין שורות">↕</Label>
+            <div className="flex items-center gap-0.5">
+              <button
+                className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 text-xs font-bold"
+                onClick={() => onUpdate({ ...textBox, lineHeight: Math.max(0.8, +((textBox.lineHeight ?? 1.6) - 0.1).toFixed(1)) })}
+              >−</button>
+              <span className="text-xs w-8 text-center tabular-nums">{(textBox.lineHeight ?? 1.6).toFixed(1)}</span>
+              <button
+                className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 text-xs font-bold"
+                onClick={() => onUpdate({ ...textBox, lineHeight: Math.min(4, +((textBox.lineHeight ?? 1.6) + 0.1).toFixed(1)) })}
+              >+</button>
+            </div>
+            <div className="w-px h-4 bg-gray-300 mx-1" />
+            <Label className="text-xs" title="מרווח בין אותיות">AV</Label>
+            <div className="flex items-center gap-0.5">
+              <button
+                className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 text-xs font-bold"
+                onClick={() => onUpdate({ ...textBox, letterSpacing: Math.max(-3, +((textBox.letterSpacing ?? 0) - 0.5).toFixed(1)) })}
+              >−</button>
+              <span className="text-xs w-6 text-center tabular-nums">{(textBox.letterSpacing ?? 0)}</span>
+              <button
+                className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 text-xs font-bold"
+                onClick={() => onUpdate({ ...textBox, letterSpacing: Math.min(15, +((textBox.letterSpacing ?? 0) + 0.5).toFixed(1)) })}
+              >+</button>
+            </div>
           </div>
 
           {/* Textarea with custom styles applied */}
@@ -3349,6 +3442,9 @@ function TextBoxEditor({
               textAlign: textBox.textAlign || "right",
               fontSize: textBox.fontSize ? `${textBox.fontSize}px` : undefined,
               color: textBox.customTextColor || undefined,
+              lineHeight: textBox.lineHeight ? String(textBox.lineHeight) : undefined,
+              letterSpacing: textBox.letterSpacing ? `${textBox.letterSpacing}px` : undefined,
+              whiteSpace: "pre-wrap",
             }}
           />
         </div>
@@ -3363,11 +3459,15 @@ function SortableTextBox({
   onUpdate,
   onDelete,
   onDuplicate,
+  isSelected,
+  onToggleSelect,
 }: {
   textBox: TextBox;
   onUpdate: (textBox: TextBox) => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const {
     attributes,
@@ -3391,6 +3491,8 @@ function SortableTextBox({
         onDelete={onDelete}
         onDuplicate={onDuplicate}
         dragHandleProps={listeners}
+        isSelected={isSelected}
+        onToggleSelect={onToggleSelect}
       />
     </div>
   );
@@ -3600,6 +3702,21 @@ export function HtmlTemplateEditor({
     if (saved && Array.isArray(saved) && saved.length > 0) return saved;
     return [];
   });
+  const [selectedTextBoxIds, setSelectedTextBoxIds] = useState<Set<string>>(new Set());
+  const toggleTextBoxSelect = (id: string) => {
+    setSelectedTextBoxIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const deleteSelectedTextBoxes = () => {
+    setTextBoxes((prev) => prev.filter((tb) => !selectedTextBoxIds.has(tb.id)));
+    setSelectedTextBoxIds(new Set());
+  };
+  const applyFontToSelectedTextBoxes = (font: string) => {
+    setTextBoxes((prev) => prev.map((tb) => selectedTextBoxIds.has(tb.id) ? { ...tb, fontFamily: font } : tb));
+  };
   const [upgrades, setUpgrades] = useState(() => {
     const saved = (template as any).upgrades;
     if (saved && Array.isArray(saved) && saved.length > 0) return saved;
@@ -4569,9 +4686,11 @@ export function HtmlTemplateEditor({
           const fontStyle = tb.isItalic ? "font-style: italic;" : "";
           const textDecor = tb.isUnderline ? "text-decoration: underline;" : "";
           const textAlign = `text-align: ${tb.textAlign || "right"};`;
+          const tbLineHeight = tb.lineHeight ? `line-height: ${tb.lineHeight};` : "";
+          const tbLetterSpacing = tb.letterSpacing ? `letter-spacing: ${tb.letterSpacing}px;` : "";
           return `<div style="margin: 15px 0; padding: 15px; background: ${bgColor}; border: 2px solid ${borderColor}; border-radius: ${designSettings.borderRadius}px;">
           ${tb.title ? `<h4 data-editable="textbox.${tb.id}.title" style="margin: 0 0 8px 0; color: ${designSettings.primaryColor}; font-family: ${fontFamily};">${s.icon} ${tb.title}</h4>` : ""}
-          <div data-editable="textbox.${tb.id}.content" style="color: ${textColor}; white-space: pre-wrap; font-size: ${fontSize}px; font-family: ${fontFamily}; ${fontWeight} ${fontStyle} ${textDecor} ${textAlign}">${tb.content}</div>
+          <div data-editable="textbox.${tb.id}.content" style="color: ${textColor}; white-space: pre-wrap; font-size: ${fontSize}px; font-family: ${fontFamily}; ${fontWeight} ${fontStyle} ${textDecor} ${textAlign} ${tbLineHeight} ${tbLetterSpacing}">${tb.content}</div>
         </div>`;
         })
         .join("");
@@ -9706,11 +9825,32 @@ export function HtmlTemplateEditor({
                           items={textBoxes.map((tb) => tb.id)}
                           strategy={verticalListSortingStrategy}
                         >
+                          {selectedTextBoxIds.size > 0 && (
+                            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-xs mb-2">
+                              <span className="font-medium text-blue-700">{selectedTextBoxIds.size} תיבות נבחרו</span>
+                              <Select onValueChange={applyFontToSelectedTextBoxes}>
+                                <SelectTrigger className="h-6 w-28 text-xs"><SelectValue placeholder="שנה גופן" /></SelectTrigger>
+                                <SelectContent>
+                                  {HEBREW_FONTS.slice(0, 12).map((f) => (
+                                    <SelectItem key={f.value} value={f.value} style={{ fontFamily: f.value }}>{f.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <button onClick={deleteSelectedTextBoxes} className="flex items-center gap-1 text-red-600 hover:text-red-700 font-medium">
+                                <Trash2 className="h-3 w-3" /> מחק
+                              </button>
+                              <button onClick={() => setSelectedTextBoxIds(new Set())} className="text-gray-400 hover:text-gray-600 mr-auto">
+                                בטל
+                              </button>
+                            </div>
+                          )}
                           <div className="space-y-3">
                             {textBoxes.map((tb) => (
                               <SortableTextBox
                                 key={tb.id}
                                 textBox={tb}
+                                isSelected={selectedTextBoxIds.has(tb.id)}
+                                onToggleSelect={() => toggleTextBoxSelect(tb.id)}
                                 onUpdate={(updated) =>
                                   setTextBoxes((prev) =>
                                     prev.map((t) =>
