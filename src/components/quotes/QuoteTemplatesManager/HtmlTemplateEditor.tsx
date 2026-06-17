@@ -314,6 +314,8 @@ interface DesignSettings {
   vatDisplayMode?: "plus-vat" | "breakdown"; // How VAT is displayed in the quote
   // Frame design (borders, background, section titles, fixed header/footer)
   frameDesign?: import("./frameStyles").FrameDesignSettings;
+  repeatHeaderOnAllPages?: boolean; // Pin header strip to top on every printed page
+  repeatFooterOnAllPages?: boolean; // Pin company details to bottom on every printed page (default: true)
 }
 interface TextBox {
   id: string;
@@ -5378,6 +5380,12 @@ export function HtmlTemplateEditor({
     // Page size
     const { cssSize: pageCssSize } = getPageDimensions(fd.pageSize);
 
+    // Repeat header/footer on every page
+    const repeatHeader = designSettings.repeatHeaderOnAllPages === true;
+    const repeatFooter = designSettings.repeatFooterOnAllPages !== false; // default ON
+    const headerHeightPx = (designSettings.headerStripHeight || 150) + 10;
+    const footerHeightPx = 90; // approx: padding 30px*2 + text lines
+
     return `<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -5425,16 +5433,30 @@ export function HtmlTemplateEditor({
         box-shadow: none !important;
       }
       .content {
-        padding-bottom: 80px !important;
+        padding-bottom: ${repeatFooter ? footerHeightPx + 20 : 40}px !important;
+        ${repeatHeader ? `padding-top: ${headerHeightPx + 20}px !important;` : ""}
       }
       .footer {
+        ${repeatFooter ? `
         position: fixed !important;
         bottom: 0 !important;
         left: 0 !important;
         right: 0 !important;
         margin: 0 !important;
         z-index: 50 !important;
+        background: #f9f9f9 !important;
+        ` : ""}
       }
+      ${repeatHeader ? `
+      .header {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 40 !important;
+        margin: 0 !important;
+      }
+      ` : ""}
       .quote-fixed-header { position: fixed; top: 0; left: 0; right: 0; }
       .quote-fixed-footer { position: fixed; bottom: 0; left: 0; right: 0; }
       .print-frame-overlay {
@@ -8911,6 +8933,43 @@ export function HtmlTemplateEditor({
                     />
                   </div>
                 )}
+
+                {/* Repeat header/footer on every page */}
+                <div className="bg-white rounded-xl border p-4 shadow-sm space-y-3">
+                  <h3 className="font-semibold text-sm flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-[#B8860B]" />
+                    חזרה על כותרת ותחתית בכל עמוד
+                  </h3>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm font-medium">לוגו / סטריפ עליון בכל עמוד</Label>
+                      <p className="text-xs text-gray-500 mt-0.5">הסטריפ העליון יופיע בראש כל עמוד בהדפסה</p>
+                    </div>
+                    <Switch
+                      checked={designSettings.repeatHeaderOnAllPages === true}
+                      onCheckedChange={(v) =>
+                        setDesignSettings((prev) => ({ ...prev, repeatHeaderOnAllPages: v }))
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between border-t pt-3">
+                    <div>
+                      <Label className="text-sm font-medium">פרטי חברה בתחתית כל עמוד</Label>
+                      <p className="text-xs text-gray-500 mt-0.5">שם החברה, כתובת וטלפון יופיעו בתחתית כל עמוד</p>
+                    </div>
+                    <Switch
+                      checked={designSettings.repeatFooterOnAllPages !== false}
+                      onCheckedChange={(v) =>
+                        setDesignSettings((prev) => ({ ...prev, repeatFooterOnAllPages: v }))
+                      }
+                    />
+                  </div>
+                  {(designSettings.repeatHeaderOnAllPages || designSettings.repeatFooterOnAllPages !== false) && (
+                    <p className="text-xs text-[#B8860B] bg-[#FFF8E1] rounded p-2">
+                      ✓ הטקסט ירד אוטומטית כדי לא לשבת מתחת לכותרת / התחתית
+                    </p>
+                  )}
+                </div>
 
                 {/* Company Logo Strip - Prominent Upload Section */}
                 <div className="bg-gradient-to-l from-amber-50 to-orange-50 rounded-xl border-2 border-amber-200 p-6 shadow-sm">
