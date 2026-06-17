@@ -117,6 +117,7 @@ import {
   ExternalLink,
   ListPlus,
   Heading2,
+  Star,
 } from "lucide-react";
 import {
   ResizablePanelGroup,
@@ -338,6 +339,18 @@ interface TextBox {
   lineHeight?: number;
   letterSpacing?: number;
 }
+interface CustomTextBoxTemplate {
+  id: string;
+  label: string;
+  title: string;
+  content: string;
+  position: TextBox["position"];
+  style: TextBox["style"];
+  customBg?: string;
+  customBorder?: string;
+  createdAt: string;
+}
+const CUSTOM_TEMPLATES_LS_KEY = "text-box-custom-templates";
 
 // Hebrew fonts available in text boxes
 const HEBREW_FONTS = [
@@ -3377,6 +3390,7 @@ function TextBoxEditor({
   onUpdate,
   onDelete,
   onDuplicate,
+  onSaveAsTemplate,
   dragHandleProps,
   isSelected,
   onToggleSelect,
@@ -3385,6 +3399,7 @@ function TextBoxEditor({
   onUpdate: (textBox: TextBox) => void;
   onDelete: () => void;
   onDuplicate?: () => void;
+  onSaveAsTemplate?: () => void;
   dragHandleProps?: any;
   isSelected?: boolean;
   onToggleSelect?: () => void;
@@ -3510,6 +3525,17 @@ function TextBoxEditor({
               title="שכפל תיבה"
             >
               <Copy className="h-3 w-3" />
+            </Button>
+          )}
+          {onSaveAsTemplate && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6 text-[#B8860B] hover:text-[#B8860B]"
+              onClick={onSaveAsTemplate}
+              title="שמור כתבנית לשימוש חוזר"
+            >
+              <Star className="h-3 w-3" />
             </Button>
           )}
           <Button
@@ -3818,6 +3844,7 @@ function SortableTextBox({
   onUpdate,
   onDelete,
   onDuplicate,
+  onSaveAsTemplate,
   isSelected,
   onToggleSelect,
 }: {
@@ -3825,6 +3852,7 @@ function SortableTextBox({
   onUpdate: (textBox: TextBox) => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  onSaveAsTemplate?: () => void;
   isSelected?: boolean;
   onToggleSelect?: () => void;
 }) {
@@ -3849,6 +3877,7 @@ function SortableTextBox({
         onUpdate={onUpdate}
         onDelete={onDelete}
         onDuplicate={onDuplicate}
+        onSaveAsTemplate={onSaveAsTemplate}
         dragHandleProps={listeners}
         isSelected={isSelected}
         onToggleSelect={onToggleSelect}
@@ -4077,6 +4106,38 @@ export function HtmlTemplateEditor({
   const applyFontToSelectedTextBoxes = (font: string) => {
     setTextBoxes((prev) => prev.map((tb) => selectedTextBoxIds.has(tb.id) ? { ...tb, fontFamily: font } : tb));
   };
+
+  const [customTextBoxTemplates, setCustomTextBoxTemplates] = useState<CustomTextBoxTemplate[]>(() => {
+    try {
+      const raw = localStorage.getItem(CUSTOM_TEMPLATES_LS_KEY);
+      if (raw) return JSON.parse(raw) as CustomTextBoxTemplate[];
+    } catch {}
+    return [];
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(CUSTOM_TEMPLATES_LS_KEY, JSON.stringify(customTextBoxTemplates));
+    } catch {}
+  }, [customTextBoxTemplates]);
+  const saveTextBoxAsTemplate = useCallback((textBox: TextBox) => {
+    const label = textBox.title?.trim() || textBox.content?.trim().slice(0, 20) || "תבנית";
+    const newTpl: CustomTextBoxTemplate = {
+      id: Date.now().toString(),
+      label,
+      title: textBox.title,
+      content: textBox.content,
+      position: textBox.position,
+      style: textBox.style,
+      customBg: textBox.customBg,
+      customBorder: textBox.customBorder,
+      createdAt: new Date().toISOString(),
+    };
+    setCustomTextBoxTemplates((prev) => [newTpl, ...prev]);
+    toast({ title: "נשמר כתבנית", description: `"${label}" נוספה לתבניות המוכנות` });
+  }, [toast]);
+  const deleteCustomTemplate = useCallback((id: string) => {
+    setCustomTextBoxTemplates((prev) => prev.filter((t) => t.id !== id));
+  }, []);
   const [upgrades, setUpgrades] = useState(() => {
     const saved = (template as any).upgrades;
     if (saved && Array.isArray(saved) && saved.length > 0) return saved;
@@ -10325,6 +10386,52 @@ export function HtmlTemplateEditor({
                           תבניות מוכנות
                         </span>
                       </div>
+                      {/* User's saved custom templates */}
+                      {customTextBoxTemplates.length > 0 && (
+                        <div className="mb-3">
+                          <div className="text-xs text-[#B8860B] font-medium mb-1.5 flex items-center gap-1">
+                            <Star className="h-3 w-3" />
+                            התבניות שלי
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {customTextBoxTemplates.map((tmpl) => (
+                              <div
+                                key={tmpl.id}
+                                className="flex items-center gap-0.5 bg-[#FFFBEA] border border-[#DAA520]/40 rounded-md h-7 pl-1 pr-2 text-xs"
+                              >
+                                <button
+                                  className="hover:text-[#B8860B] transition-colors truncate max-w-[120px]"
+                                  title={tmpl.label}
+                                  onClick={() =>
+                                    setTextBoxes([
+                                      ...textBoxes,
+                                      {
+                                        id: Date.now().toString(),
+                                        title: tmpl.title,
+                                        content: tmpl.content,
+                                        position: tmpl.position,
+                                        style: tmpl.style,
+                                        customBg: tmpl.customBg,
+                                        customBorder: tmpl.customBorder,
+                                      },
+                                    ])
+                                  }
+                                >
+                                  ⭐ {tmpl.label}
+                                </button>
+                                <button
+                                  className="mr-1 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
+                                  onClick={() => deleteCustomTemplate(tmpl.id)}
+                                  title="מחק תבנית"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="border-t my-2" />
+                        </div>
+                      )}
                       <div className="flex flex-wrap gap-2">
                         {TEXT_BOX_TEMPLATES.map((tmpl, i) => (
                           <Button
@@ -10399,6 +10506,7 @@ export function HtmlTemplateEditor({
                                 textBox={tb}
                                 isSelected={selectedTextBoxIds.has(tb.id)}
                                 onToggleSelect={() => toggleTextBoxSelect(tb.id)}
+                                onSaveAsTemplate={() => saveTextBoxAsTemplate(tb)}
                                 onUpdate={(updated) =>
                                   setTextBoxes((prev) =>
                                     prev.map((t) =>
