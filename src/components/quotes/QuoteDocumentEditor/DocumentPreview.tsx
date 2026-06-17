@@ -8,7 +8,12 @@ import {
   SectionKey,
   DEFAULT_SECTION_STYLE,
 } from "./types";
-import { TextFormatPopover, SECTION_LABELS } from "./TextFormatPopover";
+import {
+  TextFormatPopover,
+  SECTION_LABELS,
+  sectionStyleToCss,
+} from "./TextFormatPopover";
+import { SelectionToolbar } from "./SelectionToolbar";
 import {
   DEFAULT_FRAME_SETTINGS,
   borderToCss,
@@ -79,16 +84,9 @@ export function DocumentPreview({
     return doc.sectionStyles?.[sectionKey] || DEFAULT_SECTION_STYLE;
   };
 
-  // Helper to generate CSS styles from section style
+  // Helper to generate CSS styles from section style (full spec)
   const getSectionCSS = (sectionKey: SectionKey): React.CSSProperties => {
-    const style = getSectionStyle(sectionKey);
-    return {
-      fontFamily: style.fontFamily,
-      fontSize: `${style.fontSize}px`,
-      color: style.fontColor,
-      textAlign: style.textAlign,
-      fontWeight: style.fontWeight,
-    };
+    return sectionStyleToCss(getSectionStyle(sectionKey));
   };
 
   // Section wrapper with format button
@@ -103,9 +101,12 @@ export function DocumentPreview({
     className?: string;
     showFormatButton?: boolean;
   }) => (
-    <div className={cn("relative group", className)}>
+    <div
+      className={cn("relative group", className)}
+      data-section-key={sectionKey}
+    >
       {editable && showFormatButton && onUpdateSectionStyle && (
-        <div className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity print:hidden">
           <TextFormatPopover
             sectionKey={sectionKey}
             sectionLabel={SECTION_LABELS[sectionKey]}
