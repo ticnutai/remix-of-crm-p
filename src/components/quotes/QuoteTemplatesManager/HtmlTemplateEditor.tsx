@@ -1225,6 +1225,7 @@ function EditableItem({
   isSelected,
   onToggleSelect,
   stageDisplayMode,
+  stageIconColor,
   itemIndex,
 }: {
   item: TemplateStageItem;
