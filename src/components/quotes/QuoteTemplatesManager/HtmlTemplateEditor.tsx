@@ -329,6 +329,7 @@ interface TextBox {
   style: "default" | "highlight" | "warning" | "info";
   customBg?: string;
   customBorder?: string;
+  borderWidth?: number;
   customTextColor?: string;
   fontSize?: number;
   isBold?: boolean;
@@ -3395,6 +3396,7 @@ function TextBoxEditor({
   customColors,
   onAddCustomColor,
   onRemoveCustomColor,
+  onEditCustomColor,
   dragHandleProps,
   isSelected,
   onToggleSelect,
@@ -3407,12 +3409,14 @@ function TextBoxEditor({
   customColors?: string[];
   onAddCustomColor?: (color: string) => void;
   onRemoveCustomColor?: (color: string) => void;
+  onEditCustomColor?: (oldColor: string, newColor: string) => void;
   dragHandleProps?: any;
   isSelected?: boolean;
   onToggleSelect?: () => void;
 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showColorSettings, setShowColorSettings] = useState(false);
   const styleColors: Record<string, string> = {
     default: "bg-white border-gray-200",
     highlight: "bg-yellow-50 border-yellow-300",
@@ -3445,6 +3449,7 @@ function TextBoxEditor({
       style={{
         backgroundColor: isSelected ? undefined : (textBox.customBg || undefined),
         borderColor: isSelected ? undefined : (textBox.customBorder || undefined),
+        borderWidth: isSelected ? undefined : (textBox.borderWidth !== undefined ? `${textBox.borderWidth}px` : undefined),
       }}
     >
       {/* Top bar: drag handle + checkbox + title + controls */}
@@ -3587,28 +3592,48 @@ function TextBoxEditor({
                 <div className="pb-1.5 border-b space-y-1.5">
                   <div className="flex items-center gap-2">
                     <Label className="text-xs w-16 text-[#B8860B] font-medium">שמורים:</Label>
-                    <div className="flex gap-1 flex-wrap">
-                      {customColors.map((c) => (
-                        <div key={c} className="relative group">
-                          <button
-                            className={`w-5 h-5 rounded border-2 hover:scale-110 transition-transform ${activeCustomColor === c ? "border-[#B8860B] scale-110 shadow" : "border-transparent hover:border-gray-400"}`}
-                            style={{ backgroundColor: c, outline: activeCustomColor === c ? "2px solid #B8860B" : undefined, outlineOffset: "1px" }}
-                            title="בחר צבע"
-                            onClick={() => setActiveCustomColor(activeCustomColor === c ? null : c)}
-                          />
-                          {onRemoveCustomColor && (
+                    <div className="flex gap-1 flex-wrap flex-1">
+                      {!showColorSettings ? (
+                        customColors.map((c) => (
+                          <div key={c} className="relative group">
                             <button
-                              className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white rounded-full text-[8px] hidden group-hover:flex items-center justify-center leading-none"
-                              onClick={(e) => { e.stopPropagation(); onRemoveCustomColor(c); if (activeCustomColor === c) setActiveCustomColor(null); }}
-                              title="הסר צבע"
+                              className={`w-5 h-5 rounded border-2 hover:scale-110 transition-transform ${activeCustomColor === c ? "border-[#B8860B] scale-110 shadow" : "border-transparent hover:border-gray-400"}`}
+                              style={{ backgroundColor: c, outline: activeCustomColor === c ? "2px solid #B8860B" : undefined, outlineOffset: "1px" }}
+                              title="בחר צבע"
+                              onClick={() => setActiveCustomColor(activeCustomColor === c ? null : c)}
+                            />
+                          </div>
+                        ))
+                      ) : (
+                        /* Edit mode: each saved color shows a color input + delete */
+                        customColors.map((c) => (
+                          <div key={c} className="flex items-center gap-0.5">
+                            <Input
+                              type="color"
+                              value={c}
+                              onChange={(e) => onEditCustomColor && onEditCustomColor(c, e.target.value)}
+                              className="w-7 h-6 p-0.5 border rounded cursor-pointer"
+                              title="שנה צבע"
+                            />
+                            <button
+                              className="w-4 h-4 bg-red-100 hover:bg-red-500 text-red-500 hover:text-white rounded text-[9px] flex items-center justify-center transition-colors"
+                              onClick={() => { onRemoveCustomColor && onRemoveCustomColor(c); if (activeCustomColor === c) setActiveCustomColor(null); }}
+                              title="מחק"
                             >×</button>
-                          )}
-                        </div>
-                      ))}
+                          </div>
+                        ))
+                      )}
                     </div>
+                    <button
+                      className={`flex-shrink-0 p-0.5 rounded transition-colors ${showColorSettings ? "text-[#B8860B] bg-[#FFF8E1]" : "text-gray-400 hover:text-[#B8860B]"}`}
+                      onClick={() => { setShowColorSettings(!showColorSettings); setActiveCustomColor(null); }}
+                      title="ערוך צבעים שמורים"
+                    >
+                      <Settings className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                  {/* Apply target selector — appears when a saved color is selected */}
-                  {activeCustomColor && (
+                  {/* Apply target selector — appears when a saved color is selected (normal mode only) */}
+                  {activeCustomColor && !showColorSettings && (
                     <div className="flex items-center gap-2 mr-16 animate-in fade-in slide-in-from-top-1 duration-150">
                       <div className="w-4 h-4 rounded border flex-shrink-0" style={{ backgroundColor: activeCustomColor }} />
                       <span className="text-xs text-gray-500">החל על:</span>
@@ -3713,6 +3738,21 @@ function TextBoxEditor({
                       onClick={() => onAddCustomColor(textBox.customBorder || "#e5e7eb")}
                     >+</button>
                   )}
+                </div>
+              </div>
+              {/* Border width */}
+              <div className="flex items-center gap-2">
+                <Label className="text-xs w-16">עובי:</Label>
+                <div className="flex items-center gap-2 flex-1">
+                  <Slider
+                    value={[textBox.borderWidth ?? 2]}
+                    min={0}
+                    max={8}
+                    step={1}
+                    onValueChange={([v]) => onUpdate({ ...textBox, borderWidth: v })}
+                    className="w-28"
+                  />
+                  <span className="text-xs text-gray-500 w-8">{textBox.borderWidth ?? 2}px</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -3939,6 +3979,7 @@ function SortableTextBox({
   customColors?: string[];
   onAddCustomColor?: (color: string) => void;
   onRemoveCustomColor?: (color: string) => void;
+  onEditCustomColor?: (oldColor: string, newColor: string) => void;
   isSelected?: boolean;
   onToggleSelect?: () => void;
 }) {
@@ -3967,6 +4008,7 @@ function SortableTextBox({
         customColors={customColors}
         onAddCustomColor={onAddCustomColor}
         onRemoveCustomColor={onRemoveCustomColor}
+        onEditCustomColor={onEditCustomColor}
         dragHandleProps={listeners}
         isSelected={isSelected}
         onToggleSelect={onToggleSelect}
@@ -4246,6 +4288,9 @@ export function HtmlTemplateEditor({
   }, []);
   const removeCustomColor = useCallback((color: string) => {
     setCustomColors((prev) => prev.filter((c) => c !== color));
+  }, []);
+  const editCustomColor = useCallback((oldColor: string, newColor: string) => {
+    setCustomColors((prev) => prev.map((c) => c === oldColor ? newColor : c));
   }, []);
   const [upgrades, setUpgrades] = useState(() => {
     const saved = (template as any).upgrades;
@@ -5218,7 +5263,8 @@ export function HtmlTemplateEditor({
           const textAlign = `text-align: ${tb.textAlign || "right"};`;
           const tbLineHeight = tb.lineHeight ? `line-height: ${tb.lineHeight};` : "";
           const tbLetterSpacing = tb.letterSpacing ? `letter-spacing: ${tb.letterSpacing}px;` : "";
-          return `<div style="margin: 15px 0; padding: 15px; background: ${bgColor}; border: 2px solid ${borderColor}; border-radius: ${designSettings.borderRadius}px;">
+          const borderW = tb.borderWidth ?? 2;
+          return `<div style="margin: 15px 0; padding: 15px; background: ${bgColor}; border: ${borderW}px solid ${borderColor}; border-radius: ${designSettings.borderRadius}px;">
           ${tb.title ? `<h4 data-editable="textbox.${tb.id}.title" style="margin: 0 0 8px 0; color: ${designSettings.primaryColor}; font-family: ${fontFamily};">${s.icon} ${tb.title}</h4>` : ""}
           <div data-editable="textbox.${tb.id}.content" style="color: ${textColor}; white-space: pre-wrap; font-size: ${fontSize}px; font-family: ${fontFamily}; ${fontWeight} ${fontStyle} ${textDecor} ${textAlign} ${tbLineHeight} ${tbLetterSpacing}">${tb.content}</div>
         </div>`;
@@ -10619,6 +10665,7 @@ export function HtmlTemplateEditor({
                                 customColors={customColors}
                                 onAddCustomColor={addCustomColor}
                                 onRemoveCustomColor={removeCustomColor}
+                                onEditCustomColor={editCustomColor}
                                 onUpdate={(updated) =>
                                   setTextBoxes((prev) =>
                                     prev.map((t) =>
