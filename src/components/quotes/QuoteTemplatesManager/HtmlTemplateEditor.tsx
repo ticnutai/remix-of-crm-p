@@ -3437,6 +3437,7 @@ function TextBoxEditor({
     "#fce7f3",
     "#e0f2fe",
   ];
+  const [activeCustomColor, setActiveCustomColor] = useState<string | null>(null);
 
   return (
     <div
@@ -3583,27 +3584,53 @@ function TextBoxEditor({
             <div className="p-2 rounded-lg border bg-white/80 space-y-2">
               {/* Saved custom colors row */}
               {customColors && customColors.length > 0 && (
-                <div className="flex items-center gap-2 pb-1.5 border-b">
-                  <Label className="text-xs w-16 text-[#B8860B] font-medium">שמורים:</Label>
-                  <div className="flex gap-1 flex-wrap">
-                    {customColors.map((c) => (
-                      <div key={c} className="relative group">
-                        <button
-                          className="w-5 h-5 rounded border hover:scale-110 transition-transform"
-                          style={{ backgroundColor: c, borderColor: "#ddd" }}
-                          title={c}
-                          onClick={() => onUpdate({ ...textBox, customBg: c })}
-                        />
-                        {onRemoveCustomColor && (
+                <div className="pb-1.5 border-b space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs w-16 text-[#B8860B] font-medium">שמורים:</Label>
+                    <div className="flex gap-1 flex-wrap">
+                      {customColors.map((c) => (
+                        <div key={c} className="relative group">
                           <button
-                            className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white rounded-full text-[8px] hidden group-hover:flex items-center justify-center leading-none"
-                            onClick={(e) => { e.stopPropagation(); onRemoveCustomColor(c); }}
-                            title="הסר צבע"
-                          >×</button>
-                        )}
-                      </div>
-                    ))}
+                            className={`w-5 h-5 rounded border-2 hover:scale-110 transition-transform ${activeCustomColor === c ? "border-[#B8860B] scale-110 shadow" : "border-transparent hover:border-gray-400"}`}
+                            style={{ backgroundColor: c, outline: activeCustomColor === c ? "2px solid #B8860B" : undefined, outlineOffset: "1px" }}
+                            title="בחר צבע"
+                            onClick={() => setActiveCustomColor(activeCustomColor === c ? null : c)}
+                          />
+                          {onRemoveCustomColor && (
+                            <button
+                              className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white rounded-full text-[8px] hidden group-hover:flex items-center justify-center leading-none"
+                              onClick={(e) => { e.stopPropagation(); onRemoveCustomColor(c); if (activeCustomColor === c) setActiveCustomColor(null); }}
+                              title="הסר צבע"
+                            >×</button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
+                  {/* Apply target selector — appears when a saved color is selected */}
+                  {activeCustomColor && (
+                    <div className="flex items-center gap-2 mr-16 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <div className="w-4 h-4 rounded border flex-shrink-0" style={{ backgroundColor: activeCustomColor }} />
+                      <span className="text-xs text-gray-500">החל על:</span>
+                      {[
+                        { label: "רקע", apply: () => onUpdate({ ...textBox, customBg: activeCustomColor }) },
+                        { label: "מסגרת", apply: () => onUpdate({ ...textBox, customBorder: activeCustomColor }) },
+                        { label: "טקסט", apply: () => onUpdate({ ...textBox, customTextColor: activeCustomColor }) },
+                      ].map(({ label, apply }) => (
+                        <button
+                          key={label}
+                          className="text-xs px-2 py-0.5 rounded bg-[#FFF8E1] border border-[#DAA520]/50 hover:bg-[#DAA520]/20 text-[#7A5C00] transition-colors"
+                          onClick={() => { apply(); setActiveCustomColor(null); }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                      <button
+                        className="text-xs text-gray-400 hover:text-gray-600 mr-auto"
+                        onClick={() => setActiveCustomColor(null)}
+                      >ביטול</button>
+                    </div>
+                  )}
                 </div>
               )}
               <div className="flex items-center gap-2">
