@@ -649,12 +649,15 @@ export function QuoteTemplatesManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quote-templates-advanced"] });
-      setIsDialogOpen(false);
-      setEditingTemplate(null);
-      toast({
-        title: "נשמר בהצלחה",
-        description: "התבנית נשמרה",
-      });
+      // When the HTML editor is open it manages its own toast + stays open
+      if (!htmlEditorTemplate) {
+        setIsDialogOpen(false);
+        setEditingTemplate(null);
+        toast({
+          title: "נשמר בהצלחה",
+          description: "התבנית נשמרה",
+        });
+      }
     },
     onError: (error: any) => {
       toast({
@@ -2082,13 +2085,14 @@ export function QuoteTemplatesManager() {
           onSave={async (t) => {
             const result = await saveMutation.mutateAsync(t);
             if (result?.newId) {
-              // New template was just created — update editor state with real ID
-              // so subsequent saves are UPDATEs and version history works
+              // New template — update state with real DB id so future saves are UPDATEs
               setHtmlEditorTemplate(prev =>
                 prev ? { ...prev, ...t, id: result.newId! } as QuoteTemplate : null
               );
-            } else {
-              setHtmlEditorTemplate(null);
+            }
+            // Existing template: keep editor open, just sync saved fields
+            else {
+              setHtmlEditorTemplate(prev => prev ? { ...prev, ...t } as QuoteTemplate : null);
             }
           }}
         />

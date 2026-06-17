@@ -1704,6 +1704,22 @@ function StageEditor({
       items: [...stage.items, { id: Date.now().toString(), text: "פריט חדש" }],
     });
   };
+  const openBulkImport = () => {
+    // Pre-populate with existing items so user can edit the full list
+    const existingText = stage.items
+      .map((item) => {
+        if (item.isSpacer) return "";
+        // Strip HTML tags to plain text for editing
+        return item.text
+          .replace(/<br\s*\/?>/gi, "\n")
+          .replace(/<[^>]+>/g, "")
+          .trim();
+      })
+      .join("\n");
+    setBulkText(existingText);
+    setShowBulkImport(true);
+  };
+
   const applyBulkImport = () => {
     const lines = bulkText.split("\n");
     const newItems: TemplateStageItem[] = lines.map((line) => ({
@@ -1711,7 +1727,8 @@ function StageEditor({
       text: line.trim(),
       isSpacer: line.trim() === "",
     }));
-    onUpdate({ ...stage, items: [...stage.items, ...newItems] });
+    // Replace all items (not append) — user edited the full list
+    onUpdate({ ...stage, items: newItems });
     setBulkText("");
     setShowBulkImport(false);
   };
@@ -2030,8 +2047,8 @@ function StageEditor({
               variant="ghost"
               size="sm"
               className="text-indigo-600 hover:bg-indigo-50"
-              onClick={() => setShowBulkImport(true)}
-              title="ייבוא מהיר — כל שורה = פריט"
+              onClick={openBulkImport}
+              title="עריכת רשימה — כל שורה = פריט"
             >
               <ListPlus className="h-4 w-4" />
             </Button>
@@ -2045,11 +2062,11 @@ function StageEditor({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ListPlus className="h-5 w-5 text-indigo-600" />
-              ייבוא פריטים מהיר
+              עריכת רשימת פריטים
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            כל שורה = פריט חדש &bull; שורה ריקה = רווח בין קבוצות
+            כל שורה = פריט &bull; שורה ריקה = רווח בין קבוצות &bull; השינויים יחליפו את הפריטים הקיימים
           </p>
           <Textarea
             value={bulkText}
@@ -2064,8 +2081,8 @@ function StageEditor({
             }}
           />
           <DialogFooter className="flex gap-2 flex-row-reverse">
-            <Button onClick={applyBulkImport} disabled={!bulkText.trim()}>
-              הוסף פריטים
+            <Button onClick={applyBulkImport}>
+              שמור פריטים
             </Button>
             <Button variant="outline" onClick={() => setShowBulkImport(false)}>
               ביטול
