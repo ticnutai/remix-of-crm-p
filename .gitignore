@@ -39,3 +39,6 @@ client_secret*.json
 *.key
 credentials.json
 token.jsontest-results/
+
+# External resources
+external/chai-transcribe

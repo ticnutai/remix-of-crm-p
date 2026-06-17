@@ -95,7 +95,9 @@ type FolderLayoutMode = "grid" | "dense" | "list" | "expanded" | "table";
 type TemplateLayoutMode = "regular" | "compact" | "expanded" | "quick";
 
 const FOLDER_LAYOUT_STORAGE_KEY = "quote-templates-folder-layout";
-const TEMPLATE_LAYOUT_STORAGE_KEY = "quote-templates-template-layout";
+const UNGROUPED_LAYOUT_STORAGE_KEY = "quote-templates-ungrouped-layout";
+const FOLDER_CARD_STYLE_STORAGE_KEY = "quote-templates-folder-card-style";
+const UNGROUPED_CARD_STYLE_STORAGE_KEY = "quote-templates-ungrouped-card-style";
 
 const FOLDER_LAYOUT_OPTIONS: Array<{
   value: FolderLayoutMode;
@@ -104,27 +106,27 @@ const FOLDER_LAYOUT_OPTIONS: Array<{
   icon: React.ComponentType<{ className?: string }>;
 }> = [
   {
+    value: "list",
+    label: "רשימה",
+    description: "תיקייה אחת בשורה (ברירת מחדל)",
+    icon: List,
+  },
+  {
     value: "grid",
-    label: "גריד רגיל",
-    description: "3 כרטיסים בשורה בדסקטופ",
+    label: "גריד",
+    description: "2-3 תיקיות בשורה",
     icon: LayoutGrid,
   },
   {
     value: "dense",
     label: "גריד צפוף",
-    description: "יותר כרטיסים בשורה",
+    description: "3-4 תיקיות בשורה",
     icon: GripVertical,
   },
   {
-    value: "list",
-    label: "רשימה",
-    description: "שורה לכל תבנית",
-    icon: List,
-  },
-  {
     value: "expanded",
-    label: "כרטיס מורחב",
-    description: "פחות כרטיסים עם יותר מקום",
+    label: "מורחב",
+    description: "תיקייה אחת עם יותר מקום",
     icon: Rows3,
   },
   {
@@ -228,11 +230,15 @@ export function QuoteTemplatesManager() {
   const [folderLayoutMode, setFolderLayoutMode] = useState<FolderLayoutMode>(
     () => parseFolderLayout(localStorage.getItem(FOLDER_LAYOUT_STORAGE_KEY)),
   );
-  const [templateLayoutMode, setTemplateLayoutMode] =
-    useState<TemplateLayoutMode>(
-      () =>
-        parseTemplateLayout(localStorage.getItem(TEMPLATE_LAYOUT_STORAGE_KEY)),
-    );
+  const [ungroupedLayoutMode, setUngroupedLayoutMode] = useState<FolderLayoutMode>(
+    () => parseFolderLayout(localStorage.getItem(UNGROUPED_LAYOUT_STORAGE_KEY)),
+  );
+  const [folderCardStyle, setFolderCardStyle] = useState<TemplateLayoutMode>(
+    () => parseTemplateLayout(localStorage.getItem(FOLDER_CARD_STYLE_STORAGE_KEY)),
+  );
+  const [ungroupedCardStyle, setUngroupedCardStyle] = useState<TemplateLayoutMode>(
+    () => parseTemplateLayout(localStorage.getItem(UNGROUPED_CARD_STYLE_STORAGE_KEY)),
+  );
   const [cloudViewReady, setCloudViewReady] = useState(false);
 
   useEffect(() => {
@@ -240,8 +246,16 @@ export function QuoteTemplatesManager() {
   }, [folderLayoutMode]);
 
   useEffect(() => {
-    localStorage.setItem(TEMPLATE_LAYOUT_STORAGE_KEY, templateLayoutMode);
-  }, [templateLayoutMode]);
+    localStorage.setItem(UNGROUPED_LAYOUT_STORAGE_KEY, ungroupedLayoutMode);
+  }, [ungroupedLayoutMode]);
+
+  useEffect(() => {
+    localStorage.setItem(FOLDER_CARD_STYLE_STORAGE_KEY, folderCardStyle);
+  }, [folderCardStyle]);
+
+  useEffect(() => {
+    localStorage.setItem(UNGROUPED_CARD_STYLE_STORAGE_KEY, ungroupedCardStyle);
+  }, [ungroupedCardStyle]);
 
   useEffect(() => {
     let isMounted = true;
@@ -272,18 +286,32 @@ export function QuoteTemplatesManager() {
             ? viewPrefs.quote_templates_folder_layout
             : null,
         );
-        const savedTemplateLayout = parseTemplateLayout(
-          typeof viewPrefs.quote_templates_template_layout === "string"
-            ? viewPrefs.quote_templates_template_layout
+        const savedUngroupedLayout = parseFolderLayout(
+          typeof viewPrefs.quote_templates_ungrouped_layout === "string"
+            ? viewPrefs.quote_templates_ungrouped_layout
+            : null,
+        );
+        const savedFolderCardStyle = parseTemplateLayout(
+          typeof viewPrefs.quote_templates_folder_card_style === "string"
+            ? viewPrefs.quote_templates_folder_card_style
+            : null,
+        );
+        const savedUngroupedCardStyle = parseTemplateLayout(
+          typeof viewPrefs.quote_templates_ungrouped_card_style === "string"
+            ? viewPrefs.quote_templates_ungrouped_card_style
             : null,
         );
 
         if (!isMounted) return;
 
         setFolderLayoutMode(savedFolderLayout);
-        setTemplateLayoutMode(savedTemplateLayout);
+        setUngroupedLayoutMode(savedUngroupedLayout);
+        setFolderCardStyle(savedFolderCardStyle);
+        setUngroupedCardStyle(savedUngroupedCardStyle);
         localStorage.setItem(FOLDER_LAYOUT_STORAGE_KEY, savedFolderLayout);
-        localStorage.setItem(TEMPLATE_LAYOUT_STORAGE_KEY, savedTemplateLayout);
+        localStorage.setItem(UNGROUPED_LAYOUT_STORAGE_KEY, savedUngroupedLayout);
+        localStorage.setItem(FOLDER_CARD_STYLE_STORAGE_KEY, savedFolderCardStyle);
+        localStorage.setItem(UNGROUPED_CARD_STYLE_STORAGE_KEY, savedUngroupedCardStyle);
       } catch {
         markTableUnavailable("user_preferences");
       } finally {
@@ -324,7 +352,9 @@ export function QuoteTemplatesManager() {
         const mergedViewPrefs = {
           ...existingViewPrefs,
           quote_templates_folder_layout: folderLayoutMode,
-          quote_templates_template_layout: templateLayoutMode,
+          quote_templates_ungrouped_layout: ungroupedLayoutMode,
+          quote_templates_folder_card_style: folderCardStyle,
+          quote_templates_ungrouped_card_style: ungroupedCardStyle,
         };
 
         const { error: saveError } = await supabase
@@ -347,7 +377,7 @@ export function QuoteTemplatesManager() {
     }, 700);
 
     return () => clearTimeout(timer);
-  }, [cloudViewReady, folderLayoutMode, templateLayoutMode, user?.id]);
+  }, [cloudViewReady, folderLayoutMode, ungroupedLayoutMode, folderCardStyle, ungroupedCardStyle, user?.id]);
 
   const getFolderTemplatesContainerClass = () => {
     switch (folderLayoutMode) {
@@ -362,6 +392,38 @@ export function QuoteTemplatesManager() {
       case "grid":
       default:
         return "grid md:grid-cols-2 lg:grid-cols-3 gap-4";
+    }
+  };
+
+  const getUngroupedTemplatesContainerClass = () => {
+    switch (ungroupedLayoutMode) {
+      case "dense":
+        return "grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3";
+      case "list":
+        return "flex flex-col gap-3";
+      case "expanded":
+        return "grid md:grid-cols-1 xl:grid-cols-2 gap-5";
+      case "table":
+        return "";
+      case "grid":
+      default:
+        return "grid md:grid-cols-2 lg:grid-cols-3 gap-4";
+    }
+  };
+
+  const getFolderTilesContainerClass = () => {
+    switch (folderLayoutMode) {
+      case "grid":
+        return "grid md:grid-cols-2 lg:grid-cols-3 gap-4";
+      case "dense":
+        return "grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3";
+      case "expanded":
+        return "flex flex-col gap-6";
+      case "table":
+        return "";
+      case "list":
+      default:
+        return "flex flex-col gap-4";
     }
   };
 
@@ -954,7 +1016,7 @@ export function QuoteTemplatesManager() {
   };
 
   // --- Render template card ---
-  const renderTemplateCard = (template: QuoteTemplate) => {
+  const renderTemplateCard = (template: QuoteTemplate, cardStyle: TemplateLayoutMode = "regular") => {
     const primaryColor = template.design_settings?.primary_color || "#d8ac27";
     const stagesCount = (template.stages || []).length;
     const itemsCount =
@@ -964,9 +1026,9 @@ export function QuoteTemplatesManager() {
       ) + (template.items || []).length;
 
     const isRenaming = renamingTemplateId === template.id;
-    const isCompactLayout = templateLayoutMode === "compact";
-    const isExpandedLayout = templateLayoutMode === "expanded";
-    const isQuickLayout = templateLayoutMode === "quick";
+    const isCompactLayout = cardStyle === "compact";
+    const isExpandedLayout = cardStyle === "expanded";
+    const isQuickLayout = cardStyle === "quick";
     const cardHeaderClassName = isCompactLayout
       ? "p-4 pb-2"
       : isExpandedLayout
@@ -1056,44 +1118,6 @@ export function QuoteTemplatesManager() {
             </div>
 
             <div className="flex items-center gap-1">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    title="תצוגת תבניות"
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="rtl min-w-56">
-                  <DropdownMenuLabel>תצוגת תבניות</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuRadioGroup
-                    value={templateLayoutMode}
-                    onValueChange={(value) =>
-                      setTemplateLayoutMode(parseTemplateLayout(value))
-                    }
-                  >
-                    {TEMPLATE_LAYOUT_OPTIONS.map((option) => {
-                      const OptionIcon = option.icon;
-                      return (
-                        <DropdownMenuRadioItem key={option.value} value={option.value}>
-                          <div className="w-full text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <span>{option.label}</span>
-                              <OptionIcon className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                            <div className="text-xs text-muted-foreground">{option.description}</div>
-                          </div>
-                        </DropdownMenuRadioItem>
-                      );
-                    })}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
               {/* Template actions dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -1621,7 +1645,7 @@ export function QuoteTemplatesManager() {
                           renderTemplatesTable(folderTemplates)
                         ) : (
                           <div className={getFolderTemplatesContainerClass()}>
-                            {folderTemplates.map(renderTemplateCard)}
+                            {folderTemplates.map(t => renderTemplateCard(t, folderCardStyle))}
                           </div>
                         )
                       ) : null}
@@ -1637,36 +1661,113 @@ export function QuoteTemplatesManager() {
 
             return (
               <>
-                {sortedRoots.map((f) => renderFolderNode(f, 0))}
-                {/* Root drop zone for folders being dragged out of a parent */}
-                {draggedFolderId && (
-                  <div
-                    className={`rounded-lg border-2 border-dashed py-3 text-center text-sm transition-all ${
-                      dragOverFolderId === "root"
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-muted-foreground/30 text-muted-foreground"
-                    }`}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = "move";
-                      setDragOverFolderId("root");
-                    }}
-                    onDragLeave={() => setDragOverFolderId(null)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (draggedFolderId) {
-                        moveFolderMutation.mutate({
-                          folderId: draggedFolderId,
-                          newParentId: null,
-                        });
-                      }
-                      setDragOverFolderId(null);
-                      setDraggedFolderId(null);
-                    }}
-                  >
-                    שחרר כאן להעברה לרמה הראשית
+                {sortedRoots.length > 0 && (
+                  <div className="flex items-center justify-between gap-2 mb-3 text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <FolderOpen className="h-4 w-4" />
+                      <span className="text-sm font-medium">
+                        תיקיות ({sortedRoots.length})
+                      </span>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          title="תצוגת תיקיות"
+                        >
+                          <LayoutGrid className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="rtl min-w-60">
+                        <DropdownMenuLabel>פריסת תיקיות</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuRadioGroup
+                          value={folderLayoutMode}
+                          onValueChange={(value) => setFolderLayoutMode(parseFolderLayout(value))}
+                        >
+                          {FOLDER_LAYOUT_OPTIONS.map((option) => {
+                            const OptionIcon = option.icon;
+                            return (
+                              <DropdownMenuRadioItem key={option.value} value={option.value}>
+                                <div className="w-full text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <span>{option.label}</span>
+                                    <OptionIcon className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">{option.description}</div>
+                                </div>
+                              </DropdownMenuRadioItem>
+                            );
+                          })}
+                        </DropdownMenuRadioGroup>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel>סגנון כרטיס</DropdownMenuLabel>
+                        <DropdownMenuRadioGroup
+                          value={folderCardStyle}
+                          onValueChange={(value) => setFolderCardStyle(parseTemplateLayout(value))}
+                        >
+                          {TEMPLATE_LAYOUT_OPTIONS.map((option) => {
+                            const OptionIcon = option.icon;
+                            return (
+                              <DropdownMenuRadioItem key={option.value} value={option.value}>
+                                <div className="w-full text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <span>{option.label}</span>
+                                    <OptionIcon className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">{option.description}</div>
+                                </div>
+                              </DropdownMenuRadioItem>
+                            );
+                          })}
+                        </DropdownMenuRadioGroup>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setCollapsedFolders(new Set(folders.map(f => f.id)))}>
+                          <Minimize2 className="h-4 w-4 ml-2" />
+                          כווץ את כל התיקיות
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setCollapsedFolders(new Set())}>
+                          <Maximize2 className="h-4 w-4 ml-2" />
+                          הרחב את כל התיקיות
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 )}
+                <div className={getFolderTilesContainerClass()}>
+                  {sortedRoots.map((f) => renderFolderNode(f, 0))}
+                  {/* Root drop zone for folders being dragged out of a parent */}
+                  {draggedFolderId && (
+                    <div
+                      className={`rounded-lg border-2 border-dashed py-3 text-center text-sm transition-all ${
+                        dragOverFolderId === "root"
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-muted-foreground/30 text-muted-foreground"
+                      }`}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                        setDragOverFolderId("root");
+                      }}
+                      onDragLeave={() => setDragOverFolderId(null)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (draggedFolderId) {
+                          moveFolderMutation.mutate({
+                            folderId: draggedFolderId,
+                            newParentId: null,
+                          });
+                        }
+                        setDragOverFolderId(null);
+                        setDraggedFolderId(null);
+                      }}
+                    >
+                      שחרר כאן להעברה לרמה הראשית
+                    </div>
+                  )}
+                </div>
               </>
             );
           })()}
@@ -1707,12 +1808,12 @@ export function QuoteTemplatesManager() {
             >
               {folders.length > 0 && (
                 <div className="flex items-center justify-between gap-2 mb-3 text-muted-foreground">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-1">
                   <FileText className="h-4 w-4" />
                   <span className="text-sm font-medium">
                     תבניות ללא תיקייה ({unfolderedTemplates.length})
                     {draggedTemplateId && (
-                      <span className="mr-2 text-primary">— שחרר כאן להוצאה מתיקייה</span>
+                      <span className="mr-2 text-primary text-xs">— שחרר כאן להוצאה מתיקייה</span>
                     )}
                   </span>
                   </div>
@@ -1722,21 +1823,40 @@ export function QuoteTemplatesManager() {
                         variant="ghost"
                         size="sm"
                         className="h-7 w-7 p-0"
-                        title="תצוגת תיקיות"
+                        title="תצוגת תבניות ללא תיקייה"
                       >
                         <LayoutGrid className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="rtl min-w-56">
-                      <DropdownMenuLabel>תצוגת תיקיות</DropdownMenuLabel>
+                    <DropdownMenuContent align="end" className="rtl min-w-60">
+                      <DropdownMenuLabel>פריסת תבניות ללא תיקייה</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuRadioGroup
-                        value={folderLayoutMode}
-                        onValueChange={(value) =>
-                          setFolderLayoutMode(parseFolderLayout(value))
-                        }
+                        value={ungroupedLayoutMode}
+                        onValueChange={(value) => setUngroupedLayoutMode(parseFolderLayout(value))}
                       >
                         {FOLDER_LAYOUT_OPTIONS.map((option) => {
+                          const OptionIcon = option.icon;
+                          return (
+                            <DropdownMenuRadioItem key={option.value} value={option.value}>
+                              <div className="w-full text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <span>{option.label}</span>
+                                  <OptionIcon className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                                <div className="text-xs text-muted-foreground">{option.description}</div>
+                              </div>
+                            </DropdownMenuRadioItem>
+                          );
+                        })}
+                      </DropdownMenuRadioGroup>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel>סגנון כרטיס</DropdownMenuLabel>
+                      <DropdownMenuRadioGroup
+                        value={ungroupedCardStyle}
+                        onValueChange={(value) => setUngroupedCardStyle(parseTemplateLayout(value))}
+                      >
+                        {TEMPLATE_LAYOUT_OPTIONS.map((option) => {
                           const OptionIcon = option.icon;
                           return (
                             <DropdownMenuRadioItem key={option.value} value={option.value}>
@@ -1755,11 +1875,11 @@ export function QuoteTemplatesManager() {
                   </DropdownMenu>
                 </div>
               )}
-              {folderLayoutMode === "table" ? (
+              {ungroupedLayoutMode === "table" ? (
                 renderTemplatesTable(unfolderedTemplates)
               ) : (
-                <div className={getFolderTemplatesContainerClass()}>
-                  {unfolderedTemplates.map(renderTemplateCard)}
+                <div className={getUngroupedTemplatesContainerClass()}>
+                  {unfolderedTemplates.map(t => renderTemplateCard(t, ungroupedCardStyle))}
                 </div>
               )}
             </div>
