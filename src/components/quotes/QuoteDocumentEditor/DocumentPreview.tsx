@@ -84,8 +84,9 @@ export function DocumentPreview({
     return doc.sectionStyles?.[sectionKey] || DEFAULT_SECTION_STYLE;
   };
 
-  // Helper to generate CSS styles from section style (full spec)
+  // Only apply CSS when the user has explicitly customized this section
   const getSectionCSS = (sectionKey: SectionKey): React.CSSProperties => {
+    if (!doc.sectionStyles?.[sectionKey]) return {};
     return sectionStyleToCss(getSectionStyle(sectionKey));
   };
 

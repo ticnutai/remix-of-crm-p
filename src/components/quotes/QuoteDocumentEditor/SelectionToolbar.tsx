@@ -69,11 +69,16 @@ export function SelectionToolbar({ getStyle, onChange }: SelectionToolbarProps) 
       setPos(null);
       return;
     }
-    setPos({
-      top: rect.top + window.scrollY - 48,
-      left: rect.left + window.scrollX + rect.width / 2,
-      sectionKey,
-    });
+    const TOOLBAR_HEIGHT = 52;
+    const TOOLBAR_HALF_WIDTH = 200;
+    const topAbove = rect.top - TOOLBAR_HEIGHT;
+    const topBelow = rect.bottom + 8;
+    const top = topAbove >= 0 ? topAbove : topBelow;
+    const left = Math.max(
+      TOOLBAR_HALF_WIDTH,
+      Math.min(window.innerWidth - TOOLBAR_HALF_WIDTH, rect.left + rect.width / 2),
+    );
+    setPos({ top, left, sectionKey });
   }, []);
 
   useEffect(() => {
@@ -87,11 +92,12 @@ export function SelectionToolbar({ getStyle, onChange }: SelectionToolbarProps) 
     const onScroll = () => setPos(null);
     document.addEventListener("mouseup", onUp);
     document.addEventListener("mousedown", onDown);
-    window.addEventListener("scroll", onScroll, true);
+    // capture=true catches scroll on any scrollable container (ScrollArea etc.)
+    document.addEventListener("scroll", onScroll, true);
     return () => {
       document.removeEventListener("mouseup", onUp);
       document.removeEventListener("mousedown", onDown);
-      window.removeEventListener("scroll", onScroll, true);
+      document.removeEventListener("scroll", onScroll, true);
     };
   }, [handleSelection]);
 
@@ -213,7 +219,7 @@ export function SelectionToolbar({ getStyle, onChange }: SelectionToolbarProps) 
         />
       </button>
       <button
-        title="צבע הדגשה"
+        title={style.backgroundColor ? "הסר צבע רקע סקשן" : "צבע רקע לסקשן כולו"}
         onClick={() =>
           update({
             backgroundColor: style.backgroundColor ? "" : "#fef08a",
