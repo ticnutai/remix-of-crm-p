@@ -4284,7 +4284,7 @@ export function HtmlTemplateEditor({
     } catch {}
   }, [customColors]);
   const addCustomColor = useCallback((color: string) => {
-    if (!color || color === "#ffffff" || color === "#000000" || color === "#e5e7eb") return;
+    if (!color) return;
     setCustomColors((prev) => prev.includes(color) ? prev : [color, ...prev].slice(0, 16));
   }, []);
   const removeCustomColor = useCallback((color: string) => {
