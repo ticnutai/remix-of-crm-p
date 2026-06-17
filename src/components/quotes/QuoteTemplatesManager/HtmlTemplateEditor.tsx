@@ -5087,6 +5087,13 @@ export function HtmlTemplateEditor({
     const totalGross = basePrice + totalVat;
     const hasCustomVat = paymentSteps.some(s => s.useCustomVat && (s.vatRate ?? vatRate) !== vatRate);
 
+    // Compute print border overlay values
+    const docBorder = fd.documentBorder;
+    const hasFrameOverlay = !!(docBorder && docBorder.style !== "none" && (docBorder.width ?? 0) > 0);
+    const frameOverlayBorderCss = hasFrameOverlay
+      ? `${docBorder!.width}px ${docBorder!.style} ${docBorder!.color}`
+      : "";
+
     return `<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -5128,15 +5135,40 @@ export function HtmlTemplateEditor({
         max-width: 100% !important;
         width: 100% !important;
         margin: 0 !important;
+        border: none !important;
+        padding: 0 !important;
         border-radius: 0 !important;
         box-shadow: none !important;
       }
+      .content {
+        padding-bottom: 80px !important;
+      }
+      .footer {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        margin: 0 !important;
+        z-index: 50 !important;
+      }
       .quote-fixed-header { position: fixed; top: 0; left: 0; right: 0; }
       .quote-fixed-footer { position: fixed; bottom: 0; left: 0; right: 0; }
+      .print-frame-overlay {
+        display: block !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        pointer-events: none !important;
+        z-index: 9999 !important;
+        border-radius: 0 !important;
+      }
     }
   </style>
 </head>
 <body>
+  ${hasFrameOverlay ? `<div class="print-frame-overlay" style="display:none; border: ${frameOverlayBorderCss};"></div>` : ""}
   ${fixedHeaderHtml(fd.fixedHeader, designSettings.logoUrl)}
   <div class="container">
     ${decorativeCornersHtml(fd.documentBorder)}
