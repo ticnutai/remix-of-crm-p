@@ -1704,6 +1704,33 @@ function StageEditor({
         <Badge variant="outline" className="text-[#B8860B] border-[#DAA520]">
           {stage.items.length} פריטים
         </Badge>
+        {/* Select-all toggle */}
+        {stage.items.length > 0 && (
+          <button
+            title={selectedItemIds.size === stage.items.length ? "נקה בחירה" : "בחר הכל"}
+            onClick={() => {
+              if (selectedItemIds.size === stage.items.length) {
+                setSelectedItemIds(new Set());
+              } else {
+                setSelectedItemIds(new Set(stage.items.map(i => i.id)));
+              }
+            }}
+            className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-colors flex-shrink-0 ${
+              selectedItemIds.size === stage.items.length
+                ? "bg-[#DAA520] border-[#DAA520]"
+                : selectedItemIds.size > 0
+                ? "bg-[#DAA520]/40 border-[#DAA520]"
+                : "border-gray-300 hover:border-[#DAA520]"
+            }`}
+          >
+            {selectedItemIds.size === stage.items.length && (
+              <span className="text-white text-[9px] leading-none">✓</span>
+            )}
+            {selectedItemIds.size > 0 && selectedItemIds.size < stage.items.length && (
+              <span className="text-white text-[10px] leading-none font-bold">−</span>
+            )}
+          </button>
+        )}
         <div className="flex items-center gap-1">
           <Button
             size="icon"
