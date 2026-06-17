@@ -1233,6 +1233,7 @@ function EditableItem({
   isSelected?: boolean;
   onToggleSelect?: () => void;
   stageDisplayMode?: TemplateStage["itemDisplayMode"];
+  stageIconColor?: string;
   itemIndex?: number;
 }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -1471,7 +1472,7 @@ function EditableItem({
     }
   };
   const currentIcon = getEffectiveIcon();
-  const currentIconColor = item.iconColor || "#DAA520";
+  const currentIconColor = item.iconColor || stageIconColor || "#DAA520";
 
   return (
     <div className={`flex items-center gap-2 py-2 group hover:bg-gray-50 rounded-lg px-1 ${isSelected ? "bg-blue-50" : ""}`}>
@@ -1839,6 +1840,49 @@ function StageEditor({
         <Badge variant="outline" className="text-[#B8860B] border-[#DAA520]">
           {stage.items.length} פריטים
         </Badge>
+
+        {/* Item display mode + icon color — visible for regular stages */}
+        {!stage.isSection && (
+          <div className="flex items-center border border-gray-200 rounded overflow-hidden text-xs font-mono">
+            {([
+              { mode: "check" as const, label: "✓", title: "ווי" },
+              { mode: "numbered" as const, label: "1.", title: "מספרים" },
+              { mode: "bullet" as const, label: "•", title: "עיגול" },
+              { mode: "none" as const, label: "—", title: "ללא סימון" },
+            ]).map((opt) => (
+              <button
+                key={opt.mode}
+                title={opt.title}
+                onClick={() => onUpdate({ ...stage, itemDisplayMode: opt.mode })}
+                className="px-1.5 py-0.5 transition-colors"
+                style={
+                  (stage.itemDisplayMode ?? "check") === opt.mode
+                    ? { backgroundColor: stage.itemDisplayColor || "#DAA520", color: "#fff" }
+                    : { color: "#9ca3af" }
+                }
+              >
+                {opt.label}
+              </button>
+            ))}
+            {/* Color picker dot */}
+            <label
+              className="flex items-center justify-center px-1.5 py-0.5 cursor-pointer border-r border-gray-200 border-l"
+              title="צבע האייקונים"
+            >
+              <span
+                className="w-3 h-3 rounded-full border border-gray-400 inline-block"
+                style={{ backgroundColor: stage.itemDisplayColor || "#DAA520" }}
+              />
+              <input
+                type="color"
+                value={stage.itemDisplayColor || "#DAA520"}
+                onChange={(e) => onUpdate({ ...stage, itemDisplayColor: e.target.value })}
+                className="sr-only"
+              />
+            </label>
+          </div>
+        )}
+
         {/* Select-all toggle */}
         {stage.items.length > 0 && (
           <button
@@ -2029,6 +2073,7 @@ function StageEditor({
                 isSelected={selectedItemIds.has(item.id)}
                 onToggleSelect={() => toggleItemSelect(item.id)}
                 stageDisplayMode={stage.itemDisplayMode}
+                stageIconColor={stage.itemDisplayColor}
                 itemIndex={idx}
               />
             ))}
@@ -5049,7 +5094,7 @@ export function HtmlTemplateEditor({
                 const itemIdx = stage.items.indexOf(item);
                 itemIcon = mode === "numbered" ? `${itemIdx + 1}.` : mode === "bullet" ? "•" : mode === "none" ? "" : "✓";
               }
-              const itemIconColor = item.iconColor || itemColor;
+              const itemIconColor = item.iconColor || stage.itemDisplayColor || itemColor;
               const iconHtml = itemIcon
                 ? `<span style="color:${itemIconColor};margin-left:6px;">${itemIcon}</span>`
                 : "";
