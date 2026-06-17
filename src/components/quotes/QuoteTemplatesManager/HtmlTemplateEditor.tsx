@@ -3968,6 +3968,7 @@ function SortableTextBox({
   customColors,
   onAddCustomColor,
   onRemoveCustomColor,
+  onEditCustomColor,
   isSelected,
   onToggleSelect,
 }: {
