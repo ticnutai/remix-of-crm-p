@@ -1220,12 +1220,16 @@ function EditableItem({
   onDelete,
   isSelected,
   onToggleSelect,
+  stageDisplayMode,
+  itemIndex,
 }: {
   item: TemplateStageItem;
   onUpdate: (item: TemplateStageItem) => void;
   onDelete: () => void;
   isSelected?: boolean;
   onToggleSelect?: () => void;
+  stageDisplayMode?: TemplateStage["itemDisplayMode"];
+  itemIndex?: number;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [showFormatting, setShowFormatting] = useState(false);
@@ -1414,7 +1418,16 @@ function EditableItem({
         </div>
       </div>
     );
-  const currentIcon = item.icon === undefined ? "✓" : item.icon;
+  const getEffectiveIcon = () => {
+    if (item.icon !== undefined) return item.icon;
+    switch (stageDisplayMode ?? "check") {
+      case "numbered": return itemIndex !== undefined ? `${itemIndex + 1}.` : "✓";
+      case "bullet": return "•";
+      case "none": return "";
+      default: return "✓";
+    }
+  };
+  const currentIcon = getEffectiveIcon();
   const currentIconColor = item.iconColor || "#DAA520";
 
   return (
@@ -1691,6 +1704,28 @@ function StageEditor({
         <Badge variant="outline" className="text-[#B8860B] border-[#DAA520]">
           {stage.items.length} פריטים
         </Badge>
+        {/* Stage-level item format picker */}
+        <div className="flex items-center gap-0 border border-gray-200 rounded-lg overflow-hidden text-xs">
+          {([
+            { value: "check" as const, label: "✓", title: "וי" },
+            { value: "numbered" as const, label: "1.", title: "מספרים" },
+            { value: "bullet" as const, label: "•", title: "נקודה" },
+            { value: "none" as const, label: "—", title: "ללא" },
+          ]).map(opt => (
+            <button
+              key={opt.value}
+              title={opt.title}
+              onClick={() => onUpdate({ ...stage, itemDisplayMode: opt.value })}
+              className={`px-2.5 py-1 leading-none font-mono transition-colors ${
+                (stage.itemDisplayMode ?? "check") === opt.value
+                  ? "bg-[#d8ac27] text-white"
+                  : "hover:bg-gray-100 text-gray-500"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
         <div className="flex items-center gap-1">
           <Button
             size="icon"
@@ -1814,7 +1849,7 @@ function StageEditor({
             </div>
           )}
           <div className="p-4 space-y-1">
-            {stage.items.map((item) => (
+            {stage.items.map((item, idx) => (
               <EditableItem
                 key={item.id}
                 item={item}
@@ -1822,6 +1857,8 @@ function StageEditor({
                 onDelete={() => deleteItem(item.id)}
                 isSelected={selectedItemIds.has(item.id)}
                 onToggleSelect={() => toggleItemSelect(item.id)}
+                stageDisplayMode={stage.itemDisplayMode}
+                itemIndex={idx}
               />
             ))}
           </div>
@@ -4781,7 +4818,14 @@ export function HtmlTemplateEditor({
               const itemAlign = item.textAlign
                 ? `text-align: ${item.textAlign};`
                 : "";
-              const itemIcon = item.icon === undefined ? "✓" : item.icon;
+              let itemIcon: string;
+              if (item.icon !== undefined) {
+                itemIcon = item.icon;
+              } else {
+                const mode = stage.itemDisplayMode ?? "check";
+                const itemIdx = stage.items.indexOf(item);
+                itemIcon = mode === "numbered" ? `${itemIdx + 1}.` : mode === "bullet" ? "•" : mode === "none" ? "" : "✓";
+              }
               const itemIconColor = item.iconColor || itemColor;
               const iconHtml = itemIcon
                 ? `<span style="color:${itemIconColor};margin-left:6px;">${itemIcon}</span>`
@@ -5229,7 +5273,13 @@ export function HtmlTemplateEditor({
       ...editedTemplate,
       stages: [
         ...editedTemplate.stages,
-        { id: Date.now().toString(), name: "שלב חדש", icon: "📋", items: [] },
+        {
+          id: Date.now().toString(),
+          name: "שלב חדש",
+          icon: "📋",
+          items: [{ id: (Date.now() + 1).toString(), text: "פריט חדש" }],
+          itemDisplayMode: "check",
+        },
       ],
     });
   const addPaymentStep = () =>

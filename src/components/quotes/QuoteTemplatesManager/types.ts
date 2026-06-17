@@ -16,6 +16,10 @@ export interface TemplateStage {
   iconColor?: string;
   items: TemplateStageItem[];
   isExpanded?: boolean;
+  /** Default display format for items in this stage */
+  itemDisplayMode?: "check" | "numbered" | "bullet" | "none";
+  /** Default icon color for items (when using check/bullet) */
+  itemDisplayColor?: string;
 }
 
 export interface TemplateStageItem {
