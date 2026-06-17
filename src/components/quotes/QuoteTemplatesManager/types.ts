@@ -16,6 +16,8 @@ export interface TemplateStage {
   iconColor?: string;
   items: TemplateStageItem[];
   isExpanded?: boolean;
+  /** When true, this stage acts as a section heading between stages */
+  isSection?: boolean;
   /** Default display format for items in this stage */
   itemDisplayMode?: "check" | "numbered" | "bullet" | "none";
   /** Default icon color for items (when using check/bullet) */
@@ -105,6 +107,8 @@ export interface QuoteTemplate {
   notes?: string;
   important_notes: string[];
   validity_days: number;
+  /** Editable main heading above all stages, defaults to "שלבי העבודה" */
+  stagesTitle?: string;
   design_settings: DesignSettings;
   show_vat: boolean;
   vat_rate: number;

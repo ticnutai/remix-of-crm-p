@@ -115,6 +115,7 @@ import {
   UserPlus,
   ExternalLink,
   ListPlus,
+  Heading2,
 } from "lucide-react";
 import {
   ResizablePanelGroup,
@@ -1547,6 +1548,70 @@ function EditableItem({
       />
       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
         <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setIsEditing(true)}>
+          <Pencil className="h-3 w-3" />
+        </Button>
+        <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={onDelete}>
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SectionHeaderRow({
+  stage,
+  onUpdate,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
+}: {
+  stage: TemplateStage;
+  onUpdate: (stage: TemplateStage) => void;
+  onDelete: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  isFirst: boolean;
+  isLast: boolean;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [name, setName] = useState(stage.name);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (isEditing) inputRef.current?.focus(); }, [isEditing]);
+
+  const save = () => { onUpdate({ ...stage, name }); setIsEditing(false); };
+
+  return (
+    <div className="flex items-center gap-2 py-3 px-3 group bg-gradient-to-l from-indigo-50 to-white rounded-lg border border-indigo-200">
+      <GripVertical className="h-4 w-4 text-indigo-300 cursor-grab flex-shrink-0" />
+      <Heading2 className="h-4 w-4 text-indigo-500 flex-shrink-0" />
+      {isEditing ? (
+        <input
+          ref={inputRef}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={save}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { setName(stage.name); setIsEditing(false); } }}
+          className="flex-1 text-lg font-bold bg-transparent border-b-2 border-indigo-400 outline-none"
+          dir="rtl"
+        />
+      ) : (
+        <h3
+          className="flex-1 text-lg font-bold text-indigo-700 cursor-pointer hover:text-indigo-500"
+          onClick={() => setIsEditing(true)}
+        >
+          {stage.name}
+        </h3>
+      )}
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onMoveUp} disabled={isFirst}>
+          <ChevronUp className="h-3 w-3" />
+        </Button>
+        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onMoveDown} disabled={isLast}>
+          <ChevronDown className="h-3 w-3" />
+        </Button>
+        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setIsEditing(true)} title="ערוך כותרת">
           <Pencil className="h-3 w-3" />
         </Button>
         <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={onDelete}>
@@ -3851,6 +3916,7 @@ export function HtmlTemplateEditor({
   const { clients } = useClients();
   const { saveToCloud } = useCloudPreferences();
   const [editedTemplate, setEditedTemplate] = useState<QuoteTemplate>(template);
+  const [editingStagesTitle, setEditingStagesTitle] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("project");
@@ -4918,7 +4984,13 @@ export function HtmlTemplateEditor({
 
     const stages = editedTemplate.stages
       .map(
-        (stage) => `
+        (stage) => {
+          if (stage.isSection) {
+            return `<div style="margin: 28px 0 10px; padding-bottom: 8px; border-bottom: 2px solid ${designSettings.primaryColor}40;">
+              <h3 style="color: ${designSettings.primaryColor}; font-family: '${designSettings.fontFamily}', sans-serif; font-size: 20px; font-weight: 700; margin: 0;">${stage.name}</h3>
+            </div>`;
+          }
+          return `
       <div class="stage-card" style="margin-bottom: 20px;">
         ${stageCornersHtml}
         <h3 style="color: ${designSettings.primaryColor}; font-family: ${designSettings.fontFamily};">${stage.icon ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;margin-left:6px;${stage.iconColor ? `background:${stage.iconColor}20;border:1px solid ${stage.iconColor};` : ""}">${stage.icon}</span>` : ""} <span data-editable="stage.${stage.id}.name">${stage.name}</span></h3>
@@ -4957,7 +5029,8 @@ export function HtmlTemplateEditor({
             .join("")}
         </ul>
       </div>
-    `,
+    `;
+        }
       )
       .join("");
 
@@ -5128,7 +5201,7 @@ export function HtmlTemplateEditor({
       
       ${renderTextBoxes("before-stages")}
       
-      ${sectionTitleHtml("שלבי העבודה", fd.sectionTitle, "margin: 30px 0 16px;")}
+      ${sectionTitleHtml(editedTemplate.stagesTitle || "שלבי העבודה", fd.sectionTitle, "margin: 30px 0 16px;")}
       ${stages}
       
       ${renderTextBoxes("after-stages")}
@@ -5401,6 +5474,20 @@ export function HtmlTemplateEditor({
           icon: "📋",
           items: [{ id: (Date.now() + 1).toString(), text: "פריט חדש" }],
           itemDisplayMode: "check",
+        },
+      ],
+    });
+  const addSectionHeader = () =>
+    setEditedTemplate({
+      ...editedTemplate,
+      stages: [
+        ...editedTemplate.stages,
+        {
+          id: Date.now().toString(),
+          name: "כותרת חדשה",
+          icon: "",
+          items: [],
+          isSection: true,
         },
       ],
     });
@@ -7301,19 +7388,66 @@ export function HtmlTemplateEditor({
                   ))}
                 {/* Stages */}
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold">שלבי העבודה</h2>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-[#DAA520] text-[#B8860B]"
-                      onClick={addStage}
-                    >
-                      <Plus className="h-4 w-4 ml-1" />
-                      הוסף שלב
-                    </Button>
+                  <div className="flex items-center justify-between gap-2">
+                    {/* Editable main stages title */}
+                    {editingStagesTitle ? (
+                      <input
+                        autoFocus
+                        value={editedTemplate.stagesTitle ?? "שלבי העבודה"}
+                        onChange={(e) => setEditedTemplate({ ...editedTemplate, stagesTitle: e.target.value })}
+                        onBlur={() => setEditingStagesTitle(false)}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") setEditingStagesTitle(false); }}
+                        className="text-xl font-bold bg-transparent border-b-2 border-[#DAA520] outline-none flex-1"
+                        dir="rtl"
+                      />
+                    ) : (
+                      <h2
+                        className="text-xl font-bold cursor-pointer hover:text-[#B8860B] flex items-center gap-1 group"
+                        onClick={() => setEditingStagesTitle(true)}
+                        title="לחץ לעריכת כותרת"
+                      >
+                        {editedTemplate.stagesTitle || "שלבי העבודה"}
+                        <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-40 transition-opacity" />
+                      </h2>
+                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-[#DAA520] text-[#B8860B]"
+                        onClick={addStage}
+                      >
+                        <Plus className="h-4 w-4 ml-1" />
+                        הוסף שלב
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-indigo-300 text-indigo-600 hover:bg-indigo-50"
+                        onClick={addSectionHeader}
+                        title="הוסף כותרת ראשית בין השלבים"
+                      >
+                        <Heading2 className="h-4 w-4 ml-1" />
+                        הוסף כותרת
+                      </Button>
+                    </div>
                   </div>
-                  {editedTemplate.stages.map((stage, index) => (
+                  {editedTemplate.stages.map((stage, index) => {
+                    if (stage.isSection) {
+                      return (
+                        <SectionHeaderRow
+                          key={stage.id}
+                          stage={stage}
+                          onUpdate={(updated) => updateStage(stage.id, updated)}
+                          onDelete={() => deleteStage(stage.id)}
+                          onMoveUp={() => moveStage(stage.id, "up")}
+                          onMoveDown={() => moveStage(stage.id, "down")}
+                          isFirst={index === 0}
+                          isLast={index === editedTemplate.stages.length - 1}
+                        />
+                      );
+                    }
+                    return (
                     <StageEditor
                       key={stage.id}
                       stage={stage}
@@ -7354,7 +7488,8 @@ export function HtmlTemplateEditor({
                         }]);
                       }}
                     />
-                  ))}
+                    );
+                  })}
                 </div>
                 {/* Text boxes after stages */}
                 {textBoxes
