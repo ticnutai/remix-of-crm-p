@@ -121,8 +121,9 @@ const SYNC_KEYS = [
   "dev-buttons-positions",
   "dev-tools-minimized",
 
-  // Quote template text-box custom templates
+  // Quote template text-box custom templates & colors
   "text-box-custom-templates",
+  "text-box-custom-colors",
 ] as const;
 
 // Additional prefixes for dynamic keys (like dashboard-dynamic-stats-1, dashboard-dynamic-stats-2)

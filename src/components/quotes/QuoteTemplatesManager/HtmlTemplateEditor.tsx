@@ -351,6 +351,7 @@ interface CustomTextBoxTemplate {
   createdAt: string;
 }
 const CUSTOM_TEMPLATES_LS_KEY = "text-box-custom-templates";
+const CUSTOM_COLORS_LS_KEY = "text-box-custom-colors";
 
 // Hebrew fonts available in text boxes
 const HEBREW_FONTS = [
@@ -3391,6 +3392,9 @@ function TextBoxEditor({
   onDelete,
   onDuplicate,
   onSaveAsTemplate,
+  customColors,
+  onAddCustomColor,
+  onRemoveCustomColor,
   dragHandleProps,
   isSelected,
   onToggleSelect,
@@ -3400,6 +3404,9 @@ function TextBoxEditor({
   onDelete: () => void;
   onDuplicate?: () => void;
   onSaveAsTemplate?: () => void;
+  customColors?: string[];
+  onAddCustomColor?: (color: string) => void;
+  onRemoveCustomColor?: (color: string) => void;
   dragHandleProps?: any;
   isSelected?: boolean;
   onToggleSelect?: () => void;
@@ -3574,9 +3581,34 @@ function TextBoxEditor({
           {/* Custom color picker */}
           {showColorPicker && (
             <div className="p-2 rounded-lg border bg-white/80 space-y-2">
+              {/* Saved custom colors row */}
+              {customColors && customColors.length > 0 && (
+                <div className="flex items-center gap-2 pb-1.5 border-b">
+                  <Label className="text-xs w-16 text-[#B8860B] font-medium">שמורים:</Label>
+                  <div className="flex gap-1 flex-wrap">
+                    {customColors.map((c) => (
+                      <div key={c} className="relative group">
+                        <button
+                          className="w-5 h-5 rounded border hover:scale-110 transition-transform"
+                          style={{ backgroundColor: c, borderColor: "#ddd" }}
+                          title={c}
+                          onClick={() => onUpdate({ ...textBox, customBg: c })}
+                        />
+                        {onRemoveCustomColor && (
+                          <button
+                            className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white rounded-full text-[8px] hidden group-hover:flex items-center justify-center leading-none"
+                            onClick={(e) => { e.stopPropagation(); onRemoveCustomColor(c); }}
+                            title="הסר צבע"
+                          >×</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Label className="text-xs w-16">רקע:</Label>
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-wrap">
                   {quickColors.map((c) => (
                     <button
                       key={c}
@@ -3601,11 +3633,18 @@ function TextBoxEditor({
                     }
                     className="w-6 h-5 p-0 border-0 cursor-pointer"
                   />
+                  {onAddCustomColor && (
+                    <button
+                      className="w-5 h-5 rounded border border-dashed border-[#DAA520] text-[#B8860B] hover:bg-[#FFF8E1] text-[10px] flex items-center justify-center transition-colors"
+                      title="שמור צבע לפלטה"
+                      onClick={() => onAddCustomColor(textBox.customBg || "#ffffff")}
+                    >+</button>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <Label className="text-xs w-16">מסגרת:</Label>
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-wrap">
                   {[
                     "#e5e7eb",
                     "#fde68a",
@@ -3640,11 +3679,18 @@ function TextBoxEditor({
                     }
                     className="w-6 h-5 p-0 border-0 cursor-pointer"
                   />
+                  {onAddCustomColor && (
+                    <button
+                      className="w-5 h-5 rounded border border-dashed border-[#DAA520] text-[#B8860B] hover:bg-[#FFF8E1] text-[10px] flex items-center justify-center transition-colors"
+                      title="שמור צבע לפלטה"
+                      onClick={() => onAddCustomColor(textBox.customBorder || "#e5e7eb")}
+                    >+</button>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <Label className="text-xs w-16">טקסט:</Label>
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-wrap">
                   {[
                     "#000000",
                     "#374151",
@@ -3679,6 +3725,13 @@ function TextBoxEditor({
                     }
                     className="w-6 h-5 p-0 border-0 cursor-pointer"
                   />
+                  {onAddCustomColor && (
+                    <button
+                      className="w-5 h-5 rounded border border-dashed border-[#DAA520] text-[#B8860B] hover:bg-[#FFF8E1] text-[10px] flex items-center justify-center transition-colors"
+                      title="שמור צבע לפלטה"
+                      onClick={() => onAddCustomColor(textBox.customTextColor || "#000000")}
+                    >+</button>
+                  )}
                 </div>
               </div>
             </div>
@@ -3845,6 +3898,9 @@ function SortableTextBox({
   onDelete,
   onDuplicate,
   onSaveAsTemplate,
+  customColors,
+  onAddCustomColor,
+  onRemoveCustomColor,
   isSelected,
   onToggleSelect,
 }: {
@@ -3853,6 +3909,9 @@ function SortableTextBox({
   onDelete: () => void;
   onDuplicate: () => void;
   onSaveAsTemplate?: () => void;
+  customColors?: string[];
+  onAddCustomColor?: (color: string) => void;
+  onRemoveCustomColor?: (color: string) => void;
   isSelected?: boolean;
   onToggleSelect?: () => void;
 }) {
@@ -3878,6 +3937,9 @@ function SortableTextBox({
         onDelete={onDelete}
         onDuplicate={onDuplicate}
         onSaveAsTemplate={onSaveAsTemplate}
+        customColors={customColors}
+        onAddCustomColor={onAddCustomColor}
+        onRemoveCustomColor={onRemoveCustomColor}
         dragHandleProps={listeners}
         isSelected={isSelected}
         onToggleSelect={onToggleSelect}
@@ -4137,6 +4199,26 @@ export function HtmlTemplateEditor({
   }, [toast]);
   const deleteCustomTemplate = useCallback((id: string) => {
     setCustomTextBoxTemplates((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const [customColors, setCustomColors] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(CUSTOM_COLORS_LS_KEY);
+      if (raw) return JSON.parse(raw) as string[];
+    } catch {}
+    return [];
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(CUSTOM_COLORS_LS_KEY, JSON.stringify(customColors));
+    } catch {}
+  }, [customColors]);
+  const addCustomColor = useCallback((color: string) => {
+    if (!color || color === "#ffffff" || color === "#000000" || color === "#e5e7eb") return;
+    setCustomColors((prev) => prev.includes(color) ? prev : [color, ...prev].slice(0, 16));
+  }, []);
+  const removeCustomColor = useCallback((color: string) => {
+    setCustomColors((prev) => prev.filter((c) => c !== color));
   }, []);
   const [upgrades, setUpgrades] = useState(() => {
     const saved = (template as any).upgrades;
@@ -10507,6 +10589,9 @@ export function HtmlTemplateEditor({
                                 isSelected={selectedTextBoxIds.has(tb.id)}
                                 onToggleSelect={() => toggleTextBoxSelect(tb.id)}
                                 onSaveAsTemplate={() => saveTextBoxAsTemplate(tb)}
+                                customColors={customColors}
+                                onAddCustomColor={addCustomColor}
+                                onRemoveCustomColor={removeCustomColor}
                                 onUpdate={(updated) =>
                                   setTextBoxes((prev) =>
                                     prev.map((t) =>
