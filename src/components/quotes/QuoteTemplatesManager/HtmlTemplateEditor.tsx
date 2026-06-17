@@ -1527,6 +1527,9 @@ function StageEditor({
   onMoveDown,
   isFirst,
   isLast,
+  allStages,
+  onMoveToStage,
+  onCreateTextBox,
 }: {
   stage: TemplateStage;
   onUpdate: (stage: TemplateStage) => void;
@@ -1536,11 +1539,15 @@ function StageEditor({
   onMoveDown: () => void;
   isFirst: boolean;
   isLast: boolean;
+  allStages: TemplateStage[];
+  onMoveToStage: (itemIds: string[], targetStageId: string, position: "start" | "end") => void;
+  onCreateTextBox: (items: TemplateStageItem[], format: "lines" | "numbered" | "checkmarks") => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
   const [stageName, setStageName] = useState(stage.name);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [textBoxFormat, setTextBoxFormat] = useState<"lines" | "numbered" | "checkmarks">("lines");
 
   const toggleItemSelect = (id: string) => {
     setSelectedItemIds((prev) => {
@@ -1734,7 +1741,7 @@ function StageEditor({
       {isExpanded && (
         <div className="border-t border-gray-100">
           {selectedItemIds.size > 0 && (
-            <div className="flex items-center gap-2 px-4 py-1.5 bg-blue-50 border-b border-blue-100 text-xs">
+            <div className="flex items-center gap-2 px-4 py-1.5 bg-blue-50 border-b border-blue-100 text-xs flex-wrap">
               <span className="font-medium text-blue-700">{selectedItemIds.size} נבחרו</span>
               <Select onValueChange={applyFontToSelected}>
                 <SelectTrigger className="h-6 w-28 text-xs"><SelectValue placeholder="שנה גופן" /></SelectTrigger>
@@ -1744,6 +1751,60 @@ function StageEditor({
                   ))}
                 </SelectContent>
               </Select>
+              {/* Move to stage */}
+              {allStages.filter(s => s.id !== stage.id).length > 0 && (
+                <Select onValueChange={(value) => {
+                  const [targetId, pos] = value.split("|");
+                  onMoveToStage(Array.from(selectedItemIds), targetId, pos as "start" | "end");
+                  setSelectedItemIds(new Set());
+                }}>
+                  <SelectTrigger className="h-6 w-32 text-xs"><SelectValue placeholder="העבר אל..." /></SelectTrigger>
+                  <SelectContent>
+                    {allStages.filter(s => s.id !== stage.id).map(s => (
+                      <React.Fragment key={s.id}>
+                        <SelectItem value={`${s.id}|start`}>תחילת: {s.name}</SelectItem>
+                        <SelectItem value={`${s.id}|end`}>סוף: {s.name}</SelectItem>
+                      </React.Fragment>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {/* Create text box */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="flex items-center gap-1 text-indigo-600 hover:text-indigo-700 font-medium">
+                    <FileText className="h-3 w-3" /> צור תיבת טקסט
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-2 rtl" align="start">
+                  <div className="space-y-1 text-xs">
+                    <div className="font-medium text-muted-foreground mb-1">בחר פורמט</div>
+                    {([
+                      { value: "lines" as const, label: "שורות רגילות" },
+                      { value: "numbered" as const, label: "רשימה ממוספרת" },
+                      { value: "checkmarks" as const, label: "✓ עם וי" },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.value}
+                        className={`w-full text-right px-2 py-1.5 rounded hover:bg-gray-100 ${textBoxFormat === opt.value ? "bg-blue-50 text-blue-700 font-medium" : ""}`}
+                        onClick={() => setTextBoxFormat(opt.value)}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                    <hr className="my-1" />
+                    <button
+                      className="w-full text-center px-2 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 font-medium"
+                      onClick={() => {
+                        const selected = stage.items.filter(i => selectedItemIds.has(i.id));
+                        onCreateTextBox(selected, textBoxFormat);
+                      }}
+                    >
+                      צור תיבת טקסט
+                    </button>
+                  </div>
+                </PopoverContent>
+              </Popover>
               <button onClick={deleteSelectedItems} className="flex items-center gap-1 text-red-600 hover:text-red-700 font-medium">
                 <Trash2 className="h-3 w-3" /> מחק
               </button>
@@ -7091,6 +7152,35 @@ export function HtmlTemplateEditor({
                       onMoveDown={() => moveStage(stage.id, "down")}
                       isFirst={index === 0}
                       isLast={index === editedTemplate.stages.length - 1}
+                      allStages={editedTemplate.stages}
+                      onMoveToStage={(itemIds, targetStageId, position) => {
+                        setEditedTemplate(prev => {
+                          const itemsToMove = (prev.stages.find(s => s.id === stage.id)?.items ?? []).filter(i => itemIds.includes(i.id));
+                          return {
+                            ...prev,
+                            stages: prev.stages.map(s => {
+                              if (s.id === stage.id) return { ...s, items: s.items.filter(i => !itemIds.includes(i.id)) };
+                              if (s.id === targetStageId) return { ...s, items: position === "start" ? [...itemsToMove, ...s.items] : [...s.items, ...itemsToMove] };
+                              return s;
+                            }),
+                          };
+                        });
+                      }}
+                      onCreateTextBox={(items, format) => {
+                        const texts = items.map(i => i.text);
+                        const content = format === "numbered"
+                          ? texts.map((t, i) => `${i + 1}. ${t}`).join("\n")
+                          : format === "checkmarks"
+                          ? texts.map(t => `✓ ${t}`).join("\n")
+                          : texts.join("\n");
+                        setTextBoxes(prev => [...prev, {
+                          id: Date.now().toString(),
+                          title: "תיבת טקסט חדשה",
+                          content,
+                          position: "after-stages" as const,
+                          style: "default" as const,
+                        }]);
+                      }}
                     />
                   ))}
                 </div>
