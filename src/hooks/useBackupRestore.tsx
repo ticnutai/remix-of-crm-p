@@ -46,7 +46,7 @@ const BackupContext = createContext<BackupContextType | null>(null);
 
 const STORAGE_KEY = "ten-arch-crm-backups";
 const VERSION = "1.0.0";
-const MAX_LOCAL_BACKUPS = 5; // Keep only last 5 backups locally
+const MAX_LOCAL_BACKUPS = 2; // Keep only last 2 backups locally — localStorage per-site quota is ~5MB
 
 // Helper to check localStorage size
 const getLocalStorageSize = (): number => {

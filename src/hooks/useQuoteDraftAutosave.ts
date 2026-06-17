@@ -5,6 +5,31 @@ import { useAuth } from "@/hooks/useAuth";
 const LS_PREFIX = "quote-draft::";
 const SETTING_PREFIX = "quote-draft::";
 
+/**
+ * Strip base64-encoded images from a draft snapshot before writing to localStorage.
+ * Full data is always saved to the cloud; local storage keeps only text/structural data.
+ */
+function trimSnapshotForLocalStorage(snapshot: any): any {
+  if (!snapshot || typeof snapshot !== "object") return snapshot;
+  const ds = snapshot.designSettings;
+  if (!ds) return snapshot;
+  const trimmedDs = { ...ds };
+  // Remove fields that commonly hold large base64 strings
+  if (typeof trimmedDs.logoUrl === "string" && trimmedDs.logoUrl.startsWith("data:"))
+    trimmedDs.logoUrl = null;
+  if (trimmedDs.stripLayers && typeof trimmedDs.stripLayers === "object") {
+    trimmedDs.stripLayers = Object.fromEntries(
+      Object.entries(trimmedDs.stripLayers).map(([k, v]: [string, any]) => [
+        k,
+        v && typeof v.url === "string" && v.url.startsWith("data:")
+          ? { ...v, url: null }
+          : v,
+      ])
+    );
+  }
+  return { ...snapshot, designSettings: trimmedDs };
+}
+
 export type AutosaveStatus = "idle" | "saving" | "saved" | "error";
 
 interface UseQuoteDraftAutosaveOptions {
@@ -117,14 +142,19 @@ export function useQuoteDraftAutosave({
     if (json === lastJsonRef.current) return;
     lastJsonRef.current = json;
 
-    // 1. Instant LS write
+    // 1. Instant LS write — strip heavy base64 blobs before storing locally
+    // (logos, strip layers) to avoid QuotaExceededError; cloud write keeps full data.
+    const LS_SIZE_LIMIT = 150_000; // 150 KB per draft key
     try {
+      const lsPayload = json.length <= LS_SIZE_LIMIT
+        ? snapshot
+        : trimSnapshotForLocalStorage(snapshot);
       localStorage.setItem(
         lsKey,
-        JSON.stringify({ data: snapshot, savedAt: new Date().toISOString() }),
+        JSON.stringify({ data: lsPayload, savedAt: new Date().toISOString() }),
       );
     } catch {
-      /* quota */
+      /* quota — cloud write below will still save the full snapshot */
     }
 
     // 2. Debounced cloud write
