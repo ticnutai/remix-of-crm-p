@@ -601,7 +601,7 @@ export function QuoteTemplatesManager() {
 
   // שמירת תבנית
   const saveMutation = useMutation({
-    mutationFn: async (template: Partial<QuoteTemplate>) => {
+    mutationFn: async (template: Partial<QuoteTemplate>): Promise<{ newId?: string }> => {
       const payload = {
         name: template.name,
         description: template.description,
@@ -634,11 +634,15 @@ export function QuoteTemplatesManager() {
           .update(payload)
           .eq("id", template.id);
         if (error) throw error;
+        return {};
       } else {
-        const { error } = await (supabase as any)
+        const { data, error } = await (supabase as any)
           .from("quote_templates")
-          .insert([payload]);
+          .insert([payload])
+          .select("id")
+          .single();
         if (error) throw error;
+        return { newId: data?.id };
       }
     },
     onSuccess: () => {
@@ -768,11 +772,16 @@ export function QuoteTemplatesManager() {
   };
 
   // פעולות
-  const handleNew = () => {
+  const handleNew = (folderId?: string | null) => {
     const newTemplate = createEmptyTemplate();
-    if (selectedFolderId) newTemplate.folder_id = selectedFolderId;
-    setEditingTemplate(newTemplate);
-    setIsDialogOpen(true);
+    const resolvedFolderId = folderId !== undefined ? folderId : selectedFolderId;
+    if (resolvedFolderId) newTemplate.folder_id = resolvedFolderId;
+    setHtmlEditorTemplate({
+      ...newTemplate,
+      id: "",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as QuoteTemplate);
   };
 
   const handleEdit = (template: QuoteTemplate) => {
@@ -1565,10 +1574,7 @@ export function QuoteTemplatesManager() {
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
-                              const newTemplate = createEmptyTemplate();
-                              newTemplate.folder_id = folder.id;
-                              setEditingTemplate(newTemplate);
-                              setIsDialogOpen(true);
+                              handleNew(folder.id);
                             }}
                           >
                             <Plus className="h-4 w-4 ml-2" />
@@ -1629,12 +1635,7 @@ export function QuoteTemplatesManager() {
                             variant="ghost"
                             size="sm"
                             className="mt-2"
-                            onClick={() => {
-                              const newTemplate = createEmptyTemplate();
-                              newTemplate.folder_id = folder.id;
-                              setEditingTemplate(newTemplate);
-                              setIsDialogOpen(true);
-                            }}
+                            onClick={() => handleNew(folder.id)}
                           >
                             <Plus className="h-4 w-4 ml-1" />
                             הוסף תבנית
@@ -2077,8 +2078,16 @@ export function QuoteTemplatesManager() {
           onClose={() => setHtmlEditorTemplate(null)}
           template={htmlEditorTemplate}
           onSave={async (t) => {
-            await saveMutation.mutateAsync(t);
-            setHtmlEditorTemplate(null);
+            const result = await saveMutation.mutateAsync(t);
+            if (result?.newId) {
+              // New template was just created — update editor state with real ID
+              // so subsequent saves are UPDATEs and version history works
+              setHtmlEditorTemplate(prev =>
+                prev ? { ...prev, ...t, id: result.newId! } as QuoteTemplate : null
+              );
+            } else {
+              setHtmlEditorTemplate(null);
+            }
           }}
         />
       )}
