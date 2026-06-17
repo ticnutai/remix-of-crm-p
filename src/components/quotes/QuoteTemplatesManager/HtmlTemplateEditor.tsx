@@ -114,6 +114,7 @@ import {
   FolderPlus,
   UserPlus,
   ExternalLink,
+  ListPlus,
 } from "lucide-react";
 import {
   ResizablePanelGroup,
@@ -1440,6 +1441,24 @@ function EditableItem({
       </div>
     );
 
+  // Spacer item — render a thin divider line instead of a text item
+  if (item.isSpacer) {
+    return (
+      <div className="flex items-center gap-2 py-0.5 group">
+        <GripVertical className="h-4 w-4 text-gray-200 cursor-grab flex-shrink-0" />
+        <div className="flex-1 border-t border-dashed border-gray-300" />
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600"
+          onClick={onDelete}
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </div>
+    );
+  }
+
   const getEffectiveIcon = () => {
     if (item.icon !== undefined) return item.icon;
     switch (stageDisplayMode ?? "check") {
@@ -1568,6 +1587,8 @@ function StageEditor({
   const [stageName, setStageName] = useState(stage.name);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [textBoxFormat, setTextBoxFormat] = useState<"lines" | "numbered" | "checkmarks">("lines");
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [bulkText, setBulkText] = useState("");
 
   const toggleItemSelect = (id: string) => {
     setSelectedItemIds((prev) => {
@@ -1603,6 +1624,17 @@ function StageEditor({
       ...stage,
       items: [...stage.items, { id: Date.now().toString(), text: "פריט חדש" }],
     });
+  };
+  const applyBulkImport = () => {
+    const lines = bulkText.split("\n");
+    const newItems: TemplateStageItem[] = lines.map((line) => ({
+      id: `${Date.now()}-${Math.random()}`,
+      text: line.trim(),
+      isSpacer: line.trim() === "",
+    }));
+    onUpdate({ ...stage, items: [...stage.items, ...newItems] });
+    setBulkText("");
+    setShowBulkImport(false);
   };
   const saveNameChange = () => {
     onUpdate({ ...stage, name: stageName });
@@ -1905,19 +1937,63 @@ function StageEditor({
               />
             ))}
           </div>
-          <div className="px-4 pb-4">
+          <div className="px-4 pb-4 flex gap-2">
             <Button
               variant="ghost"
               size="sm"
-              className="text-[#B8860B] hover:bg-[#DAA520]/10 w-full justify-center"
+              className="text-[#B8860B] hover:bg-[#DAA520]/10 flex-1 justify-center"
               onClick={addItem}
             >
               <Plus className="h-4 w-4 ml-1" />
               הוסף פריט
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-indigo-600 hover:bg-indigo-50"
+              onClick={() => setShowBulkImport(true)}
+              title="ייבוא מהיר — כל שורה = פריט"
+            >
+              <ListPlus className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       )}
+
+      {/* Bulk import dialog */}
+      <Dialog open={showBulkImport} onOpenChange={setShowBulkImport}>
+        <DialogContent className="max-w-lg" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ListPlus className="h-5 w-5 text-indigo-600" />
+              ייבוא פריטים מהיר
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            כל שורה = פריט חדש &bull; שורה ריקה = רווח בין קבוצות
+          </p>
+          <Textarea
+            value={bulkText}
+            onChange={(e) => setBulkText(e.target.value)}
+            rows={12}
+            dir="rtl"
+            placeholder={"פריט ראשון\nפריט שני\nפריט שלישי\n\nפריט אחרי רווח\nפריט נוסף"}
+            className="text-sm resize-none font-mono"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && e.ctrlKey) { e.preventDefault(); applyBulkImport(); }
+            }}
+          />
+          <DialogFooter className="flex gap-2 flex-row-reverse">
+            <Button onClick={applyBulkImport} disabled={!bulkText.trim()}>
+              הוסף פריטים
+            </Button>
+            <Button variant="outline" onClick={() => setShowBulkImport(false)}>
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -4849,6 +4925,9 @@ export function HtmlTemplateEditor({
         <ul style="list-style: none; padding: 0;">
           ${stage.items
             .map((item) => {
+              if (item.isSpacer) {
+                return `<li style="padding: 0; list-style: none;"><div style="height: 10px;"></div></li>`;
+              }
               const itemFont =
                 item.fontFamily || designSettings.fontFamily || "Heebo";
               const itemSize = item.fontSize || 14;

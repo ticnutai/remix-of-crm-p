@@ -25,6 +25,7 @@ export interface TemplateStage {
 export interface TemplateStageItem {
   id: string;
   text: string;
+  isSpacer?: boolean;
   isEditing?: boolean;
   // Text formatting options
   fontFamily?: string;
