@@ -1704,28 +1704,6 @@ function StageEditor({
         <Badge variant="outline" className="text-[#B8860B] border-[#DAA520]">
           {stage.items.length} פריטים
         </Badge>
-        {/* Stage-level item format picker */}
-        <div className="flex items-center gap-0 border border-gray-200 rounded-lg overflow-hidden text-xs">
-          {([
-            { value: "check" as const, label: "✓", title: "וי" },
-            { value: "numbered" as const, label: "1.", title: "מספרים" },
-            { value: "bullet" as const, label: "•", title: "נקודה" },
-            { value: "none" as const, label: "—", title: "ללא" },
-          ]).map(opt => (
-            <button
-              key={opt.value}
-              title={opt.title}
-              onClick={() => onUpdate({ ...stage, itemDisplayMode: opt.value })}
-              className={`px-2.5 py-1 leading-none font-mono transition-colors ${
-                (stage.itemDisplayMode ?? "check") === opt.value
-                  ? "bg-[#d8ac27] text-white"
-                  : "hover:bg-gray-100 text-gray-500"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
         <div className="flex items-center gap-1">
           <Button
             size="icon"
@@ -1778,6 +1756,37 @@ function StageEditor({
           {selectedItemIds.size > 0 && (
             <div className="flex items-center gap-2 px-4 py-1.5 bg-blue-50 border-b border-blue-100 text-xs flex-wrap">
               <span className="font-medium text-blue-700">{selectedItemIds.size} נבחרו</span>
+              {/* Format picker for selected items */}
+              <div className="flex items-center gap-0 border border-blue-200 rounded overflow-hidden font-mono">
+                {([
+                  { icon: "✓", title: "וי" },
+                  { icon: "1.", title: "מספרים" },
+                  { icon: "•", title: "נקודה" },
+                  { icon: "", title: "ללא סימון" },
+                ] as const).map((opt, idx) => (
+                  <button
+                    key={idx}
+                    title={opt.title}
+                    onClick={() => {
+                      const selectedOrder = stage.items
+                        .map((it, i) => ({ it, i }))
+                        .filter(({ it }) => selectedItemIds.has(it.id));
+                      onUpdate({
+                        ...stage,
+                        items: stage.items.map((it) => {
+                          if (!selectedItemIds.has(it.id)) return it;
+                          const pos = selectedOrder.findIndex(x => x.it.id === it.id);
+                          const icon = opt.icon === "1." ? `${pos + 1}.` : opt.icon;
+                          return { ...it, icon };
+                        }),
+                      });
+                    }}
+                    className="px-2 py-1 text-xs leading-none hover:bg-blue-100 text-blue-800 transition-colors border-r border-blue-200 last:border-r-0"
+                  >
+                    {opt.icon === "" ? "—" : opt.icon}
+                  </button>
+                ))}
+              </div>
               <Select onValueChange={applyFontToSelected}>
                 <SelectTrigger className="h-6 w-28 text-xs"><SelectValue placeholder="שנה גופן" /></SelectTrigger>
                 <SelectContent>
