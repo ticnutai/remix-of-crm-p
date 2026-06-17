@@ -149,7 +149,13 @@ export function DocumentPreview({
   const cornerColor = fd.documentBorder?.color || "#d8ac27";
 
   return (
-    <div className="mx-auto" style={bgWrapperStyle as React.CSSProperties}>
+    <div className="mx-auto relative" style={bgWrapperStyle as React.CSSProperties}>
+      {editable && onUpdateSectionStyle && (
+        <SelectionToolbar
+          getStyle={getSectionStyle}
+          onChange={onUpdateSectionStyle}
+        />
+      )}
       <div
         className="bg-white shadow-xl mx-auto"
         style={{
