@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useMemo,
 } from "react";
+import { createPortal } from "react-dom";
 import { PreviewIframe, type InlineEditPayload } from "./PreviewIframe";
 import { FrameDesignPanel } from "./FrameDesignPanel";
 import {
@@ -1232,16 +1233,57 @@ function EditableItem({
   itemIndex?: number;
 }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [showFormatting, setShowFormatting] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(false);
-  const [text, setText] = useState(item.text);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const editRef = useRef<HTMLDivElement>(null);
+  const [inlinePos, setInlinePos] = useState<{ top: number; left: number } | null>(null);
+
+  // Populate contentEditable when entering edit mode
   useEffect(() => {
-    if (isEditing && inputRef.current) inputRef.current.focus();
+    if (isEditing && editRef.current) {
+      editRef.current.innerHTML = item.text;
+      editRef.current.focus();
+      const range = document.createRange();
+      range.selectNodeContents(editRef.current);
+      range.collapse(false);
+      window.getSelection()?.removeAllRanges();
+      window.getSelection()?.addRange(range);
+    }
   }, [isEditing]);
+
+  // Show inline toolbar on text selection inside the contentEditable
+  useEffect(() => {
+    if (!isEditing) return;
+    const onSel = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !editRef.current?.contains(sel.anchorNode)) {
+        setInlinePos(null);
+        return;
+      }
+      const rect = sel.getRangeAt(0).getBoundingClientRect();
+      if (!rect.width && !rect.height) { setInlinePos(null); return; }
+      const TOOLBAR_H = 44;
+      const top = rect.top >= TOOLBAR_H + 4 ? rect.top - TOOLBAR_H : rect.bottom + 6;
+      const left = Math.max(130, Math.min(window.innerWidth - 130, rect.left + rect.width / 2));
+      setInlinePos({ top, left });
+    };
+    document.addEventListener("selectionchange", onSel);
+    return () => document.removeEventListener("selectionchange", onSel);
+  }, [isEditing]);
+
   const handleSave = () => {
-    onUpdate({ ...item, text });
+    if (editRef.current) onUpdate({ ...item, text: editRef.current.innerHTML });
     setIsEditing(false);
+    setInlinePos(null);
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setInlinePos(null);
+  };
+
+  const applyFormat = (cmd: string, val?: string) => {
+    editRef.current?.focus();
+    document.execCommand(cmd, false, val);
   };
 
   const updateStyle = (updates: Partial<TemplateStageItem>) => {
@@ -1249,42 +1291,73 @@ function EditableItem({
   };
 
   const quickColors = [
-    "#000000",
-    "#374151",
-    "#6b7280",
-    "#1e40af",
-    "#b91c1c",
-    "#15803d",
-    "#854d0e",
-    "#7e22ce",
+    "#000000", "#374151", "#6b7280",
+    "#1e40af", "#b91c1c", "#15803d", "#854d0e", "#7e22ce",
   ];
 
   if (isEditing)
     return (
       <div className="py-2 px-3 bg-yellow-50 border border-yellow-300 rounded-lg space-y-2">
+        {/* Floating inline toolbar — appears on text selection */}
+        {inlinePos && createPortal(
+          <div
+            className="fixed z-[300] flex items-center gap-0.5 rounded-lg border border-gray-200 bg-white shadow-xl px-1.5 py-1"
+            style={{ top: inlinePos.top, left: inlinePos.left, transform: "translateX(-50%)" }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <button onClick={() => applyFormat("bold")} className="px-2 py-1 rounded hover:bg-gray-100 font-bold text-sm leading-none" title="מודגש">B</button>
+            <button onClick={() => applyFormat("italic")} className="px-2 py-1 rounded hover:bg-gray-100 italic text-sm leading-none" title="נטוי">I</button>
+            <button onClick={() => applyFormat("underline")} className="px-2 py-1 rounded hover:bg-gray-100 underline text-sm leading-none" title="קו תחתון">U</button>
+            <div className="w-px h-4 bg-gray-200 mx-0.5" />
+            <button onClick={() => applyFormat("foreColor", "#dc2626")} className="px-1.5 py-1 rounded hover:bg-gray-100 text-red-600 font-bold text-sm leading-none" title="אדום">A</button>
+            <button onClick={() => applyFormat("foreColor", "#1d4ed8")} className="px-1.5 py-1 rounded hover:bg-gray-100 text-blue-700 font-bold text-sm leading-none" title="כחול">A</button>
+            <button onClick={() => applyFormat("foreColor", "#15803d")} className="px-1.5 py-1 rounded hover:bg-gray-100 text-green-700 font-bold text-sm leading-none" title="ירוק">A</button>
+            <span className="relative w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 cursor-pointer" title="צבע מותאם">
+              <span className="font-bold text-sm leading-none select-none">A</span>
+              <input
+                type="color"
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                onMouseDown={(e) => e.stopPropagation()}
+                onChange={(e) => applyFormat("foreColor", e.target.value)}
+              />
+            </span>
+            <div className="w-px h-4 bg-gray-200 mx-0.5" />
+            <button onClick={() => applyFormat("removeFormat")} className="px-1.5 py-1 rounded hover:bg-gray-100 text-gray-400 text-xs leading-none" title="נקה עיצוב">✕</button>
+          </div>,
+          document.body
+        )}
+
+        {/* ContentEditable field */}
         <div className="flex items-center gap-2">
-          <Input
-            ref={inputRef}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSave()}
-            className="flex-1 h-8 text-sm"
+          <div
+            ref={editRef}
+            contentEditable
+            suppressContentEditableWarning
             dir="rtl"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") handleCancel();
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSave(); }
+            }}
+            className="flex-1 min-h-[28px] text-sm outline-none border-b border-yellow-400 py-0.5 px-1"
             style={{
               fontFamily: item.fontFamily || "Heebo",
               fontWeight: item.isBold ? "bold" : "normal",
               fontStyle: item.isItalic ? "italic" : "normal",
               textDecoration: item.isUnderline ? "underline" : "none",
-              textAlign: item.textAlign || "right",
+              textAlign: (item.textAlign || "right") as React.CSSProperties["textAlign"],
               fontSize: item.fontSize ? `${item.fontSize}px` : undefined,
-              color: item.fontColor || undefined,
+              color: item.fontColor || "#374151",
             }}
           />
-          <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>
+          <Button size="sm" variant="ghost" onMouseDown={handleSave} className="h-7 w-7 p-0 text-green-600 hover:text-green-700">
+            <Check className="h-4 w-4" />
+          </Button>
+          <Button size="sm" variant="ghost" onMouseDown={handleCancel} className="h-7 w-7 p-0">
             <X className="h-4 w-4" />
           </Button>
         </div>
-        {/* Formatting toolbar */}
+
+        {/* Whole-item formatting toolbar */}
         <div className="flex items-center gap-1 flex-wrap text-xs">
           <Label className="text-xs">גופן:</Label>
           <Select
@@ -1296,11 +1369,7 @@ function EditableItem({
             </SelectTrigger>
             <SelectContent>
               {HEBREW_FONTS.map((f) => (
-                <SelectItem
-                  key={f.value}
-                  value={f.value}
-                  style={{ fontFamily: f.value }}
-                >
+                <SelectItem key={f.value} value={f.value} style={{ fontFamily: f.value }}>
                   {f.label}
                 </SelectItem>
               ))}
@@ -1317,25 +1386,15 @@ function EditableItem({
             </SelectTrigger>
             <SelectContent>
               {[10, 12, 14, 16, 18, 20, 24].map((s) => (
-                <SelectItem key={s} value={String(s)}>
-                  {s}
-                </SelectItem>
+                <SelectItem key={s} value={String(s)}>{s}</SelectItem>
               ))}
             </SelectContent>
           </Select>
           <div className="w-px h-4 bg-gray-300 mx-1" />
           <Popover>
             <PopoverTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-6 w-6"
-                title="צבע טקסט"
-              >
-                <span
-                  className="w-4 h-4 rounded border"
-                  style={{ backgroundColor: item.fontColor || "#000000" }}
-                />
+              <Button size="icon" variant="ghost" className="h-6 w-6" title="צבע טקסט">
+                <span className="w-4 h-4 rounded border" style={{ backgroundColor: item.fontColor || "#000000" }} />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-2">
@@ -1345,11 +1404,7 @@ function EditableItem({
                     key={c}
                     className="w-6 h-6 rounded border hover:scale-110 transition-transform"
                     style={{ backgroundColor: c }}
-                    onClick={() =>
-                      updateStyle({
-                        fontColor: c === "#000000" ? undefined : c,
-                      })
-                    }
+                    onClick={() => updateStyle({ fontColor: c === "#000000" ? undefined : c })}
                   />
                 ))}
                 <Input
@@ -1362,62 +1417,29 @@ function EditableItem({
             </PopoverContent>
           </Popover>
           <div className="w-px h-4 bg-gray-300 mx-1" />
-          <Button
-            size="icon"
-            variant={item.isBold ? "default" : "ghost"}
-            className="h-6 w-6"
-            onClick={() => updateStyle({ isBold: !item.isBold })}
-          >
+          <Button size="icon" variant={item.isBold ? "default" : "ghost"} className="h-6 w-6" onClick={() => updateStyle({ isBold: !item.isBold })}>
             <Bold className="h-3 w-3" />
           </Button>
-          <Button
-            size="icon"
-            variant={item.isItalic ? "default" : "ghost"}
-            className="h-6 w-6"
-            onClick={() => updateStyle({ isItalic: !item.isItalic })}
-          >
+          <Button size="icon" variant={item.isItalic ? "default" : "ghost"} className="h-6 w-6" onClick={() => updateStyle({ isItalic: !item.isItalic })}>
             <Italic className="h-3 w-3" />
           </Button>
-          <Button
-            size="icon"
-            variant={item.isUnderline ? "default" : "ghost"}
-            className="h-6 w-6"
-            onClick={() => updateStyle({ isUnderline: !item.isUnderline })}
-          >
+          <Button size="icon" variant={item.isUnderline ? "default" : "ghost"} className="h-6 w-6" onClick={() => updateStyle({ isUnderline: !item.isUnderline })}>
             <Underline className="h-3 w-3" />
           </Button>
           <div className="w-px h-4 bg-gray-300 mx-1" />
-          <Button
-            size="icon"
-            variant={
-              item.textAlign === "right" || !item.textAlign
-                ? "default"
-                : "ghost"
-            }
-            className="h-6 w-6"
-            onClick={() => updateStyle({ textAlign: "right" })}
-          >
+          <Button size="icon" variant={item.textAlign === "right" || !item.textAlign ? "default" : "ghost"} className="h-6 w-6" onClick={() => updateStyle({ textAlign: "right" })}>
             <AlignRight className="h-3 w-3" />
           </Button>
-          <Button
-            size="icon"
-            variant={item.textAlign === "center" ? "default" : "ghost"}
-            className="h-6 w-6"
-            onClick={() => updateStyle({ textAlign: "center" })}
-          >
+          <Button size="icon" variant={item.textAlign === "center" ? "default" : "ghost"} className="h-6 w-6" onClick={() => updateStyle({ textAlign: "center" })}>
             <AlignCenter className="h-3 w-3" />
           </Button>
-          <Button
-            size="icon"
-            variant={item.textAlign === "left" ? "default" : "ghost"}
-            className="h-6 w-6"
-            onClick={() => updateStyle({ textAlign: "left" })}
-          >
+          <Button size="icon" variant={item.textAlign === "left" ? "default" : "ghost"} className="h-6 w-6" onClick={() => updateStyle({ textAlign: "left" })}>
             <AlignLeft className="h-3 w-3" />
           </Button>
         </div>
       </div>
     );
+
   const getEffectiveIcon = () => {
     if (item.icon !== undefined) return item.icon;
     switch (stageDisplayMode ?? "check") {
@@ -1466,11 +1488,7 @@ function EditableItem({
                 onClick={() => { onUpdate({ ...item, icon: opt.value }); setShowIconPicker(false); }}
                 title={opt.label}
               >
-                {opt.value === "" ? (
-                  <span className="text-[10px] text-gray-400">ללא</span>
-                ) : (
-                  opt.value
-                )}
+                {opt.value === "" ? <span className="text-[10px] text-gray-400">ללא</span> : opt.value}
               </button>
             ))}
           </div>
@@ -1502,28 +1520,17 @@ function EditableItem({
           fontWeight: item.isBold ? "bold" : "normal",
           fontStyle: item.isItalic ? "italic" : "normal",
           textDecoration: item.isUnderline ? "underline" : "none",
-          textAlign: item.textAlign || "right",
+          textAlign: (item.textAlign || "right") as React.CSSProperties["textAlign"],
           fontSize: item.fontSize ? `${item.fontSize}px` : undefined,
           color: item.fontColor || "#374151",
         }}
-      >
-        {item.text}
-      </span>
+        dangerouslySetInnerHTML={{ __html: item.text }}
+      />
       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-6 w-6"
-          onClick={() => setIsEditing(true)}
-        >
+        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setIsEditing(true)}>
           <Pencil className="h-3 w-3" />
         </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-6 w-6 text-red-500"
-          onClick={onDelete}
-        >
+        <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={onDelete}>
           <Trash2 className="h-3 w-3" />
         </Button>
       </div>
