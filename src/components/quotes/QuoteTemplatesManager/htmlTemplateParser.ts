@@ -292,6 +292,113 @@ export function convertToQuoteTemplate(
   };
 }
 
+// Extract meaningful content from generic/Word HTML (fallback when our class-based parser finds nothing)
+function parseGenericHtmlToTemplate(
+  html: string,
+  fileName: string,
+): Partial<QuoteTemplate> {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+
+  // Remove non-content elements
+  doc
+    .querySelectorAll("style, script, meta, link")
+    .forEach((el) => el.remove());
+
+  // Title: prefer first meaningful heading, then <title>, then filename
+  let title = "תבנית מיובאת";
+  const docTitle = doc.title?.trim();
+  if (docTitle && docTitle.length > 1) title = docTitle;
+  for (const sel of ["h1", "h2", "h3"]) {
+    const el = doc.querySelector(sel);
+    const t = el?.textContent?.trim();
+    if (t && t.length > 1 && t.length < 120) {
+      title = cleanText(t);
+      break;
+    }
+  }
+  if (title === "תבנית מיובאת" && fileName) {
+    title = fileName.replace(/\.(html?|htm)$/i, "").replace(/[_-]/g, " ").trim() || title;
+  }
+
+  const stages: TemplateStage[] = [];
+
+  // Extract table rows as a stage
+  const tableRows = doc.querySelectorAll("table tr");
+  if (tableRows.length > 0) {
+    const tableItems: TemplateStageItem[] = [];
+    tableRows.forEach((row) => {
+      const cells = Array.from(row.querySelectorAll("td, th"));
+      const cellTexts = cells
+        .map((c) => cleanText(c.textContent || ""))
+        .filter(Boolean);
+      if (cellTexts.length === 0) return;
+      const rowText = cellTexts.join(" | ");
+      if (rowText.length > 2) {
+        tableItems.push({ id: generateId(), text: rowText });
+      }
+    });
+    if (tableItems.length > 0) {
+      stages.push({
+        id: generateId(),
+        name: "פרטי הצעה",
+        icon: "📋",
+        items: tableItems,
+        isExpanded: true,
+      });
+    }
+  }
+
+  // Extract non-table paragraph/list text
+  const paraItems: TemplateStageItem[] = [];
+  doc.querySelectorAll("p, li").forEach((el) => {
+    if (el.closest("table")) return;
+    const text = cleanText(el.textContent || "");
+    if (text.length > 5) {
+      paraItems.push({ id: generateId(), text });
+    }
+  });
+  if (paraItems.length > 0) {
+    stages.push({
+      id: generateId(),
+      name: "תוכן מיובא",
+      icon: "📄",
+      items: paraItems,
+      isExpanded: true,
+    });
+  }
+
+  // Best-effort price extraction from full body text
+  const bodyText = cleanText(doc.body?.textContent || "");
+  const price = extractPrice(bodyText);
+
+  return {
+    name: title,
+    description: `מיובא מקובץ: ${fileName}`,
+    category: "other",
+    stages,
+    items: [],
+    payment_schedule: [
+      { id: generateId(), percentage: 50, description: "חתימת חוזה" },
+      { id: generateId(), percentage: 50, description: "סיום העבודה" },
+    ],
+    timeline: [],
+    important_notes: [],
+    validity_days: 30,
+    base_price: price,
+    show_vat: true,
+    vat_rate: 17,
+    is_active: true,
+    html_content: html,
+    design_settings: {
+      ...DEFAULT_DESIGN_SETTINGS,
+      primary_color: "#DAA520",
+      secondary_color: "#B8860B",
+      header_style: "gradient",
+    },
+  };
+}
+
 // ייבוא קובץ HTML
 export async function importHtmlFile(
   file: File,
@@ -299,15 +406,43 @@ export async function importHtmlFile(
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      const html = e.target?.result as string;
-      const parsed = parseHtmlTemplate(html);
-      if (parsed) {
-        resolve(convertToQuoteTemplate(parsed, html)); // שומר גם את ה-HTML המקורי
-      } else {
-        resolve(null);
+      const buffer = e.target?.result as ArrayBuffer;
+
+      // Detect charset from meta tag using Latin-1 (all meta tags are ASCII-safe)
+      const latin1Preview = new TextDecoder("iso-8859-1").decode(
+        buffer.slice(0, 4096),
+      );
+      const charsetMatch = latin1Preview.match(
+        /charset\s*=\s*["']?([^"'\s;>\r\n]+)/i,
+      );
+      const detectedCharset = charsetMatch?.[1] ?? "utf-8";
+
+      let html: string;
+      try {
+        html = new TextDecoder(detectedCharset).decode(buffer);
+      } catch {
+        // Fallback for unknown charset labels
+        html = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
       }
+
+      // Try our structured parser first (for templates exported from this system)
+      const parsed = parseHtmlTemplate(html);
+      const hasStructuredContent =
+        parsed &&
+        (parsed.stages.length > 0 ||
+          parsed.pricingTiers.length > 0 ||
+          parsed.price > 0 ||
+          parsed.title !== "טמפלט מיובא");
+
+      if (hasStructuredContent) {
+        resolve(convertToQuoteTemplate(parsed!, html));
+        return;
+      }
+
+      // Fallback: generic extraction for Word/arbitrary HTML files
+      resolve(parseGenericHtmlToTemplate(html, file.name));
     };
     reader.onerror = () => resolve(null);
-    reader.readAsText(file, "utf-8");
+    reader.readAsArrayBuffer(file);
   });
 }
