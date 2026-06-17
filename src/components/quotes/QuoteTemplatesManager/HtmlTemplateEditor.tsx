@@ -5111,10 +5111,28 @@ export function HtmlTemplateEditor({
     .full-width-header img { width: 100%; height: auto; display: block; object-fit: fill; object-position: center; margin: 0 auto; }
     .stage-card { position: relative; ${borderToCss(fd.stageBorder)} }
     .summary-card { position: relative; margin-top: 30px; ${borderToCss(fd.summaryBorder)} }
+    @page {
+      margin: 0;
+      size: A4 portrait;
+    }
     @media print {
-      .quote-fixed-header, .quote-fixed-footer { position: fixed; left: 0; right: 0; }
-      .quote-fixed-header { top: 0; }
-      .quote-fixed-footer { bottom: 0; }
+      html {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .container {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+      }
+      .quote-fixed-header { position: fixed; top: 0; left: 0; right: 0; }
+      .quote-fixed-footer { position: fixed; bottom: 0; left: 0; right: 0; }
     }
   </style>
 </head>
