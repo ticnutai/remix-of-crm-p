@@ -1,6 +1,50 @@
 // מערכת עיצוב מסגרות, רקעים, כותרות, header/footer קבועים
 // משמש את ה-HTML generator בעורך התבניות
 
+// ======================== גודל עמוד ========================
+
+export type PageSizePreset = "A3" | "A4" | "A5" | "letter" | "legal" | "custom";
+export type PageOrientation = "portrait" | "landscape";
+
+export interface PageSizeConfig {
+  preset: PageSizePreset;
+  orientation: PageOrientation;
+  customWidthMm?: number;
+  customHeightMm?: number;
+}
+
+export const DEFAULT_PAGE_SIZE: PageSizeConfig = {
+  preset: "A4",
+  orientation: "portrait",
+};
+
+/** Returns CSS size string for @page { size: ... } and pixel preview dimensions */
+export function getPageDimensions(cfg: PageSizeConfig | undefined): {
+  widthMm: number;
+  heightMm: number;
+  cssSize: string;
+} {
+  const c: PageSizeConfig = { ...DEFAULT_PAGE_SIZE, ...(cfg || {}) };
+  const RAW: Record<PageSizePreset, [number, number]> = {
+    A3: [297, 420],
+    A4: [210, 297],
+    A5: [148, 210],
+    letter: [216, 279],
+    legal: [216, 356],
+    custom: [c.customWidthMm ?? 210, c.customHeightMm ?? 297],
+  };
+  const [pw, ph] = RAW[c.preset];
+  const [widthMm, heightMm] =
+    c.orientation === "portrait" ? [pw, ph] : [ph, pw];
+  const cssSize =
+    c.preset === "custom"
+      ? `${widthMm}mm ${heightMm}mm`
+      : `${c.preset} ${c.orientation}`;
+  return { widthMm, heightMm, cssSize };
+}
+
+// ======================== סגנון גבול ========================
+
 export type BorderStyle =
   | "none"
   | "solid"
@@ -62,6 +106,7 @@ export interface FrameDesignSettings {
   sectionTitle?: SectionTitleConfig;
   fixedHeader?: FixedHeaderConfig;
   fixedFooter?: FixedFooterConfig;
+  pageSize?: PageSizeConfig;
 }
 
 export const DEFAULT_BORDER: BorderConfig = {
@@ -220,4 +265,5 @@ export const DEFAULT_FRAME_SETTINGS: FrameDesignSettings = {
   sectionTitle: { ...DEFAULT_SECTION_TITLE },
   fixedHeader: { ...DEFAULT_FIXED_HEADER },
   fixedFooter: { ...DEFAULT_FIXED_FOOTER },
+  pageSize: { ...DEFAULT_PAGE_SIZE },
 };

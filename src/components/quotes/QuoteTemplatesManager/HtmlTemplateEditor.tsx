@@ -17,6 +17,7 @@ import {
   fixedHeaderHtml,
   fixedFooterHtml,
   decorativeCornersHtml,
+  getPageDimensions,
   type FrameDesignSettings,
 } from "./frameStyles";
 import { useDebouncedValue } from "@/hooks/useDebounce";
@@ -5094,6 +5095,9 @@ export function HtmlTemplateEditor({
       ? `${docBorder!.width}px ${docBorder!.style} ${docBorder!.color}`
       : "";
 
+    // Page size
+    const { cssSize: pageCssSize } = getPageDimensions(fd.pageSize);
+
     return `<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -5120,7 +5124,7 @@ export function HtmlTemplateEditor({
     .summary-card { position: relative; margin-top: 30px; ${borderToCss(fd.summaryBorder)} }
     @page {
       margin: 0;
-      size: A4 portrait;
+      size: ${pageCssSize};
     }
     @media print {
       html {

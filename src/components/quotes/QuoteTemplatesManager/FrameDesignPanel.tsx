@@ -6,7 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Frame, Layers, Type as TypeIcon, PanelTop, PanelBottom, Sparkles, Copy } from "lucide-react";
+import { Frame, Layers, Type as TypeIcon, PanelTop, PanelBottom, Sparkles, Copy, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -18,12 +18,16 @@ import {
   FixedHeaderConfig,
   FixedFooterConfig,
   FrameDesignSettings,
+  PageSizeConfig,
+  PageSizePreset,
+  PageOrientation,
   DEFAULT_BORDER,
   DEFAULT_BACKGROUND,
   DEFAULT_SECTION_TITLE,
   DEFAULT_FIXED_HEADER,
   DEFAULT_FIXED_FOOTER,
   DEFAULT_FRAME_SETTINGS,
+  DEFAULT_PAGE_SIZE,
   BORDER_PRESETS,
 } from "./frameStyles";
 
@@ -336,6 +340,114 @@ function FixedBarEditor({
   );
 }
 
+// ======================== גודל עמוד ========================
+
+const PAGE_PRESETS: { value: PageSizePreset; label: string; dim: string }[] = [
+  { value: "A3", label: "A3", dim: "297×420" },
+  { value: "A4", label: "A4", dim: "210×297" },
+  { value: "A5", label: "A5", dim: "148×210" },
+  { value: "letter", label: "Letter", dim: "216×279" },
+  { value: "legal", label: "Legal", dim: "216×356" },
+  { value: "custom", label: "מותאם", dim: "מ\"מ" },
+];
+
+function PageSizeEditor({
+  value,
+  onChange,
+}: {
+  value?: PageSizeConfig;
+  onChange: (p: PageSizeConfig) => void;
+}) {
+  const cfg: PageSizeConfig = { ...DEFAULT_PAGE_SIZE, ...(value || {}) };
+  const upd = (patch: Partial<PageSizeConfig>) => onChange({ ...cfg, ...patch });
+
+  return (
+    <div className="space-y-4 p-4 rounded-lg border border-border bg-card">
+      <div className="flex items-center gap-2">
+        <FileText className="h-4 w-4" />
+        <h4 className="font-semibold text-sm">גודל עמוד</h4>
+      </div>
+
+      {/* Preset buttons */}
+      <div className="grid grid-cols-3 gap-2">
+        {PAGE_PRESETS.map((p) => (
+          <button
+            key={p.value}
+            onClick={() => upd({ preset: p.value })}
+            className={cn(
+              "flex flex-col items-center justify-center rounded-lg border p-2 text-xs transition-colors",
+              cfg.preset === p.value
+                ? "border-primary bg-primary/10 text-primary font-semibold"
+                : "border-border hover:border-primary/50 text-muted-foreground"
+            )}
+          >
+            <span className="font-bold text-sm">{p.label}</span>
+            <span className="text-[10px] opacity-70">{p.dim}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Custom dimensions */}
+      {cfg.preset === "custom" && (
+        <div className="flex gap-3 items-center">
+          <div className="flex-1">
+            <Label className="text-xs mb-1 block">רוחב (מ"מ)</Label>
+            <Input
+              type="number"
+              min={50}
+              max={1000}
+              value={cfg.customWidthMm ?? 210}
+              onChange={(e) => upd({ customWidthMm: Number(e.target.value) })}
+              className="h-8 text-sm"
+            />
+          </div>
+          <span className="text-muted-foreground mt-4">×</span>
+          <div className="flex-1">
+            <Label className="text-xs mb-1 block">גובה (מ"מ)</Label>
+            <Input
+              type="number"
+              min={50}
+              max={1500}
+              value={cfg.customHeightMm ?? 297}
+              onChange={(e) => upd({ customHeightMm: Number(e.target.value) })}
+              className="h-8 text-sm"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Orientation */}
+      <div>
+        <Label className="text-xs mb-2 block">כיוון</Label>
+        <div className="flex gap-2">
+          {(["portrait", "landscape"] as PageOrientation[]).map((o) => (
+            <button
+              key={o}
+              onClick={() => upd({ orientation: o })}
+              className={cn(
+                "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-colors flex-1 justify-center",
+                cfg.orientation === o
+                  ? "border-primary bg-primary/10 text-primary font-semibold"
+                  : "border-border hover:border-primary/50 text-muted-foreground"
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block border-2 border-current rounded-sm",
+                  o === "portrait" ? "w-3 h-4" : "w-4 h-3"
+                )}
+              />
+              {o === "portrait" ? "עומד" : "רוחב"}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ======================== פאנל ראשי ========================
+
 export interface FrameDesignPanelProps {
   value: FrameDesignSettings;
   onChange: (v: FrameDesignSettings) => void;
@@ -352,6 +464,9 @@ export function FrameDesignPanel({ value, onChange }: FrameDesignPanelProps) {
         <Sparkles className="h-5 w-5 text-primary" />
         <h3 className="text-lg font-bold">מסגרות, רקע וכותרות</h3>
       </div>
+
+      {/* גודל עמוד — מעל ה-Tabs כי זה הגדרת יסוד */}
+      <PageSizeEditor value={v.pageSize} onChange={(p) => set({ pageSize: p })} />
 
       <Tabs defaultValue="borders" className="w-full">
         <TabsList className="w-full grid grid-cols-4">
