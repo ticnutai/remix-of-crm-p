@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useQuotes, Quote } from "@/hooks/useQuotes";
@@ -166,6 +166,18 @@ export function QuoteDocumentEditor() {
     },
     [document.sectionStyles, updateDocument],
   );
+
+  // Keyboard shortcut: Ctrl/Cmd+S to save
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        if (!isSaving) handleSave();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handleSave, isSaving]);
 
   return (
     <TooltipProvider>
