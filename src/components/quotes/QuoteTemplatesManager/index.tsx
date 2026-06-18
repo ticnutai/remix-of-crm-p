@@ -2088,7 +2088,7 @@ export function QuoteTemplatesManager() {
           setEditingTemplate(null);
         }}
         template={editingTemplate}
-        onSave={(t) => saveMutation.mutateAsync(t)}
+        onSave={async (t) => { await saveMutation.mutateAsync(t); }}
         isSaving={saveMutation.isPending}
       />
 
