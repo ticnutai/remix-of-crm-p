@@ -1705,7 +1705,7 @@ function SectionHeaderRow({
   return (
     <div className="flex items-center justify-between gap-2 mt-4 group">
       <div className="flex items-center gap-2 flex-1 min-w-0">
-        <GripVertical className="h-4 w-4 text-gray-300 cursor-grab flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <DragHandle className="h-4 w-4 text-gray-300 flex-shrink-0" alwaysVisible title="גרור לסידור מחדש של כותרת ראשית" />
         {isEditing ? (
           <input
             ref={inputRef}
