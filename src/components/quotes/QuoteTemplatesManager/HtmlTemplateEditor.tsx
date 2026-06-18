@@ -7190,10 +7190,27 @@ ${tbAt('footer')}
 
       if (contractError) throw contractError;
 
+      // Sync stages from template if one is linked
+      let stagesAdded = 0;
+      if (projectDetails.stageTemplateId) {
+        try {
+          const syncResult = await syncClientStagesFromTemplate({
+            clientId,
+            templateId: projectDetails.stageTemplateId,
+            clearAllOnTemplateChange: false,
+          });
+          stagesAdded = syncResult.addedStages;
+        } catch (stageErr) {
+          console.error("Stage sync failed:", stageErr);
+        }
+      }
+
       setShowCreateClientDialog(false);
       toast({
         title: "✅ תיק לקוח נוצר בהצלחה!",
-        description: `${projectDetails.clientName || "לקוח"} - כולל חוזה וכל הפרטים`,
+        description: stagesAdded > 0
+          ? `${projectDetails.clientName || "לקוח"} - נוספו ${stagesAdded} שלבים מהתבנית`
+          : `${projectDetails.clientName || "לקוח"} - כולל חוזה וכל הפרטים`,
       });
 
       // Open client profile in new tab
