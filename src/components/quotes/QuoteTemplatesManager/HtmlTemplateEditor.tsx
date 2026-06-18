@@ -5723,19 +5723,195 @@ export function HtmlTemplateEditor({
     return html;
   };
 
+  // Word-compatible HTML (clean, no gradients or fixed positioning)
+  const generateWordHtml = async (): Promise<string> => {
+    const primary = designSettings.primaryColor || '#B8860B';
+    const ff = 'Arial, Helvetica, sans-serif';
+    const tier = pricingTiers.find((t: any) => t.name === selectedTier) ?? pricingTiers[0];
+    const basePrice = tier?.price ?? 0;
+    const vatRate = 18;
+    const vatAmt = Math.round((basePrice * vatRate) / 100);
+
+    // Logo as base64 if possible
+    let logoHtml = '';
+    if (designSettings.logoUrl) {
+      try {
+        const b64 = await convertImageToBase64(designSettings.logoUrl);
+        const src = b64.startsWith('data:') ? b64 : designSettings.logoUrl;
+        logoHtml = `<img src="${src}" style="max-width:520px;max-height:90px;display:block;margin:0 auto 8px auto;" alt="Logo">`;
+      } catch { /* skip */ }
+    }
+
+    // Project detail rows
+    const details: [string, string][] = [
+      ['לקוח', projectDetails.clientName || ''],
+      ['כתובת', projectDetails.address || ''],
+      ['גוש', projectDetails.gush || ''],
+      ['חלקה', projectDetails.helka || ''],
+      ['מגרש', projectDetails.migrash || ''],
+      ['סוג פרוייקט', projectDetails.projectType || ''],
+    ].filter(([, v]) => !!v) as [string, string][];
+
+    const detailRows = details.map(([k, v]) =>
+      `<tr><td style="font-weight:bold;padding:4px 8px;width:90px;background:#f5f5f5;border:1px solid #ddd;">${k}</td><td style="padding:4px 8px;border:1px solid #ddd;">${v}</td></tr>`
+    ).join('');
+
+    // Stages
+    const stagesHtml = (editedTemplate.stages || []).map((stage: any) => {
+      if (stage.isSection) {
+        return `<h3 style="color:${primary};font-family:${ff};border-bottom:1px solid ${primary};padding-bottom:3px;margin-top:14px;">${stage.name}</h3>`;
+      }
+      const itemsHtml = (stage.items || [])
+        .filter((it: any) => !it.isSpacer)
+        .map((it: any) => `<li style="padding:2px 0;font-size:11pt;">${it.text || ''}</li>`)
+        .join('');
+      return `<div style="margin-bottom:14px;padding:10px;border:1px solid #e0e0e0;border-right:3px solid ${primary};">
+  <h4 style="color:${primary};font-family:${ff};margin:0 0 8px 0;">${stage.icon ? stage.icon + ' ' : ''}${stage.name}</h4>
+  ${itemsHtml ? `<ul style="margin:0;padding-right:18px;">${itemsHtml}</ul>` : ''}
+</div>`;
+    }).join('');
+
+    // Payment rows
+    const paymentRows = paymentSteps.map((step: any) => {
+      const amt = Math.round((basePrice * step.percentage) / 100);
+      return `<tr>
+  <td style="padding:5px 8px;border:1px solid #ddd;">${step.name}</td>
+  <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">${step.percentage}%</td>
+  <td style="padding:5px 8px;border:1px solid #ddd;text-align:left;">&#8362;${amt.toLocaleString()}</td>
+</tr>`;
+    }).join('');
+
+    // Text boxes by position
+    const tbAt = (pos: string) =>
+      textBoxes
+        .filter((tb) => tb.position === pos)
+        .map((tb) => `<div style="margin:10px 0;padding:10px;background:${tb.customBg || '#f9f9f9'};border:${tb.borderWidth ?? 1}px solid ${tb.customBorder || '#ddd'};">
+  ${tb.title ? `<strong style="color:${primary};display:block;margin-bottom:5px;">${tb.title}</strong>` : ''}
+  <div style="color:${tb.customTextColor || '#444'};white-space:pre-wrap;font-size:${tb.fontSize || 11}pt;">${tb.content}</div>
+</div>`)
+        .join('');
+
+    const footerLine = [designSettings.companyAddress, designSettings.companyPhone, designSettings.companyEmail]
+      .filter(Boolean)
+      .join(' | ');
+
+    return `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40"
+      dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!--[if gte mso 9]><xml>
+<w:WordDocument>
+  <w:View>Print</w:View>
+  <w:Zoom>90</w:Zoom>
+  <w:DoNotOptimizeForBrowser/>
+</w:WordDocument>
+</xml><![endif]-->
+<style>
+@page WordSection1 {
+  size: 21cm 29.7cm;
+  margin: 2cm 2.5cm 2cm 2.5cm;
+  mso-header-margin: 0cm;
+  mso-footer-margin: 0cm;
+}
+div.WordSection1 { page: WordSection1; }
+body { direction: rtl; font-family: ${ff}; font-size: 12pt; margin: 0; padding: 0; color: #222; }
+h1, h2, h3, h4 { font-family: ${ff}; }
+table { border-collapse: collapse; width: 100%; }
+p { margin: 5px 0; }
+ul { margin: 4px 0; }
+li { margin: 2px 0; }
+</style>
+</head>
+<body dir="rtl">
+<div class="WordSection1">
+
+<!-- Header strip -->
+<div style="background:${primary};padding:16px 20px;text-align:center;margin-bottom:20px;">
+  ${logoHtml}
+  <h1 style="color:white;margin:6px 0 3px;font-size:18pt;">${designSettings.companyName || ''}</h1>
+  ${designSettings.companyAddress ? `<p style="color:#eee;margin:0;font-size:9pt;">${designSettings.companyAddress}</p>` : ''}
+</div>
+
+<!-- Quote title -->
+<h2 style="color:${primary};border-bottom:2px solid ${primary};padding-bottom:5px;margin-bottom:16px;">${editedTemplate.name || 'הצעת מחיר'}</h2>
+
+${tbAt('header')}
+
+${detailRows ? `<h3 style="color:${primary};margin-bottom:8px;">פרטי הפרוייקט</h3>
+<table style="margin-bottom:18px;">${detailRows}</table>` : ''}
+
+${tbAt('before-stages')}
+
+${(editedTemplate.stages || []).length > 0 ? `<h2 style="color:${primary};border-bottom:2px solid ${primary};padding-bottom:5px;margin-bottom:14px;">${editedTemplate.stagesTitle || 'שלבי העבודה'}</h2>
+${stagesHtml}` : ''}
+
+${tbAt('after-stages')}
+
+<!-- Payment table -->
+<h2 style="color:${primary};border-bottom:2px solid ${primary};padding-bottom:5px;margin-top:22px;margin-bottom:12px;">סדר תשלומים</h2>
+<table>
+  <thead>
+    <tr style="background:${primary};color:white;">
+      <th style="padding:6px 8px;text-align:right;border:1px solid #bbb;">שלב</th>
+      <th style="padding:6px 8px;text-align:center;border:1px solid #bbb;">אחוז</th>
+      <th style="padding:6px 8px;text-align:left;border:1px solid #bbb;">סכום</th>
+    </tr>
+  </thead>
+  <tbody>${paymentRows}</tbody>
+  <tfoot>
+    <tr style="background:#f5f5f5;font-weight:bold;">
+      <td colspan="2" style="padding:5px 8px;border:1px solid #ddd;">סה"כ לפני מע"מ</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:left;">&#8362;${basePrice.toLocaleString()}</td>
+    </tr>
+    <tr>
+      <td colspan="2" style="padding:5px 8px;border:1px solid #ddd;">מע"מ (${vatRate}%)</td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:left;">&#8362;${vatAmt.toLocaleString()}</td>
+    </tr>
+    <tr style="background:${primary};color:white;font-weight:bold;font-size:13pt;">
+      <td colspan="2" style="padding:7px 8px;border:1px solid #999;">סה"כ כולל מע"מ</td>
+      <td style="padding:7px 8px;border:1px solid #999;text-align:left;">&#8362;${(basePrice + vatAmt).toLocaleString()}</td>
+    </tr>
+  </tfoot>
+</table>
+
+${tbAt('before-payments')}
+${tbAt('after-payments')}
+
+<!-- Footer -->
+<div style="margin-top:28px;padding:12px;background:#f5f5f5;border-top:2px solid ${primary};text-align:center;font-size:10pt;color:#555;">
+  <strong>${designSettings.companyName || ''}</strong><br>
+  ${footerLine}
+</div>
+
+${tbAt('footer')}
+
+</div>
+</body>
+</html>`;
+  };
+
   const handleExportWord = async () => {
-    toast({ title: "מכין קובץ Word...", description: "ממיר תמונות" });
-    const html = await generateExportHtml();
-    const blob = new Blob(["\ufeff", html], { type: "application/msword" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${editedTemplate.name || "הצעת-מחיר"}.doc`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast({ title: "הקובץ הורד", description: "קובץ Word נוצר בהצלחה" });
+    toast({ title: 'מכין קובץ Word...' });
+    try {
+      const html = await generateWordHtml();
+      const blob = new Blob(['﻿', html], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${editedTemplate.name || 'הצעת-מחיר'}.doc`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: 'קובץ Word הורד בהצלחה' });
+    } catch (err) {
+      console.error('Word export error:', err);
+      toast({ title: 'שגיאה ביצוא Word', variant: 'destructive' });
+    }
   };
 
   const handleExportPdf = async () => {
