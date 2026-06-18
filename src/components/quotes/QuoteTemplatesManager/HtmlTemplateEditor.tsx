@@ -1496,7 +1496,7 @@ function EditableItem({
 
   return (
     <div className={`flex items-center gap-2 py-2 group hover:bg-gray-50 rounded-lg px-1 ${isSelected ? "bg-blue-50" : ""}`}>
-      <GripVertical className="h-4 w-4 text-gray-300 cursor-grab" />
+      <DragHandle className="h-4 w-4 text-gray-300" />
       {onToggleSelect && (
         <button
           onClick={onToggleSelect}
