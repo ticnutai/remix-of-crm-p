@@ -6670,6 +6670,7 @@ ${tbAt('footer')}
   const [selectedPricingOption, setSelectedPricingOption] = useState("basic");
   const [showSMSDialog, setShowSMSDialog] = useState(false);
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
+  const [designSubTab, setDesignSubTab] = useState("logo");
   const [showCreateClientDialog, setShowCreateClientDialog] = useState(false);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
 
@@ -8359,8 +8360,32 @@ ${tbAt('footer')}
           </TabsContent>
 
           {/* Design Tab */}
-          <TabsContent value="design" className="flex-1 m-0 overflow-hidden">
-            <ScrollArea className="h-full bg-gray-50">
+          <TabsContent value="design" className="flex-1 m-0 overflow-hidden flex flex-col">
+            {/* Design sub-tab navigation */}
+            <div className="border-b bg-white px-4 py-2 flex-shrink-0 flex gap-1 flex-wrap">
+              {[
+                { id: "logo", label: "🖼️ לוגו וכותרת" },
+                { id: "colors", label: "🎨 צבעים" },
+                { id: "effects", label: "✨ אפקטים" },
+                { id: "text", label: "Aa טקסט ומסגרות" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setDesignSubTab(tab.id)}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                    designSubTab === tab.id
+                      ? "bg-[#DAA520]/15 text-[#B8860B] border border-[#DAA520]/40"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Logo & Header sub-tab */}
+            {designSubTab === "logo" && (
+            <ScrollArea className="flex-1 bg-gray-50">
               <div className="p-6 space-y-6 max-w-4xl mx-auto">
                 {/* Logo with AI Generation */}
                 <div className="bg-white rounded-xl border p-6 shadow-sm">
@@ -8853,6 +8878,14 @@ ${tbAt('footer')}
                   </div>
                 </div>
 
+              </div>
+            </ScrollArea>
+            )}
+
+            {/* Colors sub-tab */}
+            {designSubTab === "colors" && (
+            <ScrollArea className="flex-1 bg-gray-50">
+              <div className="p-6 space-y-6 max-w-4xl mx-auto">
                 {/* Color Themes */}
                 <div className="bg-white rounded-xl border p-6 shadow-sm">
                   <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
@@ -8962,6 +8995,14 @@ ${tbAt('footer')}
                   </div>
                 </div>
 
+              </div>
+            </ScrollArea>
+            )}
+
+            {/* Effects sub-tab */}
+            {designSubTab === "effects" && (
+            <ScrollArea className="flex-1 bg-gray-50">
+              <div className="p-6 space-y-6 max-w-4xl mx-auto">
                 {/* 3D Effects */}
                 <div className="bg-white rounded-xl border p-6 shadow-sm">
                   <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
@@ -9036,6 +9077,14 @@ ${tbAt('footer')}
                   </div>
                 </div>
 
+              </div>
+            </ScrollArea>
+            )}
+
+            {/* Text & Frames sub-tab */}
+            {designSubTab === "text" && (
+            <ScrollArea className="flex-1 bg-gray-50">
+              <div className="p-6 space-y-6 max-w-4xl mx-auto">
                 {/* Typography */}
                 <div className="bg-white rounded-xl border p-6 shadow-sm">
                   <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
@@ -9126,6 +9175,7 @@ ${tbAt('footer')}
                 </div>
               </div>
             </ScrollArea>
+            )}
           </TabsContent>
 
           {/* Logo & Strip Tab */}
