@@ -1468,7 +1468,7 @@ function EditableItem({
   if (item.isSpacer) {
     return (
       <div className="flex items-center gap-2 py-0.5 group">
-        <GripVertical className="h-4 w-4 text-gray-200 cursor-grab flex-shrink-0" />
+        <DragHandle className="h-4 w-4 text-gray-300 flex-shrink-0" />
         <div className="flex-1 border-t border-dashed border-gray-300" />
         <Button
           size="icon"
