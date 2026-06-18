@@ -7523,6 +7523,33 @@ export type Database = {
           },
         ]
       }
+      shared_sidebar_themes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          theme_json: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          theme_json?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          theme_json?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       signatures: {
         Row: {
           document_id: string
