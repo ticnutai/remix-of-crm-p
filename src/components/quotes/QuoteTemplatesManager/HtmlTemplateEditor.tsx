@@ -5,6 +5,8 @@ import React, {
   useRef,
   useEffect,
   useMemo,
+  createContext,
+  useContext,
 } from "react";
 import { createPortal } from "react-dom";
 import { PreviewIframe, type InlineEditPayload } from "./PreviewIframe";
@@ -1466,7 +1468,7 @@ function EditableItem({
   if (item.isSpacer) {
     return (
       <div className="flex items-center gap-2 py-0.5 group">
-        <GripVertical className="h-4 w-4 text-gray-200 cursor-grab flex-shrink-0" />
+        <DragHandle className="h-4 w-4 text-gray-300 flex-shrink-0" />
         <div className="flex-1 border-t border-dashed border-gray-300" />
         <Button
           size="icon"
@@ -1494,7 +1496,7 @@ function EditableItem({
 
   return (
     <div className={`flex items-center gap-2 py-2 group hover:bg-gray-50 rounded-lg px-1 ${isSelected ? "bg-blue-50" : ""}`}>
-      <GripVertical className="h-4 w-4 text-gray-300 cursor-grab" />
+      <DragHandle className="h-4 w-4 text-gray-300" />
       {onToggleSelect && (
         <button
           onClick={onToggleSelect}
@@ -1578,6 +1580,190 @@ function EditableItem({
   );
 }
 
+// ===== Drag-and-Drop infrastructure for stages + items =====
+type DragHandleCtx = {
+  attributes: Record<string, any>;
+  listeners: Record<string, any> | undefined;
+  setActivatorNodeRef?: (el: HTMLElement | null) => void;
+  isDragging?: boolean;
+} | null;
+const DragHandleContext = createContext<DragHandleCtx>(null);
+
+function DragHandle({
+  className = "h-4 w-4 text-gray-300 flex-shrink-0",
+  alwaysVisible = false,
+  title = "גרור לסידור מחדש",
+}: { className?: string; alwaysVisible?: boolean; title?: string }) {
+  const ctx = useContext(DragHandleContext);
+  if (!ctx) return <GripVertical className={className} />;
+  return (
+    <button
+      type="button"
+      ref={(el) => ctx.setActivatorNodeRef?.(el as HTMLElement | null)}
+      {...(ctx.attributes as Record<string, any>)}
+      {...(ctx.listeners as Record<string, any>)}
+      title={title}
+      className={`${className} cursor-grab active:cursor-grabbing touch-none select-none bg-transparent border-0 p-0 ${alwaysVisible ? "" : "opacity-40 hover:opacity-100"} ${ctx.isDragging ? "opacity-100" : ""}`}
+      style={{ touchAction: "none" }}
+      onClick={(e) => e.preventDefault()}
+    >
+      <GripVertical className="w-full h-full" />
+    </button>
+  );
+}
+
+function SortableStageBlock({
+  id,
+  isSection,
+  children,
+}: {
+  id: string;
+  isSection?: boolean;
+  children: React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, data: { type: "stage", isSection } });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <DragHandleContext.Provider value={{ attributes, listeners, setActivatorNodeRef, isDragging }}>
+        {children}
+      </DragHandleContext.Provider>
+    </div>
+  );
+}
+
+function SortableItemBlock({
+  id,
+  stageId,
+  children,
+}: {
+  id: string;
+  stageId: string;
+  children: React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, data: { type: "item", stageId } });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <DragHandleContext.Provider value={{ attributes, listeners, setActivatorNodeRef, isDragging }}>
+        {children}
+      </DragHandleContext.Provider>
+    </div>
+  );
+}
+
+function StagesDndProvider({
+  stages,
+  onChange,
+  children,
+}: {
+  stages: TemplateStage[];
+  onChange: (next: TemplateStage[]) => void;
+  children: React.ReactNode;
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+  const stagesRef = useRef(stages);
+  stagesRef.current = stages;
+
+  const findStageByItemId = (itemId: string) =>
+    stagesRef.current.find((s) => s.items.some((i) => i.id === itemId));
+
+  const handleDragOver = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+    const aType = (active.data.current as any)?.type;
+    if (aType !== "item") return;
+    if (active.id === over.id) return;
+
+    const overType = (over.data.current as any)?.type;
+    const fromStage = findStageByItemId(active.id as string);
+    if (!fromStage) return;
+
+    let toStageId: string;
+    if (overType === "item") {
+      toStageId = (over.data.current as any).stageId;
+    } else if (overType === "stage") {
+      toStageId = over.id as string;
+    } else {
+      return;
+    }
+    if (fromStage.id === toStageId) return;
+
+    const toStage = stagesRef.current.find((s) => s.id === toStageId);
+    if (!toStage || toStage.isSection) return;
+
+    const newStages = stagesRef.current.map((s) => ({ ...s, items: [...s.items] }));
+    const from = newStages.find((s) => s.id === fromStage.id)!;
+    const to = newStages.find((s) => s.id === toStageId)!;
+    const fromIdx = from.items.findIndex((i) => i.id === active.id);
+    if (fromIdx < 0) return;
+    const [moved] = from.items.splice(fromIdx, 1);
+    const overIdx = overType === "item" ? to.items.findIndex((i) => i.id === over.id) : to.items.length;
+    to.items.splice(overIdx >= 0 ? overIdx : to.items.length, 0, moved);
+    onChange(newStages);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const aType = (active.data.current as any)?.type;
+
+    if (aType === "stage") {
+      const oldIdx = stagesRef.current.findIndex((s) => s.id === active.id);
+      const newIdx = stagesRef.current.findIndex((s) => s.id === over.id);
+      if (oldIdx < 0 || newIdx < 0 || oldIdx === newIdx) return;
+      onChange(arrayMove(stagesRef.current, oldIdx, newIdx));
+      return;
+    }
+
+    if (aType === "item") {
+      const overType = (over.data.current as any)?.type;
+      const stage = findStageByItemId(active.id as string);
+      if (!stage) return;
+      if (overType === "item" && stage.items.some((i) => i.id === over.id)) {
+        const oldIdx = stage.items.findIndex((i) => i.id === active.id);
+        const newIdx = stage.items.findIndex((i) => i.id === over.id);
+        if (oldIdx === newIdx) return;
+        const newItems = arrayMove(stage.items, oldIdx, newIdx);
+        onChange(stagesRef.current.map((s) => (s.id === stage.id ? { ...s, items: newItems } : s)));
+      }
+    }
+  };
+
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+      {children}
+    </DndContext>
+  );
+}
+
 function SectionHeaderRow({
   stage,
   onUpdate,
@@ -1607,7 +1793,7 @@ function SectionHeaderRow({
   return (
     <div className="flex items-center justify-between gap-2 mt-4 group">
       <div className="flex items-center gap-2 flex-1 min-w-0">
-        <GripVertical className="h-4 w-4 text-gray-300 cursor-grab flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <DragHandle className="h-4 w-4 text-gray-300 flex-shrink-0" alwaysVisible title="גרור לסידור מחדש של כותרת ראשית" />
         {isEditing ? (
           <input
             ref={inputRef}
@@ -1789,6 +1975,8 @@ function StageEditor({
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="flex items-center gap-3 p-4 bg-gradient-to-l from-gray-50 to-white">
+        <DragHandle className="h-5 w-5 text-gray-400 flex-shrink-0" alwaysVisible title="גרור לסידור מחדש של השלב" />
+
         <Popover>
           <PopoverTrigger asChild>
             <button
@@ -2103,20 +2291,23 @@ function StageEditor({
               </button>
             </div>
           )}
-          <div className="p-4 space-y-1">
-            {stage.items.map((item, idx) => (
-              <EditableItem
-                key={item.id}
-                item={item}
-                onUpdate={(updatedItem) => updateItem(item.id, updatedItem)}
-                onDelete={() => deleteItem(item.id)}
-                isSelected={selectedItemIds.has(item.id)}
-                onToggleSelect={() => toggleItemSelect(item.id)}
-                stageDisplayMode={stage.itemDisplayMode}
-                stageIconColor={stage.itemDisplayColor}
-                itemIndex={idx}
-              />
-            ))}
+          <div className="p-4 space-y-1 min-h-[20px]">
+            <SortableContext items={stage.items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+              {stage.items.map((item, idx) => (
+                <SortableItemBlock key={item.id} id={item.id} stageId={stage.id}>
+                  <EditableItem
+                    item={item}
+                    onUpdate={(updatedItem) => updateItem(item.id, updatedItem)}
+                    onDelete={() => deleteItem(item.id)}
+                    isSelected={selectedItemIds.has(item.id)}
+                    onToggleSelect={() => toggleItemSelect(item.id)}
+                    stageDisplayMode={stage.itemDisplayMode}
+                    stageIconColor={stage.itemDisplayColor}
+                    itemIndex={idx}
+                  />
+                </SortableItemBlock>
+              ))}
+            </SortableContext>
           </div>
           <div className="px-4 pb-4 flex gap-2">
             <Button
@@ -8079,83 +8270,93 @@ ${tbAt('footer')}
                       </Button>
                     </div>
                   </div>
-                  {editedTemplate.stages.map((stage, index) => {
-                    if (stage.isSection) {
-                      return (
-                        <SectionHeaderRow
-                          key={stage.id}
-                          stage={stage}
-                          onUpdate={(updated) => updateStage(stage.id, updated)}
-                          onDelete={() => deleteStage(stage.id)}
-                          onMoveUp={() => moveStage(stage.id, "up")}
-                          onMoveDown={() => moveStage(stage.id, "down")}
-                          onAddStageBelow={() => addStageAfterSection(stage.id)}
-                          isFirst={index === 0}
-                          isLast={index === editedTemplate.stages.length - 1}
-                        />
-                      );
-                    }
-                    // Check if this stage is "under" a section header
-                    const parentSectionIdx = (() => {
-                      for (let i = index - 1; i >= 0; i--) {
-                        if (editedTemplate.stages[i].isSection) return i;
-                      }
-                      return -1;
-                    })();
-                    const isUnderSection = parentSectionIdx >= 0;
-                    return (
-                    <div key={stage.id} className={isUnderSection ? "mr-6 border-r-2 border-[#DAA520]/20 pr-1" : ""}>
-                    <StageEditor
-                      stage={stage}
-                      onUpdate={(updated) => updateStage(stage.id, updated)}
-                      onDelete={() => deleteStage(stage.id)}
-                      onDuplicate={() => duplicateStage(stage.id)}
-                      onMoveUp={() => moveStage(stage.id, "up")}
-                      onMoveDown={() => moveStage(stage.id, "down")}
-                      isFirst={index === 0}
-                      isLast={index === editedTemplate.stages.length - 1}
-                      allStages={editedTemplate.stages}
-                      onAddStagesAfter={(newStages) => {
-                        setEditedTemplate((prev) => {
-                          const idx = prev.stages.findIndex((s) => s.id === stage.id);
-                          if (idx < 0) return prev;
-                          const next = [...prev.stages];
-                          next.splice(idx + 1, 0, ...newStages);
-                          return { ...prev, stages: next };
-                        });
-                      }}
-                      onMoveToStage={(itemIds, targetStageId, position) => {
-                        setEditedTemplate(prev => {
-                          const itemsToMove = (prev.stages.find(s => s.id === stage.id)?.items ?? []).filter(i => itemIds.includes(i.id));
-                          return {
-                            ...prev,
-                            stages: prev.stages.map(s => {
-                              if (s.id === stage.id) return { ...s, items: s.items.filter(i => !itemIds.includes(i.id)) };
-                              if (s.id === targetStageId) return { ...s, items: position === "start" ? [...itemsToMove, ...s.items] : [...s.items, ...itemsToMove] };
-                              return s;
-                            }),
-                          };
-                        });
-                      }}
-                      onCreateTextBox={(items, format) => {
-                        const texts = items.map(i => i.text);
-                        const content = format === "numbered"
-                          ? texts.map((t, i) => `${i + 1}. ${t}`).join("\n")
-                          : format === "checkmarks"
-                          ? texts.map(t => `✓ ${t}`).join("\n")
-                          : texts.join("\n");
-                        setTextBoxes(prev => [...prev, {
-                          id: Date.now().toString(),
-                          title: "תיבת טקסט חדשה",
-                          content,
-                          position: "after-stages" as const,
-                          style: "default" as const,
-                        }]);
-                      }}
-                    />
-                    </div>
-                    );
-                  })}
+                  <StagesDndProvider
+                    stages={editedTemplate.stages}
+                    onChange={(newStages) => setEditedTemplate((prev) => ({ ...prev, stages: newStages }))}
+                  >
+                    <SortableContext items={editedTemplate.stages.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                      {editedTemplate.stages.map((stage, index) => {
+                        if (stage.isSection) {
+                          return (
+                            <SortableStageBlock key={stage.id} id={stage.id} isSection>
+                              <SectionHeaderRow
+                                stage={stage}
+                                onUpdate={(updated) => updateStage(stage.id, updated)}
+                                onDelete={() => deleteStage(stage.id)}
+                                onMoveUp={() => moveStage(stage.id, "up")}
+                                onMoveDown={() => moveStage(stage.id, "down")}
+                                onAddStageBelow={() => addStageAfterSection(stage.id)}
+                                isFirst={index === 0}
+                                isLast={index === editedTemplate.stages.length - 1}
+                              />
+                            </SortableStageBlock>
+                          );
+                        }
+                        const parentSectionIdx = (() => {
+                          for (let i = index - 1; i >= 0; i--) {
+                            if (editedTemplate.stages[i].isSection) return i;
+                          }
+                          return -1;
+                        })();
+                        const isUnderSection = parentSectionIdx >= 0;
+                        return (
+                          <SortableStageBlock key={stage.id} id={stage.id}>
+                            <div className={isUnderSection ? "mr-6 border-r-2 border-[#DAA520]/20 pr-1" : ""}>
+                              <StageEditor
+                                stage={stage}
+                                onUpdate={(updated) => updateStage(stage.id, updated)}
+                                onDelete={() => deleteStage(stage.id)}
+                                onDuplicate={() => duplicateStage(stage.id)}
+                                onMoveUp={() => moveStage(stage.id, "up")}
+                                onMoveDown={() => moveStage(stage.id, "down")}
+                                isFirst={index === 0}
+                                isLast={index === editedTemplate.stages.length - 1}
+                                allStages={editedTemplate.stages}
+                                onAddStagesAfter={(newStages) => {
+                                  setEditedTemplate((prev) => {
+                                    const idx = prev.stages.findIndex((s) => s.id === stage.id);
+                                    if (idx < 0) return prev;
+                                    const next = [...prev.stages];
+                                    next.splice(idx + 1, 0, ...newStages);
+                                    return { ...prev, stages: next };
+                                  });
+                                }}
+                                onMoveToStage={(itemIds, targetStageId, position) => {
+                                  setEditedTemplate(prev => {
+                                    const itemsToMove = (prev.stages.find(s => s.id === stage.id)?.items ?? []).filter(i => itemIds.includes(i.id));
+                                    return {
+                                      ...prev,
+                                      stages: prev.stages.map(s => {
+                                        if (s.id === stage.id) return { ...s, items: s.items.filter(i => !itemIds.includes(i.id)) };
+                                        if (s.id === targetStageId) return { ...s, items: position === "start" ? [...itemsToMove, ...s.items] : [...s.items, ...itemsToMove] };
+                                        return s;
+                                      }),
+                                    };
+                                  });
+                                }}
+                                onCreateTextBox={(items, format) => {
+                                  const texts = items.map(i => i.text);
+                                  const content = format === "numbered"
+                                    ? texts.map((t, i) => `${i + 1}. ${t}`).join("\n")
+                                    : format === "checkmarks"
+                                    ? texts.map(t => `✓ ${t}`).join("\n")
+                                    : texts.join("\n");
+                                  setTextBoxes(prev => [...prev, {
+                                    id: Date.now().toString(),
+                                    title: "תיבת טקסט חדשה",
+                                    content,
+                                    position: "after-stages" as const,
+                                    style: "default" as const,
+                                  }]);
+                                }}
+                              />
+                            </div>
+                          </SortableStageBlock>
+                        );
+                      })}
+                    </SortableContext>
+                  </StagesDndProvider>
+
                 </div>
                 {/* Text boxes after stages */}
                 {textBoxes
