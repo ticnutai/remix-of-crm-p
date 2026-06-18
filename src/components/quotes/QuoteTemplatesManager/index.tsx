@@ -1349,7 +1349,7 @@ export function QuoteTemplatesManager() {
             Word → HTML
           </Button>
           <Button
-            onClick={handleNew}
+            onClick={() => handleNew()}
             className="shrink-0 bg-[#d8ac27] hover:bg-[#c49b22] text-white"
           >
             <Plus className="h-4 w-4 ml-2" />
@@ -1423,7 +1423,7 @@ export function QuoteTemplatesManager() {
                 תיקייה חדשה
               </Button>
               <Button
-                onClick={handleNew}
+                onClick={() => handleNew()}
                 variant="outline"
                 className="border-[#d8ac27] text-[#d8ac27]"
               >
@@ -2088,7 +2088,7 @@ export function QuoteTemplatesManager() {
           setEditingTemplate(null);
         }}
         template={editingTemplate}
-        onSave={(t) => saveMutation.mutateAsync(t)}
+        onSave={async (t) => { await saveMutation.mutateAsync(t); }}
         isSaving={saveMutation.isPending}
       />
 

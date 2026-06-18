@@ -6939,6 +6939,7 @@ export type Database = {
           project_details: Json | null
           show_vat: boolean | null
           stages: Json | null
+          stages_title: string | null
           template_content: string | null
           terms: string | null
           text_boxes: Json | null
@@ -6970,6 +6971,7 @@ export type Database = {
           project_details?: Json | null
           show_vat?: boolean | null
           stages?: Json | null
+          stages_title?: string | null
           template_content?: string | null
           terms?: string | null
           text_boxes?: Json | null
@@ -7001,6 +7003,7 @@ export type Database = {
           project_details?: Json | null
           show_vat?: boolean | null
           stages?: Json | null
+          stages_title?: string | null
           template_content?: string | null
           terms?: string | null
           text_boxes?: Json | null
