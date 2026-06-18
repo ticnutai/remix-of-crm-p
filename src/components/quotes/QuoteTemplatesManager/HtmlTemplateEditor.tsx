@@ -1597,18 +1597,19 @@ function DragHandle({
   const ctx = useContext(DragHandleContext);
   if (!ctx) return <GripVertical className={className} />;
   return (
-    <button
-      type="button"
+    <div
       ref={(el) => ctx.setActivatorNodeRef?.(el as HTMLElement | null)}
+      role="button"
+      tabIndex={0}
       {...(ctx.attributes as Record<string, any>)}
       {...(ctx.listeners as Record<string, any>)}
       title={title}
-      className={`${className} cursor-grab active:cursor-grabbing touch-none select-none bg-transparent border-0 p-0 ${alwaysVisible ? "" : "opacity-40 hover:opacity-100"} ${ctx.isDragging ? "opacity-100" : ""}`}
+      className={`${className} inline-flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none ${alwaysVisible ? "opacity-60 hover:opacity-100" : "opacity-30 hover:opacity-100"} ${ctx.isDragging ? "opacity-100" : ""}`}
       style={{ touchAction: "none" }}
-      onClick={(e) => e.preventDefault()}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
     >
-      <GripVertical className="w-full h-full" />
-    </button>
+      <GripVertical className="w-full h-full pointer-events-none" />
+    </div>
   );
 }
 
