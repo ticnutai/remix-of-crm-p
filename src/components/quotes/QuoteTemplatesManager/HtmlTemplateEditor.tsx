@@ -7921,6 +7921,15 @@ export function HtmlTemplateEditor({
                       isFirst={index === 0}
                       isLast={index === editedTemplate.stages.length - 1}
                       allStages={editedTemplate.stages}
+                      onAddStagesAfter={(newStages) => {
+                        setEditedTemplate((prev) => {
+                          const idx = prev.stages.findIndex((s) => s.id === stage.id);
+                          if (idx < 0) return prev;
+                          const next = [...prev.stages];
+                          next.splice(idx + 1, 0, ...newStages);
+                          return { ...prev, stages: next };
+                        });
+                      }}
                       onMoveToStage={(itemIds, targetStageId, position) => {
                         setEditedTemplate(prev => {
                           const itemsToMove = (prev.stages.find(s => s.id === stage.id)?.items ?? []).filter(i => itemIds.includes(i.id));
