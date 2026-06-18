@@ -1423,7 +1423,7 @@ export function QuoteTemplatesManager() {
                 תיקייה חדשה
               </Button>
               <Button
-                onClick={handleNew}
+                onClick={() => handleNew()}
                 variant="outline"
                 className="border-[#d8ac27] text-[#d8ac27]"
               >
