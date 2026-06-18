@@ -1600,8 +1600,8 @@ function DragHandle({
     <button
       type="button"
       ref={(el) => ctx.setActivatorNodeRef?.(el as HTMLElement | null)}
-      {...(ctx.attributes as Record<string, unknown>)}
-      {...(ctx.listeners as Record<string, unknown>)}
+      {...(attributes as Record<string, any>)}
+      {...(listeners as Record<string, any>)}
       title={title}
       className={`${className} cursor-grab active:cursor-grabbing touch-none select-none bg-transparent border-0 p-0 ${alwaysVisible ? "" : "opacity-40 hover:opacity-100"} ${ctx.isDragging ? "opacity-100" : ""}`}
       style={{ touchAction: "none" }}
