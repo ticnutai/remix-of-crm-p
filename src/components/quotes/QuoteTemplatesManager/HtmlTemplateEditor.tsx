@@ -1582,8 +1582,8 @@ function EditableItem({
 
 // ===== Drag-and-Drop infrastructure for stages + items =====
 type DragHandleCtx = {
-  attributes: Record<string, unknown>;
-  listeners: Record<string, unknown> | undefined;
+  attributes: Record<string, any>;
+  listeners: Record<string, any> | undefined;
   setActivatorNodeRef?: (el: HTMLElement | null) => void;
   isDragging?: boolean;
 } | null;
