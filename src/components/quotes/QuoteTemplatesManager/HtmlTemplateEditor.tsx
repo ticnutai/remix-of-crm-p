@@ -1887,6 +1887,8 @@ function StageEditor({
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="flex items-center gap-3 p-4 bg-gradient-to-l from-gray-50 to-white">
+        <DragHandle className="h-5 w-5 text-gray-400 flex-shrink-0" alwaysVisible title="גרור לסידור מחדש של השלב" />
+
         <Popover>
           <PopoverTrigger asChild>
             <button
