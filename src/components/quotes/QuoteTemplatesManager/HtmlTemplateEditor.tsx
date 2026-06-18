@@ -1676,6 +1676,94 @@ function SortableItemBlock({
   );
 }
 
+function StagesDndProvider({
+  stages,
+  onChange,
+  children,
+}: {
+  stages: TemplateStage[];
+  onChange: (next: TemplateStage[]) => void;
+  children: React.ReactNode;
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+  const stagesRef = useRef(stages);
+  stagesRef.current = stages;
+
+  const findStageByItemId = (itemId: string) =>
+    stagesRef.current.find((s) => s.items.some((i) => i.id === itemId));
+
+  const handleDragOver = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+    const aType = (active.data.current as any)?.type;
+    if (aType !== "item") return;
+    if (active.id === over.id) return;
+
+    const overType = (over.data.current as any)?.type;
+    const fromStage = findStageByItemId(active.id as string);
+    if (!fromStage) return;
+
+    let toStageId: string;
+    if (overType === "item") {
+      toStageId = (over.data.current as any).stageId;
+    } else if (overType === "stage") {
+      toStageId = over.id as string;
+    } else {
+      return;
+    }
+    if (fromStage.id === toStageId) return;
+
+    const toStage = stagesRef.current.find((s) => s.id === toStageId);
+    if (!toStage || toStage.isSection) return;
+
+    const newStages = stagesRef.current.map((s) => ({ ...s, items: [...s.items] }));
+    const from = newStages.find((s) => s.id === fromStage.id)!;
+    const to = newStages.find((s) => s.id === toStageId)!;
+    const fromIdx = from.items.findIndex((i) => i.id === active.id);
+    if (fromIdx < 0) return;
+    const [moved] = from.items.splice(fromIdx, 1);
+    const overIdx = overType === "item" ? to.items.findIndex((i) => i.id === over.id) : to.items.length;
+    to.items.splice(overIdx >= 0 ? overIdx : to.items.length, 0, moved);
+    onChange(newStages);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const aType = (active.data.current as any)?.type;
+
+    if (aType === "stage") {
+      const oldIdx = stagesRef.current.findIndex((s) => s.id === active.id);
+      const newIdx = stagesRef.current.findIndex((s) => s.id === over.id);
+      if (oldIdx < 0 || newIdx < 0 || oldIdx === newIdx) return;
+      onChange(arrayMove(stagesRef.current, oldIdx, newIdx));
+      return;
+    }
+
+    if (aType === "item") {
+      const overType = (over.data.current as any)?.type;
+      const stage = findStageByItemId(active.id as string);
+      if (!stage) return;
+      if (overType === "item" && stage.items.some((i) => i.id === over.id)) {
+        const oldIdx = stage.items.findIndex((i) => i.id === active.id);
+        const newIdx = stage.items.findIndex((i) => i.id === over.id);
+        if (oldIdx === newIdx) return;
+        const newItems = arrayMove(stage.items, oldIdx, newIdx);
+        onChange(stagesRef.current.map((s) => (s.id === stage.id ? { ...s, items: newItems } : s)));
+      }
+    }
+  };
+
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+      {children}
+    </DndContext>
+  );
+}
+
 function SectionHeaderRow({
   stage,
   onUpdate,
