@@ -1349,7 +1349,7 @@ export function QuoteTemplatesManager() {
             Word → HTML
           </Button>
           <Button
-            onClick={handleNew}
+            onClick={() => handleNew()}
             className="shrink-0 bg-[#d8ac27] hover:bg-[#c49b22] text-white"
           >
             <Plus className="h-4 w-4 ml-2" />
