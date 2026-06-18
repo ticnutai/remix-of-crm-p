@@ -2203,20 +2203,23 @@ function StageEditor({
               </button>
             </div>
           )}
-          <div className="p-4 space-y-1">
-            {stage.items.map((item, idx) => (
-              <EditableItem
-                key={item.id}
-                item={item}
-                onUpdate={(updatedItem) => updateItem(item.id, updatedItem)}
-                onDelete={() => deleteItem(item.id)}
-                isSelected={selectedItemIds.has(item.id)}
-                onToggleSelect={() => toggleItemSelect(item.id)}
-                stageDisplayMode={stage.itemDisplayMode}
-                stageIconColor={stage.itemDisplayColor}
-                itemIndex={idx}
-              />
-            ))}
+          <div className="p-4 space-y-1 min-h-[20px]">
+            <SortableContext items={stage.items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+              {stage.items.map((item, idx) => (
+                <SortableItemBlock key={item.id} id={item.id} stageId={stage.id}>
+                  <EditableItem
+                    item={item}
+                    onUpdate={(updatedItem) => updateItem(item.id, updatedItem)}
+                    onDelete={() => deleteItem(item.id)}
+                    isSelected={selectedItemIds.has(item.id)}
+                    onToggleSelect={() => toggleItemSelect(item.id)}
+                    stageDisplayMode={stage.itemDisplayMode}
+                    stageIconColor={stage.itemDisplayColor}
+                    itemIndex={idx}
+                  />
+                </SortableItemBlock>
+              ))}
+            </SortableContext>
           </div>
           <div className="px-4 pb-4 flex gap-2">
             <Button
