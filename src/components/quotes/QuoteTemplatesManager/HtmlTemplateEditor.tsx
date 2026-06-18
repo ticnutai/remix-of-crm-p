@@ -1667,6 +1667,7 @@ function StageEditor({
   allStages,
   onMoveToStage,
   onCreateTextBox,
+  onAddStagesAfter,
 }: {
   stage: TemplateStage;
   onUpdate: (stage: TemplateStage) => void;
@@ -1679,6 +1680,7 @@ function StageEditor({
   allStages: TemplateStage[];
   onMoveToStage: (itemIds: string[], targetStageId: string, position: "start" | "end") => void;
   onCreateTextBox: (items: TemplateStageItem[], format: "lines" | "numbered" | "checkmarks") => void;
+  onAddStagesAfter?: (stages: TemplateStage[]) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -1686,7 +1688,8 @@ function StageEditor({
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [textBoxFormat, setTextBoxFormat] = useState<"lines" | "numbered" | "checkmarks">("lines");
   const [showBulkImport, setShowBulkImport] = useState(false);
-  const [bulkText, setBulkText] = useState("");
+  const [bulkSections, setBulkSections] = useState<Array<{ name: string; text: string; icon?: string }>>([]);
+
 
   const toggleItemSelect = (id: string) => {
     setSelectedItemIds((prev) => {
@@ -1724,31 +1727,50 @@ function StageEditor({
     });
   };
   const openBulkImport = () => {
-    // Pre-populate with existing items so user can edit the full list
+    // Pre-populate with existing items of current stage as first section
     const existingText = stage.items
       .map((item) => {
         if (item.isSpacer) return "";
-        // Strip HTML tags to plain text for editing
         return item.text
           .replace(/<br\s*\/?>/gi, "\n")
           .replace(/<[^>]+>/g, "")
           .trim();
       })
       .join("\n");
-    setBulkText(existingText);
+    setBulkSections([{ name: stage.name, text: existingText, icon: stage.icon }]);
     setShowBulkImport(true);
   };
 
   const applyBulkImport = () => {
-    const lines = bulkText.split("\n");
-    const newItems: TemplateStageItem[] = lines.map((line) => ({
-      id: `${Date.now()}-${Math.random()}`,
-      text: line.trim(),
-      isSpacer: line.trim() === "",
-    }));
-    // Replace all items (not append) — user edited the full list
-    onUpdate({ ...stage, items: newItems });
-    setBulkText("");
+    if (bulkSections.length === 0) {
+      setShowBulkImport(false);
+      return;
+    }
+    const toItems = (text: string): TemplateStageItem[] =>
+      text.split("\n").map((line, idx) => ({
+        id: `${Date.now()}-${idx}-${Math.random()}`,
+        text: line.trim(),
+        isSpacer: line.trim() === "",
+      }));
+
+    // First section -> update current stage (name + items)
+    const first = bulkSections[0];
+    onUpdate({ ...stage, name: first.name || stage.name, icon: first.icon ?? stage.icon, items: toItems(first.text) });
+
+    // Additional sections -> create new stages after current
+    const extra = bulkSections.slice(1);
+    if (extra.length > 0 && onAddStagesAfter) {
+      const newStages: TemplateStage[] = extra.map((sec, i) => ({
+        id: `${Date.now() + i + 1}-${Math.random()}`,
+        name: sec.name || `שלב ${i + 2}`,
+        icon: sec.icon || "📋",
+        items: toItems(sec.text),
+        itemDisplayMode: "check",
+      }));
+      onAddStagesAfter(newStages);
+    }
+
+    setBulkSections([]);
     setShowBulkImport(false);
   };
   const saveNameChange = () => {
@@ -2119,33 +2141,84 @@ function StageEditor({
         </div>
       )}
 
-      {/* Bulk import dialog */}
+      {/* Bulk import dialog - multi-stage */}
       <Dialog open={showBulkImport} onOpenChange={setShowBulkImport}>
-        <DialogContent className="max-w-lg" dir="rtl">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ListPlus className="h-5 w-5 text-indigo-600" />
-              עריכת רשימת פריטים
+              עריכת רשימת פריטים ושלבים
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            כל שורה = פריט &bull; שורה ריקה = רווח בין קבוצות &bull; השינויים יחליפו את הפריטים הקיימים
+            כל שורה = פריט &bull; שורה ריקה = רווח בין קבוצות &bull; השלב הראשון מחליף את הפריטים הקיימים, שלבים נוספים נוצרים אחריו
           </p>
-          <Textarea
-            value={bulkText}
-            onChange={(e) => setBulkText(e.target.value)}
-            rows={12}
-            dir="rtl"
-            placeholder={"פריט ראשון\nפריט שני\nפריט שלישי\n\nפריט אחרי רווח\nפריט נוסף"}
-            className="text-sm resize-none font-mono"
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && e.ctrlKey) { e.preventDefault(); applyBulkImport(); }
-            }}
-          />
-          <DialogFooter className="flex gap-2 flex-row-reverse">
+
+          <div className="space-y-4 mt-2">
+            {bulkSections.map((section, idx) => (
+              <div key={idx} className="border border-[#DAA520]/30 rounded-lg p-3 bg-[#DAA520]/5 space-y-2 relative">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-bold">
+                    {idx + 1}
+                  </div>
+                  <Input
+                    value={section.name}
+                    onChange={(e) => {
+                      const next = [...bulkSections];
+                      next[idx] = { ...next[idx], name: e.target.value };
+                      setBulkSections(next);
+                    }}
+                    placeholder={idx === 0 ? "שם השלב (קיים)" : "שם השלב החדש"}
+                    className="flex-1 font-medium"
+                  />
+                  {idx > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-red-500 hover:bg-red-50"
+                      onClick={() => {
+                        setBulkSections(bulkSections.filter((_, i) => i !== idx));
+                      }}
+                      title="הסר שלב"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <Textarea
+                  value={section.text}
+                  onChange={(e) => {
+                    const next = [...bulkSections];
+                    next[idx] = { ...next[idx], text: e.target.value };
+                    setBulkSections(next);
+                  }}
+                  rows={6}
+                  dir="rtl"
+                  placeholder={"פריט ראשון\nפריט שני\nפריט שלישי\n\nפריט אחרי רווח"}
+                  className="text-sm resize-none font-mono"
+                  autoFocus={idx === bulkSections.length - 1}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && e.ctrlKey) { e.preventDefault(); applyBulkImport(); }
+                  }}
+                />
+              </div>
+            ))}
+
+            <Button
+              variant="outline"
+              className="w-full border-dashed border-indigo-400 text-indigo-600 hover:bg-indigo-50"
+              onClick={() => {
+                setBulkSections([...bulkSections, { name: `שלב ${bulkSections.length + 1}`, text: "", icon: "📋" }]);
+              }}
+            >
+              <Plus className="h-4 w-4 ml-1" />
+              הוסף שלב
+            </Button>
+          </div>
+
+          <DialogFooter className="flex gap-2 flex-row-reverse mt-4">
             <Button onClick={applyBulkImport}>
-              שמור פריטים
+              שמור הכל
             </Button>
             <Button variant="outline" onClick={() => setShowBulkImport(false)}>
               ביטול
@@ -7848,6 +7921,15 @@ export function HtmlTemplateEditor({
                       isFirst={index === 0}
                       isLast={index === editedTemplate.stages.length - 1}
                       allStages={editedTemplate.stages}
+                      onAddStagesAfter={(newStages) => {
+                        setEditedTemplate((prev) => {
+                          const idx = prev.stages.findIndex((s) => s.id === stage.id);
+                          if (idx < 0) return prev;
+                          const next = [...prev.stages];
+                          next.splice(idx + 1, 0, ...newStages);
+                          return { ...prev, stages: next };
+                        });
+                      }}
                       onMoveToStage={(itemIds, targetStageId, position) => {
                         setEditedTemplate(prev => {
                           const itemsToMove = (prev.stages.find(s => s.id === stage.id)?.items ?? []).filter(i => itemIds.includes(i.id));
