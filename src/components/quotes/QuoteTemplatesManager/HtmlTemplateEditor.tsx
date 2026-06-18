@@ -1667,6 +1667,7 @@ function StageEditor({
   allStages,
   onMoveToStage,
   onCreateTextBox,
+  onAddStagesAfter,
 }: {
   stage: TemplateStage;
   onUpdate: (stage: TemplateStage) => void;
@@ -1679,6 +1680,7 @@ function StageEditor({
   allStages: TemplateStage[];
   onMoveToStage: (itemIds: string[], targetStageId: string, position: "start" | "end") => void;
   onCreateTextBox: (items: TemplateStageItem[], format: "lines" | "numbered" | "checkmarks") => void;
+  onAddStagesAfter?: (stages: TemplateStage[]) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -1686,7 +1688,8 @@ function StageEditor({
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [textBoxFormat, setTextBoxFormat] = useState<"lines" | "numbered" | "checkmarks">("lines");
   const [showBulkImport, setShowBulkImport] = useState(false);
-  const [bulkText, setBulkText] = useState("");
+  const [bulkSections, setBulkSections] = useState<Array<{ name: string; text: string; icon?: string }>>([]);
+
 
   const toggleItemSelect = (id: string) => {
     setSelectedItemIds((prev) => {
