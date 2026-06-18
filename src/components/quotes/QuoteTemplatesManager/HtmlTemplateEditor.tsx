@@ -2141,33 +2141,84 @@ function StageEditor({
         </div>
       )}
 
-      {/* Bulk import dialog */}
+      {/* Bulk import dialog - multi-stage */}
       <Dialog open={showBulkImport} onOpenChange={setShowBulkImport}>
-        <DialogContent className="max-w-lg" dir="rtl">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ListPlus className="h-5 w-5 text-indigo-600" />
-              עריכת רשימת פריטים
+              עריכת רשימת פריטים ושלבים
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            כל שורה = פריט &bull; שורה ריקה = רווח בין קבוצות &bull; השינויים יחליפו את הפריטים הקיימים
+            כל שורה = פריט &bull; שורה ריקה = רווח בין קבוצות &bull; השלב הראשון מחליף את הפריטים הקיימים, שלבים נוספים נוצרים אחריו
           </p>
-          <Textarea
-            value={bulkText}
-            onChange={(e) => setBulkText(e.target.value)}
-            rows={12}
-            dir="rtl"
-            placeholder={"פריט ראשון\nפריט שני\nפריט שלישי\n\nפריט אחרי רווח\nפריט נוסף"}
-            className="text-sm resize-none font-mono"
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && e.ctrlKey) { e.preventDefault(); applyBulkImport(); }
-            }}
-          />
-          <DialogFooter className="flex gap-2 flex-row-reverse">
+
+          <div className="space-y-4 mt-2">
+            {bulkSections.map((section, idx) => (
+              <div key={idx} className="border border-[#DAA520]/30 rounded-lg p-3 bg-[#DAA520]/5 space-y-2 relative">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-bold">
+                    {idx + 1}
+                  </div>
+                  <Input
+                    value={section.name}
+                    onChange={(e) => {
+                      const next = [...bulkSections];
+                      next[idx] = { ...next[idx], name: e.target.value };
+                      setBulkSections(next);
+                    }}
+                    placeholder={idx === 0 ? "שם השלב (קיים)" : "שם השלב החדש"}
+                    className="flex-1 font-medium"
+                  />
+                  {idx > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-red-500 hover:bg-red-50"
+                      onClick={() => {
+                        setBulkSections(bulkSections.filter((_, i) => i !== idx));
+                      }}
+                      title="הסר שלב"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <Textarea
+                  value={section.text}
+                  onChange={(e) => {
+                    const next = [...bulkSections];
+                    next[idx] = { ...next[idx], text: e.target.value };
+                    setBulkSections(next);
+                  }}
+                  rows={6}
+                  dir="rtl"
+                  placeholder={"פריט ראשון\nפריט שני\nפריט שלישי\n\nפריט אחרי רווח"}
+                  className="text-sm resize-none font-mono"
+                  autoFocus={idx === bulkSections.length - 1}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && e.ctrlKey) { e.preventDefault(); applyBulkImport(); }
+                  }}
+                />
+              </div>
+            ))}
+
+            <Button
+              variant="outline"
+              className="w-full border-dashed border-indigo-400 text-indigo-600 hover:bg-indigo-50"
+              onClick={() => {
+                setBulkSections([...bulkSections, { name: `שלב ${bulkSections.length + 1}`, text: "", icon: "📋" }]);
+              }}
+            >
+              <Plus className="h-4 w-4 ml-1" />
+              הוסף שלב
+            </Button>
+          </div>
+
+          <DialogFooter className="flex gap-2 flex-row-reverse mt-4">
             <Button onClick={applyBulkImport}>
-              שמור פריטים
+              שמור הכל
             </Button>
             <Button variant="outline" onClick={() => setShowBulkImport(false)}>
               ביטול
