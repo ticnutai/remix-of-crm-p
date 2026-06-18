@@ -1580,6 +1580,102 @@ function EditableItem({
   );
 }
 
+// ===== Drag-and-Drop infrastructure for stages + items =====
+type DragHandleCtx = {
+  attributes: Record<string, unknown>;
+  listeners: Record<string, unknown> | undefined;
+  setActivatorNodeRef?: (el: HTMLElement | null) => void;
+  isDragging?: boolean;
+} | null;
+const DragHandleContext = createContext<DragHandleCtx>(null);
+
+function DragHandle({
+  className = "h-4 w-4 text-gray-300 flex-shrink-0",
+  alwaysVisible = false,
+  title = "גרור לסידור מחדש",
+}: { className?: string; alwaysVisible?: boolean; title?: string }) {
+  const ctx = useContext(DragHandleContext);
+  if (!ctx) return <GripVertical className={className} />;
+  return (
+    <button
+      type="button"
+      ref={(el) => ctx.setActivatorNodeRef?.(el as HTMLElement | null)}
+      {...(ctx.attributes as Record<string, unknown>)}
+      {...(ctx.listeners as Record<string, unknown>)}
+      title={title}
+      className={`${className} cursor-grab active:cursor-grabbing touch-none select-none bg-transparent border-0 p-0 ${alwaysVisible ? "" : "opacity-40 hover:opacity-100"} ${ctx.isDragging ? "opacity-100" : ""}`}
+      style={{ touchAction: "none" }}
+      onClick={(e) => e.preventDefault()}
+    >
+      <GripVertical className="w-full h-full" />
+    </button>
+  );
+}
+
+function SortableStageBlock({
+  id,
+  isSection,
+  children,
+}: {
+  id: string;
+  isSection?: boolean;
+  children: React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, data: { type: "stage", isSection } });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <DragHandleContext.Provider value={{ attributes, listeners, setActivatorNodeRef, isDragging }}>
+        {children}
+      </DragHandleContext.Provider>
+    </div>
+  );
+}
+
+function SortableItemBlock({
+  id,
+  stageId,
+  children,
+}: {
+  id: string;
+  stageId: string;
+  children: React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, data: { type: "item", stageId } });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <DragHandleContext.Provider value={{ attributes, listeners, setActivatorNodeRef, isDragging }}>
+        {children}
+      </DragHandleContext.Provider>
+    </div>
+  );
+}
+
 function SectionHeaderRow({
   stage,
   onUpdate,
