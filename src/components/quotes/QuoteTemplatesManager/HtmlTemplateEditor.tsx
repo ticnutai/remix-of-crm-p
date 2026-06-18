@@ -7727,13 +7727,6 @@ ${tbAt('footer')}
                 עיצוב
               </TabsTrigger>
               <TabsTrigger
-                value="logo-strip"
-                className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700"
-              >
-                <Crop className="h-4 w-4 ml-2" />
-                לוגו
-              </TabsTrigger>
-              <TabsTrigger
                 value="text-boxes"
                 className="data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]"
               >
@@ -8368,6 +8361,7 @@ ${tbAt('footer')}
                 { id: "colors", label: "🎨 צבעים" },
                 { id: "effects", label: "✨ אפקטים" },
                 { id: "text", label: "Aa טקסט ומסגרות" },
+                { id: "logo-strip", label: "🖼️ לוגו וסטריפ" },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -9178,9 +9172,10 @@ ${tbAt('footer')}
             )}
           </TabsContent>
 
-          {/* Logo & Strip Tab */}
-          <TabsContent
-            value="logo-strip"
+          {/* Logo & Strip - inside design sub-tab */}
+          {designSubTab === "logo-strip" && (
+          <>
+          <div
             className={logoStripMode === "logo" ? "flex-1 m-0 overflow-hidden" : "hidden"}
           >
             <ScrollArea className="h-full bg-gray-50">
@@ -10283,11 +10278,8 @@ ${tbAt('footer')}
                 </div>
               </div>
             </ScrollArea>
-          </TabsContent>
-
-          {/* Strip Maker (merged into Logo & Strips tab) */}
-          <TabsContent
-            value="logo-strip"
+          </div>
+          <div
             className={logoStripMode === "maker" ? "flex-1 m-0 overflow-hidden" : "hidden"}
           >
             <ScrollArea className="h-full bg-gray-50">
@@ -10822,7 +10814,9 @@ ${tbAt('footer')}
                 )}
               </div>
             </ScrollArea>
-          </TabsContent>
+          </div>
+          </>
+          )}
 
           {/* AI Logo Generation Dialog */}
           <AILogoDialog
