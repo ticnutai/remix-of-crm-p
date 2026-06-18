@@ -1727,31 +1727,50 @@ function StageEditor({
     });
   };
   const openBulkImport = () => {
-    // Pre-populate with existing items so user can edit the full list
+    // Pre-populate with existing items of current stage as first section
     const existingText = stage.items
       .map((item) => {
         if (item.isSpacer) return "";
-        // Strip HTML tags to plain text for editing
         return item.text
           .replace(/<br\s*\/?>/gi, "\n")
           .replace(/<[^>]+>/g, "")
           .trim();
       })
       .join("\n");
-    setBulkText(existingText);
+    setBulkSections([{ name: stage.name, text: existingText, icon: stage.icon }]);
     setShowBulkImport(true);
   };
 
   const applyBulkImport = () => {
-    const lines = bulkText.split("\n");
-    const newItems: TemplateStageItem[] = lines.map((line) => ({
-      id: `${Date.now()}-${Math.random()}`,
-      text: line.trim(),
-      isSpacer: line.trim() === "",
-    }));
-    // Replace all items (not append) — user edited the full list
-    onUpdate({ ...stage, items: newItems });
-    setBulkText("");
+    if (bulkSections.length === 0) {
+      setShowBulkImport(false);
+      return;
+    }
+    const toItems = (text: string): TemplateStageItem[] =>
+      text.split("\n").map((line, idx) => ({
+        id: `${Date.now()}-${idx}-${Math.random()}`,
+        text: line.trim(),
+        isSpacer: line.trim() === "",
+      }));
+
+    // First section -> update current stage (name + items)
+    const first = bulkSections[0];
+    onUpdate({ ...stage, name: first.name || stage.name, icon: first.icon ?? stage.icon, items: toItems(first.text) });
+
+    // Additional sections -> create new stages after current
+    const extra = bulkSections.slice(1);
+    if (extra.length > 0 && onAddStagesAfter) {
+      const newStages: TemplateStage[] = extra.map((sec, i) => ({
+        id: `${Date.now() + i + 1}-${Math.random()}`,
+        name: sec.name || `שלב ${i + 2}`,
+        icon: sec.icon || "📋",
+        items: toItems(sec.text),
+        itemDisplayMode: "check",
+      }));
+      onAddStagesAfter(newStages);
+    }
+
+    setBulkSections([]);
     setShowBulkImport(false);
   };
   const saveNameChange = () => {
