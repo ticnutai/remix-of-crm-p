@@ -5,6 +5,8 @@ import React, {
   useRef,
   useEffect,
   useMemo,
+  createContext,
+  useContext,
 } from "react";
 import { createPortal } from "react-dom";
 import { PreviewIframe, type InlineEditPayload } from "./PreviewIframe";
