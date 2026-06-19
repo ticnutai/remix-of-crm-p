@@ -1645,6 +1645,41 @@ function SortableStageBlock({
   );
 }
 
+function InsertBetweenStages({
+  onInsertStage,
+  onInsertSection,
+}: {
+  onInsertStage: () => void;
+  onInsertSection: () => void;
+}) {
+  return (
+    <div className="group relative h-2 my-0.5 flex items-center justify-center">
+      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-transparent group-hover:bg-[#DAA520]/30 transition-colors" />
+      <div className="relative flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white border border-[#DAA520]/40 rounded-full shadow-sm px-1 py-0.5">
+        <button
+          type="button"
+          onClick={onInsertStage}
+          title="הוסף שלב כאן"
+          className="flex items-center gap-1 text-[10px] font-medium text-[#B8860B] hover:bg-[#DAA520]/10 rounded-full px-2 py-0.5"
+        >
+          <Plus className="h-3 w-3" />
+          שלב
+        </button>
+        <span className="w-px h-3 bg-[#DAA520]/30" />
+        <button
+          type="button"
+          onClick={onInsertSection}
+          title="הוסף כותרת ראשית כאן"
+          className="flex items-center gap-1 text-[10px] font-medium text-indigo-600 hover:bg-indigo-50 rounded-full px-2 py-0.5"
+        >
+          <Plus className="h-3 w-3" />
+          כותרת ראשית
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function SortableItemBlock({
   id,
   stageId,
