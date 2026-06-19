@@ -1645,6 +1645,41 @@ function SortableStageBlock({
   );
 }
 
+function InsertBetweenStages({
+  onInsertStage,
+  onInsertSection,
+}: {
+  onInsertStage: () => void;
+  onInsertSection: () => void;
+}) {
+  return (
+    <div className="group relative h-2 my-0.5 flex items-center justify-center">
+      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-transparent group-hover:bg-[#DAA520]/30 transition-colors" />
+      <div className="relative flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white border border-[#DAA520]/40 rounded-full shadow-sm px-1 py-0.5">
+        <button
+          type="button"
+          onClick={onInsertStage}
+          title="הוסף שלב כאן"
+          className="flex items-center gap-1 text-[10px] font-medium text-[#B8860B] hover:bg-[#DAA520]/10 rounded-full px-2 py-0.5"
+        >
+          <Plus className="h-3 w-3" />
+          שלב
+        </button>
+        <span className="w-px h-3 bg-[#DAA520]/30" />
+        <button
+          type="button"
+          onClick={onInsertSection}
+          title="הוסף כותרת ראשית כאן"
+          className="flex items-center gap-1 text-[10px] font-medium text-indigo-600 hover:bg-indigo-50 rounded-full px-2 py-0.5"
+        >
+          <Plus className="h-3 w-3" />
+          כותרת ראשית
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function SortableItemBlock({
   id,
   stageId,
@@ -1772,6 +1807,7 @@ function SectionHeaderRow({
   onMoveUp,
   onMoveDown,
   onAddStageBelow,
+  onAddSectionBelow,
   isFirst,
   isLast,
 }: {
@@ -1781,6 +1817,7 @@ function SectionHeaderRow({
   onMoveUp: () => void;
   onMoveDown: () => void;
   onAddStageBelow: () => void;
+  onAddSectionBelow?: () => void;
   isFirst: boolean;
   isLast: boolean;
 }) {
@@ -1826,6 +1863,18 @@ function SectionHeaderRow({
           <Plus className="h-4 w-4 ml-1" />
           הוסף שלב
         </Button>
+        {onAddSectionBelow && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-indigo-300 text-indigo-600 hover:bg-indigo-50"
+            onClick={onAddSectionBelow}
+            title="הוסף כותרת ראשית מתחת"
+          >
+            <Heading2 className="h-4 w-4 ml-1" />
+            הוסף כותרת
+          </Button>
+        )}
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onMoveUp} disabled={isFirst}>
             <ChevronUp className="h-3 w-3" />
@@ -6312,6 +6361,34 @@ ${tbAt('footer')}
     next.splice(idx + 1, 0, newStage);
     setEditedTemplate({ ...editedTemplate, stages: next });
   };
+  const insertStageAt = (insertIndex: number) => {
+    const newStage: TemplateStage = {
+      id: Date.now().toString(),
+      name: "שלב חדש",
+      icon: "📋",
+      items: [],
+      itemDisplayMode: "check",
+    };
+    const next = [...editedTemplate.stages];
+    next.splice(insertIndex, 0, newStage);
+    setEditedTemplate({ ...editedTemplate, stages: next });
+  };
+  const insertSectionHeaderAt = (insertIndex: number) => {
+    const newSection: TemplateStage = {
+      id: Date.now().toString(),
+      name: "כותרת חדשה",
+      icon: "",
+      items: [],
+      isSection: true,
+    };
+    const next = [...editedTemplate.stages];
+    next.splice(insertIndex, 0, newSection);
+    setEditedTemplate({ ...editedTemplate, stages: next });
+  };
+  const addSectionHeaderAfter = (stageId: string) => {
+    const idx = editedTemplate.stages.findIndex(s => s.id === stageId);
+    insertSectionHeaderAt(idx + 1);
+  };
   const addPaymentStep = () =>
     setPaymentSteps([
       ...paymentSteps,
@@ -8277,82 +8354,97 @@ ${tbAt('footer')}
                   >
                     <SortableContext items={editedTemplate.stages.map((s) => s.id)} strategy={verticalListSortingStrategy}>
                       {editedTemplate.stages.map((stage, index) => {
-                        if (stage.isSection) {
+                        const blockEl = stage.isSection ? (
+                          <SortableStageBlock key={stage.id} id={stage.id} isSection>
+                            <SectionHeaderRow
+                              stage={stage}
+                              onUpdate={(updated) => updateStage(stage.id, updated)}
+                              onDelete={() => deleteStage(stage.id)}
+                              onMoveUp={() => moveStage(stage.id, "up")}
+                              onMoveDown={() => moveStage(stage.id, "down")}
+                              onAddStageBelow={() => addStageAfterSection(stage.id)}
+                              onAddSectionBelow={() => addSectionHeaderAfter(stage.id)}
+                              isFirst={index === 0}
+                              isLast={index === editedTemplate.stages.length - 1}
+                            />
+                          </SortableStageBlock>
+                        ) : (() => {
+                          const parentSectionIdx = (() => {
+                            for (let i = index - 1; i >= 0; i--) {
+                              if (editedTemplate.stages[i].isSection) return i;
+                            }
+                            return -1;
+                          })();
+                          const isUnderSection = parentSectionIdx >= 0;
                           return (
-                            <SortableStageBlock key={stage.id} id={stage.id} isSection>
-                              <SectionHeaderRow
-                                stage={stage}
-                                onUpdate={(updated) => updateStage(stage.id, updated)}
-                                onDelete={() => deleteStage(stage.id)}
-                                onMoveUp={() => moveStage(stage.id, "up")}
-                                onMoveDown={() => moveStage(stage.id, "down")}
-                                onAddStageBelow={() => addStageAfterSection(stage.id)}
-                                isFirst={index === 0}
-                                isLast={index === editedTemplate.stages.length - 1}
-                              />
+                            <SortableStageBlock key={stage.id} id={stage.id}>
+                              <div className={isUnderSection ? "mr-6 border-r-2 border-[#DAA520]/20 pr-1" : ""}>
+                                <StageEditor
+                                  stage={stage}
+                                  onUpdate={(updated) => updateStage(stage.id, updated)}
+                                  onDelete={() => deleteStage(stage.id)}
+                                  onDuplicate={() => duplicateStage(stage.id)}
+                                  onMoveUp={() => moveStage(stage.id, "up")}
+                                  onMoveDown={() => moveStage(stage.id, "down")}
+                                  isFirst={index === 0}
+                                  isLast={index === editedTemplate.stages.length - 1}
+                                  allStages={editedTemplate.stages}
+                                  onAddStagesAfter={(newStages) => {
+                                    setEditedTemplate((prev) => {
+                                      const idx = prev.stages.findIndex((s) => s.id === stage.id);
+                                      if (idx < 0) return prev;
+                                      const next = [...prev.stages];
+                                      next.splice(idx + 1, 0, ...newStages);
+                                      return { ...prev, stages: next };
+                                    });
+                                  }}
+                                  onMoveToStage={(itemIds, targetStageId, position) => {
+                                    setEditedTemplate(prev => {
+                                      const itemsToMove = (prev.stages.find(s => s.id === stage.id)?.items ?? []).filter(i => itemIds.includes(i.id));
+                                      return {
+                                        ...prev,
+                                        stages: prev.stages.map(s => {
+                                          if (s.id === stage.id) return { ...s, items: s.items.filter(i => !itemIds.includes(i.id)) };
+                                          if (s.id === targetStageId) return { ...s, items: position === "start" ? [...itemsToMove, ...s.items] : [...s.items, ...itemsToMove] };
+                                          return s;
+                                        }),
+                                      };
+                                    });
+                                  }}
+                                  onCreateTextBox={(items, format) => {
+                                    const texts = items.map(i => i.text);
+                                    const content = format === "numbered"
+                                      ? texts.map((t, i) => `${i + 1}. ${t}`).join("\n")
+                                      : format === "checkmarks"
+                                      ? texts.map(t => `✓ ${t}`).join("\n")
+                                      : texts.join("\n");
+                                    setTextBoxes(prev => [...prev, {
+                                      id: Date.now().toString(),
+                                      title: "תיבת טקסט חדשה",
+                                      content,
+                                      position: "after-stages" as const,
+                                      style: "default" as const,
+                                    }]);
+                                  }}
+                                />
+                              </div>
                             </SortableStageBlock>
                           );
-                        }
-                        const parentSectionIdx = (() => {
-                          for (let i = index - 1; i >= 0; i--) {
-                            if (editedTemplate.stages[i].isSection) return i;
-                          }
-                          return -1;
                         })();
-                        const isUnderSection = parentSectionIdx >= 0;
                         return (
-                          <SortableStageBlock key={stage.id} id={stage.id}>
-                            <div className={isUnderSection ? "mr-6 border-r-2 border-[#DAA520]/20 pr-1" : ""}>
-                              <StageEditor
-                                stage={stage}
-                                onUpdate={(updated) => updateStage(stage.id, updated)}
-                                onDelete={() => deleteStage(stage.id)}
-                                onDuplicate={() => duplicateStage(stage.id)}
-                                onMoveUp={() => moveStage(stage.id, "up")}
-                                onMoveDown={() => moveStage(stage.id, "down")}
-                                isFirst={index === 0}
-                                isLast={index === editedTemplate.stages.length - 1}
-                                allStages={editedTemplate.stages}
-                                onAddStagesAfter={(newStages) => {
-                                  setEditedTemplate((prev) => {
-                                    const idx = prev.stages.findIndex((s) => s.id === stage.id);
-                                    if (idx < 0) return prev;
-                                    const next = [...prev.stages];
-                                    next.splice(idx + 1, 0, ...newStages);
-                                    return { ...prev, stages: next };
-                                  });
-                                }}
-                                onMoveToStage={(itemIds, targetStageId, position) => {
-                                  setEditedTemplate(prev => {
-                                    const itemsToMove = (prev.stages.find(s => s.id === stage.id)?.items ?? []).filter(i => itemIds.includes(i.id));
-                                    return {
-                                      ...prev,
-                                      stages: prev.stages.map(s => {
-                                        if (s.id === stage.id) return { ...s, items: s.items.filter(i => !itemIds.includes(i.id)) };
-                                        if (s.id === targetStageId) return { ...s, items: position === "start" ? [...itemsToMove, ...s.items] : [...s.items, ...itemsToMove] };
-                                        return s;
-                                      }),
-                                    };
-                                  });
-                                }}
-                                onCreateTextBox={(items, format) => {
-                                  const texts = items.map(i => i.text);
-                                  const content = format === "numbered"
-                                    ? texts.map((t, i) => `${i + 1}. ${t}`).join("\n")
-                                    : format === "checkmarks"
-                                    ? texts.map(t => `✓ ${t}`).join("\n")
-                                    : texts.join("\n");
-                                  setTextBoxes(prev => [...prev, {
-                                    id: Date.now().toString(),
-                                    title: "תיבת טקסט חדשה",
-                                    content,
-                                    position: "after-stages" as const,
-                                    style: "default" as const,
-                                  }]);
-                                }}
+                          <React.Fragment key={stage.id}>
+                            {index === 0 && (
+                              <InsertBetweenStages
+                                onInsertStage={() => insertStageAt(0)}
+                                onInsertSection={() => insertSectionHeaderAt(0)}
                               />
-                            </div>
-                          </SortableStageBlock>
+                            )}
+                            {blockEl}
+                            <InsertBetweenStages
+                              onInsertStage={() => insertStageAt(index + 1)}
+                              onInsertSection={() => insertSectionHeaderAt(index + 1)}
+                            />
+                          </React.Fragment>
                         );
                       })}
                     </SortableContext>
