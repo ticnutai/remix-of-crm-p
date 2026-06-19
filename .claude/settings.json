@@ -16,7 +16,11 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8080)",
       "Bash(timeout 70 python verify_sync.py)",
       "Bash(grep -vE \"^\\\\s*$\")",
-      "Bash(git fetch *)"
+      "Bash(git fetch *)",
+      "Bash(git add *)",
+      "Bash(git push *)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(./node_modules/.bin/vite build *)"
     ]
   }
 }
