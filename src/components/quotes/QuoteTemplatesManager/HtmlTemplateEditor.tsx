@@ -1863,6 +1863,18 @@ function SectionHeaderRow({
           <Plus className="h-4 w-4 ml-1" />
           הוסף שלב
         </Button>
+        {onAddSectionBelow && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-indigo-300 text-indigo-600 hover:bg-indigo-50"
+            onClick={onAddSectionBelow}
+            title="הוסף כותרת ראשית מתחת"
+          >
+            <Heading2 className="h-4 w-4 ml-1" />
+            הוסף כותרת
+          </Button>
+        )}
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onMoveUp} disabled={isFirst}>
             <ChevronUp className="h-3 w-3" />
