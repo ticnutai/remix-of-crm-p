@@ -1807,6 +1807,7 @@ function SectionHeaderRow({
   onMoveUp,
   onMoveDown,
   onAddStageBelow,
+  onAddSectionBelow,
   isFirst,
   isLast,
 }: {
@@ -1816,6 +1817,7 @@ function SectionHeaderRow({
   onMoveUp: () => void;
   onMoveDown: () => void;
   onAddStageBelow: () => void;
+  onAddSectionBelow?: () => void;
   isFirst: boolean;
   isLast: boolean;
 }) {
