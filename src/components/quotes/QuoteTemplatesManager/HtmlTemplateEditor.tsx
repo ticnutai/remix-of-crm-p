@@ -6312,6 +6312,34 @@ ${tbAt('footer')}
     next.splice(idx + 1, 0, newStage);
     setEditedTemplate({ ...editedTemplate, stages: next });
   };
+  const insertStageAt = (insertIndex: number) => {
+    const newStage: TemplateStage = {
+      id: Date.now().toString(),
+      name: "שלב חדש",
+      icon: "📋",
+      items: [],
+      itemDisplayMode: "check",
+    };
+    const next = [...editedTemplate.stages];
+    next.splice(insertIndex, 0, newStage);
+    setEditedTemplate({ ...editedTemplate, stages: next });
+  };
+  const insertSectionHeaderAt = (insertIndex: number) => {
+    const newSection: TemplateStage = {
+      id: Date.now().toString(),
+      name: "כותרת חדשה",
+      icon: "",
+      items: [],
+      isSection: true,
+    };
+    const next = [...editedTemplate.stages];
+    next.splice(insertIndex, 0, newSection);
+    setEditedTemplate({ ...editedTemplate, stages: next });
+  };
+  const addSectionHeaderAfter = (stageId: string) => {
+    const idx = editedTemplate.stages.findIndex(s => s.id === stageId);
+    insertSectionHeaderAt(idx + 1);
+  };
   const addPaymentStep = () =>
     setPaymentSteps([
       ...paymentSteps,
