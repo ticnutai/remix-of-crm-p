@@ -8655,9 +8655,36 @@ ${tbAt('footer')}
           {/* Design Tab */}
           <TabsContent value="design" className="flex-1 m-0 overflow-hidden">
             <ScrollArea className="h-full bg-gray-50">
-              <div className="p-6 space-y-6 max-w-4xl mx-auto">
-                {/* Logo with AI Generation */}
-                <div className="bg-white rounded-xl border p-6 shadow-sm">
+              {/* Sticky sub-navigation for design sections */}
+              <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b shadow-sm" dir="rtl">
+                <div className="max-w-4xl mx-auto px-6 py-3 flex items-center gap-2 overflow-x-auto">
+                  <span className="text-xs font-semibold text-gray-500 ml-2 shrink-0">קפיצה לקטגוריה:</span>
+                  {[
+                    { id: "design-logo", label: "לוגו וסטריפ", icon: "🖼️" },
+                    { id: "design-themes", label: "ערכות צבעים", icon: "🎨" },
+                    { id: "design-colors", label: "צבעים מותאמים", icon: "🎯" },
+                    { id: "design-3d", label: "אפקטי 3D", icon: "✨" },
+                    { id: "design-typography", label: "טיפוגרפיה", icon: "🔤" },
+                    { id: "design-frame", label: "מסגרת ופריסה", icon: "🧱" },
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                      className="shrink-0 px-3 py-1.5 text-xs font-medium rounded-full border border-gray-200 hover:border-[#d8ac27] hover:bg-[#d8ac27]/10 hover:text-[#B8860B] transition-colors text-gray-700 flex items-center gap-1.5"
+                    >
+                      <span>{s.icon}</span>
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="p-6 space-y-6 max-w-4xl mx-auto" dir="rtl">
+                {/* 1. Logo with AI Generation */}
+                <div id="design-logo" className="bg-white rounded-xl border p-6 shadow-sm scroll-mt-24">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-bold text-[#B8860B] bg-[#d8ac27]/10 px-2 py-0.5 rounded-full">1 / 6</span>
+                    <span className="text-xs text-gray-400">לוגו, סטריפ ראש מסמך</span>
+                  </div>
                   <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                     <Image className="h-6 w-6 text-[#B8860B]" />
                     לוגו
