@@ -9369,8 +9369,12 @@ ${tbAt('footer')}
                   </div>
                 </div>
 
-                {/* Typography */}
-                <div className="bg-white rounded-xl border p-6 shadow-sm">
+                {/* 5. Typography */}
+                <div id="design-typography" className="bg-white rounded-xl border p-6 shadow-sm scroll-mt-24">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-bold text-[#B8860B] bg-[#d8ac27]/10 px-2 py-0.5 rounded-full">5 / 6</span>
+                    <span className="text-xs text-gray-400">גופן, גודל ועיגול פינות</span>
+                  </div>
                   <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                     <Type className="h-6 w-6 text-[#B8860B]" />
                     טיפוגרפיה
