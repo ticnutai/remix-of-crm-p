@@ -83,7 +83,7 @@ function BorderEditor({
       {/* פרסטים */}
       <div>
         <Label className="text-xs text-muted-foreground mb-1.5 block">פרסטים</Label>
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
           {BORDER_PRESETS.map((p) => (
             <button
               key={p.name}
@@ -255,7 +255,7 @@ function SectionTitleEditor({ value, onChange }: { value?: SectionTitleConfig; o
   return (
     <div className="space-y-4 p-4 rounded-lg border border-border bg-card">
       <h4 className="font-semibold text-sm flex items-center gap-2"><TypeIcon className="h-4 w-4" />סגנון כותרות סקציות</h4>
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
         {styles.map((s) => (
           <button key={s.value} onClick={() => update({ style: s.value })}
             className={cn("px-2 py-2 text-[11px] rounded-md border transition-colors",
@@ -369,7 +369,7 @@ function PageSizeEditor({
       </div>
 
       {/* Preset buttons */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         {PAGE_PRESETS.map((p) => (
           <button
             key={p.value}
