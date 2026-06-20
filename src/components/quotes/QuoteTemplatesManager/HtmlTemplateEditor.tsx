@@ -9454,8 +9454,12 @@ ${tbAt('footer')}
                   </div>
                 </div>
 
-                {/* Frame Design Panel - מסגרות, רקע, כותרות, header/footer */}
-                <div className="bg-white rounded-xl border p-6 shadow-sm">
+                {/* 6. Frame Design Panel - מסגרות, רקע, כותרות, header/footer */}
+                <div id="design-frame" className="bg-white rounded-xl border p-6 shadow-sm scroll-mt-24">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[11px] font-bold text-[#B8860B] bg-[#d8ac27]/10 px-2 py-0.5 rounded-full">6 / 6</span>
+                    <span className="text-xs text-gray-400">מסגרות, רקע, header/footer קבועים</span>
+                  </div>
                   <FrameDesignPanel
                     value={designSettings.frameDesign || DEFAULT_FRAME_SETTINGS}
                     onChange={(v) => setDesignSettings({ ...designSettings, frameDesign: v })}
