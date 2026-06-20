@@ -8657,7 +8657,7 @@ ${tbAt('footer')}
             <ScrollArea className="h-full bg-gray-50">
               {/* Sticky sub-navigation for design sections */}
               <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b shadow-sm" dir="rtl">
-                <div className="max-w-4xl mx-auto px-6 py-3 flex items-center gap-2 overflow-x-auto">
+                <div className="max-w-6xl mx-auto px-4 md:px-6 py-3 flex items-center gap-2 overflow-x-auto">
                   <span className="text-xs font-semibold text-gray-500 ml-2 shrink-0">קפיצה לקטגוריה:</span>
                   {[
                     { id: "design-logo", label: "לוגו וסטריפ", icon: "🖼️" },
@@ -8678,7 +8678,7 @@ ${tbAt('footer')}
                   ))}
                 </div>
               </div>
-              <div className="p-6 space-y-6 max-w-4xl mx-auto" dir="rtl">
+              <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 max-w-6xl mx-auto" dir="rtl">
                 {/* 1. Logo with AI Generation */}
                 <div id="design-logo" className="bg-white rounded-xl border p-6 shadow-sm scroll-mt-24">
                   <div className="flex items-center justify-between mb-1">
@@ -8689,7 +8689,7 @@ ${tbAt('footer')}
                     <Image className="h-6 w-6 text-[#B8860B]" />
                     לוגו
                   </h2>
-                  <div className="flex items-start gap-6">
+                  <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
                     <div
                       className="relative w-32 h-32 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-[#DAA520] transition-colors"
                       onClick={() => logoInputRef.current?.click()}
@@ -9184,7 +9184,7 @@ ${tbAt('footer')}
                     <Sparkles className="h-6 w-6 text-[#B8860B]" />
                     ערכות צבעים מוכנות
                   </h2>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {colorThemes.map((theme) => (
                       <button
                         key={theme.name}
@@ -9230,7 +9230,7 @@ ${tbAt('footer')}
                     <Palette className="h-6 w-6 text-[#B8860B]" />
                     צבעים מותאמים
                   </h2>
-                  <div className="grid grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                     <ColorPicker
                       label="צבע ראשי"
                       value={designSettings.primaryColor}
@@ -9379,7 +9379,7 @@ ${tbAt('footer')}
                     <Type className="h-6 w-6 text-[#B8860B]" />
                     טיפוגרפיה
                   </h2>
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label>גופן (10 גופנים בעברית)</Label>
                       <Select
