@@ -8657,7 +8657,7 @@ ${tbAt('footer')}
             <ScrollArea className="h-full bg-gray-50">
               {/* Sticky sub-navigation for design sections */}
               <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b shadow-sm" dir="rtl">
-                <div className="max-w-4xl mx-auto px-6 py-3 flex items-center gap-2 overflow-x-auto">
+                <div className="max-w-6xl mx-auto px-4 md:px-6 py-3 flex items-center gap-2 overflow-x-auto">
                   <span className="text-xs font-semibold text-gray-500 ml-2 shrink-0">קפיצה לקטגוריה:</span>
                   {[
                     { id: "design-logo", label: "לוגו וסטריפ", icon: "🖼️" },
