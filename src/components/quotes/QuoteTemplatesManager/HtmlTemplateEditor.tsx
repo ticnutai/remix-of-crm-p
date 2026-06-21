@@ -6083,6 +6083,19 @@ export function HtmlTemplateEditor({
     // overrides reintroduce position:fixed on header/footer which conflicts
     // with `position: running()` and prevents pagination.
     sanitized = sanitized.replace(/@media\s+print\s*\{[\s\S]*?\n\s*\}\s*\n/g, "");
+    // Unwrap .container and .content so paged.js treats their children as
+    // direct flow children that can break across pages (otherwise the entire
+    // template renders as one tall block on a single page).
+    sanitized = sanitized
+      .replace(/<div\s+class="container"[^>]*>/g, "")
+      .replace(/<div\s+class="content"[^>]*>/g, "");
+    // Close the corresponding </div> tags. The container/content wrappers each
+    // contribute one closing div at the end of body — drop the last two before
+    // </body>.
+    sanitized = sanitized.replace(
+      /(<\/div>\s*){2}(\s*<\/body>)/,
+      "$2"
+    );
     const inject = `
     <style>
       html, body { background: #e5e7eb !important; margin: 0 !important; padding: 0 !important; }
