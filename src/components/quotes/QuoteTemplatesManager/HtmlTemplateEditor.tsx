@@ -5921,6 +5921,8 @@ export function HtmlTemplateEditor({
   ${fixedHeaderHtml(fd.fixedHeader, designSettings.logoUrl)}
   <div class="container">
     ${decorativeCornersHtml(fd.documentBorder)}
+    <table class="print-page-shell">
+      <thead class="print-repeat-header"><tr><td>
     ${
       designSettings.showLogo &&
       designSettings.logoUrl &&
@@ -5989,6 +5991,8 @@ export function HtmlTemplateEditor({
       }
     </div>`
     }
+      </td></tr></thead>
+      <tbody><tr><td>
     <div class="content">
       ${renderTextBoxes("header")}
       
@@ -6043,10 +6047,14 @@ export function HtmlTemplateEditor({
       
       ${renderTextBoxes("footer")}
     </div>
+      </td></tr></tbody>
+      <tfoot class="print-repeat-footer"><tr><td>
     <div class="footer">
       <strong>${designSettings.companyName}</strong><br>
       ${designSettings.companyAddress} | ${designSettings.companyPhone} | ${designSettings.companyEmail}
     </div>
+      </td></tr></tfoot>
+    </table>
   </div>
   ${fixedFooterHtml(fd.fixedFooter)}
 </body>
