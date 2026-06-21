@@ -5849,12 +5849,15 @@ export function HtmlTemplateEditor({
     .stage-card { position: relative; ${borderToCss(fd.stageBorder)} }
     .summary-card { position: relative; margin-top: 30px; ${borderToCss(fd.summaryBorder)} }
     @page {
-      margin-top: ${repeatHeader ? headerHeightPx + 20 : 0}px;
-      margin-bottom: ${repeatFooter ? footerHeightPx + 20 : 0}px;
+      margin: 0;
       margin-left: 0;
       margin-right: 0;
       size: ${pageCssSize};
     }
+    .print-page-shell { width: 100%; border-collapse: collapse; border-spacing: 0; }
+    .print-page-shell > thead > tr > td,
+    .print-page-shell > tbody > tr > td,
+    .print-page-shell > tfoot > tr > td { padding: 0; vertical-align: top; }
     @media print {
       html {
         -webkit-print-color-adjust: exact;
@@ -5874,33 +5877,30 @@ export function HtmlTemplateEditor({
         box-shadow: none !important;
       }
       .content {
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
+        padding: 28px 40px !important;
+      }
+      .print-repeat-header { display: ${repeatHeader ? "table-header-group" : "table-row-group"} !important; }
+      .print-repeat-footer { display: ${repeatFooter ? "table-footer-group" : "table-row-group"} !important; }
+      .stage-card,
+      .summary-card,
+      .project-details,
+      table.payments,
+      .payments tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
       }
       .footer {
-        ${repeatFooter ? `
-        position: fixed !important;
-        bottom: -${footerHeightPx + 20}px !important;
-        left: 0 !important;
-        right: 0 !important;
         margin: 0 !important;
-        z-index: 50 !important;
         background: #f9f9f9 !important;
-        height: ${footerHeightPx}px !important;
-        ` : ""}
+        min-height: ${footerHeightPx}px !important;
+        box-sizing: border-box !important;
       }
-      ${repeatHeader ? `
       .header,
       .header-strip {
-        position: fixed !important;
-        top: -${headerHeightPx + 20}px !important;
-        left: 0 !important;
-        right: 0 !important;
-        z-index: 40 !important;
+        position: relative !important;
         margin: 0 !important;
         height: ${headerHeightPx}px !important;
       }
-      ` : ""}
 
       .quote-fixed-header { position: fixed; top: 0; left: 0; right: 0; }
       .quote-fixed-footer { position: fixed; bottom: 0; left: 0; right: 0; }
@@ -5923,6 +5923,8 @@ export function HtmlTemplateEditor({
   ${fixedHeaderHtml(fd.fixedHeader, designSettings.logoUrl)}
   <div class="container">
     ${decorativeCornersHtml(fd.documentBorder)}
+    <table class="print-page-shell">
+      <thead class="print-repeat-header"><tr><td>
     ${
       designSettings.showLogo &&
       designSettings.logoUrl &&
@@ -5991,6 +5993,8 @@ export function HtmlTemplateEditor({
       }
     </div>`
     }
+      </td></tr></thead>
+      <tbody><tr><td>
     <div class="content">
       ${renderTextBoxes("header")}
       
@@ -6045,10 +6049,14 @@ export function HtmlTemplateEditor({
       
       ${renderTextBoxes("footer")}
     </div>
+      </td></tr></tbody>
+      <tfoot class="print-repeat-footer"><tr><td>
     <div class="footer">
       <strong>${designSettings.companyName}</strong><br>
       ${designSettings.companyAddress} | ${designSettings.companyPhone} | ${designSettings.companyEmail}
     </div>
+      </td></tr></tfoot>
+    </table>
   </div>
   ${fixedFooterHtml(fd.fixedFooter)}
 </body>
