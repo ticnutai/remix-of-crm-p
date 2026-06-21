@@ -5849,7 +5849,10 @@ export function HtmlTemplateEditor({
     .stage-card { position: relative; ${borderToCss(fd.stageBorder)} }
     .summary-card { position: relative; margin-top: 30px; ${borderToCss(fd.summaryBorder)} }
     @page {
-      margin: 0;
+      margin-top: ${repeatHeader ? headerHeightPx + 20 : 0}px;
+      margin-bottom: ${repeatFooter ? footerHeightPx + 20 : 0}px;
+      margin-left: 0;
+      margin-right: 0;
       size: ${pageCssSize};
     }
     @media print {
@@ -5871,29 +5874,31 @@ export function HtmlTemplateEditor({
         box-shadow: none !important;
       }
       .content {
-        padding-bottom: ${repeatFooter ? footerHeightPx + 20 : 40}px !important;
-        ${repeatHeader ? `padding-top: ${headerHeightPx + 20}px !important;` : ""}
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
       }
       .footer {
         ${repeatFooter ? `
         position: fixed !important;
-        bottom: 0 !important;
+        bottom: -${footerHeightPx + 20}px !important;
         left: 0 !important;
         right: 0 !important;
         margin: 0 !important;
         z-index: 50 !important;
         background: #f9f9f9 !important;
+        height: ${footerHeightPx}px !important;
         ` : ""}
       }
       ${repeatHeader ? `
       .header,
       .header-strip {
         position: fixed !important;
-        top: 0 !important;
+        top: -${headerHeightPx + 20}px !important;
         left: 0 !important;
         right: 0 !important;
         z-index: 40 !important;
         margin: 0 !important;
+        height: ${headerHeightPx}px !important;
       }
       ` : ""}
 
