@@ -5825,7 +5825,8 @@ export function HtmlTemplateEditor({
         ` : ""}
       }
       ${repeatHeader ? `
-      .header {
+      .header,
+      .header-strip {
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
@@ -5834,6 +5835,7 @@ export function HtmlTemplateEditor({
         margin: 0 !important;
       }
       ` : ""}
+
       .quote-fixed-header { position: fixed; top: 0; left: 0; right: 0; }
       .quote-fixed-footer { position: fixed; bottom: 0; left: 0; right: 0; }
       .print-frame-overlay {
@@ -5887,16 +5889,17 @@ export function HtmlTemplateEditor({
                 layersHtml += `<img src="${layers.text.url}" alt="Text" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:${(layers.text.opacity ?? 100) / 100};">`;
               }
               return `
-    <div style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
+    <div class="header-strip" style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
       ${layersHtml}
     </div>`;
             } else {
               const stripOpacity = (designSettings.stripLineOpacity ?? 100) / 100;
               const logoSrc = designSettings.logoUrl || "";
               return `
-    <div style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
+    <div class="header-strip" style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
       <img src="${logoSrc}" alt="Header Strip" style="width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: ${stripOpacity}; mix-blend-mode: multiply;">
     </div>`;
+
             }
           })()
         : designSettings.showHeaderStrip !== false
