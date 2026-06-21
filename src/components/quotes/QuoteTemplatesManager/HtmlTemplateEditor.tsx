@@ -14030,6 +14030,8 @@ ${tbAt('footer')}
               ?.phone || ""
           }
           totalPrice={editedTemplate.base_price || 35000}
+          generateExportHtml={generateExportHtml}
+          generateWordHtml={generateWordHtml}
         />
     </>
   );
@@ -14080,6 +14082,8 @@ function WhatsAppDialog({
   clientName,
   clientPhone,
   totalPrice,
+  generateExportHtml,
+  generateWordHtml,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -14087,12 +14091,18 @@ function WhatsAppDialog({
   clientName: string;
   clientPhone: string;
   totalPrice: number;
+  generateExportHtml?: () => Promise<string>;
+  generateWordHtml?: () => Promise<string>;
 }) {
   const [phone, setPhone] = useState(clientPhone);
   const [messageType, setMessageType] = useState<
     "formal" | "friendly" | "short" | "custom"
   >("formal");
   const [customMessage, setCustomMessage] = useState("");
+  const [attachFormat, setAttachFormat] = useState<
+    "none" | "pdf" | "word" | "html"
+  >("none");
+  const [sending, setSending] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -14130,7 +14140,54 @@ function WhatsAppDialog({
     return cleaned;
   };
 
-  const handleSend = () => {
+  const safeName = (templateName || "הצעת-מחיר").replace(/[\\/:*?"<>|]/g, "-");
+
+  const buildFile = async (): Promise<globalThis.File | null> => {
+    if (attachFormat === "none") return null;
+    if (attachFormat === "html" && generateExportHtml) {
+      const html = await generateExportHtml();
+      return new window.File([html], `${safeName}.html`, {
+        type: "text/html;charset=utf-8",
+      });
+    }
+    if (attachFormat === "word" && generateWordHtml) {
+      const html = await generateWordHtml();
+      return new window.File(["\ufeff" + html], `${safeName}.doc`, {
+        type: "application/msword",
+      });
+    }
+
+    if (attachFormat === "pdf" && generateExportHtml) {
+      // No client-side PDF lib here — open print window for "Save as PDF"
+      const html = await generateExportHtml();
+      const w = window.open("", "_blank");
+      if (w) {
+        w.document.write(html);
+        w.document.close();
+        setTimeout(() => w.print(), 500);
+      }
+      toast({
+        title: "שמור את ה-PDF",
+        description:
+          'בחלון ההדפסה בחר "שמירה כ-PDF", ואז גרור את הקובץ לצ\'אט בוואטסאפ',
+      });
+      return null;
+    }
+    return null;
+  };
+
+  const downloadFile = (file: globalThis.File) => {
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleSend = async () => {
     if (!phone) {
       toast({
         title: "שגיאה",
@@ -14139,11 +14196,64 @@ function WhatsAppDialog({
       });
       return;
     }
-    const formattedPhone = formatPhoneForWhatsApp(phone);
-    const message = encodeURIComponent(messageTemplates[messageType]);
-    window.open(`https://wa.me/${formattedPhone}?text=${message}`, "_blank");
-    onOpenChange(false);
-    toast({ title: "וואטסאפ נפתח", description: "ההודעה מוכנה לשליחה" });
+    setSending(true);
+    try {
+      const text = messageTemplates[messageType];
+      const formattedPhone = formatPhoneForWhatsApp(phone);
+      const file = await buildFile();
+
+      // Try native share with file (works mainly on mobile)
+      const nav: any = navigator;
+      if (
+        file &&
+        nav.share &&
+        typeof nav.canShare === "function" &&
+        nav.canShare({ files: [file] })
+      ) {
+        try {
+          await nav.share({
+            files: [file],
+            title: templateName,
+            text,
+          });
+          toast({
+            title: "שותף בהצלחה",
+            description: "בחר את וואטסאפ ברשימת השיתוף",
+          });
+          onOpenChange(false);
+          return;
+        } catch (err: any) {
+          // user cancelled or share failed — fall back below
+          if (err?.name === "AbortError") {
+            return;
+          }
+        }
+      }
+
+      // Fallback: download file (if any) then open WhatsApp with text
+      if (file) {
+        downloadFile(file);
+        toast({
+          title: "הקובץ הורד",
+          description: "גרור אותו לצ'אט בוואטסאפ שנפתח",
+        });
+      }
+      const message = encodeURIComponent(text);
+      window.open(`https://wa.me/${formattedPhone}?text=${message}`, "_blank");
+      onOpenChange(false);
+      if (!file && attachFormat === "none") {
+        toast({ title: "וואטסאפ נפתח", description: "ההודעה מוכנה לשליחה" });
+      }
+    } catch (err) {
+      console.error("WhatsApp send error:", err);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לשלוח כעת",
+        variant: "destructive",
+      });
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -14191,6 +14301,35 @@ function WhatsAppDialog({
               ))}
             </div>
           </div>
+          <div className="space-y-2">
+            <Label>צרף הצעה כקובץ</Label>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { value: "none", label: "ללא" },
+                { value: "pdf", label: "PDF" },
+                { value: "word", label: "Word" },
+                { value: "html", label: "HTML" },
+              ].map((option) => (
+                <Button
+                  key={option.value}
+                  variant={attachFormat === option.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAttachFormat(option.value as any)}
+                  className={
+                    attachFormat === option.value
+                      ? "bg-[#25D366] hover:bg-[#128C7E]"
+                      : ""
+                  }
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              במובייל הקובץ יצורף ישירות. בדסקטופ הוא יורד אוטומטית ויש לגרור
+              אותו לצ'אט (מגבלה של וואטסאפ).
+            </p>
+          </div>
           {messageType === "custom" ? (
             <div className="space-y-2">
               <Label>הודעה מותאמת</Label>
@@ -14205,7 +14344,7 @@ function WhatsAppDialog({
           ) : (
             <div className="space-y-2">
               <Label>תצוגה מקדימה</Label>
-              <div className="bg-gray-50 p-3 rounded-lg text-sm whitespace-pre-wrap border max-h-40 overflow-y-auto">
+              <div className="bg-muted p-3 rounded-lg text-sm whitespace-pre-wrap border max-h-40 overflow-y-auto">
                 {messageTemplates[messageType]}
               </div>
             </div>
@@ -14217,11 +14356,11 @@ function WhatsAppDialog({
           </Button>
           <Button
             onClick={handleSend}
-            className="bg-[#25D366] hover:bg-[#128C7E] text-white"
-            disabled={!phone}
+            className="bg-[#25D366] hover:bg-[#128C7E] text-primary-foreground"
+            disabled={!phone || sending}
           >
             <MessageCircle className="h-4 w-4 ml-2" />
-            שלח בוואטסאפ
+            {sending ? "מכין..." : "שלח בוואטסאפ"}
           </Button>
         </DialogFooter>
       </DialogContent>
