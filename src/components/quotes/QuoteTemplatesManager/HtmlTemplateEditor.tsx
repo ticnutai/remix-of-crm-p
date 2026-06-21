@@ -6055,129 +6055,66 @@ export function HtmlTemplateEditor({
   // Debounce the HTML fed into the preview iframe to prevent flicker while typing
   const debouncedPreviewHtml = useDebouncedValue(liveHtml, 300);
 
-  // Paged view toggle: when on, inject Paged.js to render the preview as real
-  // pages with margins, page breaks, and repeating header/footer strips on
-  // every page (mirrors the print output). Inline editing is disabled in this
-  // mode because Paged.js clones content into page boxes.
-  const [pagedView, setPagedView] = useState(false);
+  // Paged view: opens a separate browser window with the rendered HTML and
+  // triggers the native print preview, which uses the existing print CSS to
+  // repeat header/footer strips on every page. Reliable across all templates
+  // (Paged.js polyfill was abandoned — it failed silently on complex docs).
   const [pagedPageCount, setPagedPageCount] = useState<number | null>(null);
   const [pagedRendering, setPagedRendering] = useState(false);
-  const pagedPreviewHtml = useMemo(() => {
-    if (!debouncedPreviewHtml) return debouncedPreviewHtml;
-    const headerH = (designSettings.headerStripHeight || 150);
-    const footerH = 90;
-    const topMargin = headerH + 24;
-    const bottomMargin = footerH + 24;
-    const inject = `
-    <style>
-      html, body { background: #e5e7eb !important; margin: 0 !important; padding: 0 !important; }
-      .pagedjs_pages { display: block !important; }
-      .pagedjs_page {
-        background: white !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
-        margin: 16px auto !important;
-        position: relative !important;
-      }
-      .pagedjs_page::after {
-        content: "עמוד " counter(page) " / " counter(pages);
-        position: absolute;
-        top: 8px;
-        left: 8px;
-        background: rgba(22, 44, 88, 0.85);
-        color: #fff;
-        font-size: 11px;
-        font-family: system-ui, sans-serif;
-        padding: 2px 8px;
-        border-radius: 10px;
-        z-index: 9999;
-        pointer-events: none;
-      }
-      @page {
-        size: A4;
-        margin: ${topMargin}px 0 ${bottomMargin}px 0 !important;
-        @top-center {
-          content: element(runningHeader);
-          width: 100%;
-          margin: 0;
-          padding: 0;
-        }
-        @bottom-center {
-          content: element(runningFooter);
-          width: 100%;
-          margin: 0;
-          padding: 0;
-        }
-      }
-      .header,
-      .header-strip,
-      .full-width-header,
-      .quote-fixed-header {
-        position: running(runningHeader) !important;
-        width: 100% !important;
-        margin: 0 !important;
-      }
-      .footer,
-      .quote-fixed-footer {
-        position: running(runningFooter) !important;
-        width: 100% !important;
-        margin: 0 !important;
-      }
-      .container {
-        padding: 0 !important;
-        margin: 0 !important;
-        max-width: 100% !important;
-        width: 100% !important;
-        box-shadow: none !important;
-        border: none !important;
-        border-radius: 0 !important;
-      }
-      .content {
-        padding-top: 16px !important;
-        padding-bottom: 16px !important;
-      }
-      .stage-card, .summary-card, table, tr, td, th, .project-details {
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-    </style>
-    <script>
-      window.PagedConfig = {
-        auto: true,
-        after: function(flow) {
-          try {
-            window.parent.postMessage({
-              __lovablePagedReady: true,
-              pages: flow && flow.total ? flow.total : (document.querySelectorAll('.pagedjs_page').length || 1)
-            }, '*');
-          } catch (e) {}
-        }
-      };
-      try { window.parent.postMessage({ __lovablePagedRendering: true }, '*'); } catch(e) {}
-    </script>
-    <script src="https://unpkg.com/pagedjs@0.4.3/dist/paged.polyfill.js"><\/script>`;
-    return debouncedPreviewHtml.replace("</body>", `${inject}</body>`);
-  }, [debouncedPreviewHtml, designSettings.headerStripHeight]);
 
-  // Listen for paged.js completion messages to surface page count in the UI
-  useEffect(() => {
-    if (!pagedView) return;
+  const openPrintPreview = useCallback(() => {
+    if (!debouncedPreviewHtml) return;
     setPagedRendering(true);
     setPagedPageCount(null);
+    const win = window.open("", "_blank", "width=900,height=1200");
+    if (!win) {
+      setPagedRendering(false);
+      alert("חסום על ידי דפדפן — אפשר חלונות קופצים כדי לראות תצוגת עמודים");
+      return;
+    }
+    // Inject a small script that, once the document settles, measures how
+    // many A4 pages the body would occupy and reports back via postMessage.
+    const measureScript = `
+    <script>
+      (function(){
+        function reportPages(){
+          try {
+            var px = document.documentElement.scrollHeight;
+            // A4 height at 96dpi ~= 1123px. Use generous estimate accounting
+            // for fixed header/footer reserving margin space.
+            var pageH = 1123;
+            var pages = Math.max(1, Math.ceil(px / pageH));
+            window.opener && window.opener.postMessage({
+              __lovablePrintPagesReady: true,
+              pages: pages
+            }, '*');
+          } catch(e){}
+        }
+        if (document.readyState === 'complete') setTimeout(reportPages, 400);
+        else window.addEventListener('load', function(){ setTimeout(reportPages, 400); });
+      })();
+    <\/script>`;
+    const html = debouncedPreviewHtml.replace(
+      "</body>",
+      `${measureScript}</body>`
+    );
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  }, [debouncedPreviewHtml]);
+
+  // Listen for page-count report from the print preview window.
+  useEffect(() => {
     const onMsg = (ev: MessageEvent) => {
       const data = ev.data as any;
-      if (!data) return;
-      if (data.__lovablePagedRendering) {
-        setPagedRendering(true);
-        setPagedPageCount(null);
-      }
-      if (data.__lovablePagedReady) {
-        setPagedRendering(false);
-        setPagedPageCount(Number(data.pages) || 1);
-      }
+      if (!data || !data.__lovablePrintPagesReady) return;
+      setPagedRendering(false);
+      setPagedPageCount(Number(data.pages) || 1);
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, [pagedView, pagedPreviewHtml]);
+  }, []);
+
 
 
 
@@ -13702,37 +13639,34 @@ ${tbAt('footer')}
                   <div className="shrink-0 flex items-center justify-between gap-2 px-2 pb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">
-                        {pagedView
-                          ? "תצוגת עמודים - חלוקה מלאה, סטריפים בכל עמוד"
-                          : "תצוגה חיה - לחיצה לעריכה מהירה"}
+                        תצוגה חיה - לחיצה לעריכה מהירה
                       </span>
-                      {pagedView && (
+                      {(pagedRendering || pagedPageCount != null) && (
                         <Badge variant="secondary" className="text-[10px] h-5">
                           {pagedRendering
-                            ? "מרנדר..."
-                            : pagedPageCount != null
-                            ? `${pagedPageCount} עמודים`
-                            : "ממתין"}
+                            ? "סופר עמודים..."
+                            : `${pagedPageCount} עמודים בהדפסה`}
                         </Badge>
                       )}
                     </div>
                     <Button
                       type="button"
-                      variant={pagedView ? "default" : "outline"}
+                      variant="outline"
                       size="sm"
-                      onClick={() => setPagedView((v) => !v)}
+                      onClick={openPrintPreview}
+                      title="פותח חלון תצוגת הדפסה עם כל העמודים והסטריפים החוזרים"
                     >
                       <FileText className="h-3.5 w-3.5 ml-1" />
-                      {pagedView ? "תצוגה חיה" : "תצוגת עמודים"}
+                      תצוגת עמודים / הדפסה
                     </Button>
                   </div>
                   <div className="flex-1 bg-white rounded-lg shadow-lg overflow-hidden">
                     <PreviewIframe
-                      html={pagedView ? pagedPreviewHtml : debouncedPreviewHtml}
+                      html={debouncedPreviewHtml}
                       title="תצוגה מקדימה חיה"
                       className="w-full h-full border-0"
                       style={{ minHeight: "100%" }}
-                      onInlineEdit={pagedView ? undefined : handleInlineEdit}
+                      onInlineEdit={handleInlineEdit}
                     />
                   </div>
                 </div>
