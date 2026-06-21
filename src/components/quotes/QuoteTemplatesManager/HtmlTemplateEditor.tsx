@@ -14030,6 +14030,8 @@ ${tbAt('footer')}
               ?.phone || ""
           }
           totalPrice={editedTemplate.base_price || 35000}
+          generateExportHtml={generateExportHtml}
+          generateWordHtml={generateWordHtml}
         />
     </>
   );
