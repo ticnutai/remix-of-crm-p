@@ -13700,11 +13700,22 @@ ${tbAt('footer')}
               <ResizablePanel defaultSize={50} minSize={30}>
                 <div className="h-full bg-gray-100 p-2 flex flex-col">
                   <div className="shrink-0 flex items-center justify-between gap-2 px-2 pb-2">
-                    <span className="text-xs text-muted-foreground">
-                      {pagedView
-                        ? "תצוגת עמודים - חלוקה מלאה, סטריפים בכל עמוד"
-                        : "תצוגה חיה - לחיצה לעריכה מהירה"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {pagedView
+                          ? "תצוגת עמודים - חלוקה מלאה, סטריפים בכל עמוד"
+                          : "תצוגה חיה - לחיצה לעריכה מהירה"}
+                      </span>
+                      {pagedView && (
+                        <Badge variant="secondary" className="text-[10px] h-5">
+                          {pagedRendering
+                            ? "מרנדר..."
+                            : pagedPageCount != null
+                            ? `${pagedPageCount} עמודים`
+                            : "ממתין"}
+                        </Badge>
+                      )}
+                    </div>
                     <Button
                       type="button"
                       variant={pagedView ? "default" : "outline"}
