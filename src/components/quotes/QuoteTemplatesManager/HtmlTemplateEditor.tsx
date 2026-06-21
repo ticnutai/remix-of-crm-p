@@ -6055,6 +6055,29 @@ export function HtmlTemplateEditor({
   // Debounce the HTML fed into the preview iframe to prevent flicker while typing
   const debouncedPreviewHtml = useDebouncedValue(liveHtml, 300);
 
+  // Paged view toggle: when on, inject Paged.js to render the preview as real
+  // pages with margins, page breaks, and repeating header/footer strips on
+  // every page (mirrors the print output). Inline editing is disabled in this
+  // mode because Paged.js clones content into page boxes.
+  const [pagedView, setPagedView] = useState(false);
+  const pagedPreviewHtml = useMemo(() => {
+    if (!debouncedPreviewHtml) return debouncedPreviewHtml;
+    const inject = `
+    <style>
+      html, body { background: #e5e7eb !important; }
+      .pagedjs_pages { display: block !important; }
+      .pagedjs_page {
+        background: white !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+        margin: 16px auto !important;
+      }
+    </style>
+    <script src="https://unpkg.com/pagedjs@0.4.3/dist/paged.polyfill.js"><\/script>`;
+    return debouncedPreviewHtml.replace("</body>", `${inject}</body>`);
+  }, [debouncedPreviewHtml]);
+
+
+
   // Inline-edit dispatcher: maps a data-editable path coming from the preview
   // iframe back to the relevant editor state. Paths used:
   //   template.name | template.description
@@ -13572,18 +13595,35 @@ ${tbAt('footer')}
 
               {/* Preview Panel */}
               <ResizablePanel defaultSize={50} minSize={30}>
-                <div className="h-full bg-gray-100 p-4">
-                  <div className="h-full bg-white rounded-lg shadow-lg overflow-hidden">
+                <div className="h-full bg-gray-100 p-2 flex flex-col">
+                  <div className="shrink-0 flex items-center justify-between gap-2 px-2 pb-2">
+                    <span className="text-xs text-muted-foreground">
+                      {pagedView
+                        ? "תצוגת עמודים - חלוקה מלאה, סטריפים בכל עמוד"
+                        : "תצוגה חיה - לחיצה לעריכה מהירה"}
+                    </span>
+                    <Button
+                      type="button"
+                      variant={pagedView ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPagedView((v) => !v)}
+                    >
+                      <FileText className="h-3.5 w-3.5 ml-1" />
+                      {pagedView ? "תצוגה חיה" : "תצוגת עמודים"}
+                    </Button>
+                  </div>
+                  <div className="flex-1 bg-white rounded-lg shadow-lg overflow-hidden">
                     <PreviewIframe
-                      html={debouncedPreviewHtml}
+                      html={pagedView ? pagedPreviewHtml : debouncedPreviewHtml}
                       title="תצוגה מקדימה חיה"
                       className="w-full h-full border-0"
                       style={{ minHeight: "100%" }}
-                      onInlineEdit={handleInlineEdit}
+                      onInlineEdit={pagedView ? undefined : handleInlineEdit}
                     />
                   </div>
                 </div>
               </ResizablePanel>
+
             </ResizablePanelGroup>
           </TabsContent>
         </Tabs>
