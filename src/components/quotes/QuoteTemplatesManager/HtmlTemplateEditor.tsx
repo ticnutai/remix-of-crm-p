@@ -5849,8 +5849,8 @@ export function HtmlTemplateEditor({
     .stage-card { position: relative; ${borderToCss(fd.stageBorder)} }
     .summary-card { position: relative; margin-top: 30px; ${borderToCss(fd.summaryBorder)} }
     @page {
-      margin-top: ${repeatHeader ? headerHeightPx + 20 : 0}px;
-      margin-bottom: ${repeatFooter ? footerHeightPx + 20 : 0}px;
+      margin-top: ${repeatHeader ? headerHeightPx + 28 : 0}px;
+      margin-bottom: ${repeatFooter ? footerHeightPx + 28 : 0}px;
       margin-left: 0;
       margin-right: 0;
       size: ${pageCssSize};
@@ -5877,10 +5877,18 @@ export function HtmlTemplateEditor({
         padding-top: 0 !important;
         padding-bottom: 0 !important;
       }
+      .stage-card,
+      .summary-card,
+      .project-details,
+      table.payments,
+      tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
       .footer {
         ${repeatFooter ? `
         position: fixed !important;
-        bottom: -${footerHeightPx + 20}px !important;
+        bottom: 0 !important;
         left: 0 !important;
         right: 0 !important;
         margin: 0 !important;
@@ -5893,7 +5901,7 @@ export function HtmlTemplateEditor({
       .header,
       .header-strip {
         position: fixed !important;
-        top: -${headerHeightPx + 20}px !important;
+        top: 0 !important;
         left: 0 !important;
         right: 0 !important;
         z-index: 40 !important;
