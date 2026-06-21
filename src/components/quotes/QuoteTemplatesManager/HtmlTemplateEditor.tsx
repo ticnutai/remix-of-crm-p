@@ -6103,7 +6103,7 @@ export function HtmlTemplateEditor({
       }
       @page {
         size: A4;
-        margin: ${topMargin}px 0 ${bottomMargin}px 0 !important;
+        margin: ${topMargin}px 0 ${bottomMargin}px 0;
         @top-center {
           content: element(runningHeader);
           width: 100%;
