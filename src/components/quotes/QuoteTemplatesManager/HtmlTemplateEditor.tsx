@@ -6062,19 +6062,70 @@ export function HtmlTemplateEditor({
   const [pagedView, setPagedView] = useState(false);
   const pagedPreviewHtml = useMemo(() => {
     if (!debouncedPreviewHtml) return debouncedPreviewHtml;
+    const headerH = (designSettings.headerStripHeight || 150);
+    const footerH = 90;
+    const topMargin = headerH + 24;
+    const bottomMargin = footerH + 24;
     const inject = `
     <style>
-      html, body { background: #e5e7eb !important; }
+      html, body { background: #e5e7eb !important; margin: 0 !important; padding: 0 !important; }
       .pagedjs_pages { display: block !important; }
       .pagedjs_page {
         background: white !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
         margin: 16px auto !important;
       }
+      @page {
+        size: A4;
+        margin: ${topMargin}px 0 ${bottomMargin}px 0 !important;
+        @top-center {
+          content: element(runningHeader);
+          width: 100%;
+          margin: 0;
+          padding: 0;
+        }
+        @bottom-center {
+          content: element(runningFooter);
+          width: 100%;
+          margin: 0;
+          padding: 0;
+        }
+      }
+      .header,
+      .header-strip,
+      .full-width-header,
+      .quote-fixed-header {
+        position: running(runningHeader) !important;
+        width: 100% !important;
+        margin: 0 !important;
+      }
+      .footer,
+      .quote-fixed-footer {
+        position: running(runningFooter) !important;
+        width: 100% !important;
+        margin: 0 !important;
+      }
+      .container {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+      }
+      .content {
+        padding-top: 16px !important;
+        padding-bottom: 16px !important;
+      }
+      .stage-card, .summary-card, table, tr, td, th, .project-details {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
     </style>
     <script src="https://unpkg.com/pagedjs@0.4.3/dist/paged.polyfill.js"><\/script>`;
     return debouncedPreviewHtml.replace("</body>", `${inject}</body>`);
-  }, [debouncedPreviewHtml]);
+  }, [debouncedPreviewHtml, designSettings.headerStripHeight]);
 
 
 
