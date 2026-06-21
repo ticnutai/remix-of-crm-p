@@ -1,5 +1,6 @@
 // מנהל תבניות הצעות מחיר מתקדם - עם תיקיות
 import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,6 +204,7 @@ export function QuoteTemplatesManager() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wordToHtmlInputRef = useRef<HTMLInputElement>(null);
 
@@ -803,12 +805,17 @@ export function QuoteTemplatesManager() {
     const newTemplate = createEmptyTemplate();
     const resolvedFolderId = folderId !== undefined ? folderId : selectedFolderId;
     if (resolvedFolderId) newTemplate.folder_id = resolvedFolderId;
-    setHtmlEditorTemplate({
-      ...newTemplate,
-      id: "",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    } as QuoteTemplate);
+    navigate("/quote-templates/editor/new", {
+      state: {
+        template: {
+          ...newTemplate,
+          id: "",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        folderId: resolvedFolderId ?? null,
+      },
+    });
   };
 
   const handleEdit = (template: QuoteTemplate) => {
@@ -1010,7 +1017,7 @@ export function QuoteTemplatesManager() {
                       <Button
                         size="sm"
                         className="h-8 shrink-0 bg-[#d8ac27] text-white hover:bg-[#c49b22]"
-                        onClick={() => setHtmlEditorTemplate(template)}
+                        onClick={() => navigate(`/quote-templates/editor/${template.id}`)}
                       >
                         <ExternalLink className="h-3.5 w-3.5 ml-1" />
                         פתח
@@ -1254,7 +1261,7 @@ export function QuoteTemplatesManager() {
               <Button
                 size="sm"
                 className="flex-1 bg-[#d8ac27] hover:bg-[#c49b22] text-white"
-                onClick={() => setHtmlEditorTemplate(template)}
+                onClick={() => navigate(`/quote-templates/editor/${template.id}`)}
               >
                 <ExternalLink className="h-4 w-4 ml-1" />
                 פתח בעורך
