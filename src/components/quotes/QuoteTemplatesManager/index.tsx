@@ -824,12 +824,11 @@ export function QuoteTemplatesManager() {
   };
 
   const handleDuplicate = (template: QuoteTemplate) => {
-    setEditingTemplate({
+    saveMutation.mutate({
       ...template,
       id: undefined,
       name: `${template.name} (העתק)`,
     });
-    setIsDialogOpen(true);
   };
 
   const handleDelete = (id: string) => {
@@ -1026,8 +1025,8 @@ export function QuoteTemplatesManager() {
                         variant="outline"
                         size="sm"
                         className="h-8 shrink-0"
-                        title="שכפל וצור הצעת מחיר חדשה"
-                        onClick={() => openTemplateInDocumentEditor(template.id)}
+                        title="שכפל תבנית"
+                        onClick={() => handleDuplicate(template)}
                       >
                         <Copy className="h-3.5 w-3.5" />
                       </Button>
@@ -1270,8 +1269,8 @@ export function QuoteTemplatesManager() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => openTemplateInDocumentEditor(template.id)}
-                title="שכפל וצור הצעת מחיר חדשה"
+                onClick={() => handleDuplicate(template)}
+                title="שכפל תבנית"
                 className={isQuickLayout ? "px-4" : undefined}
               >
                 <Copy className="h-4 w-4" />

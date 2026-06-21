@@ -74,6 +74,8 @@ import { ContractTemplatesManager } from '@/components/contracts/ContractTemplat
 import { TemplateGallery } from '@/components/contracts/TemplateGallery';
 import { QuoteEditorSheet } from '@/components/quotes/QuoteDocumentEditor/QuoteEditorSheet';
 import { QuoteTemplatesManager } from '@/components/quotes/QuoteTemplatesManager';
+import { HtmlTemplateEditor } from '@/components/quotes/QuoteTemplatesManager/HtmlTemplateEditor';
+import { QuoteTemplate, DEFAULT_DESIGN_SETTINGS } from '@/components/quotes/QuoteTemplatesManager/types';
 import { NewAdvancedEditor } from '@/components/contracts/AdvancedContractEditor/NewAdvancedEditor';
 import { cn } from '@/lib/utils';
 import { ClipboardList, Settings2, Archive, User, Trash2 as TrashIcon } from 'lucide-react';
@@ -121,6 +123,66 @@ export default function Quotes() {
   const [savedQuotesStatusFilter, setSavedQuotesStatusFilter] = useSyncedSetting<string>({ key: "saved-quotes-status-filter", defaultValue: "all" });
   const [deleteSavedQuoteId, setDeleteSavedQuoteId] = useState<string | null>(null);
   const [signingSavedQuoteId, setSigningSavedQuoteId] = useState<string | null>(null);
+  const [editingSavedQuoteInEditor, setEditingSavedQuoteInEditor] = useState<any | null>(null);
+
+  const buildTemplateFromSavedQuote = (sq: any): QuoteTemplate => {
+    const td = sq.template_data || {};
+    return {
+      ...td,
+      id: sq.template_id || td.id || "",
+      name: sq.title || td.name || "הצעת מחיר",
+      description: td.description || sq.description || "",
+      category: td.category || "general",
+      items: td.items || [],
+      stages: td.stages || [],
+      payment_schedule: sq.payment_schedule || td.payment_schedule || [],
+      design_settings: sq.design_settings || td.design_settings || DEFAULT_DESIGN_SETTINGS,
+      text_boxes: sq.text_boxes || td.text_boxes || [],
+      upgrades: sq.upgrades || td.upgrades || [],
+      pricing_tiers: sq.pricing_tiers || td.pricing_tiers || [],
+      project_details: sq.project_details || td.project_details || {},
+      base_price: sq.base_price || td.base_price || 0,
+      vat_rate: sq.vat_rate || td.vat_rate || 17,
+      validity_days: td.validity_days || 30,
+      show_vat: td.show_vat ?? true,
+      html_content: td.html_content || null,
+      important_notes: td.important_notes || [],
+      is_active: td.is_active ?? true,
+      created_at: td.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as QuoteTemplate;
+  };
+
+  const handleUpdateTemplateFromSavedQuote = async (templateData: Partial<QuoteTemplate>) => {
+    if (!templateData.id) return;
+    const { error } = await (supabase as any)
+      .from("quote_templates")
+      .update({
+        name: templateData.name,
+        description: templateData.description,
+        items: templateData.items || [],
+        stages: templateData.stages || [],
+        stages_title: (templateData as any).stagesTitle || null,
+        payment_schedule: templateData.payment_schedule || [],
+        terms: (templateData as any).terms,
+        notes: (templateData as any).notes,
+        important_notes: templateData.important_notes || [],
+        validity_days: templateData.validity_days || 30,
+        design_settings: templateData.design_settings,
+        show_vat: templateData.show_vat ?? true,
+        vat_rate: templateData.vat_rate || 17,
+        html_content: templateData.html_content || null,
+        text_boxes: templateData.text_boxes || [],
+        upgrades: templateData.upgrades || [],
+        project_details: templateData.project_details || {},
+        base_price: templateData.base_price || 0,
+        pricing_tiers: templateData.pricing_tiers || [],
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", templateData.id);
+    if (error) throw error;
+    queryClient.invalidateQueries({ queryKey: ["quote-templates-advanced"] });
+  };
 
   const { data: savedQuotes = [], isLoading: savedQuotesLoading } = useQuery({
     queryKey: ["saved-quotes"],
@@ -765,7 +827,14 @@ export default function Quotes() {
 
                         return (
                           <TableRow key={sq.id} className={cn(isSigned && "bg-emerald-50/40 hover:bg-emerald-50/60")}>
-                            <TableCell className="font-medium">{sq.title || "ללא שם"}</TableCell>
+                            <TableCell className="font-medium">
+                            <button
+                              className="text-right hover:underline hover:text-primary transition-colors"
+                              onClick={() => setEditingSavedQuoteInEditor(sq)}
+                            >
+                              {sq.title || "ללא שם"}
+                            </button>
+                          </TableCell>
                             <TableCell>
                               {sq.clients?.name ? (
                                 <button
@@ -1308,6 +1377,20 @@ export default function Quotes() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Saved Quote in HtmlTemplateEditor */}
+      {editingSavedQuoteInEditor && (
+        <HtmlTemplateEditor
+          open={!!editingSavedQuoteInEditor}
+          onClose={() => {
+            setEditingSavedQuoteInEditor(null);
+            queryClient.invalidateQueries({ queryKey: ["saved-quotes"] });
+          }}
+          template={buildTemplateFromSavedQuote(editingSavedQuoteInEditor)}
+          savedQuoteId={editingSavedQuoteInEditor.id}
+          onSave={handleUpdateTemplateFromSavedQuote}
+        />
+      )}
     </AppLayout>
   );
 }

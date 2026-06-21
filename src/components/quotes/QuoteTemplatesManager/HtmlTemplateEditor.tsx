@@ -188,6 +188,8 @@ interface HtmlTemplateEditorProps {
   onSave: (template: Partial<QuoteTemplate>) => Promise<void>;
   /** Render as a full page (no Sheet wrapper) instead of a sliding dialog */
   asPage?: boolean;
+  /** If provided, this editor is editing a saved_quote. Changes save button behavior. */
+  savedQuoteId?: string;
 }
 
 interface PaymentStep {
@@ -4468,6 +4470,7 @@ export function HtmlTemplateEditor({
   template,
   onSave,
   asPage = false,
+  savedQuoteId,
 }: HtmlTemplateEditorProps) {
   const { toast } = useToast();
   const { clients } = useClients();
@@ -4691,6 +4694,7 @@ export function HtmlTemplateEditor({
       pricingTiers,
       projectDetails,
       selectedTier,
+      activeTab,
     }),
     [
       editedTemplate,
@@ -4701,6 +4705,7 @@ export function HtmlTemplateEditor({
       pricingTiers,
       projectDetails,
       selectedTier,
+      activeTab,
     ],
   );
   const {
@@ -4709,11 +4714,23 @@ export function HtmlTemplateEditor({
     loadLocalDraft,
     loadCloudDraft,
     clearDraft,
+    flushSave,
   } = useQuoteDraftAutosave({
     key: draftKey,
     snapshot: draftSnapshot,
     enabled: open,
   });
+
+  // === Flush save on tab switch (שמירה מיידית לענן בכל מעבר טאב) ===
+  const isFirstTabRender = useRef(true);
+  useEffect(() => {
+    if (isFirstTabRender.current) {
+      isFirstTabRender.current = false;
+      return;
+    }
+    if (!open) return;
+    flushSave();
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // שחזור אוטומטי בפתיחה - LS מיידי, ענן אם חדש יותר
   const restoredRef = useRef(false);
@@ -4736,6 +4753,7 @@ export function HtmlTemplateEditor({
         if (Array.isArray(data.pricingTiers)) setPricingTiers(data.pricingTiers);
         if (data.projectDetails) setProjectDetails(data.projectDetails);
         if (typeof data.selectedTier === "string") setSelectedTier(data.selectedTier);
+        if (typeof data.activeTab === "string") setActiveTab(data.activeTab);
         toast({
           title: source === "cloud" ? "טיוטה שוחזרה מהענן" : "טיוטה שוחזרה",
           description: "הצעת המחיר שוחזרה למצב שבו עזבת אותה",
@@ -5311,7 +5329,7 @@ export function HtmlTemplateEditor({
     }
   }, [template]);
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(async (updateTemplate = true) => {
     setIsSaving(true);
     try {
       let resolvedProjectDetails: any = { ...projectDetails };
@@ -5393,36 +5411,52 @@ export function HtmlTemplateEditor({
         console.warn("Could not auto-link client on save:", linkErr);
       }
 
+      const paymentSchedulePayload = paymentSteps.map((s) => ({
+        id: s.id,
+        percentage: s.percentage,
+        description: s.description || s.name,
+        vatRate: s.vatRate,
+        useCustomVat: s.useCustomVat,
+        linkSource: s.linkSource || "stage_template",
+        templateStageId: s.templateStageId || null,
+        templateStageName: s.templateStageName || null,
+        templateTaskId: s.templateTaskId || null,
+        templateTaskName: s.templateTaskName || null,
+        quoteTemplateStageId: s.quoteTemplateStageId || null,
+        quoteTemplateStageName: s.quoteTemplateStageName || null,
+        quoteTemplateItemId: s.quoteTemplateItemId || null,
+        quoteTemplateItemText: s.quoteTemplateItemText || null,
+        triggerMode: s.triggerMode || "manual",
+        triggerDate: s.triggerDate || null,
+      }));
+
+      // Template-level project_details (no personal/client data — keeps template reusable)
+      const cleanProjectDetails = {
+        projectType: resolvedProjectDetails.projectType,
+        stageTemplateId: resolvedProjectDetails.stageTemplateId,
+      };
+
       const templatePayload = {
         ...editedTemplate,
-        payment_schedule: paymentSteps.map((s) => ({
-          id: s.id,
-          percentage: s.percentage,
-          description: s.description || s.name,
-          vatRate: s.vatRate,
-          useCustomVat: s.useCustomVat,
-          linkSource: s.linkSource || "stage_template",
-          templateStageId: s.templateStageId || null,
-          templateStageName: s.templateStageName || null,
-          templateTaskId: s.templateTaskId || null,
-          templateTaskName: s.templateTaskName || null,
-          quoteTemplateStageId: s.quoteTemplateStageId || null,
-          quoteTemplateStageName: s.quoteTemplateStageName || null,
-          quoteTemplateItemId: s.quoteTemplateItemId || null,
-          quoteTemplateItemText: s.quoteTemplateItemText || null,
-          triggerMode: s.triggerMode || "manual",
-          triggerDate: s.triggerDate || null,
-        })),
+        payment_schedule: paymentSchedulePayload,
         design_settings: designSettings as any,
         text_boxes: textBoxes,
         upgrades: upgrades,
-        project_details: resolvedProjectDetails,
+        project_details: cleanProjectDetails,
         base_price: editedTemplate.base_price || 0,
         pricing_tiers: pricingTiers,
       };
 
-      // 1. Save template as before
-      await onSave(templatePayload as any);
+      // Full payload for saved_quotes (includes all personal/project data)
+      const quotePayload = {
+        ...templatePayload,
+        project_details: resolvedProjectDetails,
+      };
+
+      // 1. Save template (without personal data so it stays reusable) — skip when only saving the quote
+      if (updateTemplate) {
+        await onSave(templatePayload as any);
+      }
 
       // 2. Also save to saved_quotes table
       try {
@@ -5466,9 +5500,9 @@ export function HtmlTemplateEditor({
             base_price: basePrice,
             vat_rate: vatRate,
             total_with_vat: totalWithVat,
-            template_data: templatePayload as any,
+            template_data: quotePayload as any,
             project_details: resolvedProjectDetails as any,
-            payment_schedule: templatePayload.payment_schedule as any,
+            payment_schedule: quotePayload.payment_schedule as any,
             design_settings: designSettings as any,
             text_boxes: textBoxes as any,
             upgrades: upgrades as any,
@@ -5476,23 +5510,34 @@ export function HtmlTemplateEditor({
             notes: editedTemplate.notes || "",
           };
 
-          // Check if already saved (by template_id + user)
-          const { data: existing } = await (supabase as any)
-            .from("saved_quotes")
-            .select("id")
-            .eq("user_id", user.id)
-            .eq("template_id", editedTemplate.id)
-            .maybeSingle();
-
-          if (existing?.id) {
+          if (savedQuoteId) {
+            // Editing an existing saved_quote directly — update by ID
             await (supabase as any)
               .from("saved_quotes")
               .update(savedQuoteData)
-              .eq("id", existing.id);
+              .eq("id", savedQuoteId);
           } else {
-            await (supabase as any)
+            // Check if already saved (by template_id + client_id + user) — same template+client → update
+            const existingQuery = (supabase as any)
               .from("saved_quotes")
-              .insert(savedQuoteData);
+              .select("id")
+              .eq("user_id", user.id)
+              .eq("template_id", editedTemplate.id);
+            if (resolvedProjectDetails.clientId) {
+              existingQuery.eq("client_id", resolvedProjectDetails.clientId);
+            }
+            const { data: existing } = await existingQuery.maybeSingle();
+
+            if (existing?.id) {
+              await (supabase as any)
+                .from("saved_quotes")
+                .update(savedQuoteData)
+                .eq("id", existing.id);
+            } else {
+              await (supabase as any)
+                .from("saved_quotes")
+                .insert(savedQuoteData);
+            }
           }
 
           if (
@@ -5528,9 +5573,24 @@ export function HtmlTemplateEditor({
         console.warn("Could not save to saved_quotes:", sqErr);
       }
 
-      toast({ title: "נשמר בהצלחה ☁️", description: "ההצעה נשמרה בתבנית ובהצעות השמורות" });
+      toast({ title: "נשמר בהצלחה ☁️", description: "ההצעה נשמרה בהצעות השמורות והתבנית אופסה לשימוש חוזר" });
       // ניקוי טיוטת autosave אחרי שמירה מפורשת מוצלחת
       try { await clearDraft(); } catch { /* no-op */ }
+      // איפוס פרטים אישיים בעורך — התבנית חוזרת לריקה לשימוש הבא
+      setProjectDetails((prev: any) => ({
+        projectType: prev?.projectType ?? "",
+        stageTemplateId: prev?.stageTemplateId ?? null,
+        clientId: null,
+        clientName: "",
+        phone: "",
+        email: "",
+        address: "",
+        gush: "",
+        helka: "",
+        migrash: "",
+        taba: "",
+        projectName: "",
+      }));
     } catch (err: any) {
       console.error("Save error:", err);
       toast({
@@ -13524,19 +13584,43 @@ ${tbAt('footer')}
                   </span>
                 )}
               </div>
-              <Button
-                className="bg-[#DAA520] hover:bg-[#B8860B] text-white"
-                size="sm"
-                onClick={handleSave}
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <span className="animate-spin">⏳</span>
-                ) : (
-                  <Save className="h-4 w-4 ml-1" />
-                )}
-                {isSaving ? "שומר..." : "שמור בענן ☁️"}
-              </Button>
+              {savedQuoteId ? (
+                <>
+                  <Button
+                    className="bg-[#DAA520] hover:bg-[#B8860B] text-white"
+                    size="sm"
+                    onClick={() => handleSave(false)}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? <span className="animate-spin">⏳</span> : <Save className="h-4 w-4 ml-1" />}
+                    {isSaving ? "שומר..." : "שמור הצעה"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSave(true)}
+                    disabled={isSaving}
+                    className="border-[#DAA520] text-[#DAA520] hover:bg-[#DAA520]/10"
+                  >
+                    <Save className="h-4 w-4 ml-1" />
+                    שמור + עדכן תבנית
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  className="bg-[#DAA520] hover:bg-[#B8860B] text-white"
+                  size="sm"
+                  onClick={() => handleSave()}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <span className="animate-spin">⏳</span>
+                  ) : (
+                    <Save className="h-4 w-4 ml-1" />
+                  )}
+                  {isSaving ? "שומר..." : "שמור בענן ☁️"}
+                </Button>
+              )}
               <Button
                 className="bg-green-600 hover:bg-green-700 text-white"
                 size="sm"

@@ -52,6 +52,8 @@ interface UseQuoteDraftAutosaveResult {
   loadCloudDraft: () => Promise<any | null>;
   /** Wipe draft from LS + cloud. Call after a successful explicit save. */
   clearDraft: () => Promise<void>;
+  /** Cancel pending debounce and write immediately to LS + cloud. Call on tab switch. */
+  flushSave: () => Promise<void>;
 }
 
 /**
@@ -71,6 +73,8 @@ export function useQuoteDraftAutosave({
   const timerRef = useRef<number | null>(null);
   const lastJsonRef = useRef<string>("");
   const firstRunRef = useRef(true);
+  const snapshotRef = useRef<any>(snapshot);
+  useEffect(() => { snapshotRef.current = snapshot; }, [snapshot]);
 
   const lsKey = LS_PREFIX + key;
   const settingKey = SETTING_PREFIX + key;
@@ -196,7 +200,49 @@ export function useQuoteDraftAutosave({
     };
   }, [snapshot, enabled, lsKey, settingKey, user?.id, debounceMs]);
 
-  return { status, lastSavedAt, loadLocalDraft, loadCloudDraft, clearDraft };
+  const flushSave = useCallback(async () => {
+    if (!enabled) return;
+
+    // Cancel any pending debounce so we don't double-write
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
+    const currentSnapshot = snapshotRef.current;
+
+    // Write LS immediately (trimmed to avoid quota errors)
+    try {
+      const lsPayload = JSON.stringify(currentSnapshot).length <= 150_000
+        ? currentSnapshot
+        : trimSnapshotForLocalStorage(currentSnapshot);
+      localStorage.setItem(lsKey, JSON.stringify({ data: lsPayload, savedAt: new Date().toISOString() }));
+    } catch { /* quota */ }
+
+    // Write cloud immediately
+    if (!user?.id) return;
+    setStatus("saving");
+    try {
+      await supabase.from("user_settings").upsert(
+        {
+          user_id: user.id,
+          setting_key: settingKey,
+          setting_value: {
+            data: currentSnapshot,
+            savedAt: new Date().toISOString(),
+          } as any,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,setting_key" },
+      );
+      setStatus("saved");
+      setLastSavedAt(new Date());
+    } catch {
+      setStatus("error");
+    }
+  }, [enabled, lsKey, settingKey, user?.id]);
+
+  return { status, lastSavedAt, loadLocalDraft, loadCloudDraft, clearDraft, flushSave };
 }
 
 export default useQuoteDraftAutosave;
