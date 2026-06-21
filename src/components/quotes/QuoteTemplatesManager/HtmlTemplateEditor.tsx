@@ -4732,6 +4732,67 @@ export function HtmlTemplateEditor({
     flushSave();
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // === Auto-persist designSettings: localStorage immediate + DB debounced ===
+  // Saves design tab changes (theme, border, colors, fonts, etc.) to
+  // quote_templates.design_settings whenever they change, without requiring
+  // the user to press Save. Also mirrors to a dedicated localStorage key.
+  const designLsKey = `quote-design::${template.id || "new"}`;
+  const designSaveTimer = useRef<number | null>(null);
+  const designFirstRunRef = useRef(true);
+  const lastDesignJsonRef = useRef<string>("");
+  useEffect(() => {
+    if (!open) return;
+    let json = "";
+    try {
+      json = JSON.stringify(designSettings);
+    } catch {
+      return;
+    }
+    if (designFirstRunRef.current) {
+      designFirstRunRef.current = false;
+      lastDesignJsonRef.current = json;
+      return;
+    }
+    if (json === lastDesignJsonRef.current) return;
+    lastDesignJsonRef.current = json;
+
+    // 1. Immediate localStorage write
+    try {
+      localStorage.setItem(
+        designLsKey,
+        JSON.stringify({ data: designSettings, savedAt: new Date().toISOString() }),
+      );
+    } catch {
+      /* quota */
+    }
+
+    // 2. Debounced cloud write to the template row itself (if persisted)
+    if (!template.id) return;
+    if (designSaveTimer.current) window.clearTimeout(designSaveTimer.current);
+    designSaveTimer.current = window.setTimeout(async () => {
+      designSaveTimer.current = null;
+      try {
+        await (supabase as any)
+          .from("quote_templates")
+          .update({
+            design_settings: designSettings as any,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", template.id);
+      } catch (err) {
+        console.warn("Design autosave failed:", err);
+      }
+    }, 1500);
+
+    return () => {
+      if (designSaveTimer.current) {
+        window.clearTimeout(designSaveTimer.current);
+        designSaveTimer.current = null;
+      }
+    };
+  }, [designSettings, open, template.id, designLsKey]);
+
+
   // שחזור אוטומטי בפתיחה - LS מיידי, ענן אם חדש יותר
   const restoredRef = useRef(false);
   useEffect(() => {
