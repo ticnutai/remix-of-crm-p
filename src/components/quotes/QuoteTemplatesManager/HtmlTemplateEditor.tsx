@@ -14142,20 +14142,21 @@ function WhatsAppDialog({
 
   const safeName = (templateName || "הצעת-מחיר").replace(/[\\/:*?"<>|]/g, "-");
 
-  const buildFile = async (): Promise<File | null> => {
+  const buildFile = async (): Promise<globalThis.File | null> => {
     if (attachFormat === "none") return null;
     if (attachFormat === "html" && generateExportHtml) {
       const html = await generateExportHtml();
-      return new File([html], `${safeName}.html`, {
+      return new window.File([html], `${safeName}.html`, {
         type: "text/html;charset=utf-8",
       });
     }
     if (attachFormat === "word" && generateWordHtml) {
       const html = await generateWordHtml();
-      return new File(["\ufeff" + html], `${safeName}.doc`, {
+      return new window.File(["\ufeff" + html], `${safeName}.doc`, {
         type: "application/msword",
       });
     }
+
     if (attachFormat === "pdf" && generateExportHtml) {
       // No client-side PDF lib here — open print window for "Save as PDF"
       const html = await generateExportHtml();
