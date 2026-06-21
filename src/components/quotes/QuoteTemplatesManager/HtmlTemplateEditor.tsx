@@ -186,6 +186,8 @@ interface HtmlTemplateEditorProps {
   onClose: () => void;
   template: QuoteTemplate;
   onSave: (template: Partial<QuoteTemplate>) => Promise<void>;
+  /** Render as a full page (no Sheet wrapper) instead of a sliding dialog */
+  asPage?: boolean;
 }
 
 interface PaymentStep {
