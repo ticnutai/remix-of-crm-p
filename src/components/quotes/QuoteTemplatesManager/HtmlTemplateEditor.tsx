@@ -6055,164 +6055,66 @@ export function HtmlTemplateEditor({
   // Debounce the HTML fed into the preview iframe to prevent flicker while typing
   const debouncedPreviewHtml = useDebouncedValue(liveHtml, 300);
 
-  // Paged view toggle: when on, inject Paged.js to render the preview as real
-  // pages with margins, page breaks, and repeating header/footer strips on
-  // every page (mirrors the print output). Inline editing is disabled in this
-  // mode because Paged.js clones content into page boxes.
-  const [pagedView, setPagedView] = useState(false);
+  // Paged view: opens a separate browser window with the rendered HTML and
+  // triggers the native print preview, which uses the existing print CSS to
+  // repeat header/footer strips on every page. Reliable across all templates
+  // (Paged.js polyfill was abandoned — it failed silently on complex docs).
   const [pagedPageCount, setPagedPageCount] = useState<number | null>(null);
   const [pagedRendering, setPagedRendering] = useState(false);
-  const pagedPreviewHtml = useMemo(() => {
-    if (!debouncedPreviewHtml) return debouncedPreviewHtml;
-    const headerH = (designSettings.headerStripHeight || 150);
-    const footerH = 90;
-    const topMargin = headerH + 24;
-    const bottomMargin = footerH + 24;
-    // Sanitize source HTML: strip data-editable attrs (avoid paged.js cloning quirks)
-    // and remove decorative absolutely-positioned corners that confuse pagination.
-    let sanitized = debouncedPreviewHtml.replace(/\sdata-editable="[^"]*"/g, "");
-    // Strip print-frame-overlay (position:fixed) — it breaks paged.js flow.
-    sanitized = sanitized.replace(
-      /<div class="print-frame-overlay"[\s\S]*?<\/div>/,
-      ""
-    );
-    // Remove existing @page rule from the document — it sets margin:0 which
-    // conflicts with our paged-view margins for repeating strips.
-    sanitized = sanitized.replace(/@page\s*\{[^}]*\}/g, "");
-    // Remove @media print block — paged.js applies its own rules and the print
-    // overrides reintroduce position:fixed on header/footer which conflicts
-    // with `position: running()` and prevents pagination.
-    sanitized = sanitized.replace(/@media\s+print\s*\{[\s\S]*?\n\s*\}\s*\n/g, "");
-    // Unwrap .container and .content so paged.js treats their children as
-    // direct flow children that can break across pages (otherwise the entire
-    // template renders as one tall block on a single page).
-    sanitized = sanitized
-      .replace(/<div\s+class="container"[^>]*>/g, "")
-      .replace(/<div\s+class="content"[^>]*>/g, "");
-    // Close the corresponding </div> tags. The container/content wrappers each
-    // contribute one closing div at the end of body — drop the last two before
-    // </body>.
-    sanitized = sanitized.replace(
-      /(<\/div>\s*){2}(\s*<\/body>)/,
-      "$2"
-    );
-    const inject = `
-    <style>
-      html, body { background: #e5e7eb !important; margin: 0 !important; padding: 0 !important; }
-      .pagedjs_pages { display: block !important; }
-      .pagedjs_page {
-        background: white !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
-        margin: 16px auto !important;
-        position: relative !important;
-      }
-      .pagedjs_margin-top, .pagedjs_margin-bottom { overflow: hidden !important; }
-      .pagedjs_page::after {
-        content: "עמוד " counter(page) " / " counter(pages);
-        position: absolute;
-        top: 8px;
-        left: 8px;
-        background: hsl(220 60% 18% / 0.9);
-        color: hsl(0 0% 100%);
-        font-size: 11px;
-        font-family: system-ui, sans-serif;
-        padding: 2px 8px;
-        border-radius: 10px;
-        z-index: 9999;
-        pointer-events: none;
-      }
-      @page {
-        size: A4;
-        margin: ${topMargin}px 0 ${bottomMargin}px 0;
-        @top-center {
-          content: element(runningHeader);
-          width: 100%;
-          margin: 0;
-          padding: 0;
-        }
-        @bottom-center {
-          content: element(runningFooter);
-          width: 100%;
-          margin: 0;
-          padding: 0;
-        }
-      }
-      /* Move strips out of the flow into running boxes */
-      .header,
-      .header-strip,
-      .full-width-header,
-      .quote-fixed-header {
-        position: running(runningHeader) !important;
-        width: 100% !important;
-        height: ${headerH}px !important;
-        margin: 0 !important;
-        overflow: hidden !important;
-      }
-      .footer,
-      .quote-fixed-footer {
-        position: running(runningFooter) !important;
-        width: 100% !important;
-        margin: 0 !important;
-        overflow: hidden !important;
-      }
-      /* Neutralize container constraints so paged.js can paginate freely.
-         display:contents removes the wrapper from layout, letting paged.js
-         treat the inner blocks as direct flow children that can break. */
-      body { position: static !important; }
-      .container {
-        display: contents !important;
-      }
-      .content {
-        display: contents !important;
-      }
-      .container > [style*="position:absolute"],
-      .container > [style*="position: absolute"] { display: none !important; }
-      .stage-card, .summary-card {
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-    </style>
-    <script>
-      window.PagedConfig = {
-        auto: true,
-        after: function(flow) {
-          try {
-            window.parent.postMessage({
-              __lovablePagedReady: true,
-              pages: (flow && flow.total) || document.querySelectorAll('.pagedjs_page').length || 1
-            }, '*');
-          } catch (e) {}
-        }
-      };
-      window.addEventListener('error', function(e){
-        try { window.parent.postMessage({ __lovablePagedError: String(e.message||e) }, '*'); } catch(_){}
-      });
-      try { window.parent.postMessage({ __lovablePagedRendering: true }, '*'); } catch(e) {}
-    </script>
-    <script src="https://unpkg.com/pagedjs@0.4.3/dist/paged.polyfill.js"><\/script>`;
-    return sanitized.replace("</body>", `${inject}</body>`);
-  }, [debouncedPreviewHtml, designSettings.headerStripHeight]);
 
-  // Listen for paged.js completion messages to surface page count in the UI
-  useEffect(() => {
-    if (!pagedView) return;
+  const openPrintPreview = useCallback(() => {
+    if (!debouncedPreviewHtml) return;
     setPagedRendering(true);
     setPagedPageCount(null);
+    const win = window.open("", "_blank", "width=900,height=1200");
+    if (!win) {
+      setPagedRendering(false);
+      alert("חסום על ידי דפדפן — אפשר חלונות קופצים כדי לראות תצוגת עמודים");
+      return;
+    }
+    // Inject a small script that, once the document settles, measures how
+    // many A4 pages the body would occupy and reports back via postMessage.
+    const measureScript = `
+    <script>
+      (function(){
+        function reportPages(){
+          try {
+            var px = document.documentElement.scrollHeight;
+            // A4 height at 96dpi ~= 1123px. Use generous estimate accounting
+            // for fixed header/footer reserving margin space.
+            var pageH = 1123;
+            var pages = Math.max(1, Math.ceil(px / pageH));
+            window.opener && window.opener.postMessage({
+              __lovablePrintPagesReady: true,
+              pages: pages
+            }, '*');
+          } catch(e){}
+        }
+        if (document.readyState === 'complete') setTimeout(reportPages, 400);
+        else window.addEventListener('load', function(){ setTimeout(reportPages, 400); });
+      })();
+    <\/script>`;
+    const html = debouncedPreviewHtml.replace(
+      "</body>",
+      `${measureScript}</body>`
+    );
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  }, [debouncedPreviewHtml]);
+
+  // Listen for page-count report from the print preview window.
+  useEffect(() => {
     const onMsg = (ev: MessageEvent) => {
       const data = ev.data as any;
-      if (!data) return;
-      if (data.__lovablePagedRendering) {
-        setPagedRendering(true);
-        setPagedPageCount(null);
-      }
-      if (data.__lovablePagedReady) {
-        setPagedRendering(false);
-        setPagedPageCount(Number(data.pages) || 1);
-      }
+      if (!data || !data.__lovablePrintPagesReady) return;
+      setPagedRendering(false);
+      setPagedPageCount(Number(data.pages) || 1);
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, [pagedView, pagedPreviewHtml]);
+  }, []);
+
 
 
 
