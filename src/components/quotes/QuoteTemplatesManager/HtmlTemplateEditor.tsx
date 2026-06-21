@@ -7499,26 +7499,9 @@ ${tbAt('footer')}
     }
   };
 
-  return (
-    <Sheet open={open} onOpenChange={onClose} modal={false}>
-      <SheetContent
-        side="right"
-        hideClose
-        dir="rtl"
-        className="flex flex-col gap-0 overflow-hidden border-0 p-0 !duration-0 !transition-none data-[state=open]:!animate-none data-[state=closed]:!animate-none"
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: "var(--app-sidebar-offset, 0px)",
-          bottom: 0,
-          width: "calc(100vw - var(--app-sidebar-offset, 0px))",
-          height: "100vh",
-          maxWidth: "none",
-          zIndex: 300,
-        }}
-      >
-        {/* Email Dialog */}
+  const editorBody = (
+    <>
+      {/* Email Dialog */}
         <EmailDialog
           open={showEmailDialog}
           onOpenChange={setShowEmailDialog}
