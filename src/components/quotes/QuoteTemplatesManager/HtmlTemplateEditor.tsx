@@ -4467,6 +4467,7 @@ export function HtmlTemplateEditor({
   onClose,
   template,
   onSave,
+  asPage = false,
 }: HtmlTemplateEditorProps) {
   const { toast } = useToast();
   const { clients } = useClients();
