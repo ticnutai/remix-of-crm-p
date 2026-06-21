@@ -13752,6 +13752,7 @@ ${tbAt('footer')}
                       className="w-full h-full border-0"
                       style={{ minHeight: "100%" }}
                       onInlineEdit={pagedView ? undefined : handleInlineEdit}
+                      enableInlineEdit={!pagedView}
                     />
                   </div>
                 </div>
