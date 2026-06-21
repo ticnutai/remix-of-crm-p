@@ -70,6 +70,7 @@ const EmailAnalytics = lazy(() => import("./pages/EmailAnalytics"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const AuditLogPage = lazy(() => import("./pages/AuditLog"));
 const QuoteTemplates = lazy(() => import("./pages/QuoteTemplates"));
+const QuoteTemplateEditorPage = lazy(() => import("./pages/QuoteTemplateEditorPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // V2 Features - Advanced Pages
