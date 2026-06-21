@@ -5855,7 +5855,9 @@ export function HtmlTemplateEditor({
       size: ${pageCssSize};
     }
     .print-page-shell { width: 100%; border-collapse: collapse; border-spacing: 0; }
-    .print-page-shell td { padding: 0; vertical-align: top; }
+    .print-page-shell > thead > tr > td,
+    .print-page-shell > tbody > tr > td,
+    .print-page-shell > tfoot > tr > td { padding: 0; vertical-align: top; }
     @media print {
       html {
         -webkit-print-color-adjust: exact;
@@ -5883,7 +5885,7 @@ export function HtmlTemplateEditor({
       .summary-card,
       .project-details,
       table.payments,
-      tr {
+      .payments tr {
         break-inside: avoid;
         page-break-inside: avoid;
       }
