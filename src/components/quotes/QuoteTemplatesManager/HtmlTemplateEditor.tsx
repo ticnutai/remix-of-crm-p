@@ -6142,22 +6142,18 @@ export function HtmlTemplateEditor({
         margin: 0 !important;
         overflow: hidden !important;
       }
-      /* Neutralize container constraints so paged.js can paginate freely */
+      /* Neutralize container constraints so paged.js can paginate freely.
+         display:contents removes the wrapper from layout, letting paged.js
+         treat the inner blocks as direct flow children that can break. */
       body { position: static !important; }
       .container {
-        position: static !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        max-width: 100% !important;
-        width: 100% !important;
-        box-shadow: none !important;
-        border: none !important;
-        border-radius: 0 !important;
-        overflow: visible !important;
+        display: contents !important;
+      }
+      .content {
+        display: contents !important;
       }
       .container > [style*="position:absolute"],
       .container > [style*="position: absolute"] { display: none !important; }
-      .content { padding-top: 16px !important; padding-bottom: 16px !important; overflow: visible !important; }
       .stage-card, .summary-card {
         break-inside: avoid;
         page-break-inside: avoid;
