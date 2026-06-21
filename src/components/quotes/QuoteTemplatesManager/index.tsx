@@ -204,6 +204,7 @@ export function QuoteTemplatesManager() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wordToHtmlInputRef = useRef<HTMLInputElement>(null);
 
