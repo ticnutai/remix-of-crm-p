@@ -6060,6 +6060,8 @@ export function HtmlTemplateEditor({
   // every page (mirrors the print output). Inline editing is disabled in this
   // mode because Paged.js clones content into page boxes.
   const [pagedView, setPagedView] = useState(false);
+  const [pagedPageCount, setPagedPageCount] = useState<number | null>(null);
+  const [pagedRendering, setPagedRendering] = useState(false);
   const pagedPreviewHtml = useMemo(() => {
     if (!debouncedPreviewHtml) return debouncedPreviewHtml;
     const headerH = (designSettings.headerStripHeight || 150);
@@ -6074,6 +6076,21 @@ export function HtmlTemplateEditor({
         background: white !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
         margin: 16px auto !important;
+        position: relative !important;
+      }
+      .pagedjs_page::after {
+        content: "עמוד " counter(page) " / " counter(pages);
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        background: rgba(22, 44, 88, 0.85);
+        color: #fff;
+        font-size: 11px;
+        font-family: system-ui, sans-serif;
+        padding: 2px 8px;
+        border-radius: 10px;
+        z-index: 9999;
+        pointer-events: none;
       }
       @page {
         size: A4;
@@ -6123,9 +6140,44 @@ export function HtmlTemplateEditor({
         page-break-inside: avoid;
       }
     </style>
+    <script>
+      window.PagedConfig = {
+        auto: true,
+        after: function(flow) {
+          try {
+            window.parent.postMessage({
+              __lovablePagedReady: true,
+              pages: flow && flow.total ? flow.total : (document.querySelectorAll('.pagedjs_page').length || 1)
+            }, '*');
+          } catch (e) {}
+        }
+      };
+      try { window.parent.postMessage({ __lovablePagedRendering: true }, '*'); } catch(e) {}
+    </script>
     <script src="https://unpkg.com/pagedjs@0.4.3/dist/paged.polyfill.js"><\/script>`;
     return debouncedPreviewHtml.replace("</body>", `${inject}</body>`);
   }, [debouncedPreviewHtml, designSettings.headerStripHeight]);
+
+  // Listen for paged.js completion messages to surface page count in the UI
+  useEffect(() => {
+    if (!pagedView) return;
+    setPagedRendering(true);
+    setPagedPageCount(null);
+    const onMsg = (ev: MessageEvent) => {
+      const data = ev.data as any;
+      if (!data) return;
+      if (data.__lovablePagedRendering) {
+        setPagedRendering(true);
+        setPagedPageCount(null);
+      }
+      if (data.__lovablePagedReady) {
+        setPagedRendering(false);
+        setPagedPageCount(Number(data.pages) || 1);
+      }
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, [pagedView, pagedPreviewHtml]);
 
 
 
