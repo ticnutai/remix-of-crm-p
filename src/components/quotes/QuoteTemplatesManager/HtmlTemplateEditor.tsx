@@ -14176,7 +14176,7 @@ function WhatsAppDialog({
     return null;
   };
 
-  const downloadFile = (file: File) => {
+  const downloadFile = (file: globalThis.File) => {
     const url = URL.createObjectURL(file);
     const a = document.createElement("a");
     a.href = url;
