@@ -805,12 +805,17 @@ export function QuoteTemplatesManager() {
     const newTemplate = createEmptyTemplate();
     const resolvedFolderId = folderId !== undefined ? folderId : selectedFolderId;
     if (resolvedFolderId) newTemplate.folder_id = resolvedFolderId;
-    setHtmlEditorTemplate({
-      ...newTemplate,
-      id: "",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    } as QuoteTemplate);
+    navigate("/quote-templates/editor/new", {
+      state: {
+        template: {
+          ...newTemplate,
+          id: "",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        folderId: resolvedFolderId ?? null,
+      },
+    });
   };
 
   const handleEdit = (template: QuoteTemplate) => {
