@@ -1017,7 +1017,7 @@ export function QuoteTemplatesManager() {
                       <Button
                         size="sm"
                         className="h-8 shrink-0 bg-[#d8ac27] text-white hover:bg-[#c49b22]"
-                        onClick={() => setHtmlEditorTemplate(template)}
+                        onClick={() => navigate(`/quote-templates/editor/${template.id}`)}
                       >
                         <ExternalLink className="h-3.5 w-3.5 ml-1" />
                         פתח
