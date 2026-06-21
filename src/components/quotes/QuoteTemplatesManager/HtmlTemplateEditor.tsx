@@ -6071,13 +6071,11 @@ export function HtmlTemplateEditor({
         box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
         margin: 16px auto !important;
       }
-      /* Mirror print rules onto screen so strips repeat per page in preview */
-      .header, .header-strip { position: running(headerStrip); }
-      .footer { position: running(footerStrip); }
     </style>
     <script src="https://unpkg.com/pagedjs@0.4.3/dist/paged.polyfill.js"><\/script>`;
     return debouncedPreviewHtml.replace("</body>", `${inject}</body>`);
   }, [debouncedPreviewHtml]);
+
 
 
   // Inline-edit dispatcher: maps a data-editable path coming from the preview
