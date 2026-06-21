@@ -9627,6 +9627,60 @@ ${tbAt('footer')}
                       }
                     />
                   </div>
+
+                  {/* Inline company details — edit here, persisted as part of designSettings */}
+                  {designSettings.repeatFooterOnAllPages !== false && (
+                    <div className="border-t pt-3 space-y-3 bg-gray-50 -mx-4 -mb-4 px-4 pb-4 rounded-b-xl">
+                      <p className="text-xs font-semibold text-gray-700">פרטי החברה (יוצגו בתחתית)</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">שם החברה</Label>
+                          <Input
+                            value={designSettings.companyName || ""}
+                            onChange={(e) =>
+                              setDesignSettings((prev) => ({ ...prev, companyName: e.target.value }))
+                            }
+                            dir="rtl"
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">טלפון</Label>
+                          <Input
+                            value={designSettings.companyPhone || ""}
+                            onChange={(e) =>
+                              setDesignSettings((prev) => ({ ...prev, companyPhone: e.target.value }))
+                            }
+                            dir="ltr"
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">כתובת</Label>
+                          <Input
+                            value={designSettings.companyAddress || ""}
+                            onChange={(e) =>
+                              setDesignSettings((prev) => ({ ...prev, companyAddress: e.target.value }))
+                            }
+                            dir="rtl"
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">אימייל</Label>
+                          <Input
+                            value={designSettings.companyEmail || ""}
+                            onChange={(e) =>
+                              setDesignSettings((prev) => ({ ...prev, companyEmail: e.target.value }))
+                            }
+                            dir="ltr"
+                            className="h-9"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {(designSettings.repeatHeaderOnAllPages || designSettings.repeatFooterOnAllPages !== false) && (
                     <p className="text-xs text-[#B8860B] bg-[#FFF8E1] rounded p-2">
                       ✓ הטקסט ירד אוטומטית כדי לא לשבת מתחת לכותרת / התחתית
