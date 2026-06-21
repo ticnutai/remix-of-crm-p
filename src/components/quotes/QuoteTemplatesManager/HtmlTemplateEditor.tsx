@@ -5825,7 +5825,8 @@ export function HtmlTemplateEditor({
         ` : ""}
       }
       ${repeatHeader ? `
-      .header {
+      .header,
+      .header-strip {
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
@@ -5834,6 +5835,7 @@ export function HtmlTemplateEditor({
         margin: 0 !important;
       }
       ` : ""}
+
       .quote-fixed-header { position: fixed; top: 0; left: 0; right: 0; }
       .quote-fixed-footer { position: fixed; bottom: 0; left: 0; right: 0; }
       .print-frame-overlay {
