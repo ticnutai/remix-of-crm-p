@@ -13639,38 +13639,34 @@ ${tbAt('footer')}
                   <div className="shrink-0 flex items-center justify-between gap-2 px-2 pb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">
-                        {pagedView
-                          ? "תצוגת עמודים - חלוקה מלאה, סטריפים בכל עמוד"
-                          : "תצוגה חיה - לחיצה לעריכה מהירה"}
+                        תצוגה חיה - לחיצה לעריכה מהירה
                       </span>
-                      {pagedView && (
+                      {(pagedRendering || pagedPageCount != null) && (
                         <Badge variant="secondary" className="text-[10px] h-5">
                           {pagedRendering
-                            ? "מרנדר..."
-                            : pagedPageCount != null
-                            ? `${pagedPageCount} עמודים`
-                            : "ממתין"}
+                            ? "סופר עמודים..."
+                            : `${pagedPageCount} עמודים בהדפסה`}
                         </Badge>
                       )}
                     </div>
                     <Button
                       type="button"
-                      variant={pagedView ? "default" : "outline"}
+                      variant="outline"
                       size="sm"
-                      onClick={() => setPagedView((v) => !v)}
+                      onClick={openPrintPreview}
+                      title="פותח חלון תצוגת הדפסה עם כל העמודים והסטריפים החוזרים"
                     >
                       <FileText className="h-3.5 w-3.5 ml-1" />
-                      {pagedView ? "תצוגה חיה" : "תצוגת עמודים"}
+                      תצוגת עמודים / הדפסה
                     </Button>
                   </div>
                   <div className="flex-1 bg-white rounded-lg shadow-lg overflow-hidden">
                     <PreviewIframe
-                      html={pagedView ? pagedPreviewHtml : debouncedPreviewHtml}
+                      html={debouncedPreviewHtml}
                       title="תצוגה מקדימה חיה"
                       className="w-full h-full border-0"
                       style={{ minHeight: "100%" }}
-                      onInlineEdit={pagedView ? undefined : handleInlineEdit}
-                      enableInlineEdit={!pagedView}
+                      onInlineEdit={handleInlineEdit}
                     />
                   </div>
                 </div>
