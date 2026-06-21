@@ -6076,6 +6076,13 @@ export function HtmlTemplateEditor({
       /<div class="print-frame-overlay"[\s\S]*?<\/div>/,
       ""
     );
+    // Remove existing @page rule from the document — it sets margin:0 which
+    // conflicts with our paged-view margins for repeating strips.
+    sanitized = sanitized.replace(/@page\s*\{[^}]*\}/g, "");
+    // Remove @media print block — paged.js applies its own rules and the print
+    // overrides reintroduce position:fixed on header/footer which conflicts
+    // with `position: running()` and prevents pagination.
+    sanitized = sanitized.replace(/@media\s+print\s*\{[\s\S]*?\n\s*\}\s*\n/g, "");
     const inject = `
     <style>
       html, body { background: #e5e7eb !important; margin: 0 !important; padding: 0 !important; }
