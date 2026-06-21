@@ -6068,6 +6068,14 @@ export function HtmlTemplateEditor({
     const footerH = 90;
     const topMargin = headerH + 24;
     const bottomMargin = footerH + 24;
+    // Sanitize source HTML: strip data-editable attrs (avoid paged.js cloning quirks)
+    // and remove decorative absolutely-positioned corners that confuse pagination.
+    let sanitized = debouncedPreviewHtml.replace(/\sdata-editable="[^"]*"/g, "");
+    // Strip print-frame-overlay (position:fixed) — it breaks paged.js flow.
+    sanitized = sanitized.replace(
+      /<div class="print-frame-overlay"[\s\S]*?<\/div>/,
+      ""
+    );
     const inject = `
     <style>
       html, body { background: #e5e7eb !important; margin: 0 !important; padding: 0 !important; }
@@ -6078,13 +6086,14 @@ export function HtmlTemplateEditor({
         margin: 16px auto !important;
         position: relative !important;
       }
+      .pagedjs_margin-top, .pagedjs_margin-bottom { overflow: hidden !important; }
       .pagedjs_page::after {
         content: "עמוד " counter(page) " / " counter(pages);
         position: absolute;
         top: 8px;
         left: 8px;
-        background: rgba(22, 44, 88, 0.85);
-        color: #fff;
+        background: hsl(220 60% 18% / 0.9);
+        color: hsl(0 0% 100%);
         font-size: 11px;
         font-family: system-ui, sans-serif;
         padding: 2px 8px;
@@ -6108,21 +6117,28 @@ export function HtmlTemplateEditor({
           padding: 0;
         }
       }
+      /* Move strips out of the flow into running boxes */
       .header,
       .header-strip,
       .full-width-header,
       .quote-fixed-header {
         position: running(runningHeader) !important;
         width: 100% !important;
+        height: ${headerH}px !important;
         margin: 0 !important;
+        overflow: hidden !important;
       }
       .footer,
       .quote-fixed-footer {
         position: running(runningFooter) !important;
         width: 100% !important;
         margin: 0 !important;
+        overflow: hidden !important;
       }
+      /* Neutralize container constraints so paged.js can paginate freely */
+      body { position: static !important; }
       .container {
+        position: static !important;
         padding: 0 !important;
         margin: 0 !important;
         max-width: 100% !important;
@@ -6130,12 +6146,12 @@ export function HtmlTemplateEditor({
         box-shadow: none !important;
         border: none !important;
         border-radius: 0 !important;
+        overflow: visible !important;
       }
-      .content {
-        padding-top: 16px !important;
-        padding-bottom: 16px !important;
-      }
-      .stage-card, .summary-card, table, tr, td, th, .project-details {
+      .container > [style*="position:absolute"],
+      .container > [style*="position: absolute"] { display: none !important; }
+      .content { padding-top: 16px !important; padding-bottom: 16px !important; overflow: visible !important; }
+      .stage-card, .summary-card {
         break-inside: avoid;
         page-break-inside: avoid;
       }
@@ -6147,15 +6163,18 @@ export function HtmlTemplateEditor({
           try {
             window.parent.postMessage({
               __lovablePagedReady: true,
-              pages: flow && flow.total ? flow.total : (document.querySelectorAll('.pagedjs_page').length || 1)
+              pages: (flow && flow.total) || document.querySelectorAll('.pagedjs_page').length || 1
             }, '*');
           } catch (e) {}
         }
       };
+      window.addEventListener('error', function(e){
+        try { window.parent.postMessage({ __lovablePagedError: String(e.message||e) }, '*'); } catch(_){}
+      });
       try { window.parent.postMessage({ __lovablePagedRendering: true }, '*'); } catch(e) {}
     </script>
     <script src="https://unpkg.com/pagedjs@0.4.3/dist/paged.polyfill.js"><\/script>`;
-    return debouncedPreviewHtml.replace("</body>", `${inject}</body>`);
+    return sanitized.replace("</body>", `${inject}</body>`);
   }, [debouncedPreviewHtml, designSettings.headerStripHeight]);
 
   // Listen for paged.js completion messages to surface page count in the UI
