@@ -1,5 +1,6 @@
 // מנהל תבניות הצעות מחיר מתקדם - עם תיקיות
 import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
