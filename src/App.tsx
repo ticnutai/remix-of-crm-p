@@ -351,6 +351,11 @@ const App = () => {
                                 path="/quote-templates"
                                 element={withErrorBoundary(QuoteTemplates)}
                               />
+                              <Route
+                                path="/quote-templates/editor/:id"
+                                element={withErrorBoundary(QuoteTemplateEditorPage)}
+                              />
+
                               {/* V2 Advanced Features */}
                               <Route
                                 path="/kanban"
