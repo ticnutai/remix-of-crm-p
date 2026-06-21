@@ -1261,7 +1261,7 @@ export function QuoteTemplatesManager() {
               <Button
                 size="sm"
                 className="flex-1 bg-[#d8ac27] hover:bg-[#c49b22] text-white"
-                onClick={() => setHtmlEditorTemplate(template)}
+                onClick={() => navigate(`/quote-templates/editor/${template.id}`)}
               >
                 <ExternalLink className="h-4 w-4 ml-1" />
                 פתח בעורך
