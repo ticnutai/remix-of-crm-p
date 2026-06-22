@@ -472,8 +472,58 @@ interface ProjectDetails {
   address: string;
   projectType: string;
   phone?: string;
+  moshav?: string;
+  family?: string;
   stageTemplateId?: string;
   stageTemplateName?: string;
+}
+
+/**
+ * Replace dynamic placeholders inside text-box content with values from
+ * projectDetails. Supported tokens: [גוש] [חלקה] [מגרש] [מושב] [משפחה]
+ * [לקוח] [כתובת] [סוג פרויקט] [תב"ע] [טלפון]
+ * If a line contains a token whose value is empty - the whole line is removed
+ * (so the user does not see naked underscores / dangling labels in the PDF).
+ */
+function applyProjectDetailsTokens(content: string, pd: any): string {
+  if (!content) return content;
+  const family = pd?.family || (pd?.clientName ? String(pd.clientName).trim() : "");
+  const map: Record<string, string> = {
+    "גוש": pd?.gush || "",
+    "חלקה": pd?.helka || "",
+    "מגרש": pd?.migrash || "",
+    "מושב": pd?.moshav || "",
+    "משפחה": family || "",
+    "לקוח": pd?.clientName || "",
+    "כתובת": pd?.address || "",
+    "סוג פרויקט": pd?.projectType || "",
+    'תב"ע': pd?.taba || "",
+    "תבע": pd?.taba || "",
+    "טלפון": pd?.phone || "",
+  };
+  const tokenRegex = /\[([^\[\]\n]+)\]/g;
+  const lines = content.split(/\r?\n/);
+  const kept: string[] = [];
+  for (const line of lines) {
+    let drop = false;
+    let replaced = line.replace(tokenRegex, (full, raw) => {
+      const key = String(raw).trim();
+      if (Object.prototype.hasOwnProperty.call(map, key)) {
+        const v = map[key];
+        if (!v) {
+          drop = true;
+          return "";
+        }
+        return v;
+      }
+      return full;
+    });
+    if (drop) continue;
+    // Remove orphan separators like "  -  " or "  |  " left over by a removed token
+    replaced = replaced.replace(/\s+[-|–—,]\s+(?=\s*$)/g, "").replace(/^\s*[-|–—,]\s+/g, "");
+    kept.push(replaced);
+  }
+  return kept.join("\n");
 }
 
 // Email dialog component
@@ -5706,9 +5756,11 @@ export function HtmlTemplateEditor({
           const tbLineHeight = tb.lineHeight ? `line-height: ${tb.lineHeight};` : "";
           const tbLetterSpacing = tb.letterSpacing ? `letter-spacing: ${tb.letterSpacing}px;` : "";
           const borderW = tb.borderWidth ?? 2;
+          const resolvedTitle = applyProjectDetailsTokens(tb.title || "", projectDetails);
+          const resolvedContent = applyProjectDetailsTokens(tb.content || "", projectDetails);
           return `<div style="margin: 15px 0; padding: 15px; background: ${bgColor}; border: ${borderW}px solid ${borderColor}; border-radius: ${designSettings.borderRadius}px;">
-          ${tb.title ? `<h4 data-editable="textbox.${tb.id}.title" style="margin: 0 0 8px 0; color: ${designSettings.primaryColor}; font-family: ${fontFamily};">${s.icon} ${tb.title}</h4>` : ""}
-          <div data-editable="textbox.${tb.id}.content" style="color: ${textColor}; white-space: pre-wrap; font-size: ${fontSize}px; font-family: ${fontFamily}; ${fontWeight} ${fontStyle} ${textDecor} ${textAlign} ${tbLineHeight} ${tbLetterSpacing}">${tb.content}</div>
+          ${resolvedTitle ? `<h4 data-editable="textbox.${tb.id}.title" style="margin: 0 0 8px 0; color: ${designSettings.primaryColor}; font-family: ${fontFamily};">${s.icon} ${resolvedTitle}</h4>` : ""}
+          <div data-editable="textbox.${tb.id}.content" style="color: ${textColor}; white-space: pre-wrap; font-size: ${fontSize}px; font-family: ${fontFamily}; ${fontWeight} ${fontStyle} ${textDecor} ${textAlign} ${tbLineHeight} ${tbLetterSpacing}">${resolvedContent}</div>
         </div>`;
         })
         .join("");
@@ -11557,7 +11609,51 @@ ${tbAt('footer')}
                           {preset.label}
                         </Button>
                       ))}
+
+                      {/* Dedicated preset: project details box with dynamic tokens */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7 border-[#DAA520] text-[#B8860B] hover:bg-[#FFFBEA]"
+                        onClick={() =>
+                          setTextBoxes([
+                            ...textBoxes,
+                            {
+                              id: Date.now().toString(),
+                              title: "",
+                              content:
+                                'חוזה להוצאת [סוג פרויקט] בגוש [גוש] חלקה [חלקה] מגרש [מגרש]\nמושב [מושב]\nמשפחת [משפחה]',
+                              position: "header",
+                              style: "default",
+                              isBold: true,
+                              textAlign: "center",
+                              fontSize: 16,
+                            },
+                          ])
+                        }
+                        title='התווים [גוש] [חלקה] [מגרש] [מושב] [משפחה] [לקוח] [כתובת] [סוג פרויקט] [תב"ע] [טלפון] יתחלפו אוטומטית לערכים של הלקוח. שורה ללא ערך תוסתר.'
+                      >
+                        <Plus className="h-3 w-3 ml-1" />
+                        תיבת פרטי פרויקט
+                      </Button>
                     </div>
+
+                    {/* Tokens helper hint */}
+                    <div className="text-[11px] text-muted-foreground bg-[#FFFBEA] border border-[#DAA520]/30 rounded-md p-2 leading-relaxed">
+                      <strong className="text-[#B8860B]">תווים דינמיים זמינים בכל תיבה:</strong>{" "}
+                      <code className="font-mono">[גוש]</code>{" "}
+                      <code className="font-mono">[חלקה]</code>{" "}
+                      <code className="font-mono">[מגרש]</code>{" "}
+                      <code className="font-mono">[מושב]</code>{" "}
+                      <code className="font-mono">[משפחה]</code>{" "}
+                      <code className="font-mono">[לקוח]</code>{" "}
+                      <code className="font-mono">[כתובת]</code>{" "}
+                      <code className="font-mono">[סוג פרויקט]</code>{" "}
+                      <code className="font-mono">[תב"ע]</code>{" "}
+                      <code className="font-mono">[טלפון]</code>
+                      <div className="mt-1">השדות יוחלפו אוטומטית בנתוני הלקוח. שורה שבה הערך ריק - תוסתר לחלוטין מההצעה הסופית.</div>
+                    </div>
+
 
                     {/* Templates section */}
                     <div className="bg-white rounded-lg border p-3">
