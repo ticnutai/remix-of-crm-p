@@ -48,6 +48,7 @@ import {
   GripVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConsultantsFilterPopover } from "./ConsultantsFilterPopover";
 
 export type ClientDateRangeConfig =
   | {
@@ -90,6 +91,8 @@ export interface ClientFilterState {
   exactMonth: number | null;
   customDateRange: ClientDateRangeConfig | null;
   activeDateTabId: string | null;
+  consultantIds?: string[]; // filter clients linked to these consultants
+  consultantProfessions?: string[]; // filter clients linked to any consultant with these professions
   sortBy:
     | "name_asc"
     | "name_desc"
@@ -778,6 +781,7 @@ export function ClientsFilterStrip({
   const FILTER_SECTIONS: { id: string; label: string }[] = [
     { id: "sort", label: "מיון / תאריך" },
     { id: "classification", label: "סיווג" },
+    { id: "consultants", label: "יועצים" },
     { id: "categories", label: "קטגוריות" },
     { id: "tags", label: "תגיות" },
     { id: "stages", label: "שלבים" },
@@ -1340,6 +1344,21 @@ export function ClientsFilterStrip({
             </ScrollArea>
           </PopoverContent>
         </Popover>
+        )}
+
+        {/* Consultants Filter (יועצים) */}
+        {visibleFilterSections.has("consultants") && (
+          <ConsultantsFilterPopover
+            selectedConsultantIds={filters.consultantIds || []}
+            selectedProfessions={filters.consultantProfessions || []}
+            onChange={({ consultantIds, consultantProfessions }) =>
+              onFiltersChange({
+                ...filters,
+                consultantIds,
+                consultantProfessions,
+              })
+            }
+          />
         )}
 
         {/* Categories Filter */}

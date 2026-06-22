@@ -336,6 +336,8 @@ export default function Clients() {
     exactMonth?: number | null;
     customDateRange?: ClientDateRangeConfig | null;
     activeDateTabId?: string | null;
+    consultantIds?: string[];
+    consultantProfessions?: string[];
     sortBy?: string;
     showStagesView?: boolean;
     showStatisticsView?: boolean;
@@ -445,6 +447,9 @@ export default function Clients() {
         savedFullFilters.activeDateTabId === undefined
           ? prev.activeDateTabId
           : savedFullFilters.activeDateTabId,
+      consultantIds: savedFullFilters.consultantIds ?? prev.consultantIds,
+      consultantProfessions:
+        savedFullFilters.consultantProfessions ?? prev.consultantProfessions,
       sortBy: (savedFullFilters.sortBy as any) ?? prev.sortBy,
     }));
     if (savedFullFilters.showStagesView != null) {
@@ -591,8 +596,41 @@ export default function Clients() {
     exactMonth: null,
     customDateRange: null,
     activeDateTabId: null,
+    consultantIds: [],
+    consultantProfessions: [],
     sortBy: "date_desc",
   });
+
+  // client_id -> Array<{ consultantId, profession }>
+  const [clientConsultantsMap, setClientConsultantsMap] = useState<
+    Record<string, Array<{ consultantId: string; profession: string }>>
+  >({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("client_consultants")
+        .select("client_id, consultant_id, consultant:consultants(profession)")
+        .eq("status", "active");
+      if (error || cancelled) return;
+      const map: Record<
+        string,
+        Array<{ consultantId: string; profession: string }>
+      > = {};
+      (data || []).forEach((row: any) => {
+        if (!map[row.client_id]) map[row.client_id] = [];
+        map[row.client_id].push({
+          consultantId: row.consultant_id,
+          profession: row.consultant?.profession || "ללא תחום",
+        });
+      });
+      setClientConsultantsMap(map);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Client data for filtering
   const [clientStages, setClientStages] = useState<ClientStageInfo[]>([]);
@@ -689,6 +727,27 @@ export default function Clients() {
     // Has tasks filter
     if (filters.hasTasks === true) {
       result = result.filter((client) => clientsWithTasks.has(client.id));
+    }
+
+    // Consultant filter (specific consultants OR any consultant of selected profession)
+    const consultantIds = filters.consultantIds || [];
+    const consultantProfessions = filters.consultantProfessions || [];
+    if (consultantIds.length > 0 || consultantProfessions.length > 0) {
+      result = result.filter((client) => {
+        const assignments = clientConsultantsMap[client.id] || [];
+        if (assignments.length === 0) return false;
+        const idMatch =
+          consultantIds.length === 0 ||
+          assignments.some((a) => consultantIds.includes(a.consultantId));
+        const profMatch =
+          consultantProfessions.length === 0 ||
+          assignments.some((a) => consultantProfessions.includes(a.profession));
+        // OR semantics between the two groups
+        if (consultantIds.length > 0 && consultantProfessions.length > 0) {
+          return idMatch || profMatch;
+        }
+        return idMatch && profMatch;
+      });
     }
 
     // Has meetings filter
@@ -809,6 +868,7 @@ export default function Clients() {
     clientsWithTasks,
     clientsWithMeetings,
     latestContractSignedByClient,
+    clientConsultantsMap,
   ]);
 
   const scrollToClientCard = useCallback((clientId: string) => {
@@ -3799,6 +3859,8 @@ export default function Clients() {
               exactMonth: newFilters.exactMonth,
               customDateRange: newFilters.customDateRange,
               activeDateTabId: newFilters.activeDateTabId,
+              consultantIds: newFilters.consultantIds,
+              consultantProfessions: newFilters.consultantProfessions,
               sortBy: newFilters.sortBy,
             }));
           }}
