@@ -447,6 +447,9 @@ export default function Clients() {
         savedFullFilters.activeDateTabId === undefined
           ? prev.activeDateTabId
           : savedFullFilters.activeDateTabId,
+      consultantIds: savedFullFilters.consultantIds ?? prev.consultantIds,
+      consultantProfessions:
+        savedFullFilters.consultantProfessions ?? prev.consultantProfessions,
       sortBy: (savedFullFilters.sortBy as any) ?? prev.sortBy,
     }));
     if (savedFullFilters.showStagesView != null) {
