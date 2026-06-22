@@ -4525,6 +4525,7 @@ export function HtmlTemplateEditor({
   const { toast } = useToast();
   const { clients } = useClients();
   const { saveToCloud } = useCloudPreferences();
+  const globalDefaultVat = useDefaultVatRate();
   const [editedTemplate, setEditedTemplate] = useState<QuoteTemplate>(template);
   const [editingStagesTitle, setEditingStagesTitle] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
