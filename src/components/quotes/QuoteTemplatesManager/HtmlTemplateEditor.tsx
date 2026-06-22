@@ -8331,6 +8331,13 @@ ${tbAt('footer')}
                 <Columns className="h-4 w-4 ml-2" />
                 עריכה + תצוגה
               </TabsTrigger>
+              <TabsTrigger
+                value="pages"
+                className="data-[state=active]:bg-[#162C58]/10 data-[state=active]:text-[#162C58]"
+              >
+                <Layers className="h-4 w-4 ml-2" />
+                תצוגת דפים
+              </TabsTrigger>
             </TabsList>
           </div>
 
