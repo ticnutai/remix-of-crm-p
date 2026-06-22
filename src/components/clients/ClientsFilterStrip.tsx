@@ -48,6 +48,7 @@ import {
   GripVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConsultantsFilterPopover } from "./ConsultantsFilterPopover";
 
 export type ClientDateRangeConfig =
   | {
