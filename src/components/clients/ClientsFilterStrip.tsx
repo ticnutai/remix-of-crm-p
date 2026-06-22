@@ -1656,7 +1656,7 @@ export function ClientsFilterStrip({
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[350px] p-0" dir="rtl" align="end">
+          <PopoverContent className="w-[400px] p-0" dir="rtl" align="end">
             <div className="p-4 border-b">
               <div className="flex flex-row-reverse items-center gap-2 mb-3">
                 <Layers className="h-5 w-5 text-primary" />
@@ -1675,11 +1675,11 @@ export function ClientsFilterStrip({
                   בחר הכל
                 </Button>
                 <Button variant="outline" size="sm" onClick={clearStages}>
-                  נקה הכל
+                  נקה שלבים
                 </Button>
               </div>
             </div>
-            <ScrollArea className="h-[300px] p-4">
+            <ScrollArea className="h-[480px] p-4">
               <div className="space-y-3">
                 {stageDefinitions.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
@@ -1719,6 +1719,21 @@ export function ClientsFilterStrip({
                     );
                   })
                 )}
+              </div>
+
+              {/* ===== Consultants Tree (profession → consultants) ===== */}
+              <div className="mt-5 pt-4 border-t border-border">
+                <ConsultantsTreeFilter
+                  selectedConsultantIds={filters.consultantIds || []}
+                  selectedProfessions={filters.consultantProfessions || []}
+                  onChange={({ consultantIds, consultantProfessions }) =>
+                    onFiltersChange({
+                      ...filters,
+                      consultantIds,
+                      consultantProfessions,
+                    })
+                  }
+                />
               </div>
             </ScrollArea>
           </PopoverContent>
