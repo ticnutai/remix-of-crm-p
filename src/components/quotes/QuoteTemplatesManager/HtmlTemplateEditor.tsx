@@ -79,6 +79,7 @@ import {
   Send,
   File,
   Eye,
+  EyeOff,
   Columns,
   Menu,
   MessageCircle,
@@ -4530,6 +4531,77 @@ export function HtmlTemplateEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("project");
+
+  // Top tabs configuration (order + visibility) — persisted
+  const TABS_CFG_LS_KEY = "lov-html-editor-tabs-cfg-v1";
+  type EditorTabKey =
+    | "project"
+    | "content"
+    | "payments"
+    | "design"
+    | "logo-strip"
+    | "text-boxes"
+    | "tools"
+    | "preview"
+    | "split"
+    | "pages";
+  const DEFAULT_TAB_ORDER: EditorTabKey[] = [
+    "project",
+    "content",
+    "payments",
+    "design",
+    "logo-strip",
+    "text-boxes",
+    "tools",
+    "preview",
+    "split",
+    "pages",
+  ];
+  const TAB_META: Record<
+    EditorTabKey,
+    { label: string; icon: any; activeClass: string }
+  > = {
+    project: { label: "פרטי פרויקט", icon: User, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    content: { label: "תוכן", icon: FileText, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    payments: { label: "תשלומים", icon: CreditCard, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    design: { label: "עיצוב", icon: Palette, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    "logo-strip": { label: "לוגו", icon: Crop, activeClass: "data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700" },
+    "text-boxes": { label: "טקסט", icon: Type, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    tools: { label: "כלים", icon: Wrench, activeClass: "data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700" },
+    preview: { label: "תצוגה מקדימה", icon: Eye, activeClass: "data-[state=active]:bg-green-100 data-[state=active]:text-green-700" },
+    split: { label: "עריכה + תצוגה", icon: Columns, activeClass: "data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700" },
+    pages: { label: "תצוגת דפים", icon: Layers, activeClass: "data-[state=active]:bg-[#162C58]/10 data-[state=active]:text-[#162C58]" },
+  };
+  const [tabConfig, setTabConfig] = useState<
+    Array<{ value: EditorTabKey; visible: boolean }>
+  >(() => {
+    try {
+      const raw = localStorage.getItem(TABS_CFG_LS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Array<{ value: EditorTabKey; visible: boolean }>;
+        const knownValues = new Set(DEFAULT_TAB_ORDER);
+        const sanitized = parsed.filter((t) => knownValues.has(t.value));
+        // Append any missing tabs (e.g. after an update)
+        DEFAULT_TAB_ORDER.forEach((v) => {
+          if (!sanitized.some((s) => s.value === v))
+            sanitized.push({ value: v, visible: true });
+        });
+        return sanitized;
+      }
+    } catch {
+      /* ignore */
+    }
+    return DEFAULT_TAB_ORDER.map((value) => ({ value, visible: true }));
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(TABS_CFG_LS_KEY, JSON.stringify(tabConfig));
+    } catch {
+      /* ignore */
+    }
+  }, [tabConfig]);
+  const [showTabsSettings, setShowTabsSettings] = useState(false);
+  const [draggedTabIdx, setDraggedTabIdx] = useState<number | null>(null);
   const [logoStripMode, setLogoStripMode] = useState<"logo" | "maker">(
     "logo",
   );
@@ -8273,80 +8345,135 @@ ${tbAt('footer')}
           }}
           className="flex-1 flex flex-col overflow-hidden"
         >
-          <div className="border-b bg-white px-6">
-            <TabsList className="h-12 bg-transparent gap-2">
-              <TabsTrigger
-                value="project"
-                className="data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]"
-              >
-                <User className="h-4 w-4 ml-2" />
-                פרטי פרויקט
-              </TabsTrigger>
-              <TabsTrigger
-                value="content"
-                className="data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]"
-              >
-                <FileText className="h-4 w-4 ml-2" />
-                תוכן
-              </TabsTrigger>
-              <TabsTrigger
-                value="payments"
-                className="data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]"
-              >
-                <CreditCard className="h-4 w-4 ml-2" />
-                תשלומים
-              </TabsTrigger>
-              <TabsTrigger
-                value="design"
-                className="data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]"
-              >
-                <Palette className="h-4 w-4 ml-2" />
-                עיצוב
-              </TabsTrigger>
-              <TabsTrigger
-                value="logo-strip"
-                className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700"
-              >
-                <Crop className="h-4 w-4 ml-2" />
-                לוגו
-              </TabsTrigger>
-              <TabsTrigger
-                value="text-boxes"
-                className="data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]"
-              >
-                <Type className="h-4 w-4 ml-2" />
-                טקסט
-              </TabsTrigger>
-              <TabsTrigger
-                value="tools"
-                className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700"
-              >
-                <Wrench className="h-4 w-4 ml-2" />
-                כלים
-              </TabsTrigger>
-              <TabsTrigger
-                value="preview"
-                className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700"
-              >
-                <Eye className="h-4 w-4 ml-2" />
-                תצוגה מקדימה
-              </TabsTrigger>
-              <TabsTrigger
-                value="split"
-                className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700"
-              >
-                <Columns className="h-4 w-4 ml-2" />
-                עריכה + תצוגה
-              </TabsTrigger>
-              <TabsTrigger
-                value="pages"
-                className="data-[state=active]:bg-[#162C58]/10 data-[state=active]:text-[#162C58]"
-              >
-                <Layers className="h-4 w-4 ml-2" />
-                תצוגת דפים
-              </TabsTrigger>
+          <div className="border-b bg-white px-6 flex items-center justify-between gap-2">
+            <TabsList className="h-12 bg-transparent gap-2 flex-wrap">
+              {tabConfig
+                .filter((t) => t.visible)
+                .map((t) => {
+                  const meta = TAB_META[t.value];
+                  const Icon = meta.icon;
+                  return (
+                    <TabsTrigger
+                      key={t.value}
+                      value={t.value}
+                      className={meta.activeClass}
+                    >
+                      <Icon className="h-4 w-4 ml-2" />
+                      {meta.label}
+                    </TabsTrigger>
+                  );
+                })}
             </TabsList>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-gray-500 hover:text-[#B8860B] shrink-0"
+              onClick={() => setShowTabsSettings(true)}
+              title="הגדרות טאבים — סדר ונראות"
+              aria-label="הגדרות טאבים"
+            >
+              <Settings className="h-5 w-5" />
+            </Button>
           </div>
+
+          {/* Tabs settings dialog — non-blocking (modal={false}) */}
+          <Dialog
+            open={showTabsSettings}
+            onOpenChange={setShowTabsSettings}
+            modal={false}
+          >
+            <DialogContent
+              className="max-w-md"
+              dir="rtl"
+              onInteractOutside={(e) => e.preventDefault()}
+            >
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  הגדרות טאבים
+                </DialogTitle>
+              </DialogHeader>
+              <p className="text-xs text-muted-foreground -mt-2">
+                גרור כדי לשנות סדר · הפעל/השבת נראות. השינויים נשמרים אוטומטית.
+              </p>
+              <div className="space-y-1.5 max-h-[60vh] overflow-auto pr-1">
+                {tabConfig.map((t, idx) => {
+                  const meta = TAB_META[t.value];
+                  const Icon = meta.icon;
+                  const isDragging = draggedTabIdx === idx;
+                  return (
+                    <div
+                      key={t.value}
+                      draggable
+                      onDragStart={() => setDraggedTabIdx(idx)}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        if (draggedTabIdx === null || draggedTabIdx === idx) return;
+                        setTabConfig((prev) => {
+                          const next = [...prev];
+                          const [moved] = next.splice(draggedTabIdx, 1);
+                          next.splice(idx, 0, moved);
+                          return next;
+                        });
+                        setDraggedTabIdx(idx);
+                      }}
+                      onDragEnd={() => setDraggedTabIdx(null)}
+                      className={`flex items-center gap-2 p-2 rounded-md border bg-card transition-opacity ${
+                        isDragging ? "opacity-40" : "hover:bg-muted/50"
+                      } ${!t.visible ? "opacity-60" : ""}`}
+                    >
+                      <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab shrink-0" />
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="flex-1 text-sm font-medium">
+                        {meta.label}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground tabular-nums">
+                        #{idx + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTabConfig((prev) =>
+                            prev.map((x, i) =>
+                              i === idx ? { ...x, visible: !x.visible } : x,
+                            ),
+                          )
+                        }
+                        className="p-1.5 rounded hover:bg-muted text-muted-foreground"
+                        title={t.visible ? "הסתר טאב" : "הצג טאב"}
+                      >
+                        {t.visible ? (
+                          <Eye className="h-4 w-4" />
+                        ) : (
+                          <EyeOff className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <DialogFooter className="flex-row-reverse gap-2 sm:gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setTabConfig(
+                      DEFAULT_TAB_ORDER.map((value) => ({
+                        value,
+                        visible: true,
+                      })),
+                    )
+                  }
+                >
+                  אפס לברירת מחדל
+                </Button>
+                <Button size="sm" onClick={() => setShowTabsSettings(false)}>
+                  סגור
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {activeTab === "logo-strip" && (
             <div className="border-b bg-gray-50 px-4 py-2 flex gap-1">
