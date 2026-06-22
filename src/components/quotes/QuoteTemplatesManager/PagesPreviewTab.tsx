@@ -890,11 +890,165 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
             className="h-8 text-xs gap-1.5"
             onClick={handleAutoFix}
             disabled={autoFixing}
-            title="זיהוי אוטומטי של בעיות + הטמעת CSS מקצועי + מעברי דף"
+            title="זיהוי אוטומטי של בעיות + הטמעת CSS מקצועי + מעברי דף + הזחה מאזורי בטיחות"
           >
             <Wand2 className="h-3.5 w-3.5" />
             {autoFixing ? "מתקן..." : "תקן עימוד"}
           </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                title="הגדרות תיקון עימוד"
+              >
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="w-80 p-4 space-y-4"
+              dir="rtl"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-xs font-semibold">
+                    אזור בטיחות עליון (סטריפ כותרת)
+                  </Label>
+                  <span className="text-[11px] tabular-nums text-muted-foreground">
+                    {fixState.safeZoneTopMm} מ"מ
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {[10, 15, 20, 25, 30].map((mm) => (
+                    <Button
+                      key={mm}
+                      size="sm"
+                      variant={
+                        fixState.safeZoneTopMm === mm ? "default" : "outline"
+                      }
+                      className="h-7 px-2 text-[11px]"
+                      onClick={() =>
+                        setFixState((s) => ({ ...s, safeZoneTopMm: mm }))
+                      }
+                    >
+                      {mm}
+                    </Button>
+                  ))}
+                  <Input
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={fixState.safeZoneTopMm}
+                    onChange={(e) =>
+                      setFixState((s) => ({
+                        ...s,
+                        safeZoneTopMm: Math.max(
+                          0,
+                          Math.min(60, Number(e.target.value) || 0),
+                        ),
+                      }))
+                    }
+                    className="h-7 w-16 text-[11px]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-xs font-semibold">
+                    אזור בטיחות תחתון (סטריפ פוטר)
+                  </Label>
+                  <span className="text-[11px] tabular-nums text-muted-foreground">
+                    {fixState.safeZoneBottomMm} מ"מ
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {[10, 15, 20, 25].map((mm) => (
+                    <Button
+                      key={mm}
+                      size="sm"
+                      variant={
+                        fixState.safeZoneBottomMm === mm ? "default" : "outline"
+                      }
+                      className="h-7 px-2 text-[11px]"
+                      onClick={() =>
+                        setFixState((s) => ({ ...s, safeZoneBottomMm: mm }))
+                      }
+                    >
+                      {mm}
+                    </Button>
+                  ))}
+                  <Input
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={fixState.safeZoneBottomMm}
+                    onChange={(e) =>
+                      setFixState((s) => ({
+                        ...s,
+                        safeZoneBottomMm: Math.max(
+                          0,
+                          Math.min(60, Number(e.target.value) || 0),
+                        ),
+                      }))
+                    }
+                    className="h-7 w-16 text-[11px]"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t">
+                <Label className="text-xs font-semibold mb-2 block">
+                  בלוקים מוגנים (לא יחתכו)
+                </Label>
+                <div className="space-y-1.5 max-h-48 overflow-auto pr-1">
+                  {[
+                    { sel: "h1,h2,h3,h4", label: "כותרות (h1-h4)" },
+                    { sel: "tr,table", label: "טבלאות ושורות" },
+                    { sel: "ul,ol,li", label: "רשימות ופריטים" },
+                    { sel: ".stage-card,.summary-card,.card", label: "כרטיסים" },
+                    { sel: "figure,blockquote", label: "תיבות מודגשות / מסגרות" },
+                    { sel: ".signature-block", label: "בלוק חתימה" },
+                  ].map(({ sel, label }) => {
+                    const parts = sel.split(",");
+                    const allOn = parts.every((p) =>
+                      fixState.protectedBlocks.includes(p),
+                    );
+                    return (
+                      <label
+                        key={sel}
+                        className="flex items-center gap-2 text-xs cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={allOn}
+                          onCheckedChange={(v) => {
+                            setFixState((s) => {
+                              const set = new Set(s.protectedBlocks);
+                              if (v) parts.forEach((p) => set.add(p));
+                              else parts.forEach((p) => set.delete(p));
+                              return {
+                                ...s,
+                                protectedBlocks: Array.from(set),
+                              };
+                            });
+                          }}
+                        />
+                        {label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-2 border-t text-[11px] text-muted-foreground leading-relaxed">
+                שיטה: הזחה דינמית של אלמנטים שמתחת לסטריפים +
+                page-break-before לבלוקים שנחתכים. הלחיצה על "תקן עימוד" תפעיל
+                את הניתוח לפי ההגדרות האלה.
+              </div>
+            </PopoverContent>
+          </Popover>
           <Toggle
             pressed={manualMode}
             onPressedChange={(v) => {
