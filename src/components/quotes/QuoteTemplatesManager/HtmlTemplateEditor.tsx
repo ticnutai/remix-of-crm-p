@@ -13889,6 +13889,15 @@ ${tbAt('footer')}
               html={debouncedPreviewHtml}
               onExportPdf={handleExportPdf}
               onExportWord={handleExportWord}
+              onJumpToEditor={(path) => {
+                // Switch to interactive preview tab where data-editable elements
+                // are clickable. Future enhancement: scroll to the specific path.
+                setActiveTab("preview");
+                setInteractiveEditMode(true);
+                if (path) {
+                  console.info("[pages-preview] jump to editable:", path);
+                }
+              }}
               templateName={editedTemplate.name}
             />
           </TabsContent>
