@@ -6079,7 +6079,7 @@ export function HtmlTemplateEditor({
       
       ${renderTextBoxes("before-stages")}
       
-      ${sectionTitleHtml(editedTemplate.stagesTitle || "שלבי העבודה", fd.sectionTitle, "margin: 30px 0 16px;")}
+      ${sectionTitleHtml(applyProjectDetailsTokens(editedTemplate.stagesTitle || "שלבי העבודה", projectDetails), fd.sectionTitle, "margin: 30px 0 16px;")}
       ${stages}
       
       ${renderTextBoxes("after-stages")}
