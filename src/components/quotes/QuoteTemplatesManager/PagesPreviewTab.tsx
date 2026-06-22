@@ -60,12 +60,36 @@ interface FixState {
   globalEnabled: boolean;
   autoPaths: string[]; // structural paths to force page-break-before
   manual: ManualRule[];
+  safeZoneTopMm: number; // safe top margin (in mm) reserved for repeating header
+  safeZoneBottomMm: number; // safe bottom margin (in mm) reserved for repeating footer
+  protectedBlocks: string[]; // CSS selectors of blocks to keep intact / push from safe zones
 }
+
+const DEFAULT_PROTECTED = [
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "tr",
+  "table",
+  "ul",
+  "ol",
+  "li",
+  "figure",
+  "blockquote",
+  ".stage-card",
+  ".summary-card",
+  ".card",
+  ".signature-block",
+];
 
 const defaultFixState: FixState = {
   globalEnabled: false,
   autoPaths: [],
   manual: [],
+  safeZoneTopMm: 20,
+  safeZoneBottomMm: 15,
+  protectedBlocks: [...DEFAULT_PROTECTED],
 };
 
 const loadPrefs = (): Prefs => {
@@ -92,6 +116,13 @@ const loadFixState = (templateKey: string): FixState => {
       globalEnabled: !!p.globalEnabled,
       autoPaths: Array.isArray(p.autoPaths) ? p.autoPaths : [],
       manual: Array.isArray(p.manual) ? p.manual : [],
+      safeZoneTopMm:
+        typeof p.safeZoneTopMm === "number" ? p.safeZoneTopMm : 20,
+      safeZoneBottomMm:
+        typeof p.safeZoneBottomMm === "number" ? p.safeZoneBottomMm : 15,
+      protectedBlocks: Array.isArray(p.protectedBlocks)
+        ? p.protectedBlocks
+        : [...DEFAULT_PROTECTED],
     };
   } catch {
     return { ...defaultFixState };
