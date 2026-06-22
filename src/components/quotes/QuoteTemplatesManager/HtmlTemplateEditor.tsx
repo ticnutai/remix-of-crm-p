@@ -472,8 +472,58 @@ interface ProjectDetails {
   address: string;
   projectType: string;
   phone?: string;
+  moshav?: string;
+  family?: string;
   stageTemplateId?: string;
   stageTemplateName?: string;
+}
+
+/**
+ * Replace dynamic placeholders inside text-box content with values from
+ * projectDetails. Supported tokens: [גוש] [חלקה] [מגרש] [מושב] [משפחה]
+ * [לקוח] [כתובת] [סוג פרויקט] [תב"ע] [טלפון]
+ * If a line contains a token whose value is empty - the whole line is removed
+ * (so the user does not see naked underscores / dangling labels in the PDF).
+ */
+function applyProjectDetailsTokens(content: string, pd: any): string {
+  if (!content) return content;
+  const family = pd?.family || (pd?.clientName ? String(pd.clientName).trim() : "");
+  const map: Record<string, string> = {
+    "גוש": pd?.gush || "",
+    "חלקה": pd?.helka || "",
+    "מגרש": pd?.migrash || "",
+    "מושב": pd?.moshav || "",
+    "משפחה": family || "",
+    "לקוח": pd?.clientName || "",
+    "כתובת": pd?.address || "",
+    "סוג פרויקט": pd?.projectType || "",
+    'תב"ע': pd?.taba || "",
+    "תבע": pd?.taba || "",
+    "טלפון": pd?.phone || "",
+  };
+  const tokenRegex = /\[([^\[\]\n]+)\]/g;
+  const lines = content.split(/\r?\n/);
+  const kept: string[] = [];
+  for (const line of lines) {
+    let drop = false;
+    let replaced = line.replace(tokenRegex, (full, raw) => {
+      const key = String(raw).trim();
+      if (Object.prototype.hasOwnProperty.call(map, key)) {
+        const v = map[key];
+        if (!v) {
+          drop = true;
+          return "";
+        }
+        return v;
+      }
+      return full;
+    });
+    if (drop) continue;
+    // Remove orphan separators like "  -  " or "  |  " left over by a removed token
+    replaced = replaced.replace(/\s+[-|–—,]\s+(?=\s*$)/g, "").replace(/^\s*[-|–—,]\s+/g, "");
+    kept.push(replaced);
+  }
+  return kept.join("\n");
 }
 
 // Email dialog component
