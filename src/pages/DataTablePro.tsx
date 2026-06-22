@@ -3167,8 +3167,35 @@ export default function DataTablePro() {
       );
     }
 
+    // Apply consultant tree filter (by profession and/or specific consultants)
+    const { consultantIds: tIds, consultantProfessions: tProfs } =
+      consultantTreeFilter;
+    if (tIds.length > 0 || tProfs.length > 0) {
+      clients = clients.filter((client) => {
+        const info = clientConsultantsMap.get(client.id);
+        if (!info) return false;
+        const idMatch =
+          tIds.length === 0 ||
+          info.consultants.some((c) => tIds.includes(c.id));
+        const profMatch =
+          tProfs.length === 0 ||
+          info.consultants.some((c) =>
+            tProfs.includes(c.profession || "ללא תחום"),
+          );
+        return tIds.length > 0 && tProfs.length > 0
+          ? idMatch || profMatch
+          : idMatch && profMatch;
+      });
+    }
+
     return clients;
-  }, [filteredClients, dbClients, selectedCategoryIds]);
+  }, [
+    filteredClients,
+    dbClients,
+    selectedCategoryIds,
+    consultantTreeFilter,
+    clientConsultantsMap,
+  ]);
 
   // Calculate client count per category for sidebar
   // Always use dbClients as base so category_id is present
