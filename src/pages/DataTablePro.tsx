@@ -3860,6 +3860,56 @@ export default function DataTablePro() {
                   />
                   )}
 
+                  {/* Consultants Tree Filter (by profession & specific consultants) */}
+                  {pageCustomizer.isVisible("filters") && pageCustomizer.isEnabled("filters-panel") && (
+                    <ConsultantsPopover>
+                      <ConsultantsPopoverTrigger asChild>
+                        <Button
+                          variant={
+                            consultantTreeFilter.consultantIds.length +
+                              consultantTreeFilter.consultantProfessions.length >
+                            0
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          className="gap-2"
+                        >
+                          <UserCog className="h-4 w-4" />
+                          <span>סוג יועץ</span>
+                          {consultantTreeFilter.consultantIds.length +
+                            consultantTreeFilter.consultantProfessions.length >
+                            0 && (
+                            <Badge
+                              variant="secondary"
+                              className="h-5 px-1.5 text-xs"
+                            >
+                              {consultantTreeFilter.consultantIds.length +
+                                consultantTreeFilter.consultantProfessions.length}
+                            </Badge>
+                          )}
+                          <ChevronDown className="h-3 w-3 opacity-60" />
+                        </Button>
+                      </ConsultantsPopoverTrigger>
+                      <ConsultantsPopoverContent
+                        className="w-[360px] p-3"
+                        align="start"
+                        dir="rtl"
+                      >
+                        <ConsultantsTreeFilter
+                          selectedConsultantIds={
+                            consultantTreeFilter.consultantIds
+                          }
+                          selectedProfessions={
+                            consultantTreeFilter.consultantProfessions
+                          }
+                          onChange={setConsultantTreeFilter}
+                        />
+                      </ConsultantsPopoverContent>
+                    </ConsultantsPopover>
+                  )}
+
+
                   {/* Restore Hidden Columns */}
                   {hiddenClientColumns.size > 0 && (
                     <>
