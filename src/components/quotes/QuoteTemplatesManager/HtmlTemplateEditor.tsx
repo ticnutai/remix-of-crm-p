@@ -23,6 +23,7 @@ import {
   type FrameDesignSettings,
 } from "./frameStyles";
 import { useDebouncedValue } from "@/hooks/useDebounce";
+import { useDefaultVatRate, DEFAULT_VAT_RATE } from "@/lib/vat-utils";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
