@@ -58,6 +58,12 @@ import {
 import { BulkConsultantDialog } from "@/components/clients/BulkConsultantDialog";
 import { ColumnOptionsMenu } from "@/components/DataTable/components/ColumnOptionsMenu";
 import { ClientFilterPanel } from "@/components/clients/ClientFilterPanel";
+import { ConsultantsTreeFilter } from "@/components/clients/ConsultantsTreeFilter";
+import {
+  Popover as ConsultantsPopover,
+  PopoverContent as ConsultantsPopoverContent,
+  PopoverTrigger as ConsultantsPopoverTrigger,
+} from "@/components/ui/popover";
 import { CategoriesSidebar } from "@/components/clients/CategoriesSidebar";
 import { ClientNameWithCategory } from "@/components/clients/ClientNameWithCategory";
 import { PhoneWithExtras } from "@/components/clients/PhoneWithExtras";
@@ -442,6 +448,11 @@ export default function DataTablePro() {
   const [filteredClients, setFilteredClients] = useState<SyncedClient[] | null>(
     null,
   );
+  // Consultants tree filter (by profession and/or specific consultants)
+  const [consultantTreeFilter, setConsultantTreeFilter] = useState<{
+    consultantIds: string[];
+    consultantProfessions: string[];
+  }>({ consultantIds: [], consultantProfessions: [] });
 
   // Client categories state
   interface ClientCategory {
@@ -3162,8 +3173,35 @@ export default function DataTablePro() {
       );
     }
 
+    // Apply consultant tree filter (by profession and/or specific consultants)
+    const { consultantIds: tIds, consultantProfessions: tProfs } =
+      consultantTreeFilter;
+    if (tIds.length > 0 || tProfs.length > 0) {
+      clients = clients.filter((client) => {
+        const info = clientConsultantsMap.get(client.id);
+        if (!info) return false;
+        const idMatch =
+          tIds.length === 0 ||
+          info.consultants.some((c) => tIds.includes(c.id));
+        const profMatch =
+          tProfs.length === 0 ||
+          info.consultants.some((c) =>
+            tProfs.includes(c.profession || "ללא תחום"),
+          );
+        return tIds.length > 0 && tProfs.length > 0
+          ? idMatch || profMatch
+          : idMatch && profMatch;
+      });
+    }
+
     return clients;
-  }, [filteredClients, dbClients, selectedCategoryIds]);
+  }, [
+    filteredClients,
+    dbClients,
+    selectedCategoryIds,
+    consultantTreeFilter,
+    clientConsultantsMap,
+  ]);
 
   // Calculate client count per category for sidebar
   // Always use dbClients as base so category_id is present
@@ -3821,6 +3859,56 @@ export default function DataTablePro() {
                     filteredCount={displayClients.length}
                   />
                   )}
+
+                  {/* Consultants Tree Filter (by profession & specific consultants) */}
+                  {pageCustomizer.isVisible("filters") && pageCustomizer.isEnabled("filters-panel") && (
+                    <ConsultantsPopover>
+                      <ConsultantsPopoverTrigger asChild>
+                        <Button
+                          variant={
+                            consultantTreeFilter.consultantIds.length +
+                              consultantTreeFilter.consultantProfessions.length >
+                            0
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          className="gap-2"
+                        >
+                          <UserCog className="h-4 w-4" />
+                          <span>סוג יועץ</span>
+                          {consultantTreeFilter.consultantIds.length +
+                            consultantTreeFilter.consultantProfessions.length >
+                            0 && (
+                            <Badge
+                              variant="secondary"
+                              className="h-5 px-1.5 text-xs"
+                            >
+                              {consultantTreeFilter.consultantIds.length +
+                                consultantTreeFilter.consultantProfessions.length}
+                            </Badge>
+                          )}
+                          <ChevronDown className="h-3 w-3 opacity-60" />
+                        </Button>
+                      </ConsultantsPopoverTrigger>
+                      <ConsultantsPopoverContent
+                        className="w-[360px] p-3"
+                        align="start"
+                        dir="rtl"
+                      >
+                        <ConsultantsTreeFilter
+                          selectedConsultantIds={
+                            consultantTreeFilter.consultantIds
+                          }
+                          selectedProfessions={
+                            consultantTreeFilter.consultantProfessions
+                          }
+                          onChange={setConsultantTreeFilter}
+                        />
+                      </ConsultantsPopoverContent>
+                    </ConsultantsPopover>
+                  )}
+
 
                   {/* Restore Hidden Columns */}
                   {hiddenClientColumns.size > 0 && (
