@@ -863,6 +863,7 @@ export default function Clients() {
     clientsWithTasks,
     clientsWithMeetings,
     latestContractSignedByClient,
+    clientConsultantsMap,
   ]);
 
   const scrollToClientCard = useCallback((clientId: string) => {
