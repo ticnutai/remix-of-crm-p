@@ -6336,15 +6336,16 @@ export function HtmlTemplateEditor({
 
     // Stages
     const stagesHtml = (editedTemplate.stages || []).map((stage: any) => {
+      const sName = applyProjectDetailsTokens(stage.name || "", projectDetails);
       if (stage.isSection) {
-        return `<h3 style="color:${primary};font-family:${ff};border-bottom:1px solid ${primary};padding-bottom:3px;margin-top:14px;">${stage.name}</h3>`;
+        return `<h3 style="color:${primary};font-family:${ff};border-bottom:1px solid ${primary};padding-bottom:3px;margin-top:14px;">${sName}</h3>`;
       }
       const itemsHtml = (stage.items || [])
         .filter((it: any) => !it.isSpacer)
-        .map((it: any) => `<li style="padding:2px 0;font-size:11pt;">${it.text || ''}</li>`)
+        .map((it: any) => `<li style="padding:2px 0;font-size:11pt;">${applyProjectDetailsTokens(it.text || '', projectDetails)}</li>`)
         .join('');
       return `<div style="margin-bottom:14px;padding:10px;border:1px solid #e0e0e0;border-right:3px solid ${primary};">
-  <h4 style="color:${primary};font-family:${ff};margin:0 0 8px 0;">${stage.icon ? stage.icon + ' ' : ''}${stage.name}</h4>
+  <h4 style="color:${primary};font-family:${ff};margin:0 0 8px 0;">${stage.icon ? stage.icon + ' ' : ''}${sName}</h4>
   ${itemsHtml ? `<ul style="margin:0;padding-right:18px;">${itemsHtml}</ul>` : ''}
 </div>`;
     }).join('');
