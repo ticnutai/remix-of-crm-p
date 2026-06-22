@@ -546,15 +546,26 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         setSelectedManual({ path: d.path, text: d.text || "" });
       }
       if (d.__lovAutoFixResult && Array.isArray(d.paths)) {
-        const unique = Array.from(new Set([...fixState.autoPaths, ...d.paths]));
-        setFixState((s) => ({
-          ...s,
-          globalEnabled: true,
-          autoPaths: unique,
-        }));
+        const pushes: Array<{ path: string; marginTop: number }> = Array.isArray(d.pushes) ? d.pushes : [];
+        setFixState((s) => {
+          const uniqueAuto = Array.from(new Set([...s.autoPaths, ...d.paths]));
+          // Merge pushes into manual rules (overwrite marginTop for same path)
+          const manualMap = new Map(s.manual.map((m) => [m.path, m]));
+          pushes.forEach((p) => {
+            const existing = manualMap.get(p.path) || { path: p.path };
+            manualMap.set(p.path, { ...existing, marginTop: p.marginTop });
+          });
+          return {
+            ...s,
+            globalEnabled: true,
+            autoPaths: uniqueAuto,
+            manual: Array.from(manualMap.values()),
+          };
+        });
         setAutoFixing(false);
-        toast.success(`תוקנו ${d.paths.length} בעיות עימוד`, {
-          description: "הוטמע CSS מקצועי + מעברי דף ידניים",
+        const total = d.paths.length + pushes.length;
+        toast.success(`תוקנו ${total} בעיות עימוד`, {
+          description: `${d.paths.length} מעברי דף · ${pushes.length} הזחות מאזורי בטיחות`,
         });
       }
     };
