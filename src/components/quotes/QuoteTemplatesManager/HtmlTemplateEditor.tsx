@@ -13882,6 +13882,16 @@ ${tbAt('footer')}
 
             </ResizablePanelGroup>
           </TabsContent>
+
+          {/* Pages Preview Tab - paged A4 preview */}
+          <TabsContent value="pages" className="flex-1 m-0 overflow-hidden">
+            <PagesPreviewTab
+              html={debouncedPreviewHtml}
+              onExportPdf={handleExportPdf}
+              onExportWord={handleExportWord}
+              templateName={editedTemplate.name}
+            />
+          </TabsContent>
         </Tabs>
 
         {/* Footer */}
