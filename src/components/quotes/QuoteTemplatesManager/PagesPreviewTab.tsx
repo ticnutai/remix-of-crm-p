@@ -387,18 +387,41 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     var d=ev.data;
     if(!d) return;
     if(d.__lovRequestAutoFix){
+      var SAFE_TOP=parseInt(d.safeTopPx,10)||0;
+      var SAFE_BOTTOM=parseInt(d.safeBottomPx,10)||0;
+      var SEL=(d.selectors||'h1,h2,h3,h4,li,tr,.stage-card,.summary-card,.card');
       var newPaths=[];
-      document.querySelectorAll('h1,h2,h3,h4,li,tr,.stage-card,.summary-card,.card').forEach(function(el){
+      var pushes=[];
+      var seen={};
+      document.querySelectorAll(SEL).forEach(function(el){
         var r=el.getBoundingClientRect();
         var top=r.top+window.scrollY;
         var bottom=top+r.height;
         var startPage=Math.floor(top/H);
         var endPage=Math.floor((bottom-1)/H);
-        if(endPage>startPage && r.height < H*0.9){
-          newPaths.push(pathFor(el));
+        var topInPage=top - startPage*H;
+        var bottomInPage=bottom - endPage*H;
+        var crosses=endPage>startPage && r.height < H*0.9;
+        var hitsHeader=topInPage < SAFE_TOP;
+        var hitsFooter=bottomInPage > (H - SAFE_BOTTOM);
+        var path=pathFor(el);
+        if(seen[path]) return; seen[path]=true;
+
+        // 1) Element starts inside the bottom safe-zone OR crosses a page boundary
+        //    → push it to the next page with a clean break
+        if(crosses || (hitsFooter && r.height < H*0.9)){
+          newPaths.push(path);
+          return;
+        }
+        // 2) Element sits under the header strip → push it down past the safe zone
+        if(hitsHeader){
+          var delta=Math.ceil(SAFE_TOP - topInPage + 4); // +4px breathing
+          if(delta>0 && delta < H*0.5){
+            pushes.push({path:path, marginTop:delta});
+          }
         }
       });
-      try{window.parent.postMessage({__lovAutoFixResult:true, paths:newPaths},'*');}catch(e){}
+      try{window.parent.postMessage({__lovAutoFixResult:true, paths:newPaths, pushes:pushes},'*');}catch(e){}
     }
   });
 
