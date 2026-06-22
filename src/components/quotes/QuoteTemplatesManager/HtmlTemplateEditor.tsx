@@ -5756,9 +5756,11 @@ export function HtmlTemplateEditor({
           const tbLineHeight = tb.lineHeight ? `line-height: ${tb.lineHeight};` : "";
           const tbLetterSpacing = tb.letterSpacing ? `letter-spacing: ${tb.letterSpacing}px;` : "";
           const borderW = tb.borderWidth ?? 2;
+          const resolvedTitle = applyProjectDetailsTokens(tb.title || "", projectDetails);
+          const resolvedContent = applyProjectDetailsTokens(tb.content || "", projectDetails);
           return `<div style="margin: 15px 0; padding: 15px; background: ${bgColor}; border: ${borderW}px solid ${borderColor}; border-radius: ${designSettings.borderRadius}px;">
-          ${tb.title ? `<h4 data-editable="textbox.${tb.id}.title" style="margin: 0 0 8px 0; color: ${designSettings.primaryColor}; font-family: ${fontFamily};">${s.icon} ${tb.title}</h4>` : ""}
-          <div data-editable="textbox.${tb.id}.content" style="color: ${textColor}; white-space: pre-wrap; font-size: ${fontSize}px; font-family: ${fontFamily}; ${fontWeight} ${fontStyle} ${textDecor} ${textAlign} ${tbLineHeight} ${tbLetterSpacing}">${tb.content}</div>
+          ${resolvedTitle ? `<h4 data-editable="textbox.${tb.id}.title" style="margin: 0 0 8px 0; color: ${designSettings.primaryColor}; font-family: ${fontFamily};">${s.icon} ${resolvedTitle}</h4>` : ""}
+          <div data-editable="textbox.${tb.id}.content" style="color: ${textColor}; white-space: pre-wrap; font-size: ${fontSize}px; font-family: ${fontFamily}; ${fontWeight} ${fontStyle} ${textDecor} ${textAlign} ${tbLineHeight} ${tbLetterSpacing}">${resolvedContent}</div>
         </div>`;
         })
         .join("");
