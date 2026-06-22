@@ -11,6 +11,7 @@ import React, {
 import { createPortal } from "react-dom";
 import { PreviewIframe, type InlineEditPayload } from "./PreviewIframe";
 import { FrameDesignPanel } from "./FrameDesignPanel";
+import PagesPreviewTab from "./PagesPreviewTab";
 import {
   DEFAULT_FRAME_SETTINGS,
   borderToCss,
@@ -8330,6 +8331,13 @@ ${tbAt('footer')}
                 <Columns className="h-4 w-4 ml-2" />
                 עריכה + תצוגה
               </TabsTrigger>
+              <TabsTrigger
+                value="pages"
+                className="data-[state=active]:bg-[#162C58]/10 data-[state=active]:text-[#162C58]"
+              >
+                <Layers className="h-4 w-4 ml-2" />
+                תצוגת דפים
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -13873,6 +13881,16 @@ ${tbAt('footer')}
               </ResizablePanel>
 
             </ResizablePanelGroup>
+          </TabsContent>
+
+          {/* Pages Preview Tab - paged A4 preview */}
+          <TabsContent value="pages" className="flex-1 m-0 overflow-hidden">
+            <PagesPreviewTab
+              html={debouncedPreviewHtml}
+              onExportPdf={handleExportPdf}
+              onExportWord={handleExportWord}
+              templateName={editedTemplate.name}
+            />
           </TabsContent>
         </Tabs>
 
