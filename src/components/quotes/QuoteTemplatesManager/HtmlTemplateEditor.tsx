@@ -4531,6 +4531,77 @@ export function HtmlTemplateEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("project");
+
+  // Top tabs configuration (order + visibility) — persisted
+  const TABS_CFG_LS_KEY = "lov-html-editor-tabs-cfg-v1";
+  type EditorTabKey =
+    | "project"
+    | "content"
+    | "payments"
+    | "design"
+    | "logo-strip"
+    | "text-boxes"
+    | "tools"
+    | "preview"
+    | "split"
+    | "pages";
+  const DEFAULT_TAB_ORDER: EditorTabKey[] = [
+    "project",
+    "content",
+    "payments",
+    "design",
+    "logo-strip",
+    "text-boxes",
+    "tools",
+    "preview",
+    "split",
+    "pages",
+  ];
+  const TAB_META: Record<
+    EditorTabKey,
+    { label: string; icon: any; activeClass: string }
+  > = {
+    project: { label: "פרטי פרויקט", icon: User, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    content: { label: "תוכן", icon: FileText, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    payments: { label: "תשלומים", icon: CreditCard, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    design: { label: "עיצוב", icon: Palette, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    "logo-strip": { label: "לוגו", icon: Crop, activeClass: "data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700" },
+    "text-boxes": { label: "טקסט", icon: Type, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    tools: { label: "כלים", icon: Wrench, activeClass: "data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700" },
+    preview: { label: "תצוגה מקדימה", icon: Eye, activeClass: "data-[state=active]:bg-green-100 data-[state=active]:text-green-700" },
+    split: { label: "עריכה + תצוגה", icon: Columns, activeClass: "data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700" },
+    pages: { label: "תצוגת דפים", icon: Layers, activeClass: "data-[state=active]:bg-[#162C58]/10 data-[state=active]:text-[#162C58]" },
+  };
+  const [tabConfig, setTabConfig] = useState<
+    Array<{ value: EditorTabKey; visible: boolean }>
+  >(() => {
+    try {
+      const raw = localStorage.getItem(TABS_CFG_LS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Array<{ value: EditorTabKey; visible: boolean }>;
+        const knownValues = new Set(DEFAULT_TAB_ORDER);
+        const sanitized = parsed.filter((t) => knownValues.has(t.value));
+        // Append any missing tabs (e.g. after an update)
+        DEFAULT_TAB_ORDER.forEach((v) => {
+          if (!sanitized.some((s) => s.value === v))
+            sanitized.push({ value: v, visible: true });
+        });
+        return sanitized;
+      }
+    } catch {
+      /* ignore */
+    }
+    return DEFAULT_TAB_ORDER.map((value) => ({ value, visible: true }));
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(TABS_CFG_LS_KEY, JSON.stringify(tabConfig));
+    } catch {
+      /* ignore */
+    }
+  }, [tabConfig]);
+  const [showTabsSettings, setShowTabsSettings] = useState(false);
+  const [draggedTabIdx, setDraggedTabIdx] = useState<number | null>(null);
   const [logoStripMode, setLogoStripMode] = useState<"logo" | "maker">(
     "logo",
   );
