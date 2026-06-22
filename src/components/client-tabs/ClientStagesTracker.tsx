@@ -62,8 +62,6 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
     [stages, effectiveSelectedTaskIds],
   );
 
-  const allSelectedCompleted = selectedTasksList.length > 0 && selectedTasksList.every(t => t.completed);
-
   const toggleStageSelection = (stageId: string) => {
     setSelectedStageIds(prev => {
       const next = new Set(prev);
@@ -73,10 +71,10 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
     });
   };
 
-  const handleBulkToggle = async () => {
+  const bulkComplete = async (completed: boolean) => {
     const taskIds = [...effectiveSelectedTaskIds];
     if (taskIds.length === 0) return;
-    await bulkSetTasksCompleted(taskIds, !allSelectedCompleted);
+    await bulkSetTasksCompleted(taskIds, completed);
     setSelectedStageIds(new Set());
   };
 
@@ -490,12 +488,22 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
           </span>
           <Button
             size="sm"
-            onClick={handleBulkToggle}
+            onClick={() => bulkComplete(true)}
             disabled={effectiveSelectedTaskIds.size === 0}
             className="rounded-full gap-1"
           >
             <CheckSquare className="h-4 w-4" />
-            {allSelectedCompleted ? 'בטל סימון' : 'סמן הכל כהושלם'}
+            סמן הכל כהושלם
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => bulkComplete(false)}
+            disabled={effectiveSelectedTaskIds.size === 0}
+            className="rounded-full gap-1"
+          >
+            <X className="h-4 w-4" />
+            בטל הכל הושלם
           </Button>
         </div>
       )}
