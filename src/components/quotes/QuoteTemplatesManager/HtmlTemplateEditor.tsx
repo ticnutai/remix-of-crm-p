@@ -7025,8 +7025,9 @@ ${tbAt('footer')}
 
   const [isRemovingBg, setIsRemovingBg] = useState(false);
 
-  // Legacy background removal (simple Canvas-based fallback)
-  const removeLogoBackground = useCallback((logoSrc: string, threshold: number = 220) => {
+  // Smart background removal: flood-fill from edges using corner-sampled background color.
+  // Works for any background color (not just white), only removes connected background pixels.
+  const removeLogoBackground = useCallback((logoSrc: string, tolerance: number = 40) => {
     return new Promise<string>((resolve) => {
       const img = new window.Image();
       img.crossOrigin = "anonymous";
@@ -7039,16 +7040,68 @@ ${tbAt('footer')}
         ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i], g = data[i + 1], b = data[i + 2];
-          if (r > threshold && g > threshold && b > threshold) {
-            data[i + 3] = 0;
-          } else {
-            const darkness = 1 - (r + g + b) / (3 * 255);
-            data[i] = 0; data[i + 1] = 0; data[i + 2] = 0;
-            data[i + 3] = Math.round(darkness * 255);
+        const w = canvas.width;
+        const h = canvas.height;
+
+        const px = (x: number, y: number) => (y * w + x) * 4;
+
+        // Sample background color from all 4 corners, pick the most common
+        const corners = [px(0,0), px(w-1,0), px(0,h-1), px(w-1,h-1)];
+        const rAvg = Math.round(corners.reduce((s,i) => s + data[i], 0) / 4);
+        const gAvg = Math.round(corners.reduce((s,i) => s + data[i+1], 0) / 4);
+        const bAvg = Math.round(corners.reduce((s,i) => s + data[i+2], 0) / 4);
+
+        const colorDist = (i: number) =>
+          Math.sqrt((data[i]-rAvg)**2 + (data[i+1]-gAvg)**2 + (data[i+2]-bAvg)**2);
+
+        const visited = new Uint8Array(w * h);
+        // Use a flat integer queue (2× faster than tuple array)
+        const queue = new Int32Array(w * h * 2);
+        let qHead = 0, qTail = 0;
+
+        const enqueue = (x: number, y: number) => {
+          if (x < 0 || x >= w || y < 0 || y >= h) return;
+          const pos = y * w + x;
+          if (visited[pos]) return;
+          const idx = pos * 4;
+          if (data[idx+3] === 0 || colorDist(idx) <= tolerance) {
+            visited[pos] = 1;
+            queue[qTail++] = x;
+            queue[qTail++] = y;
+          }
+        };
+
+        // Seed from all 4 edges (every pixel)
+        for (let x = 0; x < w; x++) { enqueue(x, 0); enqueue(x, h - 1); }
+        for (let y = 1; y < h - 1; y++) { enqueue(0, y); enqueue(w - 1, y); }
+
+        // BFS
+        const dx = [1, -1, 0, 0];
+        const dy = [0, 0, 1, -1];
+        while (qHead < qTail) {
+          const x = queue[qHead++];
+          const y = queue[qHead++];
+          for (let d = 0; d < 4; d++) enqueue(x + dx[d], y + dy[d]);
+        }
+
+        // Erase visited pixels + soften edges (1-pixel feather for anti-aliased logos)
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const pos = y * w + x;
+            if (!visited[pos]) continue;
+            const idx = pos * 4;
+            // Check if any neighbor is NOT background → soften instead of hard erase
+            let hasEdge = false;
+            for (let d = 0; d < 4; d++) {
+              const nx = x + dx[d], ny = y + dy[d];
+              if (nx >= 0 && nx < w && ny >= 0 && ny < h && !visited[ny * w + nx]) {
+                hasEdge = true; break;
+              }
+            }
+            data[idx + 3] = hasEdge ? Math.round(data[idx + 3] * 0.3) : 0;
           }
         }
+
         ctx.putImageData(imageData, 0, 0);
         resolve(canvas.toDataURL("image/png"));
       };
@@ -9956,7 +10009,7 @@ ${tbAt('footer')}
                         ) : (
                           <Sparkles className="h-4 w-4 ml-2" />
                         )}
-                        {isRemovingBg ? "מנקה רקע..." : "נקה רקע (בסיסי)"}
+                        {isRemovingBg ? "מנקה רקע..." : "נקה רקע חכם"}
                       </Button>
                     )}
                     {designSettings.logoUrl && (
