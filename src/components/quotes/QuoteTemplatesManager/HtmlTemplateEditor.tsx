@@ -4569,7 +4569,13 @@ export function HtmlTemplateEditor({
   });
   const [designSettings, setDesignSettings] = useState<DesignSettings>(() => {
     const ds = template.design_settings as any;
-    if (ds && ds.primaryColor) return ds as DesignSettings;
+    if (ds && ds.primaryColor) {
+      const settings = ds as DesignSettings;
+      if (settings.logoPosition === "custom-strip" && !settings.logoUrl) {
+        return { ...settings, logoUrl: companyHeaderImg };
+      }
+      return settings;
+    }
     return {
       primaryColor: "#B8860B",
       secondaryColor: "#DAA520",
@@ -6016,9 +6022,10 @@ export function HtmlTemplateEditor({
             } else {
               const stripOpacity = (designSettings.stripLineOpacity ?? 100) / 100;
               const logoSrc = designSettings.logoUrl || "";
+              const stripImgTag = logoSrc ? `<img src="${logoSrc}" alt="Header Strip" style="width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: ${stripOpacity}; mix-blend-mode: multiply;">` : "";
               return `
     <div class="header-strip" style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
-      <img src="${logoSrc}" alt="Header Strip" style="width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: ${stripOpacity}; mix-blend-mode: multiply;">
+      ${stripImgTag}
     </div>`;
 
             }
@@ -9048,10 +9055,10 @@ ${tbAt('footer')}
                             variant="outline"
                             size="sm"
                             onClick={() =>
-                              setDesignSettings({
-                                ...designSettings,
-                                logoUrl: "",
-                              })
+                              setDesignSettings((prev) => ({
+                                ...prev,
+                                logoUrl: prev.logoPosition === "custom-strip" ? companyHeaderImg : "",
+                              }))
                             }
                           >
                             <Trash2 className="h-4 w-4 ml-1" />
