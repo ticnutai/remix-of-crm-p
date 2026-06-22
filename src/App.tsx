@@ -52,6 +52,7 @@ const ClientSettings = lazy(() => import("./pages/ClientSettings"));
 const ClientPayments = lazy(() => import("./pages/ClientPayments"));
 const TasksAndMeetings = lazy(() => import("./pages/TasksAndMeetings"));
 const ClientWorkflow = lazy(() => import("./pages/ClientWorkflow"));
+const ConnectionDiagnostics = lazy(() => import("./pages/ConnectionDiagnostics"));
 
 const CustomTableView = lazy(() => import("./pages/CustomTableView"));
 const ClientProfile = lazy(() => import("./pages/ClientProfile"));
@@ -192,6 +193,10 @@ const App = () => {
                               <Route
                                 path="/auth"
                                 element={withErrorBoundary(Auth)}
+                              />
+                              <Route
+                                path="/diagnostics"
+                                element={withErrorBoundary(ConnectionDiagnostics)}
                               />
                               <Route
                                 path="/user-approvals"
