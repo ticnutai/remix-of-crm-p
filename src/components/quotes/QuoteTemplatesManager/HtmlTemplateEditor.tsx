@@ -480,11 +480,12 @@ interface ProjectDetails {
 }
 
 /**
- * Replace dynamic placeholders inside text-box content with values from
- * projectDetails. Supported tokens: [גוש] [חלקה] [מגרש] [מושב] [משפחה]
- * [לקוח] [כתובת] [סוג פרויקט] [תב"ע] [טלפון]
- * If a line contains a token whose value is empty - the whole line is removed
- * (so the user does not see naked underscores / dangling labels in the PDF).
+ * Replace dynamic placeholders with values from projectDetails.
+ * Two supported formats (work everywhere - stages, items, text boxes, titles):
+ *   1. Square bracket tokens: [גוש] [חלקה] [מגרש] [מושב] [משפחה]
+ *      [לקוח] [כתובת] [סוג פרויקט] [תב"ע] [טלפון]
+ *   2. Hebrew label + underscores / colon: "גוש ____", "חלקה:", "משפחת ____"
+ * Missing values are left blank (the label stays, the placeholder becomes empty).
  */
 function applyProjectDetailsTokens(content: string, pd: any): string {
   if (!content) return content;
@@ -495,6 +496,7 @@ function applyProjectDetailsTokens(content: string, pd: any): string {
     "מגרש": pd?.migrash || "",
     "מושב": pd?.moshav || "",
     "משפחה": family || "",
+    "משפחת": family || "",
     "לקוח": pd?.clientName || "",
     "כתובת": pd?.address || "",
     "סוג פרויקט": pd?.projectType || "",
@@ -502,29 +504,24 @@ function applyProjectDetailsTokens(content: string, pd: any): string {
     "תבע": pd?.taba || "",
     "טלפון": pd?.phone || "",
   };
-  const tokenRegex = /\[([^\[\]\n]+)\]/g;
-  const lines = content.split(/\r?\n/);
-  const kept: string[] = [];
-  for (const line of lines) {
-    let drop = false;
-    let replaced = line.replace(tokenRegex, (full, raw) => {
-      const key = String(raw).trim();
-      if (Object.prototype.hasOwnProperty.call(map, key)) {
-        const v = map[key];
-        if (!v) {
-          drop = true;
-          return "";
-        }
-        return v;
-      }
-      return full;
-    });
-    if (drop) continue;
-    // Remove orphan separators like "  -  " or "  |  " left over by a removed token
-    replaced = replaced.replace(/\s+[-|–—,]\s+(?=\s*$)/g, "").replace(/^\s*[-|–—,]\s+/g, "");
-    kept.push(replaced);
-  }
-  return kept.join("\n");
+  // 1) Bracket tokens: [גוש] -> value (or empty)
+  let out = content.replace(/\[([^\[\]\n]+)\]/g, (full, raw) => {
+    const key = String(raw).trim();
+    return Object.prototype.hasOwnProperty.call(map, key) ? (map[key] ?? "") : full;
+  });
+  // 2) Bareword pattern: "גוש ____" / "חלקה: ___" / "משפחת______"
+  //    Matches keyword, optional ":", optional whitespace, then 2+ underscores.
+  const keys = Object.keys(map)
+    .sort((a, b) => b.length - a.length)
+    .map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+  const barewordRe = new RegExp(`(${keys})(\\s*:?\\s*)_{2,}`, "g");
+  out = out.replace(barewordRe, (_full, kw, sep) => {
+    const v = map[kw] ?? "";
+    const cleanSep = sep && sep.includes(":") ? ": " : " ";
+    return `${kw}${cleanSep}${v}`;
+  });
+  return out;
 }
 
 // Email dialog component
