@@ -6425,7 +6425,7 @@ ${detailRows ? `<h3 style="color:${primary};margin-bottom:8px;">פרטי הפר�
 
 ${tbAt('before-stages')}
 
-${(editedTemplate.stages || []).length > 0 ? `<h2 style="color:${primary};border-bottom:2px solid ${primary};padding-bottom:5px;margin-bottom:14px;">${editedTemplate.stagesTitle || 'שלבי העבודה'}</h2>
+${(editedTemplate.stages || []).length > 0 ? `<h2 style="color:${primary};border-bottom:2px solid ${primary};padding-bottom:5px;margin-bottom:14px;">${applyProjectDetailsTokens(editedTemplate.stagesTitle || 'שלבי העבודה', projectDetails)}</h2>
 ${stagesHtml}` : ''}
 
 ${tbAt('after-stages')}
