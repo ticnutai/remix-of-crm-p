@@ -8798,6 +8798,34 @@ ${tbAt('footer')}
                       סדר תשלומים
                     </h2>
                     <div className="flex items-center gap-4">
+                      {/* Default VAT rate for this template */}
+                      <div className="flex items-center gap-2 border rounded-lg px-2 py-1">
+                        <Label className="text-xs whitespace-nowrap">מע״מ ברירת מחדל:</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={0.5}
+                          className="h-7 w-16 text-xs"
+                          value={editedTemplate.vat_rate ?? globalDefaultVat}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            setEditedTemplate({
+                              ...editedTemplate,
+                              vat_rate: Number.isFinite(v) && v >= 0 ? v : globalDefaultVat,
+                            });
+                          }}
+                        />
+                        <span className="text-xs text-muted-foreground">%</span>
+                        <button
+                          type="button"
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-muted hover:bg-muted/70"
+                          onClick={() => setEditedTemplate({ ...editedTemplate, vat_rate: 0 })}
+                          title="הגדר ללא מע״מ"
+                        >
+                          ללא
+                        </button>
+                      </div>
                       {/* VAT Display Mode Toggle */}
                       <div className="flex items-center gap-2 border rounded-lg p-1">
                         <button
