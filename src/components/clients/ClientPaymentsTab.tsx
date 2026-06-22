@@ -714,7 +714,7 @@ export function ClientPaymentsTab({ clientId, clientName }: ClientPaymentsTabPro
     setPaymentMethod('transfer');
     setPaymentNotes('');
     setPayerName('');
-    setVatRate(18);
+    setVatRate('18');
     setIncludeVat(false);
     setIsPaymentDialogOpen(true);
   };
