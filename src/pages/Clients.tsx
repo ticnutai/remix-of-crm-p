@@ -3854,6 +3854,8 @@ export default function Clients() {
               exactMonth: newFilters.exactMonth,
               customDateRange: newFilters.customDateRange,
               activeDateTabId: newFilters.activeDateTabId,
+              consultantIds: newFilters.consultantIds,
+              consultantProfessions: newFilters.consultantProfessions,
               sortBy: newFilters.sortBy,
             }));
           }}
