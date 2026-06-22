@@ -1221,7 +1221,7 @@ export interface CalculationResult {
   total: number;
 }
 
-export function AutoCalculator({ result: externalResult, currency = '₪', basePrice = 0, vatRate = 17, discount = 0, discountType = 'percent', onCalculate }: CalculatorProps) {
+export function AutoCalculator({ result: externalResult, currency = '₪', basePrice = 0, vatRate = 18, discount = 0, discountType = 'percent', onCalculate }: CalculatorProps) {
   const [customItems, setCustomItems] = useState<Array<{ name: string; price: number }>>([]);
 
   const internalResult = useMemo(() => {
