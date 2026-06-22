@@ -79,6 +79,7 @@ import {
   Send,
   File,
   Eye,
+  EyeOff,
   Columns,
   Menu,
   MessageCircle,
