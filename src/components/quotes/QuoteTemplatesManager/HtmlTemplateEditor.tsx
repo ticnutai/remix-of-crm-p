@@ -5979,7 +5979,14 @@ export function HtmlTemplateEditor({
     }
   </style>
 </head>
-<body>
+<body data-repeat-header="${repeatHeader ? "1" : "0"}" data-repeat-footer="${repeatFooter ? "1" : "0"}" data-page-height="1123">
+  <style>
+    /* Per-page repeated overlays for the on-screen multi-page preview.
+       Print uses thead/tfoot grouping and ignores these overlays. */
+    body { position: relative; }
+    .lov-repeat-overlay { position: absolute; left: 0; right: 0; z-index: 50; pointer-events: none; }
+    @media print { .lov-repeat-overlay { display: none !important; } }
+  </style>
   ${hasFrameOverlay ? `<div class="print-frame-overlay" style="display:none; border: ${frameOverlayBorderCss};"></div>` : ""}
   ${fixedHeaderHtml(fd.fixedHeader, designSettings.logoUrl)}
   <div class="container">
