@@ -6365,8 +6365,8 @@ export function HtmlTemplateEditor({
       textBoxes
         .filter((tb) => tb.position === pos)
         .map((tb) => `<div style="margin:10px 0;padding:10px;background:${tb.customBg || '#f9f9f9'};border:${tb.borderWidth ?? 1}px solid ${tb.customBorder || '#ddd'};">
-  ${tb.title ? `<strong style="color:${primary};display:block;margin-bottom:5px;">${tb.title}</strong>` : ''}
-  <div style="color:${tb.customTextColor || '#444'};white-space:pre-wrap;font-size:${tb.fontSize || 11}pt;">${tb.content}</div>
+  ${tb.title ? `<strong style="color:${primary};display:block;margin-bottom:5px;">${applyProjectDetailsTokens(tb.title, projectDetails)}</strong>` : ''}
+  <div style="color:${tb.customTextColor || '#444'};white-space:pre-wrap;font-size:${tb.fontSize || 11}pt;">${applyProjectDetailsTokens(tb.content || '', projectDetails)}</div>
 </div>`)
         .join('');
 
