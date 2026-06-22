@@ -480,11 +480,12 @@ interface ProjectDetails {
 }
 
 /**
- * Replace dynamic placeholders inside text-box content with values from
- * projectDetails. Supported tokens: [גוש] [חלקה] [מגרש] [מושב] [משפחה]
- * [לקוח] [כתובת] [סוג פרויקט] [תב"ע] [טלפון]
- * If a line contains a token whose value is empty - the whole line is removed
- * (so the user does not see naked underscores / dangling labels in the PDF).
+ * Replace dynamic placeholders with values from projectDetails.
+ * Two supported formats (work everywhere - stages, items, text boxes, titles):
+ *   1. Square bracket tokens: [גוש] [חלקה] [מגרש] [מושב] [משפחה]
+ *      [לקוח] [כתובת] [סוג פרויקט] [תב"ע] [טלפון]
+ *   2. Hebrew label + underscores / colon: "גוש ____", "חלקה:", "משפחת ____"
+ * Missing values are left blank (the label stays, the placeholder becomes empty).
  */
 function applyProjectDetailsTokens(content: string, pd: any): string {
   if (!content) return content;
@@ -495,6 +496,7 @@ function applyProjectDetailsTokens(content: string, pd: any): string {
     "מגרש": pd?.migrash || "",
     "מושב": pd?.moshav || "",
     "משפחה": family || "",
+    "משפחת": family || "",
     "לקוח": pd?.clientName || "",
     "כתובת": pd?.address || "",
     "סוג פרויקט": pd?.projectType || "",
@@ -502,29 +504,24 @@ function applyProjectDetailsTokens(content: string, pd: any): string {
     "תבע": pd?.taba || "",
     "טלפון": pd?.phone || "",
   };
-  const tokenRegex = /\[([^\[\]\n]+)\]/g;
-  const lines = content.split(/\r?\n/);
-  const kept: string[] = [];
-  for (const line of lines) {
-    let drop = false;
-    let replaced = line.replace(tokenRegex, (full, raw) => {
-      const key = String(raw).trim();
-      if (Object.prototype.hasOwnProperty.call(map, key)) {
-        const v = map[key];
-        if (!v) {
-          drop = true;
-          return "";
-        }
-        return v;
-      }
-      return full;
-    });
-    if (drop) continue;
-    // Remove orphan separators like "  -  " or "  |  " left over by a removed token
-    replaced = replaced.replace(/\s+[-|–—,]\s+(?=\s*$)/g, "").replace(/^\s*[-|–—,]\s+/g, "");
-    kept.push(replaced);
-  }
-  return kept.join("\n");
+  // 1) Bracket tokens: [גוש] -> value (or empty)
+  let out = content.replace(/\[([^\[\]\n]+)\]/g, (full, raw) => {
+    const key = String(raw).trim();
+    return Object.prototype.hasOwnProperty.call(map, key) ? (map[key] ?? "") : full;
+  });
+  // 2) Bareword pattern: "גוש ____" / "חלקה: ___" / "משפחת______"
+  //    Matches keyword, optional ":", optional whitespace, then 2+ underscores.
+  const keys = Object.keys(map)
+    .sort((a, b) => b.length - a.length)
+    .map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+  const barewordRe = new RegExp(`(${keys})(\\s*:?\\s*)_{2,}`, "g");
+  out = out.replace(barewordRe, (_full, kw, sep) => {
+    const v = map[kw] ?? "";
+    const cleanSep = sep && sep.includes(":") ? ": " : " ";
+    return `${kw}${cleanSep}${v}`;
+  });
+  return out;
 }
 
 // Email dialog component
@@ -5780,13 +5777,14 @@ export function HtmlTemplateEditor({
     const stages = editedTemplate.stages
       .map(
         (stage) => {
+          const resolvedStageName = applyProjectDetailsTokens(stage.name || "", projectDetails);
           if (stage.isSection) {
-            return sectionTitleHtml(stage.name, fd.sectionTitle, "margin: 28px 0 10px;");
+            return sectionTitleHtml(resolvedStageName, fd.sectionTitle, "margin: 28px 0 10px;");
           }
           return `
       <div class="stage-card" style="margin-bottom: 20px;">
         ${stageCornersHtml}
-        <h3 style="color: ${designSettings.primaryColor}; font-family: ${designSettings.fontFamily};">${stage.icon ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;margin-left:6px;${stage.iconColor ? `background:${stage.iconColor}20;border:1px solid ${stage.iconColor};` : ""}">${stage.icon}</span>` : ""} <span data-editable="stage.${stage.id}.name">${stage.name}</span></h3>
+        <h3 style="color: ${designSettings.primaryColor}; font-family: ${designSettings.fontFamily};">${stage.icon ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;margin-left:6px;${stage.iconColor ? `background:${stage.iconColor}20;border:1px solid ${stage.iconColor};` : ""}">${stage.icon}</span>` : ""} <span data-editable="stage.${stage.id}.name">${resolvedStageName}</span></h3>
         <ul style="list-style: none; padding: 0;">
           ${stage.items
             .map((item) => {
@@ -5817,7 +5815,8 @@ export function HtmlTemplateEditor({
               const iconHtml = itemIcon
                 ? `<span style="color:${itemIconColor};margin-left:6px;">${itemIcon}</span>`
                 : "";
-              return `<li style="padding: 5px 0; color: ${itemColor}; font-family: '${itemFont}', sans-serif; font-size: ${itemSize}px; ${itemBold} ${itemItalic} ${itemUnderline} ${itemAlign}">${iconHtml}<span data-editable="stage.${stage.id}.item.${item.id}.text">${item.text}</span></li>`;
+              const resolvedItemText = applyProjectDetailsTokens(item.text || "", projectDetails);
+              return `<li style="padding: 5px 0; color: ${itemColor}; font-family: '${itemFont}', sans-serif; font-size: ${itemSize}px; ${itemBold} ${itemItalic} ${itemUnderline} ${itemAlign}">${iconHtml}<span data-editable="stage.${stage.id}.item.${item.id}.text">${resolvedItemText}</span></li>`;
             })
             .join("")}
         </ul>
@@ -6080,7 +6079,7 @@ export function HtmlTemplateEditor({
       
       ${renderTextBoxes("before-stages")}
       
-      ${sectionTitleHtml(editedTemplate.stagesTitle || "שלבי העבודה", fd.sectionTitle, "margin: 30px 0 16px;")}
+      ${sectionTitleHtml(applyProjectDetailsTokens(editedTemplate.stagesTitle || "שלבי העבודה", projectDetails), fd.sectionTitle, "margin: 30px 0 16px;")}
       ${stages}
       
       ${renderTextBoxes("after-stages")}
@@ -6337,15 +6336,16 @@ export function HtmlTemplateEditor({
 
     // Stages
     const stagesHtml = (editedTemplate.stages || []).map((stage: any) => {
+      const sName = applyProjectDetailsTokens(stage.name || "", projectDetails);
       if (stage.isSection) {
-        return `<h3 style="color:${primary};font-family:${ff};border-bottom:1px solid ${primary};padding-bottom:3px;margin-top:14px;">${stage.name}</h3>`;
+        return `<h3 style="color:${primary};font-family:${ff};border-bottom:1px solid ${primary};padding-bottom:3px;margin-top:14px;">${sName}</h3>`;
       }
       const itemsHtml = (stage.items || [])
         .filter((it: any) => !it.isSpacer)
-        .map((it: any) => `<li style="padding:2px 0;font-size:11pt;">${it.text || ''}</li>`)
+        .map((it: any) => `<li style="padding:2px 0;font-size:11pt;">${applyProjectDetailsTokens(it.text || '', projectDetails)}</li>`)
         .join('');
       return `<div style="margin-bottom:14px;padding:10px;border:1px solid #e0e0e0;border-right:3px solid ${primary};">
-  <h4 style="color:${primary};font-family:${ff};margin:0 0 8px 0;">${stage.icon ? stage.icon + ' ' : ''}${stage.name}</h4>
+  <h4 style="color:${primary};font-family:${ff};margin:0 0 8px 0;">${stage.icon ? stage.icon + ' ' : ''}${sName}</h4>
   ${itemsHtml ? `<ul style="margin:0;padding-right:18px;">${itemsHtml}</ul>` : ''}
 </div>`;
     }).join('');
@@ -6365,8 +6365,8 @@ export function HtmlTemplateEditor({
       textBoxes
         .filter((tb) => tb.position === pos)
         .map((tb) => `<div style="margin:10px 0;padding:10px;background:${tb.customBg || '#f9f9f9'};border:${tb.borderWidth ?? 1}px solid ${tb.customBorder || '#ddd'};">
-  ${tb.title ? `<strong style="color:${primary};display:block;margin-bottom:5px;">${tb.title}</strong>` : ''}
-  <div style="color:${tb.customTextColor || '#444'};white-space:pre-wrap;font-size:${tb.fontSize || 11}pt;">${tb.content}</div>
+  ${tb.title ? `<strong style="color:${primary};display:block;margin-bottom:5px;">${applyProjectDetailsTokens(tb.title, projectDetails)}</strong>` : ''}
+  <div style="color:${tb.customTextColor || '#444'};white-space:pre-wrap;font-size:${tb.fontSize || 11}pt;">${applyProjectDetailsTokens(tb.content || '', projectDetails)}</div>
 </div>`)
         .join('');
 
@@ -6425,7 +6425,7 @@ ${detailRows ? `<h3 style="color:${primary};margin-bottom:8px;">פרטי הפר�
 
 ${tbAt('before-stages')}
 
-${(editedTemplate.stages || []).length > 0 ? `<h2 style="color:${primary};border-bottom:2px solid ${primary};padding-bottom:5px;margin-bottom:14px;">${editedTemplate.stagesTitle || 'שלבי העבודה'}</h2>
+${(editedTemplate.stages || []).length > 0 ? `<h2 style="color:${primary};border-bottom:2px solid ${primary};padding-bottom:5px;margin-bottom:14px;">${applyProjectDetailsTokens(editedTemplate.stagesTitle || 'שלבי העבודה', projectDetails)}</h2>
 ${stagesHtml}` : ''}
 
 ${tbAt('after-stages')}
