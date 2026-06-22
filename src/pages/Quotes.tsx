@@ -396,7 +396,7 @@ export default function Quotes() {
         total: item.total || 0,
       })),
       subtotal: quote.subtotal || 0,
-      vat: (quote as any).vat || Math.round((quote.total_amount || 0) * 0.18 / 1.17),
+      vat: (quote as any).vat || Math.round((quote.total_amount || 0) * 0.18 / 1.18),
       total: quote.total_amount || 0,
       notes: quote.notes,
       valid_until: quote.valid_until,

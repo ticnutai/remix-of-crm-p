@@ -54,7 +54,7 @@ export function VATCalculator({
         {vatIncluded && (
           <>
             <div className="flex justify-between items-center text-blue-700">
-              <span>מע"מ (17%):</span>
+              <span>מע"מ (18%):</span>
               <span className="font-semibold">
                 ₪{calculatedVAT.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>

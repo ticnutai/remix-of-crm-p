@@ -49,7 +49,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.E
   partial: { label: 'חלקי', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300', icon: Clock },
 };
 
-export function PaymentScheduleView({ contractId, paymentSchedules, contractValue, defaultVatRate = 17 }: PaymentScheduleViewProps) {
+export function PaymentScheduleView({ contractId, paymentSchedules, contractValue, defaultVatRate = 18 }: PaymentScheduleViewProps) {
   const { createPaymentSchedule, updatePaymentStatus } = useContracts();
   const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
