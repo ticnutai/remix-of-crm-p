@@ -354,9 +354,63 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     }
   });
 
+  function setupRepeatOverlays(){
+    try{
+      // Cleanup previous overlays (in case of re-init)
+      document.querySelectorAll('.lov-repeat-overlay').forEach(function(n){ n.parentNode && n.parentNode.removeChild(n); });
+      var body=document.body;
+      if(!body) return;
+      var PH=parseInt(body.getAttribute('data-page-height')||'1123',10) || 1123;
+      var repH=body.getAttribute('data-repeat-header')==='1';
+      var repF=body.getAttribute('data-repeat-footer')==='1';
+      if(!repH && !repF) return;
+
+      // Source elements (originals stay in place)
+      var headerSrc=document.querySelector('.print-repeat-header > tr > td');
+      var footerSrc=document.querySelector('.print-repeat-footer > tr > td');
+      if(repH && !headerSrc) repH=false;
+      if(repF && !footerSrc) repF=false;
+      if(!repH && !repF) return;
+
+      // Measure originals
+      var headerH=0, footerH=0;
+      if(repH) headerH=headerSrc.getBoundingClientRect().height || 0;
+      if(repF) footerH=footerSrc.getBoundingClientRect().height || 90;
+
+      var docH=document.documentElement.scrollHeight;
+      var pageCount=Math.max(1, Math.ceil(docH/PH));
+
+      // Header clones for pages 2..N (page 1 already has the original header)
+      if(repH){
+        for(var i=1;i<pageCount;i++){
+          var el=document.createElement('div');
+          el.className='lov-repeat-overlay lov-repeat-overlay-header';
+          el.style.top=(i*PH)+'px';
+          el.style.height=headerH+'px';
+          el.innerHTML=headerSrc.innerHTML;
+          body.appendChild(el);
+        }
+      }
+      // Footer clones for pages 1..N-1 (last page already has the original footer)
+      if(repF){
+        for(var j=0;j<pageCount-1;j++){
+          var ef=document.createElement('div');
+          ef.className='lov-repeat-overlay lov-repeat-overlay-footer';
+          ef.style.top=((j+1)*PH-footerH)+'px';
+          ef.style.height=footerH+'px';
+          ef.innerHTML=footerSrc.innerHTML;
+          body.appendChild(ef);
+        }
+      }
+    }catch(e){ /* noop */ }
+  }
+
   function init(){
     tagAutoPaths();
+    setupRepeatOverlays();
     setTimeout(detectIssues,300);
+    // Re-run overlay setup after content settles (fonts/images)
+    setTimeout(setupRepeatOverlays,600);
   }
   if(document.readyState==='complete') setTimeout(init,200);
   else window.addEventListener('load',function(){setTimeout(init,200);});
