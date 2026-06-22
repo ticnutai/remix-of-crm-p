@@ -724,6 +724,27 @@ export default function Clients() {
       result = result.filter((client) => clientsWithTasks.has(client.id));
     }
 
+    // Consultant filter (specific consultants OR any consultant of selected profession)
+    const consultantIds = filters.consultantIds || [];
+    const consultantProfessions = filters.consultantProfessions || [];
+    if (consultantIds.length > 0 || consultantProfessions.length > 0) {
+      result = result.filter((client) => {
+        const assignments = clientConsultantsMap[client.id] || [];
+        if (assignments.length === 0) return false;
+        const idMatch =
+          consultantIds.length === 0 ||
+          assignments.some((a) => consultantIds.includes(a.consultantId));
+        const profMatch =
+          consultantProfessions.length === 0 ||
+          assignments.some((a) => consultantProfessions.includes(a.profession));
+        // OR semantics between the two groups
+        if (consultantIds.length > 0 && consultantProfessions.length > 0) {
+          return idMatch || profMatch;
+        }
+        return idMatch && profMatch;
+      });
+    }
+
     // Has meetings filter
     if (filters.hasMeetings === true) {
       result = result.filter((client) => clientsWithMeetings.has(client.id));
