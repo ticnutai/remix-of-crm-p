@@ -275,6 +275,12 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       : "";
     const autoPathsJson = JSON.stringify(fixState.autoPaths);
     const manualPathsJson = JSON.stringify(fixState.manual.map((m) => m.path));
+    const safeTopPx = Math.round(fixState.safeZoneTopMm * 3.7795);
+    const safeBottomPx = Math.round(fixState.safeZoneBottomMm * 3.7795);
+    const protectSel = (fixState.protectedBlocks.length
+      ? fixState.protectedBlocks
+      : DEFAULT_PROTECTED
+    ).join(",");
     const script = `
 <script>
 (function(){
@@ -283,6 +289,9 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   var HIGHLIGHT=${highlightIssues ? "true" : "false"};
   var AUTO_PATHS=${autoPathsJson};
   var MANUAL_PATHS=${manualPathsJson};
+  var SAFE_TOP_PX=${safeTopPx};
+  var SAFE_BOTTOM_PX=${safeBottomPx};
+  var PROTECT_SEL=${JSON.stringify(protectSel)};
 
   function pathFor(el){
     if(!el || el===document.body) return 'body';
