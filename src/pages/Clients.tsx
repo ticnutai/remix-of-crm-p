@@ -591,8 +591,41 @@ export default function Clients() {
     exactMonth: null,
     customDateRange: null,
     activeDateTabId: null,
+    consultantIds: [],
+    consultantProfessions: [],
     sortBy: "date_desc",
   });
+
+  // client_id -> Array<{ consultantId, profession }>
+  const [clientConsultantsMap, setClientConsultantsMap] = useState<
+    Record<string, Array<{ consultantId: string; profession: string }>>
+  >({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("client_consultants")
+        .select("client_id, consultant_id, consultant:consultants(profession)")
+        .eq("status", "active");
+      if (error || cancelled) return;
+      const map: Record<
+        string,
+        Array<{ consultantId: string; profession: string }>
+      > = {};
+      (data || []).forEach((row: any) => {
+        if (!map[row.client_id]) map[row.client_id] = [];
+        map[row.client_id].push({
+          consultantId: row.consultant_id,
+          profession: row.consultant?.profession || "ללא תחום",
+        });
+      });
+      setClientConsultantsMap(map);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Client data for filtering
   const [clientStages, setClientStages] = useState<ClientStageInfo[]>([]);
