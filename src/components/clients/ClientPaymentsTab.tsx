@@ -240,7 +240,7 @@ export function ClientPaymentsTab({ clientId, clientName }: ClientPaymentsTabPro
   const [paymentMethod, setPaymentMethod] = useState('transfer');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [payerName, setPayerName] = useState('');
-  const [vatRate, setVatRate] = useState(18);
+  const [vatRate, setVatRate] = useState('18');
   const [includeVat, setIncludeVat] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [vatDisplayMode, setVatDisplayMode] = useState<VatDisplayMode>('with-breakdown');
@@ -254,7 +254,7 @@ export function ClientPaymentsTab({ clientId, clientName }: ClientPaymentsTabPro
   const [quoteEventQuoteId, setQuoteEventQuoteId] = useState('');
   const [quoteEventStepId, setQuoteEventStepId] = useState('');
   const [quoteEventAmount, setQuoteEventAmount] = useState('');
-  const [quoteEventVatRate, setQuoteEventVatRate] = useState(18);
+  const [quoteEventVatRate, setQuoteEventVatRate] = useState('18');
   const [quoteEventIncludesVat, setQuoteEventIncludesVat] = useState(true);
   const [quoteEventDate, setQuoteEventDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [quoteEventNotes, setQuoteEventNotes] = useState('');
