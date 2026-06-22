@@ -336,6 +336,8 @@ export default function Clients() {
     exactMonth?: number | null;
     customDateRange?: ClientDateRangeConfig | null;
     activeDateTabId?: string | null;
+    consultantIds?: string[];
+    consultantProfessions?: string[];
     sortBy?: string;
     showStagesView?: boolean;
     showStatisticsView?: boolean;
