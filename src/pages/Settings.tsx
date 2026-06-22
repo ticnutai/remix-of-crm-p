@@ -419,6 +419,10 @@ export default function Settings() {
     if (!user) return;
     setIsSavingVat(true);
     try {
+      const parsed = parseFloat(vatRate);
+      // Allow 0 (ללא מע״מ). Only fall back to 18 for invalid/empty.
+      const finalVat = Number.isFinite(parsed) && parsed >= 0 ? parsed : 18;
+
       const { data: existing } = await supabase
         .from("app_settings")
         .select("id")
@@ -428,17 +432,24 @@ export default function Settings() {
       if (existing) {
         await supabase
           .from("app_settings")
-          .update({ vat_rate: parseFloat(vatRate) || 18 })
+          .update({ vat_rate: finalVat })
           .eq("user_id", user.id);
       } else {
         await supabase
           .from("app_settings")
-          .insert({ user_id: user.id, vat_rate: parseFloat(vatRate) || 18 });
+          .insert({ user_id: user.id, vat_rate: finalVat });
       }
+
+      // Update the local cache so useDefaultVatRate() picks it up immediately app-wide.
+      try {
+        localStorage.setItem("global-default-vat-rate", String(finalVat));
+      } catch {}
 
       toast({
         title: 'הגדרות מע"מ נשמרו',
-        description: `שיעור המע"מ עודכן ל-${vatRate}%`,
+        description: finalVat === 0
+          ? 'הוגדר ללא מע"מ (0%)'
+          : `שיעור המע"מ עודכן ל-${finalVat}%`,
       });
     } catch (error) {
       toast({
