@@ -1346,6 +1346,21 @@ export function ClientsFilterStrip({
         </Popover>
         )}
 
+        {/* Consultants Filter (יועצים) */}
+        {visibleFilterSections.has("consultants") && (
+          <ConsultantsFilterPopover
+            selectedConsultantIds={filters.consultantIds || []}
+            selectedProfessions={filters.consultantProfessions || []}
+            onChange={({ consultantIds, consultantProfessions }) =>
+              onFiltersChange({
+                ...filters,
+                consultantIds,
+                consultantProfessions,
+              })
+            }
+          />
+        )}
+
         {/* Categories Filter */}
         {visibleFilterSections.has("categories") && (
         <Popover
