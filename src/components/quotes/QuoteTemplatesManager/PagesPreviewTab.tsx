@@ -324,13 +324,21 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
 
   function detectIssues(){
     var count=0;
-    document.querySelectorAll('h1,h2,h3,h4,li,tr,.stage-card,.summary-card,.card').forEach(function(el){
+    var SAFE_TOP=parseInt(document.body.getAttribute('data-safe-top')||'0',10)||0;
+    var SAFE_BOTTOM=parseInt(document.body.getAttribute('data-safe-bottom')||'0',10)||0;
+    var SEL=document.body.getAttribute('data-protect-sel')||'h1,h2,h3,h4,li,tr,.stage-card,.summary-card,.card';
+    document.querySelectorAll(SEL).forEach(function(el){
       var r=el.getBoundingClientRect();
       var top=r.top+window.scrollY;
       var bottom=top+r.height;
       var startPage=Math.floor(top/H);
       var endPage=Math.floor((bottom-1)/H);
-      if(endPage>startPage && r.height < H*0.9){
+      var topInPage=top - startPage*H;
+      var bottomInPage=bottom - endPage*H;
+      var crosses = endPage>startPage && r.height < H*0.9;
+      var hitsHeader = topInPage < SAFE_TOP;
+      var hitsFooter = bottomInPage > (H - SAFE_BOTTOM);
+      if(crosses || hitsHeader || hitsFooter){
         if(HIGHLIGHT) el.classList.add('lov-issue');
         count++;
       }
