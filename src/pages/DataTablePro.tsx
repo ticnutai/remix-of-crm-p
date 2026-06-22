@@ -442,6 +442,11 @@ export default function DataTablePro() {
   const [filteredClients, setFilteredClients] = useState<SyncedClient[] | null>(
     null,
   );
+  // Consultants tree filter (by profession and/or specific consultants)
+  const [consultantTreeFilter, setConsultantTreeFilter] = useState<{
+    consultantIds: string[];
+    consultantProfessions: string[];
+  }>({ consultantIds: [], consultantProfessions: [] });
 
   // Client categories state
   interface ClientCategory {
