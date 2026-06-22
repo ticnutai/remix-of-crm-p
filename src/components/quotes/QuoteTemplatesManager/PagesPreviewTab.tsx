@@ -22,10 +22,15 @@ import {
   X,
   ArrowDown,
   ArrowUp,
+  Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { Slider } from "@/components/ui/slider";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 // A4 at 96dpi
@@ -55,12 +60,36 @@ interface FixState {
   globalEnabled: boolean;
   autoPaths: string[]; // structural paths to force page-break-before
   manual: ManualRule[];
+  safeZoneTopMm: number; // safe top margin (in mm) reserved for repeating header
+  safeZoneBottomMm: number; // safe bottom margin (in mm) reserved for repeating footer
+  protectedBlocks: string[]; // CSS selectors of blocks to keep intact / push from safe zones
 }
+
+const DEFAULT_PROTECTED = [
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "tr",
+  "table",
+  "ul",
+  "ol",
+  "li",
+  "figure",
+  "blockquote",
+  ".stage-card",
+  ".summary-card",
+  ".card",
+  ".signature-block",
+];
 
 const defaultFixState: FixState = {
   globalEnabled: false,
   autoPaths: [],
   manual: [],
+  safeZoneTopMm: 20,
+  safeZoneBottomMm: 15,
+  protectedBlocks: [...DEFAULT_PROTECTED],
 };
 
 const loadPrefs = (): Prefs => {
@@ -87,6 +116,13 @@ const loadFixState = (templateKey: string): FixState => {
       globalEnabled: !!p.globalEnabled,
       autoPaths: Array.isArray(p.autoPaths) ? p.autoPaths : [],
       manual: Array.isArray(p.manual) ? p.manual : [],
+      safeZoneTopMm:
+        typeof p.safeZoneTopMm === "number" ? p.safeZoneTopMm : 20,
+      safeZoneBottomMm:
+        typeof p.safeZoneBottomMm === "number" ? p.safeZoneBottomMm : 15,
+      protectedBlocks: Array.isArray(p.protectedBlocks)
+        ? p.protectedBlocks
+        : [...DEFAULT_PROTECTED],
     };
   } catch {
     return { ...defaultFixState };
@@ -168,20 +204,24 @@ export default function PagesPreviewTab({
     setSelectedManual(null);
   }, [templateKey]);
 
-  // Build global pagination CSS
+  // Build global pagination CSS (uses user-selected protected blocks)
   const globalFixCss = useMemo(() => {
     if (!fixState.globalEnabled) return "";
+    const sel = (fixState.protectedBlocks.length
+      ? fixState.protectedBlocks
+      : DEFAULT_PROTECTED
+    ).join(",");
     return `
 /* lov-pagination-fix:global */
 h1,h2,h3,h4,h5{break-after:avoid !important;page-break-after:avoid !important;}
 p,li{orphans:3;widows:3;}
-tr,li,figure,blockquote,.stage-card,.summary-card,.card,.signature-block{break-inside:avoid !important;page-break-inside:avoid !important;}
+${sel}{break-inside:avoid !important;page-break-inside:avoid !important;}
 table{border-collapse:collapse;}
 table thead{display:table-header-group;}
 table tfoot{display:table-footer-group;}
 img,svg{break-inside:avoid;page-break-inside:avoid;}
 `;
-  }, [fixState.globalEnabled]);
+  }, [fixState.globalEnabled, fixState.protectedBlocks]);
 
   // The full pagination CSS (global + per-element overrides applied via data-fix-id and data-manual-id)
   const paginationCss = useMemo(() => {
@@ -235,6 +275,12 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       : "";
     const autoPathsJson = JSON.stringify(fixState.autoPaths);
     const manualPathsJson = JSON.stringify(fixState.manual.map((m) => m.path));
+    const safeTopPx = Math.round(fixState.safeZoneTopMm * 3.7795);
+    const safeBottomPx = Math.round(fixState.safeZoneBottomMm * 3.7795);
+    const protectSel = (fixState.protectedBlocks.length
+      ? fixState.protectedBlocks
+      : DEFAULT_PROTECTED
+    ).join(",");
     const script = `
 <script>
 (function(){
@@ -243,6 +289,9 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   var HIGHLIGHT=${highlightIssues ? "true" : "false"};
   var AUTO_PATHS=${autoPathsJson};
   var MANUAL_PATHS=${manualPathsJson};
+  var SAFE_TOP_PX=${safeTopPx};
+  var SAFE_BOTTOM_PX=${safeBottomPx};
+  var PROTECT_SEL=${JSON.stringify(protectSel)};
 
   function pathFor(el){
     if(!el || el===document.body) return 'body';
@@ -284,13 +333,21 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
 
   function detectIssues(){
     var count=0;
-    document.querySelectorAll('h1,h2,h3,h4,li,tr,.stage-card,.summary-card,.card').forEach(function(el){
+    var SAFE_TOP=parseInt(document.body.getAttribute('data-safe-top')||'0',10)||0;
+    var SAFE_BOTTOM=parseInt(document.body.getAttribute('data-safe-bottom')||'0',10)||0;
+    var SEL=document.body.getAttribute('data-protect-sel')||'h1,h2,h3,h4,li,tr,.stage-card,.summary-card,.card';
+    document.querySelectorAll(SEL).forEach(function(el){
       var r=el.getBoundingClientRect();
       var top=r.top+window.scrollY;
       var bottom=top+r.height;
       var startPage=Math.floor(top/H);
       var endPage=Math.floor((bottom-1)/H);
-      if(endPage>startPage && r.height < H*0.9){
+      var topInPage=top - startPage*H;
+      var bottomInPage=bottom - endPage*H;
+      var crosses = endPage>startPage && r.height < H*0.9;
+      var hitsHeader = topInPage < SAFE_TOP;
+      var hitsFooter = bottomInPage > (H - SAFE_BOTTOM);
+      if(crosses || hitsHeader || hitsFooter){
         if(HIGHLIGHT) el.classList.add('lov-issue');
         count++;
       }
@@ -339,18 +396,41 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     var d=ev.data;
     if(!d) return;
     if(d.__lovRequestAutoFix){
+      var SAFE_TOP=parseInt(d.safeTopPx,10)||0;
+      var SAFE_BOTTOM=parseInt(d.safeBottomPx,10)||0;
+      var SEL=(d.selectors||'h1,h2,h3,h4,li,tr,.stage-card,.summary-card,.card');
       var newPaths=[];
-      document.querySelectorAll('h1,h2,h3,h4,li,tr,.stage-card,.summary-card,.card').forEach(function(el){
+      var pushes=[];
+      var seen={};
+      document.querySelectorAll(SEL).forEach(function(el){
         var r=el.getBoundingClientRect();
         var top=r.top+window.scrollY;
         var bottom=top+r.height;
         var startPage=Math.floor(top/H);
         var endPage=Math.floor((bottom-1)/H);
-        if(endPage>startPage && r.height < H*0.9){
-          newPaths.push(pathFor(el));
+        var topInPage=top - startPage*H;
+        var bottomInPage=bottom - endPage*H;
+        var crosses=endPage>startPage && r.height < H*0.9;
+        var hitsHeader=topInPage < SAFE_TOP;
+        var hitsFooter=bottomInPage > (H - SAFE_BOTTOM);
+        var path=pathFor(el);
+        if(seen[path]) return; seen[path]=true;
+
+        // 1) Element starts inside the bottom safe-zone OR crosses a page boundary
+        //    → push it to the next page with a clean break
+        if(crosses || (hitsFooter && r.height < H*0.9)){
+          newPaths.push(path);
+          return;
+        }
+        // 2) Element sits under the header strip → push it down past the safe zone
+        if(hitsHeader){
+          var delta=Math.ceil(SAFE_TOP - topInPage + 4); // +4px breathing
+          if(delta>0 && delta < H*0.5){
+            pushes.push({path:path, marginTop:delta});
+          }
         }
       });
-      try{window.parent.postMessage({__lovAutoFixResult:true, paths:newPaths},'*');}catch(e){}
+      try{window.parent.postMessage({__lovAutoFixResult:true, paths:newPaths, pushes:pushes},'*');}catch(e){}
     }
   });
 
@@ -406,6 +486,11 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   }
 
   function init(){
+    try{
+      document.body.setAttribute('data-safe-top', String(SAFE_TOP_PX));
+      document.body.setAttribute('data-safe-bottom', String(SAFE_BOTTOM_PX));
+      document.body.setAttribute('data-protect-sel', PROTECT_SEL);
+    }catch(e){}
     tagAutoPaths();
     setupRepeatOverlays();
     setTimeout(detectIssues,300);
@@ -420,7 +505,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       "</body>",
       `${highlightCss}${manualCss}${fixCssBlock}${script}</body>`,
     );
-  }, [html, highlightIssues, manualMode, paginationCss, fixState.autoPaths, fixState.manual]);
+  }, [html, highlightIssues, manualMode, paginationCss, fixState.autoPaths, fixState.manual, fixState.safeZoneTopMm, fixState.safeZoneBottomMm, fixState.protectedBlocks]);
 
   // Measure
   const handleMeasureLoad = useCallback(() => {
@@ -461,15 +546,26 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         setSelectedManual({ path: d.path, text: d.text || "" });
       }
       if (d.__lovAutoFixResult && Array.isArray(d.paths)) {
-        const unique = Array.from(new Set([...fixState.autoPaths, ...d.paths]));
-        setFixState((s) => ({
-          ...s,
-          globalEnabled: true,
-          autoPaths: unique,
-        }));
+        const pushes: Array<{ path: string; marginTop: number }> = Array.isArray(d.pushes) ? d.pushes : [];
+        setFixState((s) => {
+          const uniqueAuto = Array.from(new Set([...s.autoPaths, ...d.paths]));
+          // Merge pushes into manual rules (overwrite marginTop for same path)
+          const manualMap = new Map(s.manual.map((m) => [m.path, m]));
+          pushes.forEach((p) => {
+            const existing = manualMap.get(p.path) || { path: p.path };
+            manualMap.set(p.path, { ...existing, marginTop: p.marginTop });
+          });
+          return {
+            ...s,
+            globalEnabled: true,
+            autoPaths: uniqueAuto,
+            manual: Array.from(manualMap.values()),
+          };
+        });
         setAutoFixing(false);
-        toast.success(`תוקנו ${d.paths.length} בעיות עימוד`, {
-          description: "הוטמע CSS מקצועי + מעברי דף ידניים",
+        const total = d.paths.length + pushes.length;
+        toast.success(`תוקנו ${total} בעיות עימוד`, {
+          description: `${d.paths.length} מעברי דף · ${pushes.length} הזחות מאזורי בטיחות`,
         });
       }
     };
@@ -501,14 +597,28 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       return;
     }
     setAutoFixing(true);
+    const safeTopPx = Math.round(fixState.safeZoneTopMm * 3.7795);
+    const safeBottomPx = Math.round(fixState.safeZoneBottomMm * 3.7795);
+    const selectors = (fixState.protectedBlocks.length
+      ? fixState.protectedBlocks
+      : DEFAULT_PROTECTED
+    ).join(",");
     try {
-      ifr.contentWindow.postMessage({ __lovRequestAutoFix: true }, "*");
+      ifr.contentWindow.postMessage(
+        {
+          __lovRequestAutoFix: true,
+          safeTopPx,
+          safeBottomPx,
+          selectors,
+        },
+        "*",
+      );
     } catch {
       setAutoFixing(false);
     }
     // Safety timeout
     setTimeout(() => setAutoFixing(false), 4000);
-  }, [findLiveIframe]);
+  }, [findLiveIframe, fixState.safeZoneTopMm, fixState.safeZoneBottomMm, fixState.protectedBlocks]);
 
   const handleResetFix = useCallback(() => {
     setFixState({ ...defaultFixState });
@@ -780,11 +890,165 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
             className="h-8 text-xs gap-1.5"
             onClick={handleAutoFix}
             disabled={autoFixing}
-            title="זיהוי אוטומטי של בעיות + הטמעת CSS מקצועי + מעברי דף"
+            title="זיהוי אוטומטי של בעיות + הטמעת CSS מקצועי + מעברי דף + הזחה מאזורי בטיחות"
           >
             <Wand2 className="h-3.5 w-3.5" />
             {autoFixing ? "מתקן..." : "תקן עימוד"}
           </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                title="הגדרות תיקון עימוד"
+              >
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="w-80 p-4 space-y-4"
+              dir="rtl"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-xs font-semibold">
+                    אזור בטיחות עליון (סטריפ כותרת)
+                  </Label>
+                  <span className="text-[11px] tabular-nums text-muted-foreground">
+                    {fixState.safeZoneTopMm} מ"מ
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {[10, 15, 20, 25, 30].map((mm) => (
+                    <Button
+                      key={mm}
+                      size="sm"
+                      variant={
+                        fixState.safeZoneTopMm === mm ? "default" : "outline"
+                      }
+                      className="h-7 px-2 text-[11px]"
+                      onClick={() =>
+                        setFixState((s) => ({ ...s, safeZoneTopMm: mm }))
+                      }
+                    >
+                      {mm}
+                    </Button>
+                  ))}
+                  <Input
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={fixState.safeZoneTopMm}
+                    onChange={(e) =>
+                      setFixState((s) => ({
+                        ...s,
+                        safeZoneTopMm: Math.max(
+                          0,
+                          Math.min(60, Number(e.target.value) || 0),
+                        ),
+                      }))
+                    }
+                    className="h-7 w-16 text-[11px]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-xs font-semibold">
+                    אזור בטיחות תחתון (סטריפ פוטר)
+                  </Label>
+                  <span className="text-[11px] tabular-nums text-muted-foreground">
+                    {fixState.safeZoneBottomMm} מ"מ
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {[10, 15, 20, 25].map((mm) => (
+                    <Button
+                      key={mm}
+                      size="sm"
+                      variant={
+                        fixState.safeZoneBottomMm === mm ? "default" : "outline"
+                      }
+                      className="h-7 px-2 text-[11px]"
+                      onClick={() =>
+                        setFixState((s) => ({ ...s, safeZoneBottomMm: mm }))
+                      }
+                    >
+                      {mm}
+                    </Button>
+                  ))}
+                  <Input
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={fixState.safeZoneBottomMm}
+                    onChange={(e) =>
+                      setFixState((s) => ({
+                        ...s,
+                        safeZoneBottomMm: Math.max(
+                          0,
+                          Math.min(60, Number(e.target.value) || 0),
+                        ),
+                      }))
+                    }
+                    className="h-7 w-16 text-[11px]"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t">
+                <Label className="text-xs font-semibold mb-2 block">
+                  בלוקים מוגנים (לא יחתכו)
+                </Label>
+                <div className="space-y-1.5 max-h-48 overflow-auto pr-1">
+                  {[
+                    { sel: "h1,h2,h3,h4", label: "כותרות (h1-h4)" },
+                    { sel: "tr,table", label: "טבלאות ושורות" },
+                    { sel: "ul,ol,li", label: "רשימות ופריטים" },
+                    { sel: ".stage-card,.summary-card,.card", label: "כרטיסים" },
+                    { sel: "figure,blockquote", label: "תיבות מודגשות / מסגרות" },
+                    { sel: ".signature-block", label: "בלוק חתימה" },
+                  ].map(({ sel, label }) => {
+                    const parts = sel.split(",");
+                    const allOn = parts.every((p) =>
+                      fixState.protectedBlocks.includes(p),
+                    );
+                    return (
+                      <label
+                        key={sel}
+                        className="flex items-center gap-2 text-xs cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={allOn}
+                          onCheckedChange={(v) => {
+                            setFixState((s) => {
+                              const set = new Set(s.protectedBlocks);
+                              if (v) parts.forEach((p) => set.add(p));
+                              else parts.forEach((p) => set.delete(p));
+                              return {
+                                ...s,
+                                protectedBlocks: Array.from(set),
+                              };
+                            });
+                          }}
+                        />
+                        {label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-2 border-t text-[11px] text-muted-foreground leading-relaxed">
+                שיטה: הזחה דינמית של אלמנטים שמתחת לסטריפים +
+                page-break-before לבלוקים שנחתכים. הלחיצה על "תקן עימוד" תפעיל
+                את הניתוח לפי ההגדרות האלה.
+              </div>
+            </PopoverContent>
+          </Popover>
           <Toggle
             pressed={manualMode}
             onPressedChange={(v) => {
