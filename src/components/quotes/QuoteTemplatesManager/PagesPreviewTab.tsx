@@ -204,20 +204,24 @@ export default function PagesPreviewTab({
     setSelectedManual(null);
   }, [templateKey]);
 
-  // Build global pagination CSS
+  // Build global pagination CSS (uses user-selected protected blocks)
   const globalFixCss = useMemo(() => {
     if (!fixState.globalEnabled) return "";
+    const sel = (fixState.protectedBlocks.length
+      ? fixState.protectedBlocks
+      : DEFAULT_PROTECTED
+    ).join(",");
     return `
 /* lov-pagination-fix:global */
 h1,h2,h3,h4,h5{break-after:avoid !important;page-break-after:avoid !important;}
 p,li{orphans:3;widows:3;}
-tr,li,figure,blockquote,.stage-card,.summary-card,.card,.signature-block{break-inside:avoid !important;page-break-inside:avoid !important;}
+${sel}{break-inside:avoid !important;page-break-inside:avoid !important;}
 table{border-collapse:collapse;}
 table thead{display:table-header-group;}
 table tfoot{display:table-footer-group;}
 img,svg{break-inside:avoid;page-break-inside:avoid;}
 `;
-  }, [fixState.globalEnabled]);
+  }, [fixState.globalEnabled, fixState.protectedBlocks]);
 
   // The full pagination CSS (global + per-element overrides applied via data-fix-id and data-manual-id)
   const paginationCss = useMemo(() => {
