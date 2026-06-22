@@ -2188,6 +2188,7 @@ export function ClientStagesBoard({
     refresh,
     assignStageToFolder,
     syncTemplateFromProject,
+    bulkSetTasksCompleted,
   } = useClientStages(clientId);
 
   const autoTemplateSyncAttemptRef = useRef<string | null>(null);
@@ -2893,6 +2894,20 @@ export function ClientStagesBoard({
     }
   };
 
+  const selectedStageTasks = useMemo(
+    () => stages.filter((s) => selectedStages.has(s.stage_id)).flatMap((s) => s.tasks || []),
+    [stages, selectedStages],
+  );
+  const allSelectedStageTasksCompleted =
+    selectedStageTasks.length > 0 && selectedStageTasks.every((t) => t.completed);
+
+  const handleBulkCompleteStages = async () => {
+    const taskIds = selectedStageTasks.map((t) => t.id);
+    if (taskIds.length === 0) return;
+    await bulkSetTasksCompleted(taskIds, !allSelectedStageTasksCompleted);
+    clearStageSelection();
+  };
+
   // Stage management handlers
   const handleUpdateStage = async () => {
     if (!editingStage || !editingStage.name.trim()) return;
@@ -3350,8 +3365,18 @@ export function ClientStagesBoard({
             {selectedStages.size > 0 && (
               <>
                 <Badge variant="secondary">
-                  {selectedStages.size} שלבים נבחרו
+                  {selectedStages.size} שלבים נבחרו ({selectedStageTasks.length} משימות)
                 </Badge>
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={handleBulkCompleteStages}
+                  disabled={selectedStageTasks.length === 0}
+                  className="gap-1"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {allSelectedStageTasksCompleted ? "בטל סימון" : "סמן הכל כהושלם"}
+                </Button>
                 <Button
                   size="sm"
                   variant="destructive"
