@@ -5979,7 +5979,7 @@ export function HtmlTemplateEditor({
     }
   </style>
 </head>
-<body data-repeat-header="${repeatHeader ? "1" : "0"}" data-repeat-footer="${repeatFooter ? "1" : "0"}" data-page-height="${A4_PAGE_HEIGHT_PX}">
+<body data-repeat-header="${repeatHeader ? "1" : "0"}" data-repeat-footer="${repeatFooter ? "1" : "0"}" data-page-height="1123">
   <style>
     /* Per-page repeated overlays for the on-screen multi-page preview.
        These do not affect print (print uses the table thead/tfoot grouping). */
