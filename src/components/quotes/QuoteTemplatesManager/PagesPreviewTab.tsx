@@ -597,14 +597,28 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       return;
     }
     setAutoFixing(true);
+    const safeTopPx = Math.round(fixState.safeZoneTopMm * 3.7795);
+    const safeBottomPx = Math.round(fixState.safeZoneBottomMm * 3.7795);
+    const selectors = (fixState.protectedBlocks.length
+      ? fixState.protectedBlocks
+      : DEFAULT_PROTECTED
+    ).join(",");
     try {
-      ifr.contentWindow.postMessage({ __lovRequestAutoFix: true }, "*");
+      ifr.contentWindow.postMessage(
+        {
+          __lovRequestAutoFix: true,
+          safeTopPx,
+          safeBottomPx,
+          selectors,
+        },
+        "*",
+      );
     } catch {
       setAutoFixing(false);
     }
     // Safety timeout
     setTimeout(() => setAutoFixing(false), 4000);
-  }, [findLiveIframe]);
+  }, [findLiveIframe, fixState.safeZoneTopMm, fixState.safeZoneBottomMm, fixState.protectedBlocks]);
 
   const handleResetFix = useCallback(() => {
     setFixState({ ...defaultFixState });
