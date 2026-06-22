@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,10 +6,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { 
-  Phone, 
-  FolderOpen, 
-  Send, 
+import {
+  Phone,
+  FolderOpen,
+  Send,
   MapPin,
   Pencil,
   Trash2,
@@ -17,7 +17,9 @@ import {
   ListPlus,
   Loader2,
   Bell,
-  Timer
+  Timer,
+  CheckSquare,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useClientStages, type ClientStageTask } from '@/hooks/useClientStages';
@@ -38,11 +40,45 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTrackerProps) {
-  const { stages, loading, addTask, addBulkTasks, toggleTask, updateTask, deleteTask, startTaskTimer } = useClientStages(clientId);
-  
+  const { stages, loading, addTask, addBulkTasks, toggleTask, updateTask, deleteTask, startTaskTimer, bulkSetTasksCompleted } = useClientStages(clientId);
+
   const [editingTask, setEditingTask] = useState<{ stageId: string; taskId: string; title: string } | null>(null);
   const [addingTask, setAddingTask] = useState<{ stageId: string; title: string; taskType: 'task' | 'timer_tab'; autoTimerDays: string } | null>(null);
   const [bulkAddDialog, setBulkAddDialog] = useState<{ stageId: string; tasks: string } | null>(null);
+  const [selectedStageIds, setSelectedStageIds] = useState<Set<string>>(new Set());
+
+  const effectiveSelectedTaskIds = useMemo(() => {
+    const ids = new Set<string>();
+    stages.forEach(stage => {
+      if (selectedStageIds.has(stage.stage_id)) {
+        stage.tasks?.forEach(task => ids.add(task.id));
+      }
+    });
+    return ids;
+  }, [stages, selectedStageIds]);
+
+  const selectedTasksList = useMemo(
+    () => stages.flatMap(s => s.tasks || []).filter(t => effectiveSelectedTaskIds.has(t.id)),
+    [stages, effectiveSelectedTaskIds],
+  );
+
+  const allSelectedCompleted = selectedTasksList.length > 0 && selectedTasksList.every(t => t.completed);
+
+  const toggleStageSelection = (stageId: string) => {
+    setSelectedStageIds(prev => {
+      const next = new Set(prev);
+      if (next.has(stageId)) next.delete(stageId);
+      else next.add(stageId);
+      return next;
+    });
+  };
+
+  const handleBulkToggle = async () => {
+    const taskIds = [...effectiveSelectedTaskIds];
+    if (taskIds.length === 0) return;
+    await bulkSetTasksCompleted(taskIds, !allSelectedCompleted);
+    setSelectedStageIds(new Set());
+  };
 
   const isTimerTabTask = (task: { task_type?: string | null; auto_timer_days?: number | null }) =>
     task.task_type === 'timer_tab' && Boolean(task.auto_timer_days);
@@ -165,7 +201,7 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                       <Badge variant="secondary" className="text-xs">
                         {completedTasks}/{totalTasks} משימות
                       </Badge>
-                      <Badge 
+                      <Badge
                         variant={progress === 100 ? "default" : "outline"}
                         className="text-xs"
                       >
@@ -174,37 +210,47 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                     </div>
                   </div>
                 </div>
-                
-                {/* Progress Circle */}
-                <div className="relative w-16 h-16">
-                  <svg className="w-full h-full transform -rotate-90">
-                    <circle
-                      cx="32"
-                      cy="32"
-                      r="28"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                      className="text-gray-200 dark:text-gray-700"
-                    />
-                    <circle
-                      cx="32"
-                      cy="32"
-                      r="28"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                      strokeLinecap="round"
-                      className={cn(
-                        "transition-all duration-500",
-                        progress === 100 ? "text-green-500" : "text-primary"
-                      )}
-                      strokeDasharray={2 * Math.PI * 28}
-                      strokeDashoffset={2 * Math.PI * 28 * (1 - progress / 100)}
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xs font-bold">{progress}%</span>
+
+                <div className="flex items-center gap-2">
+                  {/* Stage selection checkbox */}
+                  <Checkbox
+                    checked={selectedStageIds.has(stage.stage_id)}
+                    onCheckedChange={() => toggleStageSelection(stage.stage_id)}
+                    title="בחר שלב לסימון מרובה"
+                    className="h-5 w-5"
+                  />
+
+                  {/* Progress Circle */}
+                  <div className="relative w-16 h-16">
+                    <svg className="w-full h-full transform -rotate-90">
+                      <circle
+                        cx="32"
+                        cy="32"
+                        r="28"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                        className="text-gray-200 dark:text-gray-700"
+                      />
+                      <circle
+                        cx="32"
+                        cy="32"
+                        r="28"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                        strokeLinecap="round"
+                        className={cn(
+                          "transition-all duration-500",
+                          progress === 100 ? "text-green-500" : "text-primary"
+                        )}
+                        strokeDasharray={2 * Math.PI * 28}
+                        strokeDashoffset={2 * Math.PI * 28 * (1 - progress / 100)}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-xs font-bold">{progress}%</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -426,6 +472,33 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
           </Card>
         );
       })}
+
+      {/* Floating bulk-action bar */}
+      {selectedStageIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full shadow-xl px-4 py-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedStageIds(new Set())}
+            className="h-7 w-7 p-0 rounded-full"
+            title="בטל בחירה"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <span className="text-sm font-medium whitespace-nowrap">
+            {selectedStageIds.size} שלבים · {effectiveSelectedTaskIds.size} משימות
+          </span>
+          <Button
+            size="sm"
+            onClick={handleBulkToggle}
+            disabled={effectiveSelectedTaskIds.size === 0}
+            className="rounded-full gap-1"
+          >
+            <CheckSquare className="h-4 w-4" />
+            {allSelectedCompleted ? 'בטל סימון' : 'סמן הכל כהושלם'}
+          </Button>
+        </div>
+      )}
 
       {/* Bulk Add Dialog */}
       <Dialog open={bulkAddDialog !== null} onOpenChange={() => setBulkAddDialog(null)}>

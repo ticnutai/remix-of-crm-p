@@ -754,6 +754,36 @@ export function useClientStages(clientId: string) {
     }
   };
 
+  // Bulk set tasks completed/uncompleted
+  const bulkSetTasksCompleted = async (taskIds: string[], completed: boolean) => {
+    try {
+      const completedAt = completed ? new Date().toISOString() : null;
+      const { error } = await supabase
+        .from("client_stage_tasks")
+        .update({ completed, completed_at: completedAt })
+        .in("id", taskIds);
+      if (error) throw error;
+      setTasks((prev) =>
+        prev.map((t) =>
+          taskIds.includes(t.id) ? { ...t, completed, completed_at: completedAt } : t,
+        ),
+      );
+      toast({
+        title: "הצלחה",
+        description: completed
+          ? `${taskIds.length} משימות סומנו כהושלמו`
+          : `${taskIds.length} משימות בוטל סימונן`,
+      });
+    } catch (error: unknown) {
+      console.error("Error bulk setting tasks completed:", error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לעדכן משימות",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Bulk delete tasks
   const bulkDeleteTasks = async (taskIds: string[]) => {
     try {
@@ -1610,6 +1640,7 @@ export function useClientStages(clientId: string) {
     applyTemplate,
     syncTemplateFromProject,
     deleteTemplate,
+    bulkSetTasksCompleted,
     refresh: loadData,
   };
 }

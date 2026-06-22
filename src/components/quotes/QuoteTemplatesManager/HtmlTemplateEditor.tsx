@@ -4483,6 +4483,7 @@ export function HtmlTemplateEditor({
   const [logoStripMode, setLogoStripMode] = useState<"logo" | "maker">(
     "logo",
   );
+  const [logoSubTab, setLogoSubTab] = useState<"upper" | "lower">("upper");
   const [showEmbeddedVectorEditor, setShowEmbeddedVectorEditor] =
     useState(false);
   const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>(() => {
@@ -8202,13 +8203,6 @@ ${tbAt('footer')}
                 כלים
               </TabsTrigger>
               <TabsTrigger
-                value="settings"
-                className="data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]"
-              >
-                <Settings className="h-4 w-4 ml-2" />
-                הגדרות
-              </TabsTrigger>
-              <TabsTrigger
                 value="preview"
                 className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700"
               >
@@ -8224,6 +8218,27 @@ ${tbAt('footer')}
               </TabsTrigger>
             </TabsList>
           </div>
+
+          {activeTab === "logo-strip" && (
+            <div className="border-b bg-gray-50 px-4 py-2 flex gap-1">
+              <button
+                type="button"
+                onClick={() => setLogoSubTab("upper")}
+                className={`px-4 py-1.5 text-sm rounded-md font-medium transition-colors flex items-center gap-1.5 ${logoSubTab === "upper" ? "bg-orange-100 text-orange-700" : "text-gray-500 hover:text-gray-700"}`}
+              >
+                <Crop className="h-3.5 w-3.5" />
+                לוגו סטריפ עליון
+              </button>
+              <button
+                type="button"
+                onClick={() => setLogoSubTab("lower")}
+                className={`px-4 py-1.5 text-sm rounded-md font-medium transition-colors flex items-center gap-1.5 ${logoSubTab === "lower" ? "bg-orange-100 text-orange-700" : "text-gray-500 hover:text-gray-700"}`}
+              >
+                <Image className="h-3.5 w-3.5" />
+                סטריפ תחתון
+              </button>
+            </div>
+          )}
 
           {/* Project Details Tab */}
           <TabsContent value="project" className="flex-1 m-0 overflow-hidden">
@@ -9658,7 +9673,7 @@ ${tbAt('footer')}
           {/* Logo & Strip Tab */}
           <TabsContent
             value="logo-strip"
-            className={logoStripMode === "logo" ? "flex-1 m-0 overflow-hidden" : "hidden"}
+            className={logoSubTab === "upper" && logoStripMode === "logo" ? "flex-1 m-0 overflow-hidden" : "hidden"}
           >
             <ScrollArea className="h-full bg-gray-50">
               <div className="p-6 space-y-6 max-w-4xl mx-auto">
@@ -9741,7 +9756,7 @@ ${tbAt('footer')}
                 <div className="bg-white rounded-xl border p-4 shadow-sm space-y-3">
                   <h3 className="font-semibold text-sm flex items-center gap-2">
                     <FileText className="h-4 w-4 text-[#B8860B]" />
-                    חזרה על כותרת ותחתית בכל עמוד
+                    חזרה על לוגו / כותרת בכל עמוד
                   </h3>
                   <div className="flex items-center justify-between">
                     <div>
@@ -10819,7 +10834,7 @@ ${tbAt('footer')}
           {/* Strip Maker (merged into Logo & Strips tab) */}
           <TabsContent
             value="logo-strip"
-            className={logoStripMode === "maker" ? "flex-1 m-0 overflow-hidden" : "hidden"}
+            className={logoSubTab === "upper" && logoStripMode === "maker" ? "flex-1 m-0 overflow-hidden" : "hidden"}
           >
             <ScrollArea className="h-full bg-gray-50">
               <div className="p-6 space-y-6 max-w-4xl mx-auto">
@@ -11355,6 +11370,100 @@ ${tbAt('footer')}
             </ScrollArea>
           </TabsContent>
 
+          {/* Lower strip: company footer settings */}
+          <TabsContent
+            value="logo-strip"
+            className={logoSubTab === "lower" ? "flex-1 m-0 overflow-hidden" : "hidden"}
+          >
+            <ScrollArea className="h-full bg-gray-50">
+              <div className="p-6 space-y-6 max-w-4xl mx-auto">
+                <div className="bg-white rounded-xl border p-4 shadow-sm space-y-3">
+                  <h3 className="font-semibold text-sm flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-[#B8860B]" />
+                    חזרה על פרטי חברה בתחתית כל עמוד
+                  </h3>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm font-medium">פרטי חברה בתחתית כל עמוד</Label>
+                      <p className="text-xs text-gray-500 mt-0.5">שם החברה, כתובת וטלפון יופיעו בתחתית כל עמוד</p>
+                    </div>
+                    <Switch
+                      checked={designSettings.repeatFooterOnAllPages !== false}
+                      onCheckedChange={(v) =>
+                        setDesignSettings((prev) => ({ ...prev, repeatFooterOnAllPages: v }))
+                      }
+                    />
+                  </div>
+                  {designSettings.repeatFooterOnAllPages !== false && (
+                    <p className="text-xs text-[#B8860B] bg-[#FFF8E1] rounded p-2">
+                      ✓ הטקסט ירד אוטומטית כדי לא לשבת מתחת לתחתית
+                    </p>
+                  )}
+                </div>
+                <div className="bg-white rounded-xl border p-6 shadow-sm">
+                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <Settings className="h-6 w-6 text-[#B8860B]" />
+                    פרטי החברה
+                  </h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>שם החברה</Label>
+                      <Input
+                        value={designSettings.companyName}
+                        onChange={(e) =>
+                          setDesignSettings({
+                            ...designSettings,
+                            companyName: e.target.value,
+                          })
+                        }
+                        dir="rtl"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>טלפון</Label>
+                      <Input
+                        value={designSettings.companyPhone}
+                        onChange={(e) =>
+                          setDesignSettings({
+                            ...designSettings,
+                            companyPhone: e.target.value,
+                          })
+                        }
+                        dir="ltr"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>כתובת</Label>
+                      <Input
+                        value={designSettings.companyAddress}
+                        onChange={(e) =>
+                          setDesignSettings({
+                            ...designSettings,
+                            companyAddress: e.target.value,
+                          })
+                        }
+                        dir="rtl"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>אימייל</Label>
+                      <Input
+                        value={designSettings.companyEmail}
+                        onChange={(e) =>
+                          setDesignSettings({
+                            ...designSettings,
+                            companyEmail: e.target.value,
+                          })
+                        }
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
           {/* AI Logo Generation Dialog */}
           <AILogoDialog
             open={showAILogoDialog}
@@ -11868,114 +11977,6 @@ ${tbAt('footer')}
             }
           />
 
-          {/* Settings Tab */}
-          <TabsContent value="settings" className="flex-1 m-0 overflow-hidden">
-            <ScrollArea className="h-full bg-gray-50">
-              <div className="p-6 space-y-6 max-w-4xl mx-auto">
-                <div className="bg-white rounded-xl border p-6 shadow-sm">
-                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <Settings className="h-6 w-6 text-[#B8860B]" />
-                    פרטי החברה
-                  </h2>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>שם החברה</Label>
-                      <Input
-                        value={designSettings.companyName}
-                        onChange={(e) =>
-                          setDesignSettings({
-                            ...designSettings,
-                            companyName: e.target.value,
-                          })
-                        }
-                        dir="rtl"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>טלפון</Label>
-                      <Input
-                        value={designSettings.companyPhone}
-                        onChange={(e) =>
-                          setDesignSettings({
-                            ...designSettings,
-                            companyPhone: e.target.value,
-                          })
-                        }
-                        dir="ltr"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>כתובת</Label>
-                      <Input
-                        value={designSettings.companyAddress}
-                        onChange={(e) =>
-                          setDesignSettings({
-                            ...designSettings,
-                            companyAddress: e.target.value,
-                          })
-                        }
-                        dir="rtl"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>אימייל</Label>
-                      <Input
-                        value={designSettings.companyEmail}
-                        onChange={(e) =>
-                          setDesignSettings({
-                            ...designSettings,
-                            companyEmail: e.target.value,
-                          })
-                        }
-                        dir="ltr"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl border p-6 shadow-sm">
-                  <h2 className="text-xl font-bold mb-4">הגדרות הצעה</h2>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>תוקף הצעת מחיר (ימים)</Label>
-                      <Input
-                        type="number"
-                        value={editedTemplate.validity_days || 30}
-                        onChange={(e) =>
-                          setEditedTemplate({
-                            ...editedTemplate,
-                            validity_days: parseInt(e.target.value) || 30,
-                          })
-                        }
-                        min={1}
-                        max={365}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>אחוז מע"מ</Label>
-                      <Input
-                        type="number"
-                        value={editedTemplate.vat_rate || 17}
-                        onChange={(e) =>
-                          setEditedTemplate({
-                            ...editedTemplate,
-                            vat_rate: parseInt(e.target.value) || 17,
-                          })
-                        }
-                        min={0}
-                        max={50}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="flex justify-center">
-                  <Button variant="outline" className="text-gray-500">
-                    <RotateCcw className="h-4 w-4 ml-2" />
-                    איפוס להגדרות ברירת מחדל
-                  </Button>
-                </div>
-              </div>
-            </ScrollArea>
-          </TabsContent>
 
           {/* Preview Tab - Full Preview with Device Switcher */}
           <TabsContent value="preview" className="flex-1 m-0 overflow-hidden">
@@ -13163,10 +13164,10 @@ ${tbAt('footer')}
                               size="sm"
                               variant="secondary"
                               className="h-7 text-xs shadow-lg"
-                              onClick={() => setActiveTab("settings")}
+                              onClick={() => { setActiveTab("logo-strip"); setLogoSubTab("lower"); }}
                             >
                               <Settings className="h-3 w-3 ml-1" />
-                              הגדרות
+                              פרטי חברה
                             </Button>
                           </div>
                         </div>

@@ -140,7 +140,12 @@ export default function Quotes() {
       text_boxes: sq.text_boxes || td.text_boxes || [],
       upgrades: sq.upgrades || td.upgrades || [],
       pricing_tiers: sq.pricing_tiers || td.pricing_tiers || [],
-      project_details: sq.project_details || td.project_details || {},
+      project_details: {
+        ...(td.project_details || {}),
+        ...(sq.project_details || {}),
+        clientId: sq.project_details?.clientId || td.project_details?.clientId || sq.client_id || "",
+        clientName: sq.project_details?.clientName || td.project_details?.clientName || sq.clients?.name || "",
+      },
       base_price: sq.base_price || td.base_price || 0,
       vat_rate: sq.vat_rate || td.vat_rate || 17,
       validity_days: td.validity_days || 30,
