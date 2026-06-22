@@ -5607,7 +5607,7 @@ export function HtmlTemplateEditor({
           }
 
           const basePrice = editedTemplate.base_price || 0;
-          const vatRate = editedTemplate.vat_rate || 17;
+          const vatRate = (editedTemplate.vat_rate ?? globalDefaultVat);
           const totalWithVat = Math.round(basePrice * (1 + vatRate / 100));
 
           const savedQuoteData = {
@@ -5827,7 +5827,7 @@ export function HtmlTemplateEditor({
       )
       .join("");
 
-    const vatRate = editedTemplate.vat_rate || 17;
+    const vatRate = (editedTemplate.vat_rate ?? globalDefaultVat);
     const isVatBreakdown = designSettings.vatDisplayMode !== "plus-vat";
     
     const basePrice = editedTemplate.base_price || 35000;
@@ -6308,7 +6308,7 @@ export function HtmlTemplateEditor({
     const ff = 'Arial, Helvetica, sans-serif';
     const tier = pricingTiers.find((t: any) => t.name === selectedTier) ?? pricingTiers[0];
     const basePrice = tier?.price ?? 0;
-    const vatRate = 18;
+    const vatRate = (editedTemplate.vat_rate ?? globalDefaultVat);
     const vatAmt = Math.round((basePrice * vatRate) / 100);
 
     // Logo as base64 if possible
@@ -7373,7 +7373,7 @@ ${tbAt('footer')}
     );
     const discount = (selectedOption as any)?.discount || 0;
     const afterDiscount = subtotal * (1 - discount / 100);
-    const vatRate = editedTemplate.vat_rate || 17;
+    const vatRate = (editedTemplate.vat_rate ?? globalDefaultVat);
     const vat = afterDiscount * (vatRate / 100);
     const total = afterDiscount + vat;
 
@@ -7603,13 +7603,13 @@ ${tbAt('footer')}
       ['סה"כ לפני מע"מ', "", `₪${basePrice.toLocaleString()}`],
       [
         'מע"מ',
-        `${editedTemplate.vat_rate || 17}%`,
-        `₪${Math.round((basePrice * (editedTemplate.vat_rate || 17)) / 100).toLocaleString()}`,
+        `${(editedTemplate.vat_rate ?? globalDefaultVat)}%`,
+        `₪${Math.round((basePrice * ((editedTemplate.vat_rate ?? globalDefaultVat))) / 100).toLocaleString()}`,
       ],
       [
         'סה"כ כולל מע"מ',
         "",
-        `₪${Math.round(basePrice * (1 + (editedTemplate.vat_rate || 17) / 100)).toLocaleString()}`,
+        `₪${Math.round(basePrice * (1 + ((editedTemplate.vat_rate ?? globalDefaultVat)) / 100)).toLocaleString()}`,
       ],
     ];
     const csv = "\ufeff" + rows.map((r) => r.join(",")).join("\n");
@@ -7747,7 +7747,7 @@ ${tbAt('footer')}
 
       // Create contract from the quote
       const basePrice = editedTemplate.base_price || 0;
-      const vatRate = editedTemplate.vat_rate || 17;
+      const vatRate = (editedTemplate.vat_rate ?? globalDefaultVat);
       const totalWithVat = Math.round(basePrice * (1 + vatRate / 100));
 
       // Generate contract number
@@ -8217,7 +8217,7 @@ ${tbAt('footer')}
                   {/* VAT breakdown */}
                   {(() => {
                     const bp = editedTemplate.base_price || 35000;
-                    const vr = editedTemplate.vat_rate || 17;
+                    const vr = (editedTemplate.vat_rate ?? globalDefaultVat);
                     const vatAmt = Math.round(bp * vr / 100);
                     const totalWithVat = bp + vatAmt;
                     return designSettings.vatDisplayMode !== "plus-vat" ? (
@@ -8864,7 +8864,7 @@ ${tbAt('footer')}
                         key={step.id}
                         step={step}
                         templateKey={editedTemplate.id || editedTemplate.name || "draft-template"}
-                        defaultVatRate={editedTemplate.vat_rate || 17}
+                        defaultVatRate={(editedTemplate.vat_rate ?? globalDefaultVat)}
                         templateStages={selectedStageTemplate?.stages || []}
                         templateName={selectedStageTemplate?.name}
                         quoteTemplateStages={editedTemplate.stages || []}
@@ -8892,7 +8892,7 @@ ${tbAt('footer')}
                       <div className="space-y-2 text-sm">
                         {paymentSteps.map((step) => {
                           const stepAmount = Math.round((basePrice * step.percentage) / 100);
-                          const defaultVat = editedTemplate.vat_rate || 17;
+                          const defaultVat = (editedTemplate.vat_rate ?? globalDefaultVat);
                           const effectiveVat = step.useCustomVat ? (step.vatRate ?? defaultVat) : defaultVat;
                           const stepVat = Math.round(stepAmount * effectiveVat / 100);
                           const isCustom = step.useCustomVat && effectiveVat !== defaultVat;
@@ -8939,7 +8939,7 @@ ${tbAt('footer')}
                           <span>₪{basePrice.toLocaleString()}</span>
                         </div>
                         {designSettings.vatDisplayMode !== "plus-vat" && (() => {
-                          const defaultVat = editedTemplate.vat_rate || 17;
+                          const defaultVat = (editedTemplate.vat_rate ?? globalDefaultVat);
                           const totalVat = paymentSteps.reduce((sum, step) => {
                             const stepAmount = Math.round((basePrice * step.percentage) / 100);
                             const effVat = step.useCustomVat ? (step.vatRate ?? defaultVat) : defaultVat;
@@ -12981,7 +12981,7 @@ ${tbAt('footer')}
                                 {paymentSteps.map((step, i) => {
                                   const bp = editedTemplate.base_price || 35000;
                                   const stepAmount = Math.round((bp * step.percentage) / 100);
-                                  const defaultVat = editedTemplate.vat_rate || 17;
+                                  const defaultVat = (editedTemplate.vat_rate ?? globalDefaultVat);
                                   const effVat = step.useCustomVat ? (step.vatRate ?? defaultVat) : defaultVat;
                                   const vatAmt = Math.round(stepAmount * effVat / 100);
                                   const isCustom = step.useCustomVat && effVat !== defaultVat;
@@ -13058,7 +13058,7 @@ ${tbAt('footer')}
                                 {/* Totals */}
                                 {(() => {
                                   const bp = editedTemplate.base_price || 35000;
-                                  const defaultVat = editedTemplate.vat_rate || 17;
+                                  const defaultVat = (editedTemplate.vat_rate ?? globalDefaultVat);
                                   const totVat = paymentSteps.reduce((sum, step) => {
                                     const sa = Math.round((bp * step.percentage) / 100);
                                     const ev = step.useCustomVat ? (step.vatRate ?? defaultVat) : defaultVat;
@@ -14058,7 +14058,7 @@ ${tbAt('footer')}
                   </ul>
                   <p className="mt-2">📝 <strong>חוזה</strong> על סך ₪{(() => {
                     const bp = editedTemplate.base_price || 0;
-                    const vr = editedTemplate.vat_rate || 17;
+                    const vr = (editedTemplate.vat_rate ?? globalDefaultVat);
                     return Math.round(bp * (1 + vr / 100)).toLocaleString();
                   })()} (כולל מע״מ)</p>
                 </div>
