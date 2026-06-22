@@ -11609,7 +11609,51 @@ ${tbAt('footer')}
                           {preset.label}
                         </Button>
                       ))}
+
+                      {/* Dedicated preset: project details box with dynamic tokens */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7 border-[#DAA520] text-[#B8860B] hover:bg-[#FFFBEA]"
+                        onClick={() =>
+                          setTextBoxes([
+                            ...textBoxes,
+                            {
+                              id: Date.now().toString(),
+                              title: "",
+                              content:
+                                'חוזה להוצאת [סוג פרויקט] בגוש [גוש] חלקה [חלקה] מגרש [מגרש]\nמושב [מושב]\nמשפחת [משפחה]',
+                              position: "header",
+                              style: "default",
+                              isBold: true,
+                              textAlign: "center",
+                              fontSize: 16,
+                            },
+                          ])
+                        }
+                        title='התווים [גוש] [חלקה] [מגרש] [מושב] [משפחה] [לקוח] [כתובת] [סוג פרויקט] [תב"ע] [טלפון] יתחלפו אוטומטית לערכים של הלקוח. שורה ללא ערך תוסתר.'
+                      >
+                        <Plus className="h-3 w-3 ml-1" />
+                        תיבת פרטי פרויקט
+                      </Button>
                     </div>
+
+                    {/* Tokens helper hint */}
+                    <div className="text-[11px] text-muted-foreground bg-[#FFFBEA] border border-[#DAA520]/30 rounded-md p-2 leading-relaxed">
+                      <strong className="text-[#B8860B]">תווים דינמיים זמינים בכל תיבה:</strong>{" "}
+                      <code className="font-mono">[גוש]</code>{" "}
+                      <code className="font-mono">[חלקה]</code>{" "}
+                      <code className="font-mono">[מגרש]</code>{" "}
+                      <code className="font-mono">[מושב]</code>{" "}
+                      <code className="font-mono">[משפחה]</code>{" "}
+                      <code className="font-mono">[לקוח]</code>{" "}
+                      <code className="font-mono">[כתובת]</code>{" "}
+                      <code className="font-mono">[סוג פרויקט]</code>{" "}
+                      <code className="font-mono">[תב"ע]</code>{" "}
+                      <code className="font-mono">[טלפון]</code>
+                      <div className="mt-1">השדות יוחלפו אוטומטית בנתוני הלקוח. שורה שבה הערך ריק - תוסתר לחלוטין מההצעה הסופית.</div>
+                    </div>
+
 
                     {/* Templates section */}
                     <div className="bg-white rounded-lg border p-3">
