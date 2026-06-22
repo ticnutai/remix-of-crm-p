@@ -486,6 +486,11 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   }
 
   function init(){
+    try{
+      document.body.setAttribute('data-safe-top', String(SAFE_TOP_PX));
+      document.body.setAttribute('data-safe-bottom', String(SAFE_BOTTOM_PX));
+      document.body.setAttribute('data-protect-sel', PROTECT_SEL);
+    }catch(e){}
     tagAutoPaths();
     setupRepeatOverlays();
     setTimeout(detectIssues,300);
@@ -500,7 +505,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       "</body>",
       `${highlightCss}${manualCss}${fixCssBlock}${script}</body>`,
     );
-  }, [html, highlightIssues, manualMode, paginationCss, fixState.autoPaths, fixState.manual]);
+  }, [html, highlightIssues, manualMode, paginationCss, fixState.autoPaths, fixState.manual, fixState.safeZoneTopMm, fixState.safeZoneBottomMm, fixState.protectedBlocks]);
 
   // Measure
   const handleMeasureLoad = useCallback(() => {
