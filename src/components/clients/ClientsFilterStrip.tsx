@@ -780,6 +780,7 @@ export function ClientsFilterStrip({
   const FILTER_SECTIONS: { id: string; label: string }[] = [
     { id: "sort", label: "מיון / תאריך" },
     { id: "classification", label: "סיווג" },
+    { id: "consultants", label: "יועצים" },
     { id: "categories", label: "קטגוריות" },
     { id: "tags", label: "תגיות" },
     { id: "stages", label: "שלבים" },
