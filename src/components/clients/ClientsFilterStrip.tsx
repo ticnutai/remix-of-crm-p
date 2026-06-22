@@ -90,6 +90,8 @@ export interface ClientFilterState {
   exactMonth: number | null;
   customDateRange: ClientDateRangeConfig | null;
   activeDateTabId: string | null;
+  consultantIds?: string[]; // filter clients linked to these consultants
+  consultantProfessions?: string[]; // filter clients linked to any consultant with these professions
   sortBy:
     | "name_asc"
     | "name_desc"
