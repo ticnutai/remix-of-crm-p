@@ -58,6 +58,12 @@ import {
 import { BulkConsultantDialog } from "@/components/clients/BulkConsultantDialog";
 import { ColumnOptionsMenu } from "@/components/DataTable/components/ColumnOptionsMenu";
 import { ClientFilterPanel } from "@/components/clients/ClientFilterPanel";
+import { ConsultantsTreeFilter } from "@/components/clients/ConsultantsTreeFilter";
+import {
+  Popover as ConsultantsPopover,
+  PopoverContent as ConsultantsPopoverContent,
+  PopoverTrigger as ConsultantsPopoverTrigger,
+} from "@/components/ui/popover";
 import { CategoriesSidebar } from "@/components/clients/CategoriesSidebar";
 import { ClientNameWithCategory } from "@/components/clients/ClientNameWithCategory";
 import { PhoneWithExtras } from "@/components/clients/PhoneWithExtras";
