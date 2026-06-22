@@ -147,7 +147,7 @@ export default function Quotes() {
         clientName: sq.project_details?.clientName || td.project_details?.clientName || sq.clients?.name || "",
       },
       base_price: sq.base_price || td.base_price || 0,
-      vat_rate: sq.vat_rate || td.vat_rate || 17,
+      vat_rate: sq.vat_rate || td.vat_rate || 18,
       validity_days: td.validity_days || 30,
       show_vat: td.show_vat ?? true,
       html_content: td.html_content || null,
@@ -175,7 +175,7 @@ export default function Quotes() {
         validity_days: templateData.validity_days || 30,
         design_settings: templateData.design_settings,
         show_vat: templateData.show_vat ?? true,
-        vat_rate: templateData.vat_rate || 17,
+        vat_rate: templateData.vat_rate || 18,
         html_content: templateData.html_content || null,
         text_boxes: templateData.text_boxes || [],
         upgrades: templateData.upgrades || [],
@@ -396,7 +396,7 @@ export default function Quotes() {
         total: item.total || 0,
       })),
       subtotal: quote.subtotal || 0,
-      vat: (quote as any).vat || Math.round((quote.total_amount || 0) * 0.17 / 1.17),
+      vat: (quote as any).vat || Math.round((quote.total_amount || 0) * 0.18 / 1.17),
       total: quote.total_amount || 0,
       notes: quote.notes,
       valid_until: quote.valid_until,
@@ -827,7 +827,7 @@ export default function Quotes() {
                         const st = statusCfg[sq.status] || statusCfg.draft;
                         const isSigned = ["signed", "converted"].includes((sq.status || "").toLowerCase());
                         const basePrice = sq.base_price || 0;
-                        const vatRate = sq.vat_rate || 17;
+                        const vatRate = sq.vat_rate || 18;
                         const vatAmount = Math.round(basePrice * vatRate / 100);
 
                         return (

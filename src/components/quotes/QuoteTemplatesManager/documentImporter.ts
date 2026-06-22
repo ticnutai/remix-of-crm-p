@@ -410,7 +410,7 @@ export async function importDocumentToTemplate(
       validity_days: 30,
       base_price: basePrice,
       show_vat: true,
-      vat_rate: 17,
+      vat_rate: 18,
       is_active: true,
       html_content: styledHtml,
       design_settings: {

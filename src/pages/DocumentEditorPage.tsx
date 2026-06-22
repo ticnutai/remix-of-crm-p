@@ -39,7 +39,7 @@ export default function DocumentEditorPage() {
       validUntil: quote.valid_until,
       status: 'draft',
       currency: 'ILS',
-      vatRate: 17,
+      vatRate: 18,
       discount: 0,
       discountType: 'percent',
       items: quote.items?.map((item, index) => ({
@@ -83,7 +83,7 @@ export default function DocumentEditorPage() {
       endDate: contract.end_date,
       status: 'draft',
       currency: 'ILS',
-      vatRate: 17,
+      vatRate: 18,
       discount: 0,
       discountType: 'percent',
       items: [],

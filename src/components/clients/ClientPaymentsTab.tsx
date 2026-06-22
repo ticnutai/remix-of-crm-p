@@ -82,7 +82,7 @@ type VatBreakdown = {
   total: number;
 };
 
-const DEFAULT_VAT_RATE = 17;
+const DEFAULT_VAT_RATE = 18;
 
 const formatCurrency = (amount: number): string => {
   return `₪${Math.round(amount).toLocaleString('he-IL')}`;
@@ -240,7 +240,7 @@ export function ClientPaymentsTab({ clientId, clientName }: ClientPaymentsTabPro
   const [paymentMethod, setPaymentMethod] = useState('transfer');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [payerName, setPayerName] = useState('');
-  const [vatRate, setVatRate] = useState('17');
+  const [vatRate, setVatRate] = useState(18);
   const [includeVat, setIncludeVat] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [vatDisplayMode, setVatDisplayMode] = useState<VatDisplayMode>('with-breakdown');
@@ -254,7 +254,7 @@ export function ClientPaymentsTab({ clientId, clientName }: ClientPaymentsTabPro
   const [quoteEventQuoteId, setQuoteEventQuoteId] = useState('');
   const [quoteEventStepId, setQuoteEventStepId] = useState('');
   const [quoteEventAmount, setQuoteEventAmount] = useState('');
-  const [quoteEventVatRate, setQuoteEventVatRate] = useState('17');
+  const [quoteEventVatRate, setQuoteEventVatRate] = useState(18);
   const [quoteEventIncludesVat, setQuoteEventIncludesVat] = useState(true);
   const [quoteEventDate, setQuoteEventDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [quoteEventNotes, setQuoteEventNotes] = useState('');
@@ -341,7 +341,7 @@ export function ClientPaymentsTab({ clientId, clientName }: ClientPaymentsTabPro
     return savedQuotes.flatMap((quote: any) => {
       const schedule = Array.isArray(quote.payment_schedule) ? quote.payment_schedule : [];
       const basePrice = Number(quote.base_price || 0);
-      const defaultVatRate = Number(quote.vat_rate || 17);
+      const defaultVatRate = Number(quote.vat_rate || 18);
 
       return schedule.map((step: any, index: number) => {
         const stepId = String(step.id || `step-${index + 1}`);
@@ -518,7 +518,7 @@ export function ClientPaymentsTab({ clientId, clientName }: ClientPaymentsTabPro
         amount_net: finalNet,
         amount_vat: finalVat,
         amount_total: finalTotal,
-        vat_rate: Number(quoteEventVatRate) || selectedFormStep.vatRate || 17,
+        vat_rate: Number(quoteEventVatRate) || selectedFormStep.vatRate || 18,
         payment_date: quoteEventDate,
         notes: quoteEventNotes || null,
         is_full_payment: !quoteEventIsPartial,
@@ -714,7 +714,7 @@ export function ClientPaymentsTab({ clientId, clientName }: ClientPaymentsTabPro
     setPaymentMethod('transfer');
     setPaymentNotes('');
     setPayerName('');
-    setVatRate('17');
+    setVatRate(18);
     setIncludeVat(false);
     setIsPaymentDialogOpen(true);
   };

@@ -132,7 +132,7 @@ export function BlockPreview({
             0,
           ) || 0;
         const vat = content.showVat
-          ? subtotal * ((content.vatRate || 17) / 100)
+          ? subtotal * ((content.vatRate || 18) / 100)
           : 0;
         const total = subtotal + vat;
         const currencySymbol =

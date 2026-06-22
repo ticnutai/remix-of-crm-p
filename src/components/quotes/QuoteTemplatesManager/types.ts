@@ -240,7 +240,7 @@ export const createEmptyTemplate = (): Partial<QuoteTemplate> => ({
   validity_days: 30,
   design_settings: { ...DEFAULT_DESIGN_SETTINGS },
   show_vat: true,
-  vat_rate: 17,
+  vat_rate: 18,
   base_price: 0,
   is_active: true,
 });

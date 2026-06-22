@@ -922,7 +922,7 @@ export default function ClientProfile() {
     payment_method: "bank_transfer",
     payment_date: format(new Date(), "yyyy-MM-dd"),
     payer_name: "",
-    vat_rate: "17",
+    vat_rate: "18",
     include_vat: false,
     notes: "",
   });
@@ -1373,7 +1373,7 @@ export default function ClientProfile() {
         payment_method: "bank_transfer",
         payment_date: format(new Date(), "yyyy-MM-dd"),
         payer_name: "",
-        vat_rate: "17",
+        vat_rate: "18",
         include_vat: false,
         notes: "",
       });

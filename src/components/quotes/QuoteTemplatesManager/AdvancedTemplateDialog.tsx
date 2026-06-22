@@ -260,8 +260,8 @@ export function AdvancedTemplateDialog({
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
-                        value={formData.vat_rate || 17}
-                        onChange={(e) => updateField('vat_rate', parseFloat(e.target.value) || 17)}
+                        value={formData.vat_rate || 18}
+                        onChange={(e) => updateField('vat_rate', parseFloat(e.target.value) || 18)}
                         className="w-20"
                         min={0}
                         max={100}

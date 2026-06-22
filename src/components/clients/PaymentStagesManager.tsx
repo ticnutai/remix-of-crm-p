@@ -188,7 +188,7 @@ const StageFormDialog = ({
     stage_number: nextStageNumber,
     description: "",
     amount: 0,
-    vat_rate: 17,
+    vat_rate: 18,
   });
 
   useEffect(() => {
@@ -200,7 +200,7 @@ const StageFormDialog = ({
         stage_number: nextStageNumber,
         description: "",
         amount: 0,
-        vat_rate: 17,
+        vat_rate: 18,
       });
     }
   }, [initialData, nextStageNumber, open]);
@@ -484,7 +484,7 @@ const AdditionalPaymentDialog = ({
     payment_type: "other",
     description: "",
     amount: 0,
-    vat_rate: 17,
+    vat_rate: 18,
     is_paid: false,
     paid_date: new Date().toISOString().split("T")[0],
     paid_amount: 0,
@@ -502,7 +502,7 @@ const AdditionalPaymentDialog = ({
         payment_type: "other",
         description: "",
         amount: 0,
-        vat_rate: 17,
+        vat_rate: 18,
         is_paid: false,
         paid_date: new Date().toISOString().split("T")[0],
         paid_amount: 0,
@@ -776,7 +776,7 @@ export default function PaymentStagesManager({
   const summary = useMemo(() => {
     const totalStagesAmount = stages.reduce(
       (s, st) =>
-        s + (st.amount_with_vat || st.amount * (1 + (st.vat_rate || 17) / 100)),
+        s + (st.amount_with_vat || st.amount * (1 + (st.vat_rate || 18) / 100)),
       0,
     );
     const totalStagesPaid = stages
@@ -784,7 +784,7 @@ export default function PaymentStagesManager({
       .reduce((s, st) => s + (st.paid_amount || st.amount_with_vat || 0), 0);
     const totalAdditionalAmount = additionalPayments.reduce(
       (s, ap) =>
-        s + (ap.amount_with_vat || ap.amount * (1 + (ap.vat_rate || 17) / 100)),
+        s + (ap.amount_with_vat || ap.amount * (1 + (ap.vat_rate || 18) / 100)),
       0,
     );
     const totalAdditionalPaid = additionalPayments
@@ -1112,7 +1112,7 @@ export default function PaymentStagesManager({
               <div className="space-y-2">
                 {stages.map((stage) => {
                   const vatAmount =
-                    (stage.amount * (stage.vat_rate || 17)) / 100;
+                    (stage.amount * (stage.vat_rate || 18)) / 100;
                   const totalWithVat =
                     stage.amount_with_vat || stage.amount + vatAmount;
                   return (
@@ -1284,7 +1284,7 @@ export default function PaymentStagesManager({
               <div className="space-y-2">
                 {additionalPayments.map((payment) => {
                   const vatAmount =
-                    (payment.amount * (payment.vat_rate || 17)) / 100;
+                    (payment.amount * (payment.vat_rate || 18)) / 100;
                   const totalWithVat =
                     payment.amount_with_vat || payment.amount + vatAmount;
                   return (
@@ -1414,7 +1414,7 @@ export default function PaymentStagesManager({
           recordPaymentStage
             ? recordPaymentStage.amount_with_vat ||
               recordPaymentStage.amount *
-                (1 + (recordPaymentStage.vat_rate || 17) / 100)
+                (1 + (recordPaymentStage.vat_rate || 18) / 100)
             : 0
         }
         stageName={recordPaymentStage?.stage_name || ""}

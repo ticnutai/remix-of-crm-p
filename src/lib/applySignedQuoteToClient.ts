@@ -50,7 +50,7 @@ export async function applySignedQuoteToClient(
 
   const totalWithVat = Number(savedQuote?.total_with_vat) || 0;
   const basePrice = Number(savedQuote?.base_price) || 0;
-  const defaultVat = Number(savedQuote?.vat_rate) || 17;
+  const defaultVat = Number(savedQuote?.vat_rate) || 18;
 
   // ── 1. Stages & tasks ─────────────────────────────────────────────────
   const templateStageIds = Array.from(

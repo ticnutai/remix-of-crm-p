@@ -32,7 +32,7 @@ const createDefaultDocument = (): QuoteDocumentData => ({
   items: [],
   
   subtotal: 0,
-  vatRate: 17,
+  vatRate: 18,
   vatAmount: 0,
   discount: 0,
   discountType: 'percent',
@@ -92,7 +92,7 @@ const convertQuoteToDocument = (quote: Quote): QuoteDocumentData => {
     items,
     
     subtotal: quote.subtotal || 0,
-    vatRate: quote.vat_rate || 17,
+    vatRate: quote.vat_rate || 18,
     vatAmount: quote.vat_amount || 0,
     discount: 0,
     discountType: 'percent',

@@ -268,7 +268,7 @@ export const defaultDocumentData: DocumentData = {
   // Legacy items
   items: [],
   subtotal: 0,
-  vatRate: 17,
+  vatRate: 18,
   vatAmount: 0,
   discount: 0,
   discountType: 'percent',

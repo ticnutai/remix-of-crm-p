@@ -303,7 +303,7 @@ export function ItemsBlockEditor({ block, onChange }: BlockEditorProps) {
   const content = block.content || {
     items: [],
     showVat: true,
-    vatRate: 17,
+    vatRate: 18,
     currency: 'ILS',
   };
 

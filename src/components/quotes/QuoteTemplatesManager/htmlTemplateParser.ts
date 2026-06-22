@@ -280,7 +280,7 @@ export function convertToQuoteTemplate(
     validity_days: parsed.validityDays,
     base_price: parsed.price,
     show_vat: true,
-    vat_rate: 17,
+    vat_rate: 18,
     is_active: true,
     design_settings: {
       ...DEFAULT_DESIGN_SETTINGS,
@@ -387,7 +387,7 @@ function parseGenericHtmlToTemplate(
     validity_days: 30,
     base_price: price,
     show_vat: true,
-    vat_rate: 17,
+    vat_rate: 18,
     is_active: true,
     html_content: html,
     design_settings: {

@@ -21,7 +21,7 @@ export function VATCalculator({
 }: VATCalculatorProps) {
   const cleanPrice = price.replace(/[^0-9.]/g, '');
   const basePrice = parseFloat(cleanPrice) || 0;
-  const calculatedVAT = basePrice * 0.17;
+  const calculatedVAT = basePrice * 0.18;
   const totalWithVAT = basePrice + calculatedVAT;
 
   return (
