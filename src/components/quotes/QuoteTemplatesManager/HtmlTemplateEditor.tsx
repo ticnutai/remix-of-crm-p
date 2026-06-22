@@ -5777,13 +5777,14 @@ export function HtmlTemplateEditor({
     const stages = editedTemplate.stages
       .map(
         (stage) => {
+          const resolvedStageName = applyProjectDetailsTokens(stage.name || "", projectDetails);
           if (stage.isSection) {
-            return sectionTitleHtml(stage.name, fd.sectionTitle, "margin: 28px 0 10px;");
+            return sectionTitleHtml(resolvedStageName, fd.sectionTitle, "margin: 28px 0 10px;");
           }
           return `
       <div class="stage-card" style="margin-bottom: 20px;">
         ${stageCornersHtml}
-        <h3 style="color: ${designSettings.primaryColor}; font-family: ${designSettings.fontFamily};">${stage.icon ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;margin-left:6px;${stage.iconColor ? `background:${stage.iconColor}20;border:1px solid ${stage.iconColor};` : ""}">${stage.icon}</span>` : ""} <span data-editable="stage.${stage.id}.name">${stage.name}</span></h3>
+        <h3 style="color: ${designSettings.primaryColor}; font-family: ${designSettings.fontFamily};">${stage.icon ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;margin-left:6px;${stage.iconColor ? `background:${stage.iconColor}20;border:1px solid ${stage.iconColor};` : ""}">${stage.icon}</span>` : ""} <span data-editable="stage.${stage.id}.name">${resolvedStageName}</span></h3>
         <ul style="list-style: none; padding: 0;">
           ${stage.items
             .map((item) => {
@@ -5814,7 +5815,8 @@ export function HtmlTemplateEditor({
               const iconHtml = itemIcon
                 ? `<span style="color:${itemIconColor};margin-left:6px;">${itemIcon}</span>`
                 : "";
-              return `<li style="padding: 5px 0; color: ${itemColor}; font-family: '${itemFont}', sans-serif; font-size: ${itemSize}px; ${itemBold} ${itemItalic} ${itemUnderline} ${itemAlign}">${iconHtml}<span data-editable="stage.${stage.id}.item.${item.id}.text">${item.text}</span></li>`;
+              const resolvedItemText = applyProjectDetailsTokens(item.text || "", projectDetails);
+              return `<li style="padding: 5px 0; color: ${itemColor}; font-family: '${itemFont}', sans-serif; font-size: ${itemSize}px; ${itemBold} ${itemItalic} ${itemUnderline} ${itemAlign}">${iconHtml}<span data-editable="stage.${stage.id}.item.${item.id}.text">${resolvedItemText}</span></li>`;
             })
             .join("")}
         </ul>
