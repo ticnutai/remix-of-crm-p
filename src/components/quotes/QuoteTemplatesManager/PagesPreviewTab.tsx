@@ -46,7 +46,7 @@ const MAX_AUTOFIX_PASSES = 4;
 const LS_KEY = "lov-pages-preview-prefs-v1";
 const FIX_LS_KEY = "lov-pages-fix-state-v1";
 
-type ViewMode = "single" | "grid" | "compare";
+type ViewMode = "single" | "continuous" | "spread" | "grid" | "compare";
 
 interface Prefs {
   mode: ViewMode;
@@ -106,7 +106,9 @@ const loadPrefs = (): Prefs => {
     if (!raw) return { mode: "single", zoom: 0.85, highlightIssues: false };
     const p = JSON.parse(raw);
     return {
-      mode: ["single", "grid", "compare"].includes(p.mode) ? p.mode : "single",
+      mode: ["single", "continuous", "spread", "grid", "compare"].includes(p.mode)
+        ? p.mode
+        : "single",
       zoom: typeof p.zoom === "number" ? Math.min(2, Math.max(0.25, p.zoom)) : 0.85,
       highlightIssues: !!p.highlightIssues,
     };
@@ -181,6 +183,7 @@ export default function PagesPreviewTab({
 
   const measureRef = useRef<HTMLIFrameElement | null>(null);
   const captureRef = useRef<HTMLDivElement | null>(null);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   // Iterative auto-fix bookkeeping
   const autoFixIterRef = useRef(0);
@@ -611,10 +614,10 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   else window.addEventListener('load',function(){setTimeout(init,200);});
 })();
 </script>`;
-    return html.replace(
-      "</body>",
-      `${highlightCss}${manualCss}${fixCssBlock}${script}</body>`,
-    );
+    const injection = `${highlightCss}${manualCss}${fixCssBlock}${script}`;
+    return html.includes("</body>")
+      ? html.replace("</body>", `${injection}</body>`)
+      : `${html}${injection}`;
   }, [html, highlightIssues, manualMode, paginationCss, fixState.autoPaths, fixState.manual, fixState.safeZoneTopMm, fixState.safeZoneBottomMm, fixState.protectedBlocks]);
 
   // Measure
@@ -624,11 +627,20 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     try {
       const doc = iframe.contentDocument;
       if (!doc) return;
-      setTimeout(() => {
-        const h = doc.documentElement.scrollHeight || A4_H;
+      const measure = () => {
+        const body = doc.body;
+        const h = Math.max(
+          doc.documentElement.scrollHeight || 0,
+          body?.scrollHeight || 0,
+          doc.documentElement.offsetHeight || 0,
+          body?.offsetHeight || 0,
+          A4_H,
+        );
         setContentH(h);
         setPageCount(Math.max(1, Math.ceil(h / A4_H)));
-      }, 350);
+      };
+      setTimeout(measure, 350);
+      setTimeout(measure, 900);
     } catch {
       // ignore
     }
@@ -722,7 +734,8 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     if (comparePage >= pageCount) setComparePage(Math.max(0, pageCount - 1));
   }, [pageCount, page, comparePage]);
 
-  // Keyboard navigation: ←/→ for pages (RTL aware), Space/Shift+Space scroll
+  // Keyboard navigation: ←/→ for pages, Space/Shift+Space scroll.
+  // Capture phase prevents Radix Tabs from stealing arrows and switching editor tabs.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -736,22 +749,33 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       }
       if (e.key === "ArrowLeft") {
         e.preventDefault();
+        e.stopPropagation();
         setPage((p) => Math.min(pageCount - 1, p + 1));
       } else if (e.key === "ArrowRight") {
         e.preventDefault();
+        e.stopPropagation();
         setPage((p) => Math.max(0, p - 1));
       } else if (e.key === "Home") {
         e.preventDefault();
+        e.stopPropagation();
         setPage(0);
       } else if (e.key === "End") {
         e.preventDefault();
+        e.stopPropagation();
         setPage(Math.max(0, pageCount - 1));
+      } else if (e.key === "PageDown") {
+        e.preventDefault();
+        e.stopPropagation();
+        setPage((p) => Math.min(pageCount - 1, p + 1));
+      } else if (e.key === "PageUp") {
+        e.preventDefault();
+        e.stopPropagation();
+        setPage((p) => Math.max(0, p - 1));
       } else if (e.key === " ") {
-        const scroller = document.querySelector<HTMLElement>(
-          ".pages-preview-scroll",
-        );
+        const scroller = scrollerRef.current;
         if (scroller) {
           e.preventDefault();
+          e.stopPropagation();
           scroller.scrollBy({
             top: e.shiftKey ? -scroller.clientHeight * 0.9 : scroller.clientHeight * 0.9,
             behavior: "smooth",
@@ -759,8 +783,8 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         }
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [pageCount]);
 
   // Find the live iframe for sending messages
@@ -957,6 +981,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     label?: string,
   ) => (
     <div
+      data-page-index={pageIdx}
       className="relative bg-card shadow-md border border-border"
       style={{
         width: A4_W * scale,
@@ -966,10 +991,9 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     >
       <div
         style={{
-          width: A4_W,
-          height: contentH,
-          transform: `scale(${scale}) translateY(${-pageIdx * A4_H}px)`,
-          transformOrigin: "top left",
+          width: A4_W * scale,
+          height: Math.max(contentH, A4_H) * scale,
+          position: "relative",
           pointerEvents: interactive ? "auto" : "none",
         }}
       >
@@ -977,8 +1001,13 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           title={`page-${pageIdx + 1}${label ? "-" + label : ""}`}
           srcDoc={finalHtml}
           style={{
+            position: "absolute",
+            left: 0,
+            top: -pageIdx * A4_H * scale,
             width: A4_W,
-            height: contentH,
+            height: Math.max(contentH, A4_H),
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
             border: 0,
             display: "block",
             background: "white",
@@ -991,6 +1020,15 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       </div>
     </div>
   );
+
+  useEffect(() => {
+    if (mode === "single" || mode === "compare") return;
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const target = scroller.querySelector<HTMLElement>(`[data-page-index="${page}"]`);
+    if (!target) return;
+    target.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [mode, page]);
 
   return (
     <div className="h-full flex flex-col bg-muted/30 relative">
@@ -1022,6 +1060,24 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           >
             <Square className="h-3.5 w-3.5 ml-1.5" />
             דף בודד
+          </Button>
+          <Button
+            size="sm"
+            variant={mode === "continuous" ? "default" : "ghost"}
+            className="h-8 text-xs"
+            onClick={() => setMode("continuous")}
+          >
+            <FileText className="h-3.5 w-3.5 ml-1.5" />
+            רציף
+          </Button>
+          <Button
+            size="sm"
+            variant={mode === "spread" ? "default" : "ghost"}
+            className="h-8 text-xs"
+            onClick={() => setMode("spread")}
+          >
+            <SplitSquareHorizontal className="h-3.5 w-3.5 ml-1.5" />
+            כפולה
           </Button>
           <Button
             size="sm"
@@ -1077,7 +1133,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           </Button>
         </div>
 
-        {mode === "single" && (
+        {pageCount > 1 && (
           <div className="bg-muted rounded-md p-0.5 flex items-center gap-0.5">
             <Button
               size="icon"
@@ -1330,6 +1386,10 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
 
         <div className="flex-1" />
 
+        <span className="hidden lg:inline-flex text-[11px] text-muted-foreground">
+          חצים ←/→ עוברים דפים · Space גולל
+        </span>
+
         <div className="flex items-center gap-1.5">
           {mode === "single" && (
             <Button
@@ -1396,10 +1456,40 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       </div>
 
       {/* Viewport */}
-      <div className="flex-1 overflow-auto p-6" dir="ltr">
+      <div ref={scrollerRef} className="pages-preview-scroll flex-1 overflow-auto p-6" dir="ltr">
         {mode === "single" && (
           <div className="flex justify-center">
             <div ref={captureRef}>{renderPageViewport(page, zoom, true)}</div>
+          </div>
+        )}
+
+        {mode === "continuous" && (
+          <div className="flex flex-col gap-8 items-center pb-8">
+            {Array.from({ length: pageCount }).map((_, i) => (
+              <div key={i}>{renderPageViewport(i, zoom, true)}</div>
+            ))}
+          </div>
+        )}
+
+        {mode === "spread" && (
+          <div className="flex flex-col gap-8 items-center pb-8">
+            {Array.from({ length: Math.ceil(pageCount / 2) }).map((_, spreadIdx) => {
+              const right = spreadIdx * 2;
+              const left = right + 1;
+              return (
+                <div key={spreadIdx} className="flex flex-wrap gap-6 justify-center items-start">
+                  {renderPageViewport(right, zoom * 0.78, true)}
+                  {left < pageCount ? (
+                    renderPageViewport(left, zoom * 0.78, true)
+                  ) : (
+                    <div
+                      className="border border-dashed border-border/70 bg-muted/40"
+                      style={{ width: A4_W * zoom * 0.78, height: A4_H * zoom * 0.78 }}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
