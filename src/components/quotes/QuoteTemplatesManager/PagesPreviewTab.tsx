@@ -22,6 +22,9 @@ import {
   X,
   ArrowDown,
   ArrowUp,
+  ArrowLeft,
+  ArrowRight,
+  Move,
   Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,6 +39,9 @@ import { toast } from "sonner";
 // A4 at 96dpi
 const A4_W = 794;
 const A4_H = 1123;
+
+// How many convergence passes the auto-fix runs before stopping
+const MAX_AUTOFIX_PASSES = 4;
 
 const LS_KEY = "lov-pages-preview-prefs-v1";
 const FIX_LS_KEY = "lov-pages-fix-state-v1";
@@ -52,6 +58,8 @@ interface ManualRule {
   path: string;
   fontScale?: number; // 0.5–1.5
   marginTop?: number; // px, can be negative
+  offsetX?: number; // px, free drag offset (translateX)
+  offsetY?: number; // px, free drag offset (translateY)
   breakBefore?: boolean;
   breakInsideAvoid?: boolean;
 }
@@ -174,6 +182,10 @@ export default function PagesPreviewTab({
   const measureRef = useRef<HTMLIFrameElement | null>(null);
   const captureRef = useRef<HTMLDivElement | null>(null);
 
+  // Iterative auto-fix bookkeeping
+  const autoFixIterRef = useRef(0);
+  const autoFixCumulativeRef = useRef(0);
+
   // Persist prefs
   useEffect(() => {
     try {
@@ -239,6 +251,13 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       if (typeof m.marginTop === "number" && m.marginTop !== 0) {
         parts.push(`margin-top:${m.marginTop}px !important`);
       }
+      const ox = typeof m.offsetX === "number" ? m.offsetX : 0;
+      const oy = typeof m.offsetY === "number" ? m.offsetY : 0;
+      if (ox !== 0 || oy !== 0) {
+        parts.push(`transform:translate(${ox}px,${oy}px) !important`);
+        parts.push(`position:relative !important`);
+        parts.push(`z-index:2 !important`);
+      }
       if (m.breakBefore) {
         parts.push(`break-before:page !important`);
         parts.push(`page-break-before:always !important`);
@@ -266,15 +285,24 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       : "";
     const manualCss = manualMode
       ? `<style>
-          .lov-manual-hover{outline:2px solid hsl(217 91% 60%) !important;outline-offset:2px;cursor:crosshair !important;}
+          .lov-manual-hover{outline:2px solid hsl(217 91% 60%) !important;outline-offset:2px;cursor:move !important;}
           .lov-manual-selected{outline:3px solid hsl(217 91% 50%) !important;outline-offset:2px;background:hsla(217,91%,60%,0.08) !important;}
+          .lov-manual-dragging{outline:3px dashed hsl(217 91% 45%) !important;outline-offset:2px;opacity:0.9 !important;cursor:grabbing !important;}
+          .lov-drag-badge{position:fixed;z-index:99999;pointer-events:none;background:hsl(217 91% 45%);color:#fff;font:600 11px/1.4 system-ui,sans-serif;padding:3px 7px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:nowrap;}
+          body.lov-manual-dragging-active{user-select:none !important;cursor:grabbing !important;}
         </style>`
       : "";
     const fixCssBlock = paginationCss
       ? `<style data-lov-fix>${paginationCss}</style>`
       : "";
     const autoPathsJson = JSON.stringify(fixState.autoPaths);
-    const manualPathsJson = JSON.stringify(fixState.manual.map((m) => m.path));
+    const manualRulesJson = JSON.stringify(
+      fixState.manual.map((m) => ({
+        path: m.path,
+        offsetX: m.offsetX || 0,
+        offsetY: m.offsetY || 0,
+      })),
+    );
     const safeTopPx = Math.round(fixState.safeZoneTopMm * 3.7795);
     const safeBottomPx = Math.round(fixState.safeZoneBottomMm * 3.7795);
     const protectSel = (fixState.protectedBlocks.length
@@ -288,7 +316,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   var MANUAL=${manualMode ? "true" : "false"};
   var HIGHLIGHT=${highlightIssues ? "true" : "false"};
   var AUTO_PATHS=${autoPathsJson};
-  var MANUAL_PATHS=${manualPathsJson};
+  var MANUAL_RULES=${manualRulesJson};
   var SAFE_TOP_PX=${safeTopPx};
   var SAFE_BOTTOM_PX=${safeBottomPx};
   var PROTECT_SEL=${JSON.stringify(protectSel)};
@@ -325,10 +353,18 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       var el=findByPath(p);
       if(el) el.setAttribute('data-fix-id','auto-'+i);
     });
-    MANUAL_PATHS.forEach(function(p,i){
-      var el=findByPath(p);
-      if(el) el.setAttribute('data-manual-id','m-'+i);
+    MANUAL_RULES.forEach(function(m,i){
+      var el=findByPath(m.path);
+      if(el){
+        el.setAttribute('data-manual-id','m-'+i);
+        el.setAttribute('data-lov-ox', String(m.offsetX||0));
+        el.setAttribute('data-lov-oy', String(m.offsetY||0));
+      }
     });
+  }
+  function meaningfulOf(t){
+    var m=t && t.closest && t.closest('h1,h2,h3,h4,h5,p,li,tr,table,figure,blockquote,img,.stage-card,.summary-card,.card,.signature-block');
+    return m||t;
   }
 
   function detectIssues(){
@@ -355,18 +391,18 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     try{window.parent.postMessage({__lovIssues:count},'*');}catch(e){}
   }
 
+  var DRAG=null;        // active drag descriptor
+  var JUST_DRAGGED=false; // suppress the click that follows a real drag
+
   // Click-to-jump for issues OR manual select
   document.addEventListener('click',function(ev){
     if(MANUAL){
       ev.preventDefault();
       ev.stopPropagation();
-      // Find a meaningful block target (h*, p, li, tr, .card, etc.)
-      var t=ev.target;
-      var meaningful=t.closest && t.closest('h1,h2,h3,h4,h5,p,li,tr,table,figure,blockquote,.stage-card,.summary-card,.card,.signature-block');
-      if(!meaningful) meaningful=t;
+      if(JUST_DRAGGED){ JUST_DRAGGED=false; return; }
+      var meaningful=meaningfulOf(ev.target);
       var path=pathFor(meaningful);
       var text=(meaningful.innerText||'').slice(0,80);
-      // Highlight selected
       document.querySelectorAll('.lov-manual-selected').forEach(function(n){n.classList.remove('lov-manual-selected');});
       meaningful.classList.add('lov-manual-selected');
       try{window.parent.postMessage({__lovManualSelect:true, path:path, text:text},'*');}catch(e){}
@@ -381,13 +417,74 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   },true);
 
   if(MANUAL){
+    var hovered=null;
     document.addEventListener('mouseover',function(ev){
-      var t=ev.target;
-      if(t && t.classList) t.classList.add('lov-manual-hover');
+      if(DRAG) return;
+      var m=meaningfulOf(ev.target);
+      if(hovered && hovered!==m) hovered.classList.remove('lov-manual-hover');
+      if(m && m.classList){ m.classList.add('lov-manual-hover'); hovered=m; }
     },true);
     document.addEventListener('mouseout',function(ev){
-      var t=ev.target;
-      if(t && t.classList) t.classList.remove('lov-manual-hover');
+      if(DRAG) return;
+      var m=meaningfulOf(ev.target);
+      if(m && m.classList) m.classList.remove('lov-manual-hover');
+    },true);
+
+    // ----- Free drag to reposition -----
+    var badge=null;
+    function showBadge(x,y,ox,oy){
+      if(!badge){
+        badge=document.createElement('div');
+        badge.className='lov-drag-badge';
+        document.body.appendChild(badge);
+      }
+      badge.style.left=(x+14)+'px';
+      badge.style.top=(y+14)+'px';
+      badge.textContent='↔ '+Math.round(ox)+'px  ↕ '+Math.round(oy)+'px';
+    }
+    function hideBadge(){ if(badge && badge.parentNode){ badge.parentNode.removeChild(badge); } badge=null; }
+
+    document.addEventListener('mousedown',function(ev){
+      if(ev.button!==0) return;
+      var m=meaningfulOf(ev.target);
+      if(!m || m===document.body) return;
+      ev.preventDefault();
+      var baseX=parseFloat(m.getAttribute('data-lov-ox')||'0')||0;
+      var baseY=parseFloat(m.getAttribute('data-lov-oy')||'0')||0;
+      DRAG={el:m, startX:ev.clientX, startY:ev.clientY, baseX:baseX, baseY:baseY, ox:baseX, oy:baseY, moved:false};
+      m.classList.add('lov-manual-dragging');
+      document.body.classList.add('lov-manual-dragging-active');
+    },true);
+
+    document.addEventListener('mousemove',function(ev){
+      if(!DRAG) return;
+      ev.preventDefault();
+      var dx=ev.clientX-DRAG.startX;
+      var dy=ev.clientY-DRAG.startY;
+      if(Math.abs(dx)>3 || Math.abs(dy)>3) DRAG.moved=true;
+      DRAG.ox=DRAG.baseX+dx;
+      DRAG.oy=DRAG.baseY+dy;
+      DRAG.el.style.setProperty('transform','translate('+DRAG.ox+'px,'+DRAG.oy+'px)','important');
+      DRAG.el.style.setProperty('position','relative','important');
+      DRAG.el.style.setProperty('z-index','3','important');
+      showBadge(ev.clientX,ev.clientY,DRAG.ox,DRAG.oy);
+    },true);
+
+    document.addEventListener('mouseup',function(ev){
+      if(!DRAG) return;
+      var d=DRAG; DRAG=null;
+      d.el.classList.remove('lov-manual-dragging');
+      document.body.classList.remove('lov-manual-dragging-active');
+      hideBadge();
+      if(d.moved){
+        JUST_DRAGGED=true;
+        var path=pathFor(d.el);
+        d.el.setAttribute('data-lov-ox',String(d.ox));
+        d.el.setAttribute('data-lov-oy',String(d.oy));
+        document.querySelectorAll('.lov-manual-selected').forEach(function(n){n.classList.remove('lov-manual-selected');});
+        d.el.classList.add('lov-manual-selected');
+        try{window.parent.postMessage({__lovManualDrag:true, path:path, offsetX:Math.round(d.ox), offsetY:Math.round(d.oy), text:(d.el.innerText||'').slice(0,80)},'*');}catch(e){}
+      }
     },true);
   }
 
@@ -404,21 +501,34 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       var seen={};
       document.querySelectorAll(SEL).forEach(function(el){
         var r=el.getBoundingClientRect();
+        if(r.height<=0) return;
         var top=r.top+window.scrollY;
         var bottom=top+r.height;
         var startPage=Math.floor(top/H);
         var endPage=Math.floor((bottom-1)/H);
         var topInPage=top - startPage*H;
         var bottomInPage=bottom - endPage*H;
-        var crosses=endPage>startPage && r.height < H*0.9;
+        // Elements taller than ~a full page can't be saved by a page break —
+        // pushing them only creates blank pages. Skip them.
+        var tooTall = r.height >= H*0.92;
+        var crosses=endPage>startPage && !tooTall;
         var hitsHeader=topInPage < SAFE_TOP;
-        var hitsFooter=bottomInPage > (H - SAFE_BOTTOM);
+        var hitsFooter=bottomInPage > (H - SAFE_BOTTOM) && !tooTall;
         var path=pathFor(el);
         if(seen[path]) return; seen[path]=true;
 
+        // Skip if an ancestor was already scheduled for a break (avoid double-push)
+        var anc=el.parentElement, skip=false;
+        while(anc && anc!==document.body){
+          var ap=pathFor(anc);
+          if(newPaths.indexOf(ap)>=0){ skip=true; break; }
+          anc=anc.parentElement;
+        }
+        if(skip) return;
+
         // 1) Element starts inside the bottom safe-zone OR crosses a page boundary
         //    → push it to the next page with a clean break
-        if(crosses || (hitsFooter && r.height < H*0.9)){
+        if(crosses || hitsFooter){
           newPaths.push(path);
           return;
         }
@@ -545,28 +655,62 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       if (d.__lovManualSelect && d.path) {
         setSelectedManual({ path: d.path, text: d.text || "" });
       }
+      if (d.__lovManualDrag && d.path) {
+        const ox = typeof d.offsetX === "number" ? d.offsetX : 0;
+        const oy = typeof d.offsetY === "number" ? d.offsetY : 0;
+        setFixState((s) => {
+          const idx = s.manual.findIndex((m) => m.path === d.path);
+          const next = [...s.manual];
+          if (idx >= 0) next[idx] = { ...next[idx], offsetX: ox, offsetY: oy };
+          else next.push({ path: d.path, offsetX: ox, offsetY: oy });
+          return { ...s, manual: next };
+        });
+        setSelectedManual({ path: d.path, text: d.text || "" });
+      }
       if (d.__lovAutoFixResult && Array.isArray(d.paths)) {
         const pushes: Array<{ path: string; marginTop: number }> = Array.isArray(d.pushes) ? d.pushes : [];
-        setFixState((s) => {
-          const uniqueAuto = Array.from(new Set([...s.autoPaths, ...d.paths]));
-          // Merge pushes into manual rules (overwrite marginTop for same path)
-          const manualMap = new Map(s.manual.map((m) => [m.path, m]));
-          pushes.forEach((p) => {
-            const existing = manualMap.get(p.path) || { path: p.path };
-            manualMap.set(p.path, { ...existing, marginTop: p.marginTop });
+        const found = d.paths.length + pushes.length;
+        if (found > 0) {
+          setFixState((s) => {
+            const uniqueAuto = Array.from(new Set([...s.autoPaths, ...d.paths]));
+            // Merge pushes into manual rules (overwrite marginTop for same path)
+            const manualMap = new Map(s.manual.map((m) => [m.path, m]));
+            pushes.forEach((p) => {
+              const existing = manualMap.get(p.path) || { path: p.path };
+              manualMap.set(p.path, { ...existing, marginTop: p.marginTop });
+            });
+            return {
+              ...s,
+              globalEnabled: true,
+              autoPaths: uniqueAuto,
+              manual: Array.from(manualMap.values()),
+            };
           });
-          return {
-            ...s,
-            globalEnabled: true,
-            autoPaths: uniqueAuto,
-            manual: Array.from(manualMap.values()),
-          };
-        });
-        setAutoFixing(false);
-        const total = d.paths.length + pushes.length;
-        toast.success(`תוקנו ${total} בעיות עימוד`, {
-          description: `${d.paths.length} מעברי דף · ${pushes.length} הזחות מאזורי בטיחות`,
-        });
+          autoFixCumulativeRef.current += found;
+        }
+
+        // Iterate: pushing elements shifts the layout, which can reveal new
+        // page-break issues. Re-analyse the (reloaded) preview until it
+        // converges or we hit the pass limit.
+        if (found > 0 && autoFixIterRef.current < MAX_AUTOFIX_PASSES - 1) {
+          autoFixIterRef.current += 1;
+          // Wait for the iframe to reload with the new pagination CSS and relayout.
+          setTimeout(() => {
+            postAutoFixRequest();
+          }, 950);
+        } else {
+          setAutoFixing(false);
+          const total = autoFixCumulativeRef.current;
+          if (total > 0) {
+            toast.success(`תוקנו ${total} בעיות עימוד`, {
+              description: `הניתוח רץ ב-${autoFixIterRef.current + 1} מעברים עד להתכנסות`,
+            });
+          } else {
+            toast.info("לא נמצאו בעיות עימוד לתיקון", {
+              description: "המסמך נראה תקין, או שהבעיות דורשות התאמה ידנית",
+            });
+          }
+        }
       }
     };
     window.addEventListener("message", onMsg);
@@ -588,15 +732,10 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     return null;
   }, []);
 
-  const handleAutoFix = useCallback(() => {
+  // Post a single auto-fix analysis request to the live iframe.
+  const postAutoFixRequest = useCallback((): boolean => {
     const ifr = findLiveIframe();
-    if (!ifr || !ifr.contentWindow) {
-      // Fall back: just enable global CSS
-      setFixState((s) => ({ ...s, globalEnabled: true }));
-      toast.success("הופעל תיקון עימוד גלובלי");
-      return;
-    }
-    setAutoFixing(true);
+    if (!ifr || !ifr.contentWindow) return false;
     const safeTopPx = Math.round(fixState.safeZoneTopMm * 3.7795);
     const safeBottomPx = Math.round(fixState.safeZoneBottomMm * 3.7795);
     const selectors = (fixState.protectedBlocks.length
@@ -605,20 +744,29 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     ).join(",");
     try {
       ifr.contentWindow.postMessage(
-        {
-          __lovRequestAutoFix: true,
-          safeTopPx,
-          safeBottomPx,
-          selectors,
-        },
+        { __lovRequestAutoFix: true, safeTopPx, safeBottomPx, selectors },
         "*",
       );
+      return true;
     } catch {
-      setAutoFixing(false);
+      return false;
     }
-    // Safety timeout
-    setTimeout(() => setAutoFixing(false), 4000);
   }, [findLiveIframe, fixState.safeZoneTopMm, fixState.safeZoneBottomMm, fixState.protectedBlocks]);
+
+  const handleAutoFix = useCallback(() => {
+    autoFixIterRef.current = 0;
+    autoFixCumulativeRef.current = 0;
+    const ok = postAutoFixRequest();
+    if (!ok) {
+      // Fall back: just enable global CSS
+      setFixState((s) => ({ ...s, globalEnabled: true }));
+      toast.success("הופעל תיקון עימוד גלובלי");
+      return;
+    }
+    setAutoFixing(true);
+    // Safety timeout in case a pass never reports back
+    setTimeout(() => setAutoFixing(false), 12000);
+  }, [postAutoFixRequest]);
 
   const handleResetFix = useCallback(() => {
     setFixState({ ...defaultFixState });
@@ -1084,8 +1232,8 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         )}
         {manualMode && (
           <span className="text-[11px] text-primary flex items-center gap-1 font-medium">
-            <MousePointerClick className="h-3 w-3" />
-            לחץ על אלמנט בתצוגה כדי לערוך
+            <Move className="h-3 w-3" />
+            גרור אלמנט בתצוגה כדי להזיז · לחיצה פותחת עריכה
           </span>
         )}
 
@@ -1340,6 +1488,94 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
                   למטה
                 </Button>
               </div>
+            </div>
+
+            {/* Free-drag offset (set by dragging in the preview) */}
+            <div className="space-y-1.5 pt-1 border-t">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium flex items-center gap-1">
+                  <Move className="h-3 w-3" />
+                  מיקום חופשי (גרירה)
+                </label>
+                <span className="text-[11px] tabular-nums text-muted-foreground">
+                  ↔ {currentManualRule?.offsetX ?? 0} · ↕{" "}
+                  {currentManualRule?.offsetY ?? 0}
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground leading-snug">
+                גרור את האלמנט ישירות בתצוגה כדי למקם אותו. אפשר גם לדייק בחיצים:
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px]"
+                  onClick={() =>
+                    upsertManualRule(selectedManual.path, {
+                      offsetX: (currentManualRule?.offsetX ?? 0) - 5,
+                    })
+                  }
+                >
+                  <ArrowLeft className="h-3 w-3 ml-1" />
+                  שמאלה
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px]"
+                  onClick={() =>
+                    upsertManualRule(selectedManual.path, {
+                      offsetX: (currentManualRule?.offsetX ?? 0) + 5,
+                    })
+                  }
+                >
+                  <ArrowRight className="h-3 w-3 ml-1" />
+                  ימינה
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px]"
+                  onClick={() =>
+                    upsertManualRule(selectedManual.path, {
+                      offsetY: (currentManualRule?.offsetY ?? 0) - 5,
+                    })
+                  }
+                >
+                  <ArrowUp className="h-3 w-3 ml-1" />
+                  למעלה
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px]"
+                  onClick={() =>
+                    upsertManualRule(selectedManual.path, {
+                      offsetY: (currentManualRule?.offsetY ?? 0) + 5,
+                    })
+                  }
+                >
+                  <ArrowDown className="h-3 w-3 ml-1" />
+                  למטה
+                </Button>
+              </div>
+              {((currentManualRule?.offsetX ?? 0) !== 0 ||
+                (currentManualRule?.offsetY ?? 0) !== 0) && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-[11px] w-full text-muted-foreground"
+                  onClick={() =>
+                    upsertManualRule(selectedManual.path, {
+                      offsetX: 0,
+                      offsetY: 0,
+                    })
+                  }
+                >
+                  <RotateCcw className="h-3 w-3 ml-1" />
+                  אפס מיקום גרירה
+                </Button>
+              )}
             </div>
 
             {/* Toggles */}
