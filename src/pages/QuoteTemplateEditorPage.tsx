@@ -170,27 +170,6 @@ export default function QuoteTemplateEditorPage() {
     }
   };
 
-  const isMobile = useIsMobile();
-
-  if (isMobile) {
-    if (loading || !template) {
-      return (
-        <div className="fixed inset-0 flex items-center justify-center bg-background">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
-      );
-    }
-    return (
-      <MobileTemplateWizard
-        template={template}
-        onSave={async (t) => {
-          await handleSave({ ...template, ...t });
-        }}
-        onClose={() => navigate("/quote-templates")}
-      />
-    );
-  }
-
   return (
     <AppLayout title="עריכת תבנית הצעת מחיר">
       {loading || !template ? (
