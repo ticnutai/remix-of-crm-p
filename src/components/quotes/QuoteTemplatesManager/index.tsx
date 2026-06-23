@@ -1303,7 +1303,7 @@ export function QuoteTemplatesManager() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       {/* Hidden file inputs */}
       <input
         ref={fileInputRef}
@@ -1322,55 +1322,61 @@ export function QuoteTemplatesManager() {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-start gap-4 flex-nowrap">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-3 sm:gap-4 sm:flex-nowrap text-right">
         <div className="shrink-0">
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Layers className="h-6 w-6 text-[#d8ac27]" />
+          <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <Layers className="h-5 w-5 sm:h-6 sm:w-6 text-[#d8ac27]" />
             תבניות הצעות מחיר
           </h2>
         </div>
-        <div className="flex items-center gap-2 flex-nowrap">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <Button
             onClick={() => {
               setEditingFolder({ name: "", color: "#d8ac27" });
               setFolderDialogOpen(true);
             }}
             variant="outline"
+            size="sm"
             className="shrink-0 border-primary/50 text-primary hover:bg-primary/10"
           >
-            <FolderPlus className="h-4 w-4 ml-2" />
-            תיקייה חדשה
+            <FolderPlus className="h-4 w-4 ml-1 sm:ml-2" />
+            <span className="hidden sm:inline">תיקייה חדשה</span>
+            <span className="sm:hidden">תיקייה</span>
           </Button>
           <Button
             onClick={() => wordToHtmlInputRef.current?.click()}
             variant="outline"
+            size="sm"
             disabled={isConverting}
             className="shrink-0 border-primary text-primary hover:bg-primary/10"
           >
             {isConverting ? (
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent ml-2" />
             ) : (
-              <FileCode className="h-4 w-4 ml-2" />
+              <FileCode className="h-4 w-4 sm:ml-2" />
             )}
-            Word → HTML
+            <span className="hidden sm:inline">Word → HTML</span>
           </Button>
           <Button
             onClick={() => handleNew()}
+            size="sm"
             className="shrink-0 bg-[#d8ac27] hover:bg-[#c49b22] text-white"
           >
-            <Plus className="h-4 w-4 ml-2" />
-            תבנית חדשה
+            <Plus className="h-4 w-4 ml-1 sm:ml-2" />
+            <span className="hidden sm:inline">תבנית חדשה</span>
+            <span className="sm:hidden">חדשה</span>
           </Button>
           <Button
             onClick={handleImportClick}
             variant="outline"
+            size="sm"
             disabled={isImporting}
             aria-label="יבוא"
             title="יבוא"
             className="shrink-0 border-[#d8ac27] text-[#d8ac27] hover:bg-[#d8ac27]/10"
           >
             {isImporting ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#d8ac27] border-t-transparent ml-2" />
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#d8ac27] border-t-transparent" />
             ) : (
               <Upload className="h-4 w-4" />
             )}
@@ -1379,7 +1385,7 @@ export function QuoteTemplatesManager() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-3" dir="rtl">
         <div className="relative flex-1">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
