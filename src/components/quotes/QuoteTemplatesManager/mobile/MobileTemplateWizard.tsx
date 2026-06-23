@@ -248,7 +248,7 @@ function SaveIndicator({ state }: { state: SaveState }) {
   if (state === "saved")
     return (
       <div className="text-[10px] text-emerald-600 flex items-center justify-center gap-1">
-        <CloudCheck className="h-3 w-3" /> נשמר
+        <CheckCircle2 className="h-3 w-3" /> נשמר
       </div>
     );
   return (
@@ -631,7 +631,7 @@ function TimelineStep({
   update: (p: Partial<QuoteTemplate>) => void;
 }) {
   const timeline = data.timeline || [];
-  const set = (t: TimelineStep[]) => update({ timeline: t });
+  const set = (t: TimelineStepType[]) => update({ timeline: t });
 
   return (
     <div className="space-y-4">
