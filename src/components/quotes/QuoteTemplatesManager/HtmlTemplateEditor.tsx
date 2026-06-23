@@ -9997,16 +9997,16 @@ ${tbAt('footer')}
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() =>
-                        window.open(
-                          "/vector-logo-strip-editor.html",
-                          "_blank",
-                          "noopener,noreferrer",
-                        )
-                      }
+                      asChild
                     >
-                      <ExternalLink className="h-4 w-4 ml-2" />
-                      עורך בעמוד נפרד
+                      <a
+                        href="/vector-logo-strip-editor.html"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="h-4 w-4 ml-2" />
+                        עורך בעמוד נפרד
+                      </a>
                     </Button>
                   </div>
                 </div>
@@ -11158,16 +11158,16 @@ ${tbAt('footer')}
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() =>
-                        window.open(
-                          "/vector-logo-strip-editor.html",
-                          "_blank",
-                          "noopener,noreferrer",
-                        )
-                      }
+                      asChild
                     >
-                      <ExternalLink className="h-4 w-4 ml-2" />
-                      עורך בעמוד נפרד
+                      <a
+                        href="/vector-logo-strip-editor.html"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="h-4 w-4 ml-2" />
+                        עורך בעמוד נפרד
+                      </a>
                     </Button>
                   </div>
                 </div>

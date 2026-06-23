@@ -3,7 +3,7 @@
 // Clicking the chevron expands/collapses the list of specific consultants.
 // Reusable between Clients page (inside Stages popover) and DataTable Pro (Filter Panel).
 import React, { useMemo, useState } from "react";
-import { ChevronDown, ChevronLeft, UserCog, Briefcase, Search } from "lucide-react";
+import { ChevronDown, ChevronLeft, UserCog, Briefcase, Search, Plus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useConsultants } from "@/hooks/useConsultants";
+import { AssignClientsToConsultantDialog } from "./AssignClientsToConsultantDialog";
 
 export interface ConsultantsTreeFilterProps {
   selectedConsultantIds: string[];
@@ -42,6 +43,11 @@ export function ConsultantsTreeFilter({
   const { consultants } = useConsultants();
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [assignTarget, setAssignTarget] = useState<{
+    id: string;
+    name: string;
+    profession: string | null;
+  } | null>(null);
 
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -231,38 +237,57 @@ export function ConsultantsTreeFilter({
                       const active = selectedConsultantIds.includes(c.id);
                       const cnt = clientsCountByConsultantId?.[c.id];
                       return (
-                        <button
+                        <div
                           key={c.id}
-                          type="button"
-                          onClick={() => toggleConsultant(c.id)}
                           className={cn(
-                            "w-full flex items-center gap-2 px-2 py-1 rounded text-right text-xs",
+                            "w-full flex items-center gap-1 px-1 py-0.5 rounded text-xs group",
                             active
                               ? "bg-primary/10 text-primary"
                               : "hover:bg-muted/60",
                           )}
                         >
-                          <Checkbox
-                            checked={active}
-                            className="pointer-events-none h-3.5 w-3.5"
-                          />
-                          <span className="flex-1 truncate text-right">
-                            {c.name}
-                            {c.company && (
-                              <span className="text-[10px] text-muted-foreground mr-1">
-                                · {c.company}
-                              </span>
+                          <button
+                            type="button"
+                            onClick={() => toggleConsultant(c.id)}
+                            className="flex items-center gap-2 flex-1 min-w-0 text-right px-1 py-1"
+                          >
+                            <Checkbox
+                              checked={active}
+                              className="pointer-events-none h-3.5 w-3.5"
+                            />
+                            <span className="flex-1 truncate text-right">
+                              {c.name}
+                              {c.company && (
+                                <span className="text-[10px] text-muted-foreground mr-1">
+                                  · {c.company}
+                                </span>
+                              )}
+                            </span>
+                            {cnt !== undefined && cnt > 0 && (
+                              <Badge
+                                variant="secondary"
+                                className="h-4 px-1 text-[9px]"
+                              >
+                                {cnt}
+                              </Badge>
                             )}
-                          </span>
-                          {cnt !== undefined && cnt > 0 && (
-                            <Badge
-                              variant="secondary"
-                              className="h-4 px-1 text-[9px]"
-                            >
-                              {cnt}
-                            </Badge>
-                          )}
-                        </button>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAssignTarget({
+                                id: c.id,
+                                name: c.name,
+                                profession: c.profession || prof,
+                              });
+                            }}
+                            title="נהל לקוחות משויכים"
+                            className="opacity-60 hover:opacity-100 hover:bg-primary/10 p-1 rounded text-primary shrink-0"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -272,6 +297,16 @@ export function ConsultantsTreeFilter({
           })}
         </div>
       </ScrollArea>
+
+      {assignTarget && (
+        <AssignClientsToConsultantDialog
+          open={!!assignTarget}
+          onOpenChange={(o) => !o && setAssignTarget(null)}
+          consultantId={assignTarget.id}
+          consultantName={assignTarget.name}
+          consultantProfession={assignTarget.profession}
+        />
+      )}
     </div>
   );
 }
