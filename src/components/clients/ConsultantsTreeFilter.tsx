@@ -43,6 +43,11 @@ export function ConsultantsTreeFilter({
   const { consultants } = useConsultants();
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [assignTarget, setAssignTarget] = useState<{
+    id: string;
+    name: string;
+    profession: string | null;
+  } | null>(null);
 
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase();
