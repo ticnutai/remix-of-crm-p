@@ -1304,6 +1304,30 @@ export function QuoteTemplatesManager() {
     );
   };
 
+  const isMobile = useIsMobile();
+  if (isMobile) {
+    return (
+      <div className="px-4 pt-4 w-full overflow-x-hidden">
+        <MobileTemplatesList
+          templates={templates}
+          folders={folders}
+          isLoading={isLoading}
+          onCreate={() => handleNew()}
+          onOpen={(t) => navigate(`/quote-templates/editor/${t.id}`)}
+          onPreview={(t) => setPreviewTemplate(t)}
+          onDuplicate={handleDuplicate}
+          onDelete={(t) => handleDelete(t.id)}
+        />
+        {previewTemplate && (
+          <TemplatePreviewDialog
+            template={previewTemplate}
+            onClose={() => setPreviewTemplate(null)}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Hidden file inputs */}
