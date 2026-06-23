@@ -14716,8 +14716,19 @@ function WhatsAppDialog({
         type: "text/html;charset=utf-8",
       });
     }
-    if (attachFormat === "word" && generateWordHtml) {
-      const html = await generateWordHtml();
+    if (attachFormat === "word" && generateExportHtml) {
+      // Use the designed HTML (same as PDF) for Word attachments so the
+      // exported file matches the user's design.
+      const designed = await generateExportHtml();
+      const html = designed.includes('urn:schemas-microsoft-com:office:word')
+        ? designed
+        : designed.replace(
+            '<head>',
+            `<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->
+<style>@page { size: 21cm 29.7cm; margin: 1.5cm; } body { direction: rtl; }</style>`
+          );
       return new window.File(["\ufeff" + html], `${safeName}.doc`, {
         type: "application/msword",
       });
