@@ -7,7 +7,6 @@ import { ChevronDown, ChevronLeft, UserCog, Briefcase, Search, Plus, Trash2 } fr
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useConsultants } from "@/hooks/useConsultants";
@@ -225,7 +224,7 @@ export function ConsultantsTreeFilter({
         </div>
       </div>
 
-      <ScrollArea className="min-h-[180px] max-h-[min(52vh,360px)] pr-1 overflow-x-hidden">
+      <div className="min-h-[180px] max-h-[min(52vh,360px)] overflow-y-auto overflow-x-hidden overscroll-contain pr-1">
         <div className="space-y-1 max-w-full overflow-x-hidden">
           {grouped.length === 0 && (
             <div className="text-xs text-muted-foreground text-center py-4">
@@ -390,7 +389,7 @@ export function ConsultantsTreeFilter({
             );
           })}
         </div>
-      </ScrollArea>
+      </div>
 
       {assignTarget && (
         <AssignClientsToConsultantDialog

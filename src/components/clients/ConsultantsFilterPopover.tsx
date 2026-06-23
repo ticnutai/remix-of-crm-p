@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   UserCog,
   ChevronDown,
@@ -203,7 +202,7 @@ export function ConsultantsFilterPopover({
           </div>
         </div>
 
-        <ScrollArea className="flex-1 min-h-0 overflow-x-hidden">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
           <div className="p-3 space-y-4 max-w-full overflow-x-hidden">
             <div className="rounded-md border border-border bg-muted/20 p-2 space-y-2">
               <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
@@ -342,7 +341,7 @@ export function ConsultantsFilterPopover({
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </div>
       </PopoverContent>
     </Popover>
   );
