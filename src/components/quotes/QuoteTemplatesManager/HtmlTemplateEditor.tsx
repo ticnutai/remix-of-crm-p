@@ -4612,12 +4612,12 @@ export function HtmlTemplateEditor({
     onNext: () => {
       const visible = tabConfig.filter((t) => t.visible).map((t) => t.value);
       const idx = visible.indexOf(activeTab);
-      if (idx >= 0 && idx < visible.length - 1) setActiveTab(visible[idx + 1]);
+      if (idx >= 0 && idx < visible.length - 1) setActiveTab(visible[idx + 1] as any);
     },
     onPrev: () => {
       const visible = tabConfig.filter((t) => t.visible).map((t) => t.value);
       const idx = visible.indexOf(activeTab);
-      if (idx > 0) setActiveTab(visible[idx - 1]);
+      if (idx > 0) setActiveTab(visible[idx - 1] as any);
     },
   });
 
