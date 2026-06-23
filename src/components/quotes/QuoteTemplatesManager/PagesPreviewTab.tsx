@@ -722,6 +722,47 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     if (comparePage >= pageCount) setComparePage(Math.max(0, pageCount - 1));
   }, [pageCount, page, comparePage]);
 
+  // Keyboard navigation: ←/→ for pages (RTL aware), Space/Shift+Space scroll
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (
+        t &&
+        (t.tagName === "INPUT" ||
+          t.tagName === "TEXTAREA" ||
+          t.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setPage((p) => Math.min(pageCount - 1, p + 1));
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setPage((p) => Math.max(0, p - 1));
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        setPage(0);
+      } else if (e.key === "End") {
+        e.preventDefault();
+        setPage(Math.max(0, pageCount - 1));
+      } else if (e.key === " ") {
+        const scroller = document.querySelector<HTMLElement>(
+          ".pages-preview-scroll",
+        );
+        if (scroller) {
+          e.preventDefault();
+          scroller.scrollBy({
+            top: e.shiftKey ? -scroller.clientHeight * 0.9 : scroller.clientHeight * 0.9,
+            behavior: "smooth",
+          });
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pageCount]);
+
   // Find the live iframe for sending messages
   const findLiveIframe = useCallback((): HTMLIFrameElement | null => {
     const list = document.querySelectorAll<HTMLIFrameElement>("iframe");
