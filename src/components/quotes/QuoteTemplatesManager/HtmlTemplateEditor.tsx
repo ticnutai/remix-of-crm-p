@@ -4611,12 +4611,12 @@ export function HtmlTemplateEditor({
     enabled: isMobile,
     onNext: () => {
       const visible = tabConfig.filter((t) => t.visible).map((t) => t.value);
-      const idx = visible.indexOf(activeTab);
+      const idx = visible.indexOf(activeTab as any);
       if (idx >= 0 && idx < visible.length - 1) setActiveTab(visible[idx + 1] as any);
     },
     onPrev: () => {
       const visible = tabConfig.filter((t) => t.visible).map((t) => t.value);
-      const idx = visible.indexOf(activeTab);
+      const idx = visible.indexOf(activeTab as any);
       if (idx > 0) setActiveTab(visible[idx - 1] as any);
     },
   });
