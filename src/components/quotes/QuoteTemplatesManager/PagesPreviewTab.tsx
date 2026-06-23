@@ -795,27 +795,77 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   }, [html, paginationCss]);
 
   const handleExportPng = useCallback(async () => {
-    if (!captureRef.current) return;
     setExporting(true);
+    // Render finalHtml in a hidden iframe attached to the main document, then
+    // run html2canvas on its body. html2canvas can't capture iframes wrapped in
+    // a transformed/scaled container — that's why the previous version produced
+    // blank PNGs.
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = `position:fixed;left:-99999px;top:0;width:${A4_W}px;height:${Math.max(contentH, A4_H)}px;border:0;background:#ffffff;`;
+    document.body.appendChild(iframe);
     try {
-      const canvas = await html2canvas(captureRef.current, {
+      await new Promise<void>((resolve, reject) => {
+        iframe.onload = () => resolve();
+        iframe.onerror = () => reject(new Error("iframe load failed"));
+        iframe.srcdoc = finalHtml;
+      });
+      await new Promise((r) => setTimeout(r, 400));
+      const doc = iframe.contentDocument;
+      const body = doc?.body;
+      if (!doc || !body) throw new Error("no iframe document");
+      const imgs = Array.from(doc.images || []);
+      await Promise.all(
+        imgs.map(
+          (img) =>
+            new Promise<void>((res) => {
+              if (img.complete) return res();
+              img.onload = () => res();
+              img.onerror = () => res();
+            }),
+        ),
+      );
+      const fullCanvas = await html2canvas(body, {
         scale: 2,
         backgroundColor: "#ffffff",
         useCORS: true,
         logging: false,
+        width: A4_W,
+        height: Math.max(contentH, A4_H),
+        windowWidth: A4_W,
+        windowHeight: Math.max(contentH, A4_H),
       });
+      const out = document.createElement("canvas");
+      out.width = A4_W * 2;
+      out.height = A4_H * 2;
+      const ctx = out.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, out.width, out.height);
+        ctx.drawImage(
+          fullCanvas,
+          0,
+          page * A4_H * 2,
+          A4_W * 2,
+          A4_H * 2,
+          0,
+          0,
+          A4_W * 2,
+          A4_H * 2,
+        );
+      }
       const link = document.createElement("a");
       link.download = `${templateName || "quote"}-page-${page + 1}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.href = out.toDataURL("image/png");
       link.click();
       toast.success("הדף נשמר כתמונה");
     } catch (err) {
       console.error(err);
       toast.error("שגיאה בייצוא התמונה");
     } finally {
+      try { document.body.removeChild(iframe); } catch { /* */ }
       setExporting(false);
     }
-  }, [page, templateName]);
+  }, [page, templateName, finalHtml, contentH]);
 
   const fitZoom = useCallback(() => setZoom(0.7), []);
 
