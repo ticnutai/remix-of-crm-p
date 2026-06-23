@@ -1,5 +1,5 @@
 // אשף עריכת תבנית הצעת מחיר למובייל - צעדים אנכיים, ללא גלילה אופקית
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   ArrowLeft,
@@ -11,7 +11,7 @@ import {
   Eye,
   Loader2,
   CloudUpload,
-  CloudCheck,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,13 +27,12 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import {
+import { CATEGORIES, DEFAULT_DESIGN_SETTINGS } from "../types";
+import type {
   QuoteTemplate,
-  CATEGORIES,
-  DEFAULT_DESIGN_SETTINGS,
   TemplateStage,
   PaymentStep,
-  TimelineStep,
+  TimelineStep as TimelineStepType,
 } from "../types";
 import { TemplatePreviewDialog } from "../TemplatePreviewDialog";
 
