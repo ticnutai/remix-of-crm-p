@@ -351,7 +351,7 @@ export default function PagedPreviewTab({
 
         {/* Viewport */}
         <ViewModeContainer
-          sourceRef={sourceRef}
+          sourceRef={containerRef}
           pageCount={pageCount}
           rendering={rendering}
           mode={mode}
