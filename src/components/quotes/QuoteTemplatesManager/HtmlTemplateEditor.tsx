@@ -14073,6 +14073,7 @@ ${tbAt('footer')}
             />
           </TabsContent>
         </Tabs>
+        </div>
 
         {/* Footer */}
         <div className="shrink-0 border-t bg-white p-3">
