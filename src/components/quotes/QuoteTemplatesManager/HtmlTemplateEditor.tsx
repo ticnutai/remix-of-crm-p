@@ -4533,6 +4533,9 @@ export function HtmlTemplateEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("project");
+  const isMobile = useIsMobile();
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+
 
   // Top tabs configuration (order + visibility) — persisted
   const TABS_CFG_LS_KEY = "lov-html-editor-tabs-cfg-v1";
