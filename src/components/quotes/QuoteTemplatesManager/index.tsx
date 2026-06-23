@@ -91,6 +91,8 @@ import {
   convertWordToHtml,
   getSupportedDocumentTypes,
 } from "./documentImporter";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileTemplatesList } from "./mobile/MobileTemplatesList";
 
 type FolderLayoutMode = "grid" | "dense" | "list" | "expanded" | "table";
 type TemplateLayoutMode = "regular" | "compact" | "expanded" | "quick";
@@ -1301,6 +1303,30 @@ export function QuoteTemplatesManager() {
       </Card>
     );
   };
+
+  const isMobile = useIsMobile();
+  if (isMobile) {
+    return (
+      <div className="px-4 pt-4 w-full overflow-x-hidden">
+        <MobileTemplatesList
+          templates={templates}
+          folders={folders}
+          isLoading={isLoading}
+          onCreate={() => handleNew()}
+          onOpen={(t) => navigate(`/quote-templates/editor/${t.id}`)}
+          onPreview={(t) => setPreviewTemplate(t)}
+          onDuplicate={handleDuplicate}
+          onDelete={(t) => handleDelete(t.id)}
+        />
+        {previewTemplate && (
+          <TemplatePreviewDialog
+            template={previewTemplate}
+            onClose={() => setPreviewTemplate(null)}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
