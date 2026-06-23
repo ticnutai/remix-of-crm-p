@@ -1656,7 +1656,7 @@ export function ClientsFilterStrip({
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[400px] p-0" dir="rtl" align="end">
+          <PopoverContent className="w-[min(94vw,400px)] p-0 overflow-hidden" dir="rtl" align="end" collisionPadding={16}>
             <div className="p-4 border-b">
               <div className="flex flex-row-reverse items-center gap-2 mb-3">
                 <Layers className="h-5 w-5 text-primary" />
@@ -1679,7 +1679,7 @@ export function ClientsFilterStrip({
                 </Button>
               </div>
             </div>
-            <ScrollArea className="h-[480px] p-4">
+            <ScrollArea className="max-h-[min(480px,60vh)] p-4">
               <div className="space-y-3">
                 {stageDefinitions.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
