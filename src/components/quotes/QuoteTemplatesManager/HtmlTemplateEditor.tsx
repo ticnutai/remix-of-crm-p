@@ -11,7 +11,7 @@ import React, {
 import { createPortal } from "react-dom";
 import { PreviewIframe, type InlineEditPayload } from "./PreviewIframe";
 import { FrameDesignPanel } from "./FrameDesignPanel";
-import PagesPreviewTab from "./PagesPreviewTab";
+import PagesPreviewTab from "./PagedPreviewTab";
 import {
   DEFAULT_FRAME_SETTINGS,
   borderToCss,
