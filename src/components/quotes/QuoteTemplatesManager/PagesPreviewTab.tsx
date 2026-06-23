@@ -46,7 +46,7 @@ const MAX_AUTOFIX_PASSES = 4;
 const LS_KEY = "lov-pages-preview-prefs-v1";
 const FIX_LS_KEY = "lov-pages-fix-state-v1";
 
-type ViewMode = "single" | "grid" | "compare";
+type ViewMode = "single" | "continuous" | "spread" | "grid" | "compare";
 
 interface Prefs {
   mode: ViewMode;
@@ -106,7 +106,9 @@ const loadPrefs = (): Prefs => {
     if (!raw) return { mode: "single", zoom: 0.85, highlightIssues: false };
     const p = JSON.parse(raw);
     return {
-      mode: ["single", "grid", "compare"].includes(p.mode) ? p.mode : "single",
+      mode: ["single", "continuous", "spread", "grid", "compare"].includes(p.mode)
+        ? p.mode
+        : "single",
       zoom: typeof p.zoom === "number" ? Math.min(2, Math.max(0.25, p.zoom)) : 0.85,
       highlightIssues: !!p.highlightIssues,
     };
@@ -181,6 +183,7 @@ export default function PagesPreviewTab({
 
   const measureRef = useRef<HTMLIFrameElement | null>(null);
   const captureRef = useRef<HTMLDivElement | null>(null);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   // Iterative auto-fix bookkeeping
   const autoFixIterRef = useRef(0);
