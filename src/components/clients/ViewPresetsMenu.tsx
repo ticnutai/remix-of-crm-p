@@ -233,24 +233,21 @@ export function ViewPresetsMenu({ current, onApply }: Props) {
     toast.success("התצוגה נמחקה");
   };
 
-  // Distinct style — gold-filled pill so it stands out among the other header icons
+  // Circle style — matches the other header icon buttons but with gold fill
   const triggerStyle: React.CSSProperties = {
-    display: "inline-flex",
+    display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: "6px",
-    height: "32px",
-    padding: "0 12px",
-    borderRadius: "8px",
+    width: "34px",
+    height: "34px",
+    borderRadius: "50%",
     border: "1.5px solid #d4a843",
     background: "linear-gradient(135deg, #f5d27a, #d4a843)",
-    color: "#1e293b",
+    color: "#1e3a5f",
     cursor: "pointer",
     transition: "all 0.2s ease",
-    fontSize: "12px",
-    fontWeight: 600,
-    boxShadow: "0 2px 6px rgba(212, 168, 67, 0.25)",
-    whiteSpace: "nowrap",
+    flexShrink: 0,
+    boxShadow: "0 2px 6px rgba(212, 168, 67, 0.3)",
   };
 
   return (
@@ -262,16 +259,17 @@ export function ViewPresetsMenu({ current, onApply }: Props) {
             title="תצוגות מוכנות / שינוי פריסה"
             aria-label="תצוגות מוכנות"
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-1px)";
-              e.currentTarget.style.boxShadow = "0 4px 10px rgba(212, 168, 67, 0.4)";
+              e.currentTarget.style.background = "linear-gradient(135deg, #e8c060, #c49a3a)";
+              e.currentTarget.style.boxShadow = "0 4px 10px rgba(212, 168, 67, 0.45)";
+              e.currentTarget.style.transform = "scale(1.08)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 2px 6px rgba(212, 168, 67, 0.25)";
+              e.currentTarget.style.background = "linear-gradient(135deg, #f5d27a, #d4a843)";
+              e.currentTarget.style.boxShadow = "0 2px 6px rgba(212, 168, 67, 0.3)";
+              e.currentTarget.style.transform = "scale(1)";
             }}
           >
-            <LayoutTemplate style={{ width: "14px", height: "14px" }} />
-            <span>תצוגות</span>
+            <LayoutTemplate style={{ width: "16px", height: "16px" }} />
           </button>
         </DropdownMenuTrigger>
 
