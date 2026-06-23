@@ -1679,7 +1679,7 @@ export function ClientsFilterStrip({
                 </Button>
               </div>
             </div>
-            <ScrollArea className="max-h-[min(480px,60vh)] p-4">
+            <ScrollArea className="h-[min(480px,55vh)] p-4">
               <div className="space-y-3">
                 {stageDefinitions.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
