@@ -26,6 +26,9 @@ import {
   ArrowRight,
   Move,
   Settings2,
+  Undo2,
+  Redo2,
+  Magnet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
@@ -169,15 +172,24 @@ export default function PagesPreviewTab({
 
   // Pagination fix state
   const templateKey = templateName || "default";
-  const [fixState, setFixState] = useState<FixState>(() =>
-    loadFixState(templateKey),
-  );
+  const historyRef = useRef<FixState[]>([]);
+  const historyIdxRef = useRef(0);
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const [fixState, setFixState] = useState<FixState>(() => {
+    const loaded = loadFixState(templateKey);
+    historyRef.current = [loaded];
+    historyIdxRef.current = 0;
+    return loaded;
+  });
   const [manualMode, setManualMode] = useState(false);
   const [selectedManual, setSelectedManual] = useState<{
     path: string;
     text: string;
   } | null>(null);
   const [autoFixing, setAutoFixing] = useState(false);
+  const [gridEnabled, setGridEnabled] = useState(false);
+  const [snapEnabled, setSnapEnabled] = useState(false);
+  const GRID_SIZE = 10;
 
   const measureRef = useRef<HTMLIFrameElement | null>(null);
   const captureRef = useRef<HTMLDivElement | null>(null);
@@ -185,6 +197,65 @@ export default function PagesPreviewTab({
   // Iterative auto-fix bookkeeping
   const autoFixIterRef = useRef(0);
   const autoFixCumulativeRef = useRef(0);
+
+  // Push to undo/redo history and update state
+  const applyFixState = useCallback(
+    (updaterOrState: FixState | ((prev: FixState) => FixState)) => {
+      setFixState((prev) => {
+        const next =
+          typeof updaterOrState === "function"
+            ? updaterOrState(prev)
+            : updaterOrState;
+        const trimmed = historyRef.current.slice(
+          0,
+          historyIdxRef.current + 1,
+        );
+        const last = trimmed[trimmed.length - 1];
+        if (!last || JSON.stringify(last) !== JSON.stringify(next)) {
+          trimmed.push(next);
+          if (trimmed.length > 50) trimmed.shift();
+          historyRef.current = trimmed;
+          historyIdxRef.current = trimmed.length - 1;
+        }
+        return next;
+      });
+      setHistoryVersion((v) => v + 1);
+    },
+    [],
+  );
+
+  const handleUndo = useCallback(() => {
+    if (historyIdxRef.current <= 0) return;
+    historyIdxRef.current--;
+    setFixState(historyRef.current[historyIdxRef.current]);
+    setHistoryVersion((v) => v + 1);
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    if (historyIdxRef.current >= historyRef.current.length - 1) return;
+    historyIdxRef.current++;
+    setFixState(historyRef.current[historyIdxRef.current]);
+    setHistoryVersion((v) => v + 1);
+  }, []);
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === "z") {
+        e.preventDefault();
+        handleUndo();
+      }
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key === "y" || (e.shiftKey && e.key === "z"))
+      ) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleUndo, handleRedo]);
 
   // Persist prefs
   useEffect(() => {
@@ -210,9 +281,13 @@ export default function PagesPreviewTab({
     }
   }, [fixState, templateKey]);
 
-  // Reload fix state when template changes
+  // Reload fix state when template changes (reset history)
   useEffect(() => {
-    setFixState(loadFixState(templateKey));
+    const loaded = loadFixState(templateKey);
+    setFixState(loaded);
+    historyRef.current = [loaded];
+    historyIdxRef.current = 0;
+    setHistoryVersion((v) => v + 1);
     setSelectedManual(null);
   }, [templateKey]);
 
@@ -290,6 +365,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           .lov-manual-dragging{outline:3px dashed hsl(217 91% 45%) !important;outline-offset:2px;opacity:0.9 !important;cursor:grabbing !important;}
           .lov-drag-badge{position:fixed;z-index:99999;pointer-events:none;background:hsl(217 91% 45%);color:#fff;font:600 11px/1.4 system-ui,sans-serif;padding:3px 7px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:nowrap;}
           body.lov-manual-dragging-active{user-select:none !important;cursor:grabbing !important;}
+          ${gridEnabled ? `body::after{content:'';position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(rgba(100,149,237,0.13) 1px,transparent 1px),linear-gradient(90deg,rgba(100,149,237,0.13) 1px,transparent 1px);background-size:${GRID_SIZE}px ${GRID_SIZE}px;z-index:9990;}` : ""}
         </style>`
       : "";
     const fixCssBlock = paginationCss
@@ -315,6 +391,8 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   var H=${A4_H};
   var MANUAL=${manualMode ? "true" : "false"};
   var HIGHLIGHT=${highlightIssues ? "true" : "false"};
+  var SNAP=${snapEnabled && manualMode ? "true" : "false"};
+  var GRID_SIZE_PX=${GRID_SIZE};
   var AUTO_PATHS=${autoPathsJson};
   var MANUAL_RULES=${manualRulesJson};
   var SAFE_TOP_PX=${safeTopPx};
@@ -462,8 +540,10 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       var dx=ev.clientX-DRAG.startX;
       var dy=ev.clientY-DRAG.startY;
       if(Math.abs(dx)>3 || Math.abs(dy)>3) DRAG.moved=true;
-      DRAG.ox=DRAG.baseX+dx;
-      DRAG.oy=DRAG.baseY+dy;
+      var rawOx=DRAG.baseX+dx;
+      var rawOy=DRAG.baseY+dy;
+      DRAG.ox=SNAP?Math.round(rawOx/GRID_SIZE_PX)*GRID_SIZE_PX:rawOx;
+      DRAG.oy=SNAP?Math.round(rawOy/GRID_SIZE_PX)*GRID_SIZE_PX:rawOy;
       DRAG.el.style.setProperty('transform','translate('+DRAG.ox+'px,'+DRAG.oy+'px)','important');
       DRAG.el.style.setProperty('position','relative','important');
       DRAG.el.style.setProperty('z-index','3','important');
@@ -615,7 +695,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       "</body>",
       `${highlightCss}${manualCss}${fixCssBlock}${script}</body>`,
     );
-  }, [html, highlightIssues, manualMode, paginationCss, fixState.autoPaths, fixState.manual, fixState.safeZoneTopMm, fixState.safeZoneBottomMm, fixState.protectedBlocks]);
+  }, [html, highlightIssues, manualMode, paginationCss, fixState.autoPaths, fixState.manual, fixState.safeZoneTopMm, fixState.safeZoneBottomMm, fixState.protectedBlocks, gridEnabled, snapEnabled, GRID_SIZE]);
 
   // Measure
   const handleMeasureLoad = useCallback(() => {
@@ -658,7 +738,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       if (d.__lovManualDrag && d.path) {
         const ox = typeof d.offsetX === "number" ? d.offsetX : 0;
         const oy = typeof d.offsetY === "number" ? d.offsetY : 0;
-        setFixState((s) => {
+        applyFixState((s) => {
           const idx = s.manual.findIndex((m) => m.path === d.path);
           const next = [...s.manual];
           if (idx >= 0) next[idx] = { ...next[idx], offsetX: ox, offsetY: oy };
@@ -671,7 +751,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         const pushes: Array<{ path: string; marginTop: number }> = Array.isArray(d.pushes) ? d.pushes : [];
         const found = d.paths.length + pushes.length;
         if (found > 0) {
-          setFixState((s) => {
+          applyFixState((s) => {
             const uniqueAuto = Array.from(new Set([...s.autoPaths, ...d.paths]));
             // Merge pushes into manual rules (overwrite marginTop for same path)
             const manualMap = new Map(s.manual.map((m) => [m.path, m]));
@@ -759,7 +839,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     const ok = postAutoFixRequest();
     if (!ok) {
       // Fall back: just enable global CSS
-      setFixState((s) => ({ ...s, globalEnabled: true }));
+      applyFixState((s) => ({ ...s, globalEnabled: true }));
       toast.success("הופעל תיקון עימוד גלובלי");
       return;
     }
@@ -769,10 +849,10 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   }, [postAutoFixRequest]);
 
   const handleResetFix = useCallback(() => {
-    setFixState({ ...defaultFixState });
+    applyFixState({ ...defaultFixState });
     setSelectedManual(null);
     toast.success("כל תיקוני העימוד אופסו");
-  }, []);
+  }, [applyFixState]);
 
   const handlePrint = useCallback(() => {
     const win = window.open("", "_blank", "width=900,height=1200");
@@ -822,7 +902,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   // Manual editing helpers
   const upsertManualRule = useCallback(
     (path: string, patch: Partial<ManualRule>) => {
-      setFixState((s) => {
+      applyFixState((s) => {
         const idx = s.manual.findIndex((m) => m.path === path);
         const next = [...s.manual];
         if (idx >= 0) {
@@ -833,20 +913,29 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         return { ...s, manual: next };
       });
     },
-    [],
+    [applyFixState],
   );
 
-  const removeManualRule = useCallback((path: string) => {
-    setFixState((s) => ({
-      ...s,
-      manual: s.manual.filter((m) => m.path !== path),
-    }));
-  }, []);
+  const removeManualRule = useCallback(
+    (path: string) => {
+      applyFixState((s) => ({
+        ...s,
+        manual: s.manual.filter((m) => m.path !== path),
+      }));
+    },
+    [applyFixState],
+  );
 
   const currentManualRule = useMemo<ManualRule | undefined>(() => {
     if (!selectedManual) return undefined;
     return fixState.manual.find((m) => m.path === selectedManual.path);
   }, [selectedManual, fixState.manual]);
+
+  // Derived from refs — accurate after every historyVersion bump
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const canUndo = historyIdxRef.current > 0;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const canRedo = historyIdxRef.current < historyRef.current.length - 1;
 
   const totalFixCount =
     fixState.autoPaths.length +
@@ -1033,6 +1122,27 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         {/* Pagination fix controls */}
         <div className="bg-muted rounded-md p-0.5 flex items-center gap-0.5">
           <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8"
+            onClick={handleUndo}
+            disabled={!canUndo}
+            title="בטל (Ctrl+Z)"
+          >
+            <Undo2 className="h-4 w-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8"
+            onClick={handleRedo}
+            disabled={!canRedo}
+            title="חזור (Ctrl+Y)"
+          >
+            <Redo2 className="h-4 w-4" />
+          </Button>
+          <div className="w-px h-5 bg-border mx-0.5" />
+          <Button
             size="sm"
             variant="default"
             className="h-8 text-xs gap-1.5"
@@ -1078,7 +1188,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
                       }
                       className="h-7 px-2 text-[11px]"
                       onClick={() =>
-                        setFixState((s) => ({ ...s, safeZoneTopMm: mm }))
+                        applyFixState((s) => ({ ...s, safeZoneTopMm: mm }))
                       }
                     >
                       {mm}
@@ -1090,7 +1200,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
                     max={60}
                     value={fixState.safeZoneTopMm}
                     onChange={(e) =>
-                      setFixState((s) => ({
+                      applyFixState((s) => ({
                         ...s,
                         safeZoneTopMm: Math.max(
                           0,
@@ -1122,7 +1232,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
                       }
                       className="h-7 px-2 text-[11px]"
                       onClick={() =>
-                        setFixState((s) => ({ ...s, safeZoneBottomMm: mm }))
+                        applyFixState((s) => ({ ...s, safeZoneBottomMm: mm }))
                       }
                     >
                       {mm}
@@ -1134,7 +1244,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
                     max={60}
                     value={fixState.safeZoneBottomMm}
                     onChange={(e) =>
-                      setFixState((s) => ({
+                      applyFixState((s) => ({
                         ...s,
                         safeZoneBottomMm: Math.max(
                           0,
@@ -1172,7 +1282,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
                         <Checkbox
                           checked={allOn}
                           onCheckedChange={(v) => {
-                            setFixState((s) => {
+                            applyFixState((s) => {
                               const set = new Set(s.protectedBlocks);
                               if (v) parts.forEach((p) => set.add(p));
                               else parts.forEach((p) => set.delete(p));
@@ -1210,6 +1320,32 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
             <MousePointerClick className="h-3.5 w-3.5 ml-1.5" />
             עריכה ידנית
           </Toggle>
+          {manualMode && (
+            <>
+              <Toggle
+                pressed={gridEnabled}
+                onPressedChange={setGridEnabled}
+                size="sm"
+                className="h-8 text-xs"
+                title="הצג רשת ויזואלית בתצוגה"
+                aria-label="רשת"
+              >
+                <Grid3x3 className="h-3.5 w-3.5 ml-1.5" />
+                רשת
+              </Toggle>
+              <Toggle
+                pressed={snapEnabled}
+                onPressedChange={setSnapEnabled}
+                size="sm"
+                className="h-8 text-xs"
+                title={`הצמד לרשת בגרירה (${GRID_SIZE}px)`}
+                aria-label="הצמד"
+              >
+                <Magnet className="h-3.5 w-3.5 ml-1.5" />
+                הצמד
+              </Toggle>
+            </>
+          )}
           {totalFixCount > 0 && (
             <Button
               size="sm"
