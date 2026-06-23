@@ -928,7 +928,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           width: A4_W,
           height: contentH,
           transform: `scale(${scale}) translateY(${-pageIdx * A4_H}px)`,
-          transformOrigin: "top right",
+          transformOrigin: "top left",
           pointerEvents: interactive ? "auto" : "none",
         }}
       >
