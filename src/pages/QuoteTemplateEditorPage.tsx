@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { AppLayout } from "@/components/layout";
 import { HtmlTemplateEditor } from "@/components/quotes/QuoteTemplatesManager/HtmlTemplateEditor";
-import { MobileTemplateWizard } from "@/components/quotes/QuoteTemplatesManager/mobile/MobileTemplateWizard";
 import {
   QuoteTemplate,
   createEmptyTemplate,
@@ -12,7 +11,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { Loader2 } from "lucide-react";
 
 function normalizeTemplate(t: any): QuoteTemplate {
@@ -169,27 +167,6 @@ export default function QuoteTemplateEditorPage() {
       throw err;
     }
   };
-
-  const isMobile = useIsMobile();
-
-  if (isMobile) {
-    if (loading || !template) {
-      return (
-        <div className="fixed inset-0 flex items-center justify-center bg-background">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
-      );
-    }
-    return (
-      <MobileTemplateWizard
-        template={template}
-        onSave={async (t) => {
-          await handleSave({ ...template, ...t });
-        }}
-        onClose={() => navigate("/quote-templates")}
-      />
-    );
-  }
 
   return (
     <AppLayout title="עריכת תבנית הצעת מחיר">
