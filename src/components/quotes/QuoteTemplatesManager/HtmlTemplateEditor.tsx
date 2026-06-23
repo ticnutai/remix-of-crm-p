@@ -14589,8 +14589,8 @@ ${tbAt('footer')}
     return (
       <div
         dir="rtl"
-        className="flex flex-col gap-0 overflow-hidden bg-background"
-        style={{ width: "100%", minHeight: "calc(100vh - 64px)" }}
+        className="flex flex-col gap-0 overflow-x-hidden overflow-y-auto bg-background max-w-full"
+        style={{ width: "100%", maxWidth: "100vw", minHeight: "calc(100vh - 64px)" }}
       >
         {editorBody}
       </div>
