@@ -91,8 +91,6 @@ import {
   convertWordToHtml,
   getSupportedDocumentTypes,
 } from "./documentImporter";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { MobileTemplatesList } from "./mobile/MobileTemplatesList";
 
 type FolderLayoutMode = "grid" | "dense" | "list" | "expanded" | "table";
 type TemplateLayoutMode = "regular" | "compact" | "expanded" | "quick";

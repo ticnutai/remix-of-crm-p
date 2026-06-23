@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { AppLayout } from "@/components/layout";
 import { HtmlTemplateEditor } from "@/components/quotes/QuoteTemplatesManager/HtmlTemplateEditor";
-import { MobileTemplateWizard } from "@/components/quotes/QuoteTemplatesManager/mobile/MobileTemplateWizard";
 import {
   QuoteTemplate,
   createEmptyTemplate,
@@ -12,7 +11,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { Loader2 } from "lucide-react";
 
 function normalizeTemplate(t: any): QuoteTemplate {
