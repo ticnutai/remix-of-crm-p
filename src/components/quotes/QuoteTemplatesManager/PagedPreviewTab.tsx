@@ -125,16 +125,10 @@ export default function PagedPreviewTab({
   // Off-screen render container - paged.js writes the fragmented DOM here.
   // ViewModeContainer clones the resulting .pagedjs_page nodes into the
   // visible viewport, so the heavy fragmentation only runs once per HTML.
-  const sourceRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const { containerRef, pageCount, rendering, error, rerender } =
     usePagedLayout(html);
-
-  // Wire sourceRef <-> the hook's container ref
-  useEffect(() => {
-    containerRef.current = sourceRef.current;
-  }, [containerRef]);
 
   // Clamp current page when count changes
   useEffect(() => {
