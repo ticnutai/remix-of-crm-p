@@ -1,5 +1,7 @@
 // Clients Filter Strip Component - tenarch CRM Pro
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
+import { useUserSettings } from "@/hooks/useUserSettings";
 import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { supabase } from "@/integrations/supabase/client";
 import { AddClientsToCategoryDialog } from './AddClientsToCategoryDialog';
@@ -169,6 +171,11 @@ export function ClientsFilterStrip({
     ClientStageDefinition[]
   >([]);
   const [stagesDialogOpen, setStagesDialogOpen] = useState(false);
+  const { value: stagesPanelPos, setValue: setStagesPanelPos } = useUserSettings<{ x: number; y: number }>({
+    key: "stages_filter_panel_position",
+    defaultValue: { x: Math.round(window.innerWidth / 2 - 200), y: Math.round(window.innerHeight / 2 - 250) },
+  });
+  const stagesDragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
   const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false);
   const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
@@ -1632,116 +1639,158 @@ export function ClientsFilterStrip({
 
         {/* Stages Filter */}
         {visibleFilterSections.has("stages") && (
-        <Popover open={stagesDialogOpen} onOpenChange={setStagesDialogOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(
-                "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
-                filters.stages.length > 0 &&
-                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a] text-xs",
-              )}
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(
+              "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
+              filters.stages.length > 0 &&
+                "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a] text-xs",
+            )}
+            onClick={() => setStagesDialogOpen((v) => !v)}
+          >
+            <Layers className="h-4 w-4" />
+            שלבים
+            {filters.stages.length > 0 && (
+              <Badge
+                variant="secondary"
+                className="mr-1 bg-accent text-accent-foreground"
+              >
+                {filters.stages.length}
+              </Badge>
+            )}
+            <ChevronDown className="h-3 w-3 opacity-50" />
+          </Button>
+
+          {stagesDialogOpen && createPortal(
+            <div
+              dir="rtl"
+              style={{
+                position: "fixed",
+                left: stagesPanelPos.x,
+                top: stagesPanelPos.y,
+                zIndex: 9999,
+                width: "min(94vw, 400px)",
+              }}
+              className="rounded-lg border border-border bg-popover shadow-xl overflow-hidden"
             >
-              <Layers className="h-4 w-4" />
-              שלבים
-              {filters.stages.length > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="mr-1 bg-accent text-accent-foreground"
-                >
-                  {filters.stages.length}
-                </Badge>
-              )}
-              <ChevronDown className="h-3 w-3 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[min(94vw,400px)] p-0 overflow-hidden" dir="rtl" align="end" collisionPadding={16}>
-            <div className="p-3 border-b">
-              <div className="flex items-center justify-between mb-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => setStagesDialogOpen(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold">סינון לפי שלבים</h3>
-                  <Layers className="h-5 w-5 text-primary" />
+              {/* Drag handle header */}
+              <div
+                className="p-3 border-b bg-muted/40 cursor-grab active:cursor-grabbing select-none"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  stagesDragRef.current = {
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    originX: stagesPanelPos.x,
+                    originY: stagesPanelPos.y,
+                  };
+                  const onMove = (me: MouseEvent) => {
+                    if (!stagesDragRef.current) return;
+                    const dx = me.clientX - stagesDragRef.current.startX;
+                    const dy = me.clientY - stagesDragRef.current.startY;
+                    const newX = Math.max(0, Math.min(window.innerWidth - 400, stagesDragRef.current.originX + dx));
+                    const newY = Math.max(0, Math.min(window.innerHeight - 100, stagesDragRef.current.originY + dy));
+                    setStagesPanelPos({ x: newX, y: newY });
+                  };
+                  const onUp = () => {
+                    stagesDragRef.current = null;
+                    window.removeEventListener("mousemove", onMove);
+                    window.removeEventListener("mouseup", onUp);
+                  };
+                  window.addEventListener("mousemove", onMove);
+                  window.addEventListener("mouseup", onUp);
+                }}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={() => setStagesDialogOpen(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-sm">סינון לפי שלבים</h3>
+                    <Layers className="h-4 w-4 text-primary" />
+                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end" onMouseDown={(e) => e.stopPropagation()}>
+                  <Button variant="outline" size="sm" onClick={selectAllStages}>
+                    בחר הכל
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={clearStages}>
+                    נקה שלבים
+                  </Button>
                 </div>
               </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" size="sm" onClick={selectAllStages}>
-                  בחר הכל
-                </Button>
-                <Button variant="outline" size="sm" onClick={clearStages}>
-                  נקה שלבים
-                </Button>
-              </div>
-            </div>
-            <ScrollArea className="max-h-[65vh]">
-              <div className="p-3">
-              <div className="space-y-3">
-                {stageDefinitions.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    אין שלבים מוגדרים
-                  </p>
-                ) : (
-                  stageDefinitions.map((stage) => {
-                    const stageClientCount = stageCounts[stage.stage_name] || 0;
 
-                    return (
-                      <div
-                        key={stage.stage_name}
-                        className={cn(
-                          "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
-                          filters.stages.includes(stage.stage_name)
-                            ? "bg-primary/10 border-primary"
-                            : "bg-background border-border hover:border-primary/50",
-                        )}
-                        onClick={() => toggleStage(stage.stage_name)}
-                      >
-                        <Checkbox
-                          checked={filters.stages.includes(stage.stage_name)}
-                          onCheckedChange={() => toggleStage(stage.stage_name)}
-                        />
-                        <span className="font-medium text-foreground text-right flex-1">
-                          {stage.stage_name}
-                        </span>
-                        {stageClientCount > 0 && (
-                          <Badge
-                            variant="secondary"
-                            className="h-5 min-w-5 px-1.5 text-[10px] bg-primary/10 text-primary"
+              <ScrollArea className="max-h-[65vh]">
+                <div className="p-3">
+                  <div className="space-y-3">
+                    {stageDefinitions.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">
+                        אין שלבים מוגדרים
+                      </p>
+                    ) : (
+                      stageDefinitions.map((stage) => {
+                        const stageClientCount = stageCounts[stage.stage_name] || 0;
+                        return (
+                          <div
+                            key={stage.stage_name}
+                            className={cn(
+                              "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+                              filters.stages.includes(stage.stage_name)
+                                ? "bg-primary/10 border-primary"
+                                : "bg-background border-border hover:border-primary/50",
+                            )}
+                            onClick={() => toggleStage(stage.stage_name)}
                           >
-                            {stageClientCount}
-                          </Badge>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+                            <Checkbox
+                              checked={filters.stages.includes(stage.stage_name)}
+                              onCheckedChange={() => toggleStage(stage.stage_name)}
+                            />
+                            <span className="font-medium text-foreground text-right flex-1">
+                              {stage.stage_name}
+                            </span>
+                            {stageClientCount > 0 && (
+                              <Badge
+                                variant="secondary"
+                                className="h-5 min-w-5 px-1.5 text-[10px] bg-primary/10 text-primary"
+                              >
+                                {stageClientCount}
+                              </Badge>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
 
-              {/* ===== Consultants Tree (profession → consultants) ===== */}
-              <div className="mt-5 pt-4 border-t border-border">
-                <ConsultantsTreeFilter
-                  selectedConsultantIds={filters.consultantIds || []}
-                  selectedProfessions={filters.consultantProfessions || []}
-                  onChange={({ consultantIds, consultantProfessions }) =>
-                    onFiltersChange({
-                      ...filters,
-                      consultantIds,
-                      consultantProfessions,
-                    })
-                  }
-                />
-              </div>
-              </div>
-            </ScrollArea>
-          </PopoverContent>
-        </Popover>
+                  {/* ===== Consultants Tree ===== */}
+                  <div className="mt-5 pt-4 border-t border-border">
+                    <ConsultantsTreeFilter
+                      selectedConsultantIds={filters.consultantIds || []}
+                      selectedProfessions={filters.consultantProfessions || []}
+                      onChange={({ consultantIds, consultantProfessions }) =>
+                        onFiltersChange({
+                          ...filters,
+                          consultantIds,
+                          consultantProfessions,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              </ScrollArea>
+            </div>,
+            document.body
+          )}
+        </>
         )}
 
         {/* Date filter merged into the unified Sort & Date dropdown above */}
