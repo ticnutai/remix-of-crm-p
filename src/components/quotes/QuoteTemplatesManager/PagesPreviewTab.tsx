@@ -614,10 +614,10 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   else window.addEventListener('load',function(){setTimeout(init,200);});
 })();
 </script>`;
-    return html.replace(
-      "</body>",
-      `${highlightCss}${manualCss}${fixCssBlock}${script}</body>`,
-    );
+    const injection = `${highlightCss}${manualCss}${fixCssBlock}${script}`;
+    return html.includes("</body>")
+      ? html.replace("</body>", `${injection}</body>`)
+      : `${html}${injection}`;
   }, [html, highlightIssues, manualMode, paginationCss, fixState.autoPaths, fixState.manual, fixState.safeZoneTopMm, fixState.safeZoneBottomMm, fixState.protectedBlocks]);
 
   // Measure
@@ -627,11 +627,20 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     try {
       const doc = iframe.contentDocument;
       if (!doc) return;
-      setTimeout(() => {
-        const h = doc.documentElement.scrollHeight || A4_H;
+      const measure = () => {
+        const body = doc.body;
+        const h = Math.max(
+          doc.documentElement.scrollHeight || 0,
+          body?.scrollHeight || 0,
+          doc.documentElement.offsetHeight || 0,
+          body?.offsetHeight || 0,
+          A4_H,
+        );
         setContentH(h);
         setPageCount(Math.max(1, Math.ceil(h / A4_H)));
-      }, 350);
+      };
+      setTimeout(measure, 350);
+      setTimeout(measure, 900);
     } catch {
       // ignore
     }
@@ -725,7 +734,8 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     if (comparePage >= pageCount) setComparePage(Math.max(0, pageCount - 1));
   }, [pageCount, page, comparePage]);
 
-  // Keyboard navigation: ←/→ for pages (RTL aware), Space/Shift+Space scroll
+  // Keyboard navigation: ←/→ for pages, Space/Shift+Space scroll.
+  // Capture phase prevents Radix Tabs from stealing arrows and switching editor tabs.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -739,22 +749,33 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       }
       if (e.key === "ArrowLeft") {
         e.preventDefault();
+        e.stopPropagation();
         setPage((p) => Math.min(pageCount - 1, p + 1));
       } else if (e.key === "ArrowRight") {
         e.preventDefault();
+        e.stopPropagation();
         setPage((p) => Math.max(0, p - 1));
       } else if (e.key === "Home") {
         e.preventDefault();
+        e.stopPropagation();
         setPage(0);
       } else if (e.key === "End") {
         e.preventDefault();
+        e.stopPropagation();
         setPage(Math.max(0, pageCount - 1));
+      } else if (e.key === "PageDown") {
+        e.preventDefault();
+        e.stopPropagation();
+        setPage((p) => Math.min(pageCount - 1, p + 1));
+      } else if (e.key === "PageUp") {
+        e.preventDefault();
+        e.stopPropagation();
+        setPage((p) => Math.max(0, p - 1));
       } else if (e.key === " ") {
-        const scroller = document.querySelector<HTMLElement>(
-          ".pages-preview-scroll",
-        );
+        const scroller = scrollerRef.current;
         if (scroller) {
           e.preventDefault();
+          e.stopPropagation();
           scroller.scrollBy({
             top: e.shiftKey ? -scroller.clientHeight * 0.9 : scroller.clientHeight * 0.9,
             behavior: "smooth",
@@ -762,8 +783,8 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         }
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [pageCount]);
 
   // Find the live iframe for sending messages
