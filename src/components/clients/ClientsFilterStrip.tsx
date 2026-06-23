@@ -1657,20 +1657,22 @@ export function ClientsFilterStrip({
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[min(94vw,400px)] p-0 overflow-hidden" dir="rtl" align="end" collisionPadding={16}>
-            <div className="p-4 border-b">
-              <div className="flex flex-row-reverse items-center gap-2 mb-3">
-                <Layers className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">סינון לפי שלבים</h3>
+            <div className="p-3 border-b">
+              <div className="flex items-center justify-between mb-2">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 ml-auto"
+                  className="h-6 w-6"
                   onClick={() => setStagesDialogOpen(false)}
                 >
                   <X className="h-4 w-4" />
                 </Button>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold">סינון לפי שלבים</h3>
+                  <Layers className="h-5 w-5 text-primary" />
+                </div>
               </div>
-              <div className="flex flex-row-reverse gap-2 justify-end">
+              <div className="flex gap-2 justify-end">
                 <Button variant="outline" size="sm" onClick={selectAllStages}>
                   בחר הכל
                 </Button>
@@ -1679,7 +1681,8 @@ export function ClientsFilterStrip({
                 </Button>
               </div>
             </div>
-            <ScrollArea className="h-[min(480px,55vh)] p-4">
+            <ScrollArea className="max-h-[65vh]">
+              <div className="p-3">
               <div className="space-y-3">
                 {stageDefinitions.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
@@ -1734,6 +1737,7 @@ export function ClientsFilterStrip({
                     })
                   }
                 />
+              </div>
               </div>
             </ScrollArea>
           </PopoverContent>
