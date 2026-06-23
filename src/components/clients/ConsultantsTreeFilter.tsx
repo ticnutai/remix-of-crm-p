@@ -3,11 +3,10 @@
 // Clicking the chevron expands/collapses the list of specific consultants.
 // Reusable between Clients page (inside Stages popover) and DataTable Pro (Filter Panel).
 import React, { useMemo, useState } from "react";
-import { ChevronDown, ChevronLeft, UserCog, Briefcase, Search, Plus } from "lucide-react";
+import { ChevronDown, ChevronLeft, UserCog, Briefcase, Search, Plus, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useConsultants } from "@/hooks/useConsultants";
@@ -40,8 +39,10 @@ export function ConsultantsTreeFilter({
   showSearch = true,
   showHeader = true,
 }: ConsultantsTreeFilterProps) {
-  const { consultants } = useConsultants();
+  const { consultants, addConsultant, deleteConsultant } = useConsultants();
   const [search, setSearch] = useState("");
+  const [newConsultantName, setNewConsultantName] = useState("");
+  const [newConsultantProfession, setNewConsultantProfession] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [assignTarget, setAssignTarget] = useState<{
     id: string;
@@ -113,8 +114,46 @@ export function ConsultantsTreeFilter({
     onChange({ consultantIds: [], consultantProfessions: [] });
   };
 
+  const addNewConsultant = async (professionOverride?: string) => {
+    const name = newConsultantName.trim();
+    const profession = (professionOverride || newConsultantProfession).trim();
+    if (!name) return;
+
+    const created = await addConsultant({
+      name,
+      profession: profession || "יועץ",
+      license_number: null,
+      id_number: null,
+      phone: null,
+      email: null,
+      company: null,
+      specialty: null,
+      notes: null,
+      user_id: null,
+    });
+
+    if (created) {
+      setNewConsultantName("");
+      if (professionOverride) setNewConsultantProfession(professionOverride);
+      setExpanded((prev) => new Set(prev).add(created.profession || professionOverride || "יועץ"));
+    }
+  };
+
+  const removeConsultant = async (id: string, name: string) => {
+    const confirmed = window.confirm(`למחוק את היועץ "${name}" מהרשימה?`);
+    if (!confirmed) return;
+
+    const deleted = await deleteConsultant(id);
+    if (deleted && selectedConsultantIds.includes(id)) {
+      onChange({
+        consultantIds: selectedConsultantIds.filter((x) => x !== id),
+        consultantProfessions: selectedProfessions,
+      });
+    }
+  };
+
   return (
-    <div className={cn("flex flex-col gap-2", className)} dir="rtl">
+    <div className={cn("flex flex-col gap-2 max-w-full overflow-x-hidden", className)} dir="rtl">
       {showHeader && (
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
@@ -154,8 +193,39 @@ export function ConsultantsTreeFilter({
         </div>
       )}
 
-      <ScrollArea className="max-h-[260px] pr-1">
-        <div className="space-y-1">
+      <div className="rounded-md border border-border bg-muted/20 p-2 space-y-2">
+        <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+          <Plus className="h-3 w-3" />
+          הוספת יועץ
+        </div>
+        <Input
+          value={newConsultantName}
+          onChange={(e) => setNewConsultantName(e.target.value)}
+          placeholder="שם יועץ חדש"
+          className="h-7 text-xs"
+        />
+        <div className="flex gap-2 min-w-0">
+          <Input
+            value={newConsultantProfession}
+            onChange={(e) => setNewConsultantProfession(e.target.value)}
+            placeholder="תחום / סוג"
+            className="h-7 text-xs min-w-0"
+          />
+          <Button
+            type="button"
+            size="sm"
+            className="h-7 shrink-0 gap-1"
+            disabled={!newConsultantName.trim()}
+            onClick={() => addNewConsultant()}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            הוסף
+          </Button>
+        </div>
+      </div>
+
+      <div className="min-h-[180px] max-h-[min(52vh,360px)] overflow-y-auto overflow-x-hidden overscroll-contain pr-1">
+        <div className="space-y-1 max-w-full overflow-x-hidden">
           {grouped.length === 0 && (
             <div className="text-xs text-muted-foreground text-center py-4">
               לא נמצאו יועצים
@@ -179,7 +249,7 @@ export function ConsultantsTreeFilter({
                 )}
               >
                 {/* Profession header row */}
-                <div className="flex items-center gap-1 px-1.5 py-1">
+                <div className="flex items-center gap-1 px-1.5 py-1 min-w-0">
                   <button
                     type="button"
                     onClick={() => toggleExpand(prof)}
@@ -195,14 +265,14 @@ export function ConsultantsTreeFilter({
                   <button
                     type="button"
                     onClick={() => toggleProfession(prof)}
-                    className="flex items-center gap-2 flex-1 text-right py-1 px-1 rounded hover:bg-muted/40"
+                    className="flex items-center gap-2 flex-1 min-w-0 text-right py-1 px-1 rounded hover:bg-muted/40"
                   >
                     <Checkbox
                       checked={profActive}
                       className="pointer-events-none"
                     />
                     <Briefcase className="h-3.5 w-3.5 text-primary/70" />
-                    <span className="text-xs font-semibold flex-1 text-right">
+                    <span className="text-xs font-semibold flex-1 min-w-0 text-right truncate">
                       {prof}
                     </span>
                     <Badge
@@ -227,6 +297,18 @@ export function ConsultantsTreeFilter({
                         {selectedInGroup}
                       </Badge>
                     )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setNewConsultantProfession(prof);
+                      setExpanded((prev) => new Set(prev).add(prof));
+                    }}
+                    title={`הוסף יועץ ל${prof}`}
+                    className="p-1 rounded hover:bg-muted/60 text-muted-foreground shrink-0"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
                   </button>
                 </div>
 
@@ -276,6 +358,17 @@ export function ConsultantsTreeFilter({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
+                              removeConsultant(c.id, c.name);
+                            }}
+                            title="מחק יועץ"
+                            className="opacity-60 hover:opacity-100 hover:bg-destructive/10 p-1 rounded text-destructive shrink-0"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setAssignTarget({
                                 id: c.id,
                                 name: c.name,
@@ -296,7 +389,7 @@ export function ConsultantsTreeFilter({
             );
           })}
         </div>
-      </ScrollArea>
+      </div>
 
       {assignTarget && (
         <AssignClientsToConsultantDialog

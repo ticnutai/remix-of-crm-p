@@ -1672,12 +1672,13 @@ export function ClientsFilterStrip({
                 top: stagesPanelPos.y,
                 zIndex: 9999,
                 width: "min(94vw, 400px)",
+                maxHeight: "min(82vh, calc(100vh - 24px))",
               }}
-              className="rounded-lg border border-border bg-popover shadow-xl overflow-hidden"
+              className="rounded-lg border border-border bg-popover shadow-xl overflow-hidden flex flex-col"
             >
               {/* Drag handle header */}
               <div
-                className="p-3 border-b bg-muted/40 cursor-grab active:cursor-grabbing select-none"
+                className="p-3 border-b bg-muted/40 cursor-grab active:cursor-grabbing select-none shrink-0"
                 onMouseDown={(e) => {
                   e.preventDefault();
                   stagesDragRef.current = {
@@ -1729,7 +1730,7 @@ export function ClientsFilterStrip({
                 </div>
               </div>
 
-              <div className="overflow-y-auto max-h-[65vh]">
+              <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0">
                 <div className="p-3">
                   <div className="space-y-3">
                     {stageDefinitions.length === 0 ? (
