@@ -36,6 +36,8 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MobileTabsBar, useSwipeTabs } from "./MobileTabsBar";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
   DialogContent,
@@ -4531,6 +4533,9 @@ export function HtmlTemplateEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("project");
+  const isMobile = useIsMobile();
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+
 
   // Top tabs configuration (order + visibility) — persisted
   const TABS_CFG_LS_KEY = "lov-html-editor-tabs-cfg-v1";
@@ -4600,6 +4605,22 @@ export function HtmlTemplateEditor({
       /* ignore */
     }
   }, [tabConfig]);
+
+  // Swipe gestures on mobile to switch between tabs
+  useSwipeTabs(tabsContainerRef, {
+    enabled: isMobile,
+    onNext: () => {
+      const visible = tabConfig.filter((t) => t.visible).map((t) => t.value);
+      const idx = visible.indexOf(activeTab as any);
+      if (idx >= 0 && idx < visible.length - 1) setActiveTab(visible[idx + 1] as any);
+    },
+    onPrev: () => {
+      const visible = tabConfig.filter((t) => t.visible).map((t) => t.value);
+      const idx = visible.indexOf(activeTab as any);
+      if (idx > 0) setActiveTab(visible[idx - 1] as any);
+    },
+  });
+
   const [showTabsSettings, setShowTabsSettings] = useState(false);
   const [draggedTabIdx, setDraggedTabIdx] = useState<number | null>(null);
   const [logoStripMode, setLogoStripMode] = useState<"logo" | "maker">(
@@ -8328,6 +8349,7 @@ ${tbAt('footer')}
         </div>
 
         {/* Tabs */}
+        <div ref={tabsContainerRef} className="flex-1 flex flex-col overflow-hidden max-w-full">
         <Tabs
           value={activeTab}
           onValueChange={(nextTab) => {
@@ -8343,9 +8365,24 @@ ${tbAt('footer')}
 
             setActiveTab(nextTab);
           }}
-          className="flex-1 flex flex-col overflow-hidden"
+          className="flex-1 flex flex-col overflow-hidden max-w-full"
         >
-          <div className="border-b bg-white px-6 flex items-center justify-between gap-2">
+          {/* Mobile: dropdown tab bar */}
+          <MobileTabsBar
+            tabs={tabConfig
+              .filter((t) => t.visible)
+              .map((t) => ({
+                value: t.value,
+                label: TAB_META[t.value].label,
+                icon: TAB_META[t.value].icon,
+              }))}
+            activeTab={activeTab}
+            onChange={setActiveTab}
+          />
+
+
+          {/* Desktop: full tab list */}
+          <div className="hidden md:flex border-b bg-white px-6 items-center justify-between gap-2">
             <TabsList className="h-12 bg-transparent gap-2 flex-wrap">
               {tabConfig
                 .filter((t) => t.visible)
@@ -14036,6 +14073,7 @@ ${tbAt('footer')}
             />
           </TabsContent>
         </Tabs>
+        </div>
 
         {/* Footer */}
         <div className="shrink-0 border-t bg-white p-3">
@@ -14551,8 +14589,8 @@ ${tbAt('footer')}
     return (
       <div
         dir="rtl"
-        className="flex flex-col gap-0 overflow-hidden bg-background"
-        style={{ width: "100%", minHeight: "calc(100vh - 64px)" }}
+        className="flex flex-col gap-0 overflow-x-hidden overflow-y-auto bg-background max-w-full"
+        style={{ width: "100%", maxWidth: "100vw", minHeight: "calc(100vh - 64px)" }}
       >
         {editorBody}
       </div>
