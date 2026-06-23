@@ -1049,6 +1049,24 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           </Button>
           <Button
             size="sm"
+            variant={mode === "continuous" ? "default" : "ghost"}
+            className="h-8 text-xs"
+            onClick={() => setMode("continuous")}
+          >
+            <FileText className="h-3.5 w-3.5 ml-1.5" />
+            רציף
+          </Button>
+          <Button
+            size="sm"
+            variant={mode === "spread" ? "default" : "ghost"}
+            className="h-8 text-xs"
+            onClick={() => setMode("spread")}
+          >
+            <SplitSquareHorizontal className="h-3.5 w-3.5 ml-1.5" />
+            כפולה
+          </Button>
+          <Button
+            size="sm"
             variant={mode === "grid" ? "default" : "ghost"}
             className="h-8 text-xs"
             onClick={() => setMode("grid")}
@@ -1353,6 +1371,10 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         )}
 
         <div className="flex-1" />
+
+        <span className="hidden lg:inline-flex text-[11px] text-muted-foreground">
+          חצים ←/→ עוברים דפים · Space גולל
+        </span>
 
         <div className="flex items-center gap-1.5">
           {mode === "single" && (
