@@ -3892,7 +3892,7 @@ export default function DataTablePro() {
                         </Button>
                       </ConsultantsPopoverTrigger>
                       <ConsultantsPopoverContent
-                        className="w-[360px] p-3"
+                        className="w-[min(94vw,380px)] max-w-[94vw] max-h-[80vh] p-3 overflow-y-auto overflow-x-hidden"
                         align="start"
                         dir="rtl"
                       >
