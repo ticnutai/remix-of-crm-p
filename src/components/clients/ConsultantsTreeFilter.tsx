@@ -297,6 +297,16 @@ export function ConsultantsTreeFilter({
           })}
         </div>
       </ScrollArea>
+
+      {assignTarget && (
+        <AssignClientsToConsultantDialog
+          open={!!assignTarget}
+          onOpenChange={(o) => !o && setAssignTarget(null)}
+          consultantId={assignTarget.id}
+          consultantName={assignTarget.name}
+          consultantProfession={assignTarget.profession}
+        />
+      )}
     </div>
   );
 }
