@@ -121,12 +121,12 @@ export function ConsultantsFilterPopover({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[min(94vw,380px)] p-0 overflow-hidden"
+        className="w-[min(94vw,380px)] max-h-[80vh] p-0 overflow-hidden flex flex-col"
         dir="rtl"
         align="end"
         collisionPadding={16}
       >
-        <div className="p-3 border-b">
+        <div className="p-3 border-b shrink-0">
           <div className="flex flex-row-reverse items-center gap-2 mb-2">
             <UserCog className="h-5 w-5 text-primary" />
             <h3 className="font-semibold">סינון לפי יועצים</h3>
@@ -162,7 +162,7 @@ export function ConsultantsFilterPopover({
           </div>
         </div>
 
-        <ScrollArea className="max-h-[65vh]">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="p-3 space-y-4">
             {/* Section: Filter by profession */}
             <div>
