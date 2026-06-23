@@ -3,7 +3,7 @@
 // Clicking the chevron expands/collapses the list of specific consultants.
 // Reusable between Clients page (inside Stages popover) and DataTable Pro (Filter Panel).
 import React, { useMemo, useState } from "react";
-import { ChevronDown, ChevronLeft, UserCog, Briefcase, Search } from "lucide-react";
+import { ChevronDown, ChevronLeft, UserCog, Briefcase, Search, Plus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useConsultants } from "@/hooks/useConsultants";
+import { AssignClientsToConsultantDialog } from "./AssignClientsToConsultantDialog";
 
 export interface ConsultantsTreeFilterProps {
   selectedConsultantIds: string[];
