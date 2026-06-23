@@ -8349,6 +8349,7 @@ ${tbAt('footer')}
         </div>
 
         {/* Tabs */}
+        <div ref={tabsContainerRef} className="flex-1 flex flex-col overflow-hidden max-w-full">
         <Tabs
           value={activeTab}
           onValueChange={(nextTab) => {
