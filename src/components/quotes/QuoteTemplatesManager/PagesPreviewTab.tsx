@@ -990,10 +990,9 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     >
       <div
         style={{
-          width: A4_W,
-          height: contentH,
-          transform: `scale(${scale}) translateY(${-pageIdx * A4_H}px)`,
-          transformOrigin: "top left",
+          width: A4_W * scale,
+          height: Math.max(contentH, A4_H) * scale,
+          position: "relative",
           pointerEvents: interactive ? "auto" : "none",
         }}
       >
@@ -1001,8 +1000,13 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           title={`page-${pageIdx + 1}${label ? "-" + label : ""}`}
           srcDoc={finalHtml}
           style={{
+            position: "absolute",
+            left: 0,
+            top: -pageIdx * A4_H * scale,
             width: A4_W,
-            height: contentH,
+            height: Math.max(contentH, A4_H),
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
             border: 0,
             display: "block",
             background: "white",
@@ -1442,10 +1446,40 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       </div>
 
       {/* Viewport */}
-      <div className="flex-1 overflow-auto p-6" dir="ltr">
+      <div ref={scrollerRef} className="pages-preview-scroll flex-1 overflow-auto p-6" dir="ltr">
         {mode === "single" && (
           <div className="flex justify-center">
             <div ref={captureRef}>{renderPageViewport(page, zoom, true)}</div>
+          </div>
+        )}
+
+        {mode === "continuous" && (
+          <div className="flex flex-col gap-8 items-center pb-8">
+            {Array.from({ length: pageCount }).map((_, i) => (
+              <div key={i}>{renderPageViewport(i, zoom, true)}</div>
+            ))}
+          </div>
+        )}
+
+        {mode === "spread" && (
+          <div className="flex flex-col gap-8 items-center pb-8">
+            {Array.from({ length: Math.ceil(pageCount / 2) }).map((_, spreadIdx) => {
+              const right = spreadIdx * 2;
+              const left = right + 1;
+              return (
+                <div key={spreadIdx} className="flex flex-wrap gap-6 justify-center items-start">
+                  {renderPageViewport(right, zoom * 0.78, true)}
+                  {left < pageCount ? (
+                    renderPageViewport(left, zoom * 0.78, true)
+                  ) : (
+                    <div
+                      className="border border-dashed border-border/70 bg-muted/40"
+                      style={{ width: A4_W * zoom * 0.78, height: A4_H * zoom * 0.78 }}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
