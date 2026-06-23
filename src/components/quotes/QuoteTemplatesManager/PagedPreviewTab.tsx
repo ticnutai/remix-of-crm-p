@@ -180,7 +180,7 @@ export default function PagedPreviewTab({
         {/* Off-screen source: paged.js renders into here. */}
         <div
           aria-hidden
-          ref={sourceRef}
+          ref={containerRef}
           style={{
             position: "absolute",
             left: -100000,
