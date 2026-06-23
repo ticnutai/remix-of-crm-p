@@ -1,76 +1,38 @@
 
-## תכנית ביצוע מלאה — שמירה לענן + כל ההמלצות
+## מה אעשה
 
-המיגרציה לעמודת `quotes.design_overrides jsonb` כבר בוצעה בהצלחה ✓. כעת אצא לפועל עם כל השינויים הבאים:
+אצור קובץ חדש בשורש הפרויקט בשם **`SUPABASE_FULL_INFO.md`** שיכיל את כל המידע במקום אחד, כולל נתיבים מלאים מוחלטים.
 
----
+### תוכן הקובץ
 
-### 1. תיקון השמירה (Core Bug Fix)
-**`src/hooks/useQuotes.ts`**
-- הוספת `quote_template_id?: string` ו-`design_overrides?: Record<string, any>` ל-interface `Quote`.
-- `updateQuote` כבר עושה spread של updates — יעבור אוטומטית.
+1. **פרטי הפרויקט**
+   - Project Ref: `eadeymehidcndudeycnf`
+   - URL: `https://eadeymehidcndudeycnf.supabase.co`
+   - Anon/Publishable Key (המלא)
 
-**`src/components/quotes/QuoteDocumentEditor/QuoteEditorSheet.tsx` + `index.tsx`**
-- ב-`handleSave`, להוסיף לאובייקט ה-update:
-  ```ts
-  design_overrides: {
-    frameDesign: document.frameDesign ?? null,
-    design3D: document.design3D ?? null,
-    fontSettings: document.fontSettings ?? null,
-    sectionStyles: document.sectionStyles ?? null,
-  }
-  ```
+2. **נתיבים מלאים לכל הקבצים הרלוונטיים**
+   - נתיב מלא של `.env` (בשורש הפרויקט)
+   - נתיב מלא של `.env.example`
+   - נתיב מלא של `src/integrations/supabase/client.ts`
+   - נתיב מלא של `src/integrations/supabase/types.ts`
+   - נתיב מלא של `supabase/config.toml`
+   - נתיב מלא של תיקיית Edge Functions
 
-**`src/components/quotes/QuoteDocumentEditor/hooks/useQuoteDocument.ts`**
-- ב-`convertQuoteToDocument`, לטעון בחזרה:
-  ```ts
-  frameDesign: (quote as any).design_overrides?.frameDesign,
-  design3D: (quote as any).design_overrides?.design3D,
-  fontSettings: (quote as any).design_overrides?.fontSettings,
-  sectionStyles: (quote as any).design_overrides?.sectionStyles,
-  ```
+3. **תוכן `.env` המדויק** (3 השורות)
+   ```
+   VITE_SUPABASE_URL="https://eadeymehidcndudeycnf.supabase.co"
+   VITE_SUPABASE_PUBLISHABLE_KEY="eyJhbGc...ogpM"
+   VITE_SUPABASE_PROJECT_ID="eadeymehidcndudeycnf"
+   ```
 
----
+4. **חשבון אדמין** (jj1212t@gmail.com)
 
-### 2. המלצה A — אינדיקציה ויזואלית + Reset
-**`EditorSidebar.tsx`** — בתוך ה-AccordionContent של "מסגרות ורקע":
-- באנר זהב קטן: `🎨 עיצוב מותאם להצעה זו פעיל` (מופיע רק כשיש frameDesign override).
-- כפתור `איפוס לעיצוב התבנית` שמנקה `frameDesign` ב-state.
+5. **הסבר למה לא רואים את `.env`**
+   - הקובץ קיים אבל מוסתר ע"י `.gitignore` (לכן לא מופיע ב-Git)
+   - ניתן לראות אותו דרך File Explorer עם הצגת קבצים מוסתרים
+   - בעורך הקוד יש לפתוח אותו ידנית דרך `Ctrl+P` ולהקליד `.env`
 
-### 3. המלצה B — החלה על התבנית
-- כפתור `החל עיצוב זה על כל ההצעות מהתבנית`:
-  - שולף את `quote_template_id` של ההצעה הנוכחית.
-  - מבצע `update quote_templates set design_settings = jsonb_set(design_settings, '{frameDesign}', ...)`.
-  - Toast אישור.
-  - מנוטרל כשאין `quote_template_id`.
+6. **פקודות PowerShell מהירות** לאיתור הקבצים במחשב המקומי
 
-### 4. המלצה C — Autosave
-**`useQuoteDocument.ts`**
-- `useEffect` עם debounce של 1.5s ששומר ל-`localStorage` תחת מפתח `quote-draft-${originalQuoteId || 'new'}`.
-- `loadQuote` ינסה לשחזר draft אם קיים ויציג טוסט "שוחזרה טיוטה".
-- ניקוי הטיוטה אחרי שמירה ידנית מוצלחת.
-
-### 5. המלצה D — הרחבת ה-override
-כבר נכלל בסעיף 1: `design_overrides` הוא jsonb גמיש שמכיל `frameDesign`, `design3D`, `fontSettings`, `sectionStyles`. עתידית אפשר להוסיף עוד שדות בלי מיגרציה נוספת.
-
----
-
-### 6. עדכון זיכרון
-הוספת רשומה ב-`mem://features/quote-editor/per-quote-overrides` שמתעדת:
-- העמודה החדשה `quotes.design_overrides`
-- שמירה כוללת frameDesign/design3D/fontSettings/sectionStyles
-- אפשרות "החל על תבנית" + reset
-
----
-
-## קבצים שיתעדכנו
-1. `src/hooks/useQuotes.ts` — הוספת שדות ל-interface
-2. `src/components/quotes/QuoteDocumentEditor/hooks/useQuoteDocument.ts` — טעינה + autosave
-3. `src/components/quotes/QuoteDocumentEditor/QuoteEditorSheet.tsx` — שמירת overrides
-4. `src/components/quotes/QuoteDocumentEditor/index.tsx` — שמירת overrides
-5. `src/components/quotes/QuoteDocumentEditor/EditorSidebar.tsx` — באנר + 2 כפתורים
-6. `mem://features/quote-editor/per-quote-overrides` (חדש) + עדכון `mem://index.md`
-
-ללא שינויי schema נוספים (המיגרציה בוצעה), ללא תלות חיצונית חדשה.
-
-**אישור → בנייה.**
+### הערה
+המידע כבר קיים ב-`SUPABASE_ACCOUNT_DETAILS.md` אבל אצור קובץ חדש ממוקד יותר עם הדגש על **נתיבים מלאים** ועל **איך למצוא את `.env`** — כי זו הבעיה שדיווחת עליה.
