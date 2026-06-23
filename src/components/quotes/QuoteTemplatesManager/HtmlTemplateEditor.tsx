@@ -8348,9 +8348,21 @@ ${tbAt('footer')}
 
             setActiveTab(nextTab);
           }}
-          className="flex-1 flex flex-col overflow-hidden"
+          className="flex-1 flex flex-col overflow-hidden max-w-full"
         >
-          <div className="border-b bg-white px-6 flex items-center justify-between gap-2">
+          {/* Mobile: dropdown tab bar + swipe hint */}
+          <MobileEditorTabsBar
+            tabConfig={tabConfig}
+            tabMeta={TAB_META}
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            onOpenSettings={() => setShowTabsSettings(true)}
+            containerRef={tabsContainerRef}
+            isMobile={isMobile}
+          />
+
+          {/* Desktop: full tab list */}
+          <div className="hidden md:flex border-b bg-white px-6 items-center justify-between gap-2">
             <TabsList className="h-12 bg-transparent gap-2 flex-wrap">
               {tabConfig
                 .filter((t) => t.visible)
