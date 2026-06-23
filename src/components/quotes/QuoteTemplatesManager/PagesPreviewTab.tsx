@@ -981,6 +981,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     label?: string,
   ) => (
     <div
+      data-page-index={pageIdx}
       className="relative bg-card shadow-md border border-border"
       style={{
         width: A4_W * scale,
@@ -1019,6 +1020,15 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       </div>
     </div>
   );
+
+  useEffect(() => {
+    if (mode === "single" || mode === "compare") return;
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const target = scroller.querySelector<HTMLElement>(`[data-page-index="${page}"]`);
+    if (!target) return;
+    target.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [mode, page]);
 
   return (
     <div className="h-full flex flex-col bg-muted/30 relative">
@@ -1123,7 +1133,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           </Button>
         </div>
 
-        {mode === "single" && (
+        {pageCount > 1 && (
           <div className="bg-muted rounded-md p-0.5 flex items-center gap-0.5">
             <Button
               size="icon"
