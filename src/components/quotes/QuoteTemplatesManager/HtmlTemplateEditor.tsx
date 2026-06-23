@@ -4605,6 +4605,22 @@ export function HtmlTemplateEditor({
       /* ignore */
     }
   }, [tabConfig]);
+
+  // Swipe gestures on mobile to switch between tabs
+  useSwipeTabs(tabsContainerRef, {
+    enabled: isMobile,
+    onNext: () => {
+      const visible = tabConfig.filter((t) => t.visible).map((t) => t.value);
+      const idx = visible.indexOf(activeTab);
+      if (idx >= 0 && idx < visible.length - 1) setActiveTab(visible[idx + 1]);
+    },
+    onPrev: () => {
+      const visible = tabConfig.filter((t) => t.visible).map((t) => t.value);
+      const idx = visible.indexOf(activeTab);
+      if (idx > 0) setActiveTab(visible[idx - 1]);
+    },
+  });
+
   const [showTabsSettings, setShowTabsSettings] = useState(false);
   const [draggedTabIdx, setDraggedTabIdx] = useState<number | null>(null);
   const [logoStripMode, setLogoStripMode] = useState<"logo" | "maker">(
