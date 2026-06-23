@@ -1729,7 +1729,7 @@ export function ClientsFilterStrip({
                 </div>
               </div>
 
-              <ScrollArea className="max-h-[65vh]">
+              <div className="overflow-y-auto max-h-[65vh]">
                 <div className="p-3">
                   <div className="space-y-3">
                     {stageDefinitions.length === 0 ? (
@@ -1786,7 +1786,7 @@ export function ClientsFilterStrip({
                     />
                   </div>
                 </div>
-              </ScrollArea>
+              </div>
             </div>,
             document.body
           )}
