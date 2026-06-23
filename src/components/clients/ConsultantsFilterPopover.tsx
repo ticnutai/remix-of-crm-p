@@ -17,6 +17,8 @@ import {
   Eye,
   Briefcase,
   Search,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useConsultants } from "@/hooks/useConsultants";
@@ -35,9 +37,11 @@ export function ConsultantsFilterPopover({
   selectedProfessions,
   onChange,
 }: ConsultantsFilterPopoverProps) {
-  const { consultants } = useConsultants();
+  const { consultants, addConsultant, deleteConsultant } = useConsultants();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [newConsultantName, setNewConsultantName] = useState("");
+  const [newConsultantProfession, setNewConsultantProfession] = useState("");
 
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -95,6 +99,43 @@ export function ConsultantsFilterPopover({
     onChange({ consultantIds: [], consultantProfessions: [] });
   };
 
+  const addNewConsultant = async (professionOverride?: string) => {
+    const name = newConsultantName.trim();
+    const profession = (professionOverride || newConsultantProfession).trim();
+    if (!name) return;
+
+    const created = await addConsultant({
+      name,
+      profession: profession || "יועץ",
+      license_number: null,
+      id_number: null,
+      phone: null,
+      email: null,
+      company: null,
+      specialty: null,
+      notes: null,
+      user_id: null,
+    });
+
+    if (created) {
+      setNewConsultantName("");
+      if (professionOverride) setNewConsultantProfession(professionOverride);
+    }
+  };
+
+  const removeConsultant = async (id: string, name: string) => {
+    const confirmed = window.confirm(`למחוק את היועץ "${name}" מהרשימה?`);
+    if (!confirmed) return;
+
+    const deleted = await deleteConsultant(id);
+    if (deleted && selectedConsultantIds.includes(id)) {
+      onChange({
+        consultantIds: selectedConsultantIds.filter((x) => x !== id),
+        consultantProfessions: selectedProfessions,
+      });
+    }
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -102,9 +143,9 @@ export function ConsultantsFilterPopover({
           variant="outline"
           size="sm"
           className={cn(
-            "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
+            "gap-1.5 h-7 bg-background text-foreground border border-primary/50 hover:bg-accent hover:text-accent-foreground text-xs",
             activeCount > 0 &&
-              "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
+              "bg-primary text-primary-foreground border-primary hover:bg-primary/90",
           )}
         >
           <UserCog className="h-4 w-4" />
@@ -121,10 +162,10 @@ export function ConsultantsFilterPopover({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[min(94vw,380px)] max-h-[80vh] p-0 overflow-hidden flex flex-col"
-        dir="rtl"
+        className="w-[min(94vw,380px)] max-w-[94vw] p-0 overflow-hidden flex flex-col"
         align="end"
         collisionPadding={16}
+        style={{ height: "min(80vh, var(--radix-popper-available-height, 80vh))" }}
       >
         <div className="p-3 border-b shrink-0">
           <div className="flex flex-row-reverse items-center gap-2 mb-2">
@@ -162,8 +203,41 @@ export function ConsultantsFilterPopover({
           </div>
         </div>
 
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="p-3 space-y-4">
+        <ScrollArea className="flex-1 min-h-0 overflow-x-hidden">
+          <div className="p-3 space-y-4 max-w-full overflow-x-hidden">
+            <div className="rounded-md border border-border bg-muted/20 p-2 space-y-2">
+              <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+                <Plus className="h-3 w-3" />
+                הוספת יועץ לרשימה
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                <Input
+                  value={newConsultantName}
+                  onChange={(e) => setNewConsultantName(e.target.value)}
+                  placeholder="שם יועץ חדש"
+                  className="h-8 text-xs"
+                />
+                <div className="flex gap-2 min-w-0">
+                  <Input
+                    value={newConsultantProfession}
+                    onChange={(e) => setNewConsultantProfession(e.target.value)}
+                    placeholder="תחום / סוג יועץ"
+                    className="h-8 text-xs min-w-0"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8 shrink-0 gap-1"
+                    disabled={!newConsultantName.trim()}
+                    onClick={() => addNewConsultant()}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    הוסף
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             {/* Section: Filter by profession */}
             <div>
               <div className="flex items-center gap-1 mb-2 text-[11px] font-semibold text-muted-foreground">
@@ -179,18 +253,28 @@ export function ConsultantsFilterPopover({
                 {allProfessions.map((prof) => {
                   const active = selectedProfessions.includes(prof);
                   return (
-                    <button
-                      key={prof}
-                      onClick={() => toggleProfession(prof)}
-                      className={cn(
-                        "px-2.5 py-1 rounded-full border text-xs transition-all",
-                        active
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background hover:bg-muted border-border",
-                      )}
-                    >
-                      {prof}
-                    </button>
+                    <span key={prof} className="inline-flex items-center gap-1 max-w-full">
+                      <button
+                        type="button"
+                        onClick={() => toggleProfession(prof)}
+                        className={cn(
+                          "max-w-full px-2.5 py-1 rounded-full border text-xs transition-all truncate",
+                          active
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background hover:bg-muted border-border",
+                        )}
+                      >
+                        {prof}
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-full border border-border bg-background p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        title={`הוסף יועץ ל${prof}`}
+                        onClick={() => setNewConsultantProfession(prof)}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    </span>
                   );
                 })}
               </div>
@@ -221,7 +305,7 @@ export function ConsultantsFilterPopover({
                             key={c.id}
                             onClick={() => toggleConsultant(c.id)}
                             className={cn(
-                              "flex items-center gap-2 p-2 rounded-md border cursor-pointer transition-all",
+                              "flex items-center gap-2 p-2 rounded-md border cursor-pointer transition-all min-w-0",
                               active
                                 ? "bg-primary/10 border-primary"
                                 : "bg-muted/30 border-border hover:bg-muted/60",
@@ -238,6 +322,17 @@ export function ConsultantsFilterPopover({
                                 </div>
                               )}
                             </div>
+                            <button
+                              type="button"
+                              className="shrink-0 rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                              title="מחק יועץ"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeConsultant(c.id, c.name);
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
                           </div>
                         );
                       })}

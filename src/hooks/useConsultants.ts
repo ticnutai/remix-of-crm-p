@@ -164,6 +164,7 @@ export function useConsultants() {
         title: "הצלחה",
         description: "היועץ נמחק",
       });
+      return true;
     } catch (error) {
       console.error("Error deleting consultant:", error);
       toast({
@@ -171,6 +172,7 @@ export function useConsultants() {
         description: "לא ניתן למחוק יועץ",
         variant: "destructive",
       });
+      return false;
     }
   };
 
