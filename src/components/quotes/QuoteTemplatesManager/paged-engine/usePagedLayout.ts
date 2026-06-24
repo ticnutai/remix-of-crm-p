@@ -65,6 +65,46 @@ body {
   margin: 0 !important;
 }
 
+/* Let paged.js really fragment the legacy shell. The template was built for
+   browser print repetition, where tables/cards were kept whole. In paged.js
+   that prevents proper cutting and content can visually run into margins. */
+.print-page-shell,
+.print-page-shell *,
+.container,
+.content,
+.project-details,
+table,
+tbody,
+thead,
+tfoot,
+tr,
+td,
+.stage-card,
+.summary-card,
+.card {
+  break-inside: auto !important;
+  page-break-inside: auto !important;
+}
+
+.container,
+.content {
+  width: 100% !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
+}
+
+/* Hard visual guard: the content area itself is clipped to the @page body box,
+   so even if a legacy element reports a huge rectangle, it cannot paint under
+   the top/bottom strips. The continuation is rendered by paged.js on the next
+   page. */
+.pagedjs_page,
+.pagedjs_sheet,
+.pagedjs_pagebox,
+.pagedjs_area,
+.pagedjs_page_content {
+  overflow: hidden !important;
+}
+
 /* Hide the original strips inside the paged.js flow — we render them as
    overlays on top of every page wrap instead (much more reliable than
    paged.js running elements, which mangle inline-styled / image strips). */
@@ -91,10 +131,14 @@ h1, h2, h3, h4 {
   page-break-after: avoid;
 }
 p, li { widows: 3; orphans: 3; }
-img, svg, figure, table, tr, blockquote,
-.stage-card, .summary-card, .card, .signature-block, .keep-together {
+img, svg, figure, blockquote,
+.signature-block, .keep-together {
   break-inside: avoid-page;
   page-break-inside: avoid;
+}
+.stage-card, .summary-card, .card, table, tr {
+  break-inside: auto !important;
+  page-break-inside: auto !important;
 }
 ul, ol { break-inside: auto; }
 .page-break, [data-page-break="true"] {

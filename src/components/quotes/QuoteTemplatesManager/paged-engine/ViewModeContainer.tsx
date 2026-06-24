@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { cn } from "@/lib/utils";
+import companyHeaderImg from "@/assets/company-header.png";
 
 // Inject (once) a stylesheet that forces strip contents to fit their overlay.
 // Uses !important so the legacy template's inline `position:absolute`,
@@ -21,10 +22,17 @@ function ensureStripStyles() {
   const s = document.createElement("style");
   s.id = STRIP_STYLE_ID;
   s.textContent = `
-    .paged-strip-top, .paged-strip-bottom {
+    .paged-page-wrap .paged-strip-top,
+    .paged-page-wrap .paged-strip-bottom {
+      display: block !important;
       box-sizing: border-box !important;
     }
-    .paged-strip-top > *, .paged-strip-bottom > * {
+    .paged-page-wrap .paged-strip-top > *,
+    .paged-page-wrap .paged-strip-bottom > *,
+    .paged-page-wrap .paged-strip-top .header-strip,
+    .paged-page-wrap .paged-strip-bottom .footer,
+    .paged-page-wrap .paged-strip-bottom .footer-strip {
+      display: block !important;
       position: static !important;
       inset: auto !important;
       top: auto !important; left: auto !important;
@@ -35,21 +43,24 @@ function ensureStripStyles() {
       max-height: 100% !important;
       margin: 0 !important;
       padding: 0 !important;
-      display: block !important;
       transform: none !important;
     }
-    .paged-strip-top *, .paged-strip-bottom * {
+    .paged-page-wrap .paged-strip-top *,
+    .paged-page-wrap .paged-strip-bottom * {
       box-sizing: border-box !important;
     }
-    .paged-strip-top [style*="position: fixed"],
-    .paged-strip-bottom [style*="position: fixed"],
-    .paged-strip-top [style*="position:fixed"],
-    .paged-strip-bottom [style*="position:fixed"] {
+    .paged-page-wrap .paged-strip-top [style*="position: fixed"],
+    .paged-page-wrap .paged-strip-bottom [style*="position: fixed"],
+    .paged-page-wrap .paged-strip-top [style*="position:fixed"],
+    .paged-page-wrap .paged-strip-bottom [style*="position:fixed"] {
       position: absolute !important;
     }
-    .paged-strip-top img, .paged-strip-bottom img,
-    .paged-strip-top svg, .paged-strip-bottom svg,
-    .paged-strip-top canvas, .paged-strip-bottom canvas {
+    .paged-page-wrap .paged-strip-top img,
+    .paged-page-wrap .paged-strip-bottom img,
+    .paged-page-wrap .paged-strip-top svg,
+    .paged-page-wrap .paged-strip-bottom svg,
+    .paged-page-wrap .paged-strip-top canvas,
+    .paged-page-wrap .paged-strip-bottom canvas {
       display: block !important;
       width: 100% !important;
       height: 100% !important;
@@ -158,39 +169,56 @@ export default function ViewModeContainer({
       // (and any other branding inside the strip) appears on every page.
       // The overlays sit on top of the @page margin zones; paged.js already
       // keeps body content out of those zones, so there is no coverage.
+      const setImportant = (el: HTMLElement, prop: string, value: string) => {
+        el.style.setProperty(prop, value, "important");
+      };
+
       const fitChild = (parent: HTMLElement) => {
         const child = parent.firstElementChild as HTMLElement | null;
         if (child) {
-          child.style.display = "block";
-          child.style.position = "static";
-          child.style.width = "100%";
-          child.style.height = "100%";
-          child.style.margin = "0";
-          child.style.padding = "0";
-          child.style.maxWidth = "100%";
-          child.style.maxHeight = "100%";
-          child.style.boxSizing = "border-box";
+          setImportant(child, "display", "block");
+          setImportant(child, "position", "static");
+          setImportant(child, "inset", "auto");
+          setImportant(child, "width", "100%");
+          setImportant(child, "height", "100%");
+          setImportant(child, "margin", "0");
+          setImportant(child, "padding", "0");
+          setImportant(child, "max-width", "100%");
+          setImportant(child, "max-height", "100%");
+          setImportant(child, "box-sizing", "border-box");
         }
         // Make sure no descendant escapes / overflows the strip area.
         parent.querySelectorAll<HTMLElement>("*").forEach((n) => {
+          setImportant(n, "box-sizing", "border-box");
           const pos = n.style.position;
-          if (pos === "fixed") n.style.position = "absolute";
+          if (pos === "fixed") setImportant(n, "position", "absolute");
         });
         // Scale images/svg/canvas to fit the visible strip height.
         parent.querySelectorAll<HTMLElement>("img, svg, canvas").forEach((m) => {
-          m.style.display = "block";
-          m.style.maxWidth = "100%";
-          m.style.maxHeight = "100%";
-          m.style.width = m.style.width || "100%";
-          m.style.height = m.style.height || "100%";
-          (m.style as CSSStyleDeclaration).objectFit = "contain";
+          if (m instanceof HTMLImageElement) {
+            const src = m.getAttribute("src") || "";
+            if (src.includes("company-header")) {
+              m.src = companyHeaderImg;
+            }
+            m.addEventListener("error", () => {
+              const current = m.getAttribute("src") || "";
+              if (current.includes("company-header")) m.src = companyHeaderImg;
+            }, { once: true });
+          }
+          setImportant(m, "display", "block");
+          setImportant(m, "max-width", "100%");
+          setImportant(m, "max-height", "100%");
+          setImportant(m, "width", "100%");
+          setImportant(m, "height", "100%");
+          setImportant(m, "object-fit", "contain");
+          setImportant(m, "object-position", "center");
         });
       };
 
       if (stripTopPx > 0) {
         const top = document.createElement("div");
         top.className = "paged-strip-top";
-        top.style.cssText = `position:absolute;left:0;right:0;top:0;height:${stripTopPx}px;overflow:hidden;pointer-events:none;z-index:5;`;
+        top.style.cssText = `position:absolute;left:0;right:0;top:0;height:${stripTopPx}px;overflow:hidden;pointer-events:none;z-index:5;display:block;`;
         if (headerHtml) {
           top.innerHTML = headerHtml;
           fitChild(top);
@@ -200,7 +228,7 @@ export default function ViewModeContainer({
       if (stripBottomPx > 0) {
         const bot = document.createElement("div");
         bot.className = "paged-strip-bottom";
-        bot.style.cssText = `position:absolute;left:0;right:0;bottom:0;height:${stripBottomPx}px;overflow:hidden;pointer-events:none;z-index:5;`;
+        bot.style.cssText = `position:absolute;left:0;right:0;bottom:0;height:${stripBottomPx}px;overflow:hidden;pointer-events:none;z-index:5;display:block;`;
         if (footerHtml) {
           bot.innerHTML = footerHtml;
           fitChild(bot);
