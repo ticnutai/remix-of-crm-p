@@ -22,7 +22,9 @@ export interface PagedLayoutResult {
 const BASE_PAGED_CSS = `
 @page {
   size: A4;
-  margin: 18mm 14mm 16mm 14mm;
+  margin: 22mm 14mm 18mm 14mm;
+  @top-center { content: element(pageHeader); }
+  @bottom-center { content: element(pageFooter); }
 }
 html, body { background: #ffffff; color: #111; }
 body {
@@ -31,7 +33,45 @@ body {
   print-color-adjust: exact;
   widows: 3;
   orphans: 3;
+  /* Neutralize any padding the legacy template added to make room for
+     position:fixed strips — paged.js handles the strip zone via @page. */
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin: 0 !important;
 }
+
+/* === Legacy fixed strips → paged.js running elements ===
+   The legacy template positions the header/footer strips with
+   position:fixed, which paged.js can't fragment (they vanish and the
+   body text appears to be missing). Re-route them into the running
+   element slot so they repeat on every page inside the @page margins. */
+.quote-fixed-header, .header-strip, .page-header, .repeat-header,
+.lov-repeat-overlay-header {
+  position: running(pageHeader) !important;
+  top: auto !important; left: auto !important; right: auto !important;
+  width: 100% !important;
+  margin: 0 !important;
+  z-index: auto !important;
+}
+.quote-fixed-footer, .footer-strip, .page-footer, .repeat-footer,
+.lov-repeat-overlay-footer {
+  position: running(pageFooter) !important;
+  top: auto !important; left: auto !important; right: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
+  margin: 0 !important;
+  z-index: auto !important;
+}
+
+/* Catch-all: anything still position:fixed gets dropped back into flow
+   so it doesn't disappear from the rendered pages. */
+[style*="position: fixed"], [style*="position:fixed"] {
+  position: static !important;
+}
+
+/* Hide any visual mask leftovers from the legacy preview engine. */
+.lov-safe-mask, .lov-safe-mask-top, .lov-safe-mask-bottom { display: none !important; }
+
 h1, h2, h3, h4 {
   break-after: avoid-page;
   page-break-after: avoid;
