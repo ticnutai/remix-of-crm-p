@@ -174,6 +174,14 @@ export default function PagesPreviewTab({
   const [issues, setIssues] = useState<number>(0);
   const [exporting, setExporting] = useState(false);
 
+  // Ephemeral drag overrides for the safe-zone lines — used while the user
+  // is actively dragging, so we DON'T rebuild the iframe srcDoc on every
+  // mousemove (which is what caused the "jumpy" feel). Committed on mouseup.
+  const [dragTopMm, setDragTopMm] = useState<number | null>(null);
+  const [dragBottomMm, setDragBottomMm] = useState<number | null>(null);
+
+
+
   // Pagination fix state
   const templateKey = templateName || "default";
   const [fixState, setFixState] = useState<FixState>(() =>
