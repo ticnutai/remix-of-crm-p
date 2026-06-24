@@ -739,6 +739,37 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     }
   });
 
+  function setupSafeMasks(){
+    try{
+      var body=document.body;
+      if(!body) return;
+      // Remove previous masks
+      document.querySelectorAll('.lov-safe-mask').forEach(function(n){ n.parentNode && n.parentNode.removeChild(n); });
+      var PH=parseInt(body.getAttribute('data-page-height')||'1123',10) || 1123;
+      var docH=Math.max(document.documentElement.scrollHeight, body.scrollHeight, PH);
+      var pageCount=Math.max(1, Math.ceil(docH/PH));
+      // Ensure body is positioned so absolute masks anchor to it
+      var bs=getComputedStyle(body);
+      if(bs.position==='static') body.style.position='relative';
+      for(var i=0;i<pageCount;i++){
+        if(SAFE_TOP_PX>0){
+          var mt=document.createElement('div');
+          mt.className='lov-safe-mask lov-safe-mask-top';
+          mt.style.top=(i*PH)+'px';
+          mt.style.height=SAFE_TOP_PX+'px';
+          body.appendChild(mt);
+        }
+        if(SAFE_BOTTOM_PX>0){
+          var mb=document.createElement('div');
+          mb.className='lov-safe-mask lov-safe-mask-bottom';
+          mb.style.top=((i+1)*PH - SAFE_BOTTOM_PX)+'px';
+          mb.style.height=SAFE_BOTTOM_PX+'px';
+          body.appendChild(mb);
+        }
+      }
+    }catch(e){ /* noop */ }
+  }
+
   function setupRepeatOverlays(){
     try{
       // Cleanup previous overlays (in case of re-init)
