@@ -181,8 +181,8 @@ export default function ViewModeContainer({
       // Defensive visual safe-area: paged.js already creates the main strip
       // and side margins. Keep an extra inner gap, and clamp side bleed, while
       // avoiding a double top/bottom offset that would hide the first page.
-      const safeTop = Math.max(0, Math.round(stripGapPx));
-      const safeBottom = Math.max(0, Math.round(stripGapPx));
+      const safeTop = Math.max(0, Math.round(stripTopPx + stripGapPx));
+      const safeBottom = Math.max(0, Math.round(stripBottomPx + stripGapPx));
       const safeSide = Math.max(0, Math.round(sideInsetPx));
       const setImportant = (el: HTMLElement, prop: string, value: string) => {
         el.style.setProperty(prop, value, "important");
