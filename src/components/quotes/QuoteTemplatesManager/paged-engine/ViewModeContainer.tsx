@@ -182,8 +182,8 @@ export default function ViewModeContainer({
       // @page margins, but legacy inline/table styles can still paint outside
       // the box. Clamp the cloned page's paint area so nothing can sit under
       // the strips or bleed sideways in the preview.
-      const safeTop = Math.max(0, Math.round(stripTopPx + stripGapPx));
-      const safeBottom = Math.max(0, Math.round(stripBottomPx + stripGapPx));
+      const safeTop = Math.max(0, Math.round(stripGapPx));
+      const safeBottom = Math.max(0, Math.round(stripGapPx));
       const safeSide = Math.max(0, Math.round(sideInsetPx));
       const setImportant = (el: HTMLElement, prop: string, value: string) => {
         el.style.setProperty(prop, value, "important");
