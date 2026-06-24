@@ -556,6 +556,8 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   var SAFE_TOP_PX=${safeTopPx};
   var SAFE_BOTTOM_PX=${safeBottomPx};
   var PROTECT_SEL=${JSON.stringify(protectSel)};
+  var AUTO_ENFORCE=${fixState.autoEnforceStrips ? "true" : "false"};
+  var DELETED_PAGES=${JSON.stringify(fixState.deletedPages || [])};
 
   function pathFor(el){
     if(!el || el===document.body) return 'body';
