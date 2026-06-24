@@ -226,38 +226,126 @@ ${debug ? `
     pages: number;
     withTop: number;
     withBottom: number;
+    visibleTop: number;
+    visibleBottom: number;
+    overlaps: number;
   } | null>(null);
 
-  useEffect(() => {
+  const runStripCheck = useCallback(() => {
     if (rendering) return;
     const scroller = scrollRef.current;
     if (!scroller) return;
     // Wait one frame so ViewModeContainer has finished painting.
-    const raf = requestAnimationFrame(() => {
+    const raf = window.requestAnimationFrame(() => {
       const wraps = scroller.querySelectorAll<HTMLElement>(".paged-page-wrap");
       let withTop = 0;
       let withBottom = 0;
+      let visibleTop = 0;
+      let visibleBottom = 0;
+      let overlaps = 0;
+
+      const restoredDisplays: Array<[HTMLElement, string]> = [];
+      wraps.forEach((w) => {
+        restoredDisplays.push([w, w.style.display]);
+        w.style.display = "block";
+      });
+
       wraps.forEach((w) => {
         const top = w.querySelector(".paged-strip-top");
         const bot = w.querySelector(".paged-strip-bottom");
         if (top && top.children.length > 0) withTop++;
         if (bot && bot.children.length > 0) withBottom++;
+        const topRect = top?.getBoundingClientRect();
+        const botRect = bot?.getBoundingClientRect();
+        const topChild = top?.firstElementChild as HTMLElement | null;
+        const botChild = bot?.firstElementChild as HTMLElement | null;
+        const topImg = top?.querySelector("img") as HTMLImageElement | null;
+        const botBox = botChild?.getBoundingClientRect();
+        const topBox = topImg?.getBoundingClientRect() || topChild?.getBoundingClientRect();
+        if (
+          top &&
+          topChild &&
+          topRect &&
+          topRect.width > 1 &&
+          topRect.height > 1 &&
+          topBox &&
+          topBox.width > 1 &&
+          topBox.height > 1 &&
+          window.getComputedStyle(topChild).display !== "none" &&
+          (!topImg || (topImg.complete && topImg.naturalWidth > 0))
+        ) {
+          visibleTop++;
+        }
+        if (
+          bot &&
+          botChild &&
+          botRect &&
+          botRect.width > 1 &&
+          botRect.height > 1 &&
+          botBox &&
+          botBox.width > 1 &&
+          botBox.height > 1 &&
+          window.getComputedStyle(botChild).display !== "none"
+        ) {
+          visibleBottom++;
+        }
+
+        const clippedRect = (el: HTMLElement) => {
+          const base = el.getBoundingClientRect();
+          let top = base.top;
+          let right = base.right;
+          let bottom = base.bottom;
+          let left = base.left;
+          let parent = el.parentElement;
+          while (parent && parent !== w.parentElement) {
+            const style = window.getComputedStyle(parent);
+            if (style.overflow !== "visible" || style.overflowX !== "visible" || style.overflowY !== "visible") {
+              const pr = parent.getBoundingClientRect();
+              top = Math.max(top, pr.top);
+              right = Math.min(right, pr.right);
+              bottom = Math.min(bottom, pr.bottom);
+              left = Math.max(left, pr.left);
+            }
+            parent = parent.parentElement;
+          }
+          return { top, right, bottom, left, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
+        };
+
+        w.querySelectorAll<HTMLElement>(".pagedjs_area *").forEach((el) => {
+          const style = window.getComputedStyle(el);
+          if (style.display === "none" || style.visibility === "hidden") return;
+          if ([...el.children].some((child) => (child.textContent || "").trim())) return;
+          const r = clippedRect(el);
+          if (r.width < 1 || r.height < 1) return;
+          const hitTop = topRect && r.bottom > topRect.top + 1 && r.top < topRect.bottom - 1;
+          const hitBottom = botRect && r.bottom > botRect.top + 1 && r.top < botRect.bottom - 1;
+          if (hitTop || hitBottom) overlaps++;
+        });
+      });
+      restoredDisplays.forEach(([w, display]) => {
+        w.style.display = display;
       });
       const pages = wraps.length;
-      setStripCheck({ pages, withTop, withBottom });
-      if (pages > 0 && (withTop < pages || withBottom < pages)) {
+      setStripCheck({ pages, withTop, withBottom, visibleTop, visibleBottom, overlaps });
+      if (
+        pages > 0 &&
+        (withTop < pages || withBottom < pages || visibleTop < pages || visibleBottom < pages || overlaps > 0)
+      ) {
         console.warn(
-          `[PagedPreviewTab] strip check: header ${withTop}/${pages}, footer ${withBottom}/${pages}`,
-          { headerHtmlPresent: !!headerHtml, footerHtmlPresent: !!footerHtml },
+          `[PagedPreviewTab] strip check: header ${withTop}/${pages} visible ${visibleTop}/${pages}, ` +
+          `footer ${withBottom}/${pages} visible ${visibleBottom}/${pages}, overlaps=${overlaps}`,
+          { headerHtmlPresent: !!headerHtml, footerHtmlPresent: !!footerHtml, overlaps },
         );
       } else if (pages > 0) {
         console.info(
-          `[PagedPreviewTab] strip check OK: header+footer on all ${pages} pages`,
+          `[PagedPreviewTab] strip check OK: visible header+footer on all ${pages} pages, overlaps=0`,
         );
       }
     });
-    return () => cancelAnimationFrame(raf);
-  }, [rendering, pageCount, deletedPages, headerHtml, footerHtml, mode, zoom]);
+    return () => window.cancelAnimationFrame(raf);
+  }, [rendering, headerHtml, footerHtml]);
+
+  useEffect(() => runStripCheck(), [runStripCheck, pageCount, deletedPages, mode, zoom]);
 
   useEffect(() => {
     try {
@@ -540,11 +628,24 @@ ${debug ? `
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8"
+            onClick={runStripCheck}
+            aria-label="בדוק רינדור"
+            title="בדוק סטריפים וחפיפות"
+          >
+            <ScanLine className="h-4 w-4" />
+          </Button>
         </div>
 
         {stripCheck && stripCheck.pages > 0 &&
           (stripCheck.withTop < stripCheck.pages ||
-            stripCheck.withBottom < stripCheck.pages) && (
+            stripCheck.withBottom < stripCheck.pages ||
+            stripCheck.visibleTop < stripCheck.pages ||
+            stripCheck.visibleBottom < stripCheck.pages ||
+            stripCheck.overlaps > 0) && (
             <div
               role="alert"
               className="border-b border-destructive/40 bg-destructive/10 text-destructive px-4 py-2 text-xs flex items-center gap-2 shrink-0"
@@ -554,6 +655,10 @@ ${debug ? `
                 סטריפ עליון מופיע ב-{stripCheck.withTop} מתוך {stripCheck.pages}{" "}
                 עמודים, סטריפ תחתון ב-{stripCheck.withBottom} מתוך{" "}
                 {stripCheck.pages}.
+              </span>
+              <span>
+                נראות בפועל: ▲ {stripCheck.visibleTop}/{stripCheck.pages} · ▼{" "}
+                {stripCheck.visibleBottom}/{stripCheck.pages}; חפיפות תוכן: {stripCheck.overlaps}.
               </span>
               {!headerHtml && stripCheck.withTop === 0 && (
                 <span className="text-destructive/80">
@@ -599,14 +704,17 @@ ${debug ? `
               <span
                 className={
                   stripCheck.withTop === stripCheck.pages &&
-                  stripCheck.withBottom === stripCheck.pages
+                  stripCheck.withBottom === stripCheck.pages &&
+                  stripCheck.visibleTop === stripCheck.pages &&
+                  stripCheck.visibleBottom === stripCheck.pages &&
+                  stripCheck.overlaps === 0
                     ? "text-success"
                     : "text-destructive"
                 }
-                title="בדיקת רינדור: כמה עמודים מכילים סטריפ עליון/תחתון"
+                title="בדיקת רינדור: קיום ונראות סטריפים + בדיקת חפיפת תוכן"
               >
                 סטריפים: ▲ {stripCheck.withTop}/{stripCheck.pages} · ▼{" "}
-                {stripCheck.withBottom}/{stripCheck.pages}
+                {stripCheck.withBottom}/{stripCheck.pages} · נראה ▲ {stripCheck.visibleTop}/{stripCheck.pages} · חפיפות {stripCheck.overlaps}
               </span>
             )}
             <span>
