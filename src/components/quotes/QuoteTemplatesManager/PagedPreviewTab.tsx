@@ -560,6 +560,20 @@ ${debug ? `
                 שגיאת עימוד: {error}
               </span>
             )}
+            {stripCheck && stripCheck.pages > 0 && (
+              <span
+                className={
+                  stripCheck.withTop === stripCheck.pages &&
+                  stripCheck.withBottom === stripCheck.pages
+                    ? "text-emerald-600"
+                    : "text-destructive"
+                }
+                title="בדיקת רינדור: כמה עמודים מכילים סטריפ עליון/תחתון"
+              >
+                סטריפים: ▲ {stripCheck.withTop}/{stripCheck.pages} · ▼{" "}
+                {stripCheck.withBottom}/{stripCheck.pages}
+              </span>
+            )}
             <span>
               {totalLabel} • paged.js {rendering ? "(מעבד…)" : "(מוכן)"}
             </span>
