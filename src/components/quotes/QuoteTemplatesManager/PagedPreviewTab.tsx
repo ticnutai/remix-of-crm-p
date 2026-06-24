@@ -204,7 +204,7 @@ ${debug ? `
     [debouncedTop, debouncedBottom, debouncedSide, debug],
   );
 
-  const { containerRef, pageCount, rendering, error, rerender } =
+  const { containerRef, pageCount, rendering, error, rerender, headerHtml, footerHtml } =
     usePagedLayout(html, extraCss);
 
   const visibleCount = Math.max(0, pageCount - deletedPages.length);
