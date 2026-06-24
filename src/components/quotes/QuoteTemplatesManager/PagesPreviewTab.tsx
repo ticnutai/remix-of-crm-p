@@ -467,28 +467,15 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         padding-top: ${safeTopPx}px !important;
         padding-bottom: ${safeBottomPx}px !important;
       }
-      /* Masks hide any regular content that bleeds into the strips. */
-      body::before {
-        content: "";
-        position: fixed;
-        left: 0;
-        right: 0;
-        top: 0;
-        height: ${safeTopPx}px;
-        background: rgba(255,255,255,0.96);
-        z-index: 999999;
-        pointer-events: none;
-      }
-      body::after {
-        content: "";
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        height: ${safeBottomPx}px;
-        background: rgba(255,255,255,0.96);
-        z-index: 999999;
-        pointer-events: none;
+      /* Per-page masks (injected absolutely by the runtime script below) hide
+         any regular content that bleeds into the strips on EVERY page. */
+      .lov-safe-mask {
+        position: absolute !important;
+        left: 0 !important;
+        right: 0 !important;
+        background: #ffffff !important;
+        z-index: 999998 !important;
+        pointer-events: none !important;
       }
       /* Strip elements must render above the masks. */
       .lov-repeat-overlay-header,
