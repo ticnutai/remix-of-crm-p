@@ -4593,7 +4593,8 @@ export function HtmlTemplateEditor({
     | "tools"
     | "preview"
     | "split"
-    | "pages";
+    | "pages"
+    | "paged-pro";
   const DEFAULT_TAB_ORDER: EditorTabKey[] = [
     "project",
     "content",
@@ -4605,6 +4606,7 @@ export function HtmlTemplateEditor({
     "preview",
     "split",
     "pages",
+    "paged-pro",
   ];
   const TAB_META: Record<
     EditorTabKey,
@@ -4620,6 +4622,7 @@ export function HtmlTemplateEditor({
     preview: { label: "תצוגה מקדימה", icon: Eye, activeClass: "data-[state=active]:bg-green-100 data-[state=active]:text-green-700" },
     split: { label: "עריכה + תצוגה", icon: Columns, activeClass: "data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700" },
     pages: { label: "תצוגת דפים", icon: Layers, activeClass: "data-[state=active]:bg-[#162C58]/10 data-[state=active]:text-[#162C58]" },
+    "paged-pro": { label: "עימוד מתקדם (Paged.js)", icon: Layers, activeClass: "data-[state=active]:bg-[#d8ac27]/15 data-[state=active]:text-[#162C58]" },
   };
   const [tabConfig, setTabConfig] = useState<
     Array<{ value: EditorTabKey; visible: boolean }>
