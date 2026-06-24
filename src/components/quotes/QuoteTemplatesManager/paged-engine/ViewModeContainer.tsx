@@ -16,6 +16,9 @@ import companyHeaderImg from "@/assets/company-header.png";
 // Uses !important so the legacy template's inline `position:absolute`,
 // fixed `height:171px`, etc. don't break the strip.
 const STRIP_STYLE_ID = "lov-paged-strip-fit-styles";
+const resolvedCompanyHeaderImg = import.meta.env.DEV
+  ? "/src/assets/company-header.png"
+  : companyHeaderImg;
 function ensureStripStyles() {
   if (typeof document === "undefined") return;
   if (document.getElementById(STRIP_STYLE_ID)) return;
@@ -198,11 +201,11 @@ export default function ViewModeContainer({
           if (m instanceof HTMLImageElement) {
             const src = m.getAttribute("src") || "";
             if (src.includes("company-header")) {
-              m.src = companyHeaderImg;
+              m.src = resolvedCompanyHeaderImg;
             }
             m.addEventListener("error", () => {
               const current = m.getAttribute("src") || "";
-              if (current.includes("company-header")) m.src = companyHeaderImg;
+              if (current.includes("company-header")) m.src = resolvedCompanyHeaderImg;
             }, { once: true });
           }
           setImportant(m, "display", "block");
