@@ -467,6 +467,23 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         padding-top: ${safeTopPx}px !important;
         padding-bottom: ${safeBottomPx}px !important;
       }
+      /* ===== Strip / mask layering system =====
+         Layer order (highest wins):
+           --lov-z-strip   = 2147483600  (logo + footer strips — ALWAYS on top)
+           --lov-z-mask    = 2147482000  (white masks that hide content bleed)
+           --lov-z-content =          1  (regular quote content)
+         Using near-max int values guarantees we beat any user CSS, and the
+         body gets 'isolation: isolate' so an ancestor stacking context can't
+         trap our layers underneath theirs. */
+      :root {
+        --lov-z-content: 1;
+        --lov-z-mask: 2147482000;
+        --lov-z-strip: 2147483600;
+      }
+      body {
+        isolation: isolate;
+        position: relative;
+      }
       /* Per-page masks (injected absolutely by the runtime script below) hide
          any regular content that bleeds into the strips on EVERY page. */
       .lov-safe-mask {
@@ -474,21 +491,39 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         left: 0 !important;
         right: 0 !important;
         background: #ffffff !important;
-        z-index: 999998 !important;
+        z-index: var(--lov-z-mask) !important;
         pointer-events: none !important;
+        transform: none !important;
+        filter: none !important;
+        opacity: 1 !important;
       }
-      /* Strip elements must render above the masks. */
+      /* Strip elements must render above the masks in EVERY scenario.
+         We promote both the wrapper AND its inner cell so table-based
+         repeating headers/footers (<thead>/<tfoot>) layer correctly. */
       .lov-repeat-overlay-header,
       .lov-repeat-overlay-footer,
-      .print-repeat-header,
-      .print-repeat-footer,
       .header-strip,
       .quote-fixed-header,
       .quote-fixed-footer,
       .footer,
       .header {
+        position: relative !important;
+        z-index: var(--lov-z-strip) !important;
+        isolation: isolate;
+      }
+      /* thead/tfoot themselves don't honour z-index reliably — promote the
+         td/div children that actually paint. */
+      .print-repeat-header,
+      .print-repeat-footer {
         position: relative;
-        z-index: 1000000 !important;
+        z-index: var(--lov-z-strip);
+      }
+      .print-repeat-header td,
+      .print-repeat-footer td,
+      .print-repeat-header > tr > td > *,
+      .print-repeat-footer > tr > td > * {
+        position: relative;
+        z-index: var(--lov-z-strip) !important;
       }
       /* The repeated overlays live in their reserved strip and never escape. */
       .lov-repeat-overlay-header {
@@ -821,6 +856,37 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     }catch(e){ /* noop */ }
   }
 
+  // Defensive runtime pass: walk every strip element and re-assert that its
+  // z-index is strictly above any mask, regardless of inline styles or
+  // user CSS authored inside the quote HTML. Idempotent — safe to re-run.
+  function enforceLayerOrder(){
+    try{
+      var STRIP_SEL='.lov-repeat-overlay-header,.lov-repeat-overlay-footer,.print-repeat-header,.print-repeat-footer,.header-strip,.quote-fixed-header,.quote-fixed-footer,.footer,.header';
+      var STRIP_Z='2147483600';
+      var MASK_Z='2147482000';
+      document.querySelectorAll('.lov-safe-mask').forEach(function(n){
+        n.style.setProperty('z-index', MASK_Z, 'important');
+        n.style.setProperty('position', 'absolute', 'important');
+      });
+      document.querySelectorAll(STRIP_SEL).forEach(function(n){
+        var cs=getComputedStyle(n);
+        if(cs.position==='static') n.style.setProperty('position','relative','important');
+        n.style.setProperty('z-index', STRIP_Z, 'important');
+        // Promote inner painters too (td/div children of thead/tfoot etc.)
+        n.querySelectorAll('td,th,div,img,svg').forEach(function(c){
+          var ccs=getComputedStyle(c);
+          if(ccs.position==='static') c.style.position='relative';
+          c.style.zIndex=STRIP_Z;
+        });
+      });
+      // Body must form a stacking context so our layers can't be trapped.
+      document.body.style.isolation='isolate';
+      if(getComputedStyle(document.body).position==='static'){
+        document.body.style.position='relative';
+      }
+    }catch(e){ /* noop */ }
+  }
+
   function init(){
     try{
       document.body.setAttribute('data-safe-top', String(SAFE_TOP_PX));
@@ -830,9 +896,11 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     tagAutoPaths();
     setupRepeatOverlays();
     setupSafeMasks();
+    enforceLayerOrder();
     setTimeout(detectIssues,300);
     // Re-run setup after content settles (fonts/images)
-    setTimeout(function(){ setupRepeatOverlays(); setupSafeMasks(); },600);
+    setTimeout(function(){ setupRepeatOverlays(); setupSafeMasks(); enforceLayerOrder(); },600);
+    setTimeout(function(){ enforceLayerOrder(); },1500);
   }
   if(document.readyState==='complete') setTimeout(init,200);
   else window.addEventListener('load',function(){setTimeout(init,200);});
