@@ -67,26 +67,13 @@ body {
   margin: 0 !important;
 }
 
-/* Route the repeating strips into paged.js running elements so they
-   appear inside the @page top/bottom margin on every page. */
-.print-repeat-header,
-.quote-fixed-header, .header-strip, .repeat-header,
-.lov-repeat-overlay-header {
-  position: running(pageHeader) !important;
-  top: auto !important; left: auto !important; right: auto !important;
-  width: 100% !important;
-  margin: 0 !important;
-  z-index: auto !important;
-}
-.print-repeat-footer,
-.quote-fixed-footer, .footer-strip, .repeat-footer,
-.lov-repeat-overlay-footer {
-  position: running(pageFooter) !important;
-  top: auto !important; left: auto !important; right: auto !important;
-  bottom: auto !important;
-  width: 100% !important;
-  margin: 0 !important;
-  z-index: auto !important;
+/* Hide the original strips inside the paged.js flow — we render them as
+   overlays on top of every page wrap instead (much more reliable than
+   paged.js running elements, which mangle inline-styled / image strips). */
+.print-repeat-header, .print-repeat-footer,
+.quote-fixed-header, .header-strip, .repeat-header, .lov-repeat-overlay-header,
+.quote-fixed-footer, .footer-strip, .repeat-footer, .lov-repeat-overlay-footer {
+  display: none !important;
 }
 
 /* Catch-all: anything still position:fixed gets dropped back into flow. */
