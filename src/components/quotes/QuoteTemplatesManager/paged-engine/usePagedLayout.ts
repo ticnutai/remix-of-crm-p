@@ -103,13 +103,40 @@ ul, ol { break-inside: auto; }
 }
 `;
 
+const HEADER_SELECTORS = [
+  ".print-repeat-header",
+  ".quote-fixed-header",
+  ".header-strip",
+  ".repeat-header",
+  ".lov-repeat-overlay-header",
+];
+const FOOTER_SELECTORS = [
+  ".print-repeat-footer",
+  ".quote-fixed-footer",
+  ".footer-strip",
+  ".repeat-footer",
+  ".lov-repeat-overlay-footer",
+];
+
+function pickFirst(doc: Document, selectors: string[]): string {
+  for (const sel of selectors) {
+    const el = doc.querySelector(sel);
+    if (el) return el.outerHTML;
+  }
+  return "";
+}
+
 /**
- * Extract just the body HTML and stylesheet text from a full HTML doc.
- * paged.js needs the body content; styles are passed separately.
+ * Extract body HTML, stylesheet text, and the repeating header/footer strips.
+ * paged.js receives the body content; strips are rendered as overlays.
  */
-function splitHtml(raw: string): { body: string; styles: string } {
-  if (!raw) return { body: "", styles: "" };
-  // Quick parse via DOMParser
+function splitHtml(raw: string): {
+  body: string;
+  styles: string;
+  headerHtml: string;
+  footerHtml: string;
+} {
+  if (!raw) return { body: "", styles: "", headerHtml: "", footerHtml: "" };
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(raw, "text/html");
@@ -119,9 +146,11 @@ function splitHtml(raw: string): { body: string; styles: string } {
       styles += "\n" + (n.textContent || "");
     });
     const body = doc.body?.innerHTML ?? raw;
-    return { body, styles };
+    const headerHtml = pickFirst(doc, HEADER_SELECTORS);
+    const footerHtml = pickFirst(doc, FOOTER_SELECTORS);
+    return { body, styles, headerHtml, footerHtml };
   } catch {
-    return { body: raw, styles: "" };
+    return { body: raw, styles: "", headerHtml: "", footerHtml: "" };
   }
 }
 
