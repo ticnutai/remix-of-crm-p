@@ -856,6 +856,37 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     }catch(e){ /* noop */ }
   }
 
+  // Defensive runtime pass: walk every strip element and re-assert that its
+  // z-index is strictly above any mask, regardless of inline styles or
+  // user CSS authored inside the quote HTML. Idempotent — safe to re-run.
+  function enforceLayerOrder(){
+    try{
+      var STRIP_SEL='.lov-repeat-overlay-header,.lov-repeat-overlay-footer,.print-repeat-header,.print-repeat-footer,.header-strip,.quote-fixed-header,.quote-fixed-footer,.footer,.header';
+      var STRIP_Z='2147483600';
+      var MASK_Z='2147482000';
+      document.querySelectorAll('.lov-safe-mask').forEach(function(n){
+        n.style.setProperty('z-index', MASK_Z, 'important');
+        n.style.setProperty('position', 'absolute', 'important');
+      });
+      document.querySelectorAll(STRIP_SEL).forEach(function(n){
+        var cs=getComputedStyle(n);
+        if(cs.position==='static') n.style.setProperty('position','relative','important');
+        n.style.setProperty('z-index', STRIP_Z, 'important');
+        // Promote inner painters too (td/div children of thead/tfoot etc.)
+        n.querySelectorAll('td,th,div,img,svg').forEach(function(c){
+          var ccs=getComputedStyle(c);
+          if(ccs.position==='static') c.style.position='relative';
+          c.style.zIndex=STRIP_Z;
+        });
+      });
+      // Body must form a stacking context so our layers can't be trapped.
+      document.body.style.isolation='isolate';
+      if(getComputedStyle(document.body).position==='static'){
+        document.body.style.position='relative';
+      }
+    }catch(e){ /* noop */ }
+  }
+
   function init(){
     try{
       document.body.setAttribute('data-safe-top', String(SAFE_TOP_PX));
@@ -865,9 +896,11 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     tagAutoPaths();
     setupRepeatOverlays();
     setupSafeMasks();
+    enforceLayerOrder();
     setTimeout(detectIssues,300);
     // Re-run setup after content settles (fonts/images)
-    setTimeout(function(){ setupRepeatOverlays(); setupSafeMasks(); },600);
+    setTimeout(function(){ setupRepeatOverlays(); setupSafeMasks(); enforceLayerOrder(); },600);
+    setTimeout(function(){ enforceLayerOrder(); },1500);
   }
   if(document.readyState==='complete') setTimeout(init,200);
   else window.addEventListener('load',function(){setTimeout(init,200);});
