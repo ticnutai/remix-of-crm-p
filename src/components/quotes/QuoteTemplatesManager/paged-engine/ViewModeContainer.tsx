@@ -1,9 +1,6 @@
 // Visual container that hosts the paged.js output and switches between
 // the four view modes: single page, continuous scroll, two-page spread,
-// and thumbnail grid. The paged.js DOM (containerRef) is rendered once
-// hidden off-screen; the visible viewport contains *clones* of each
-// page so we can lay them out independently without re-running the
-// fragmentation engine.
+// and thumbnail grid.
 import {
   useCallback,
   useEffect,
@@ -17,7 +14,6 @@ import { cn } from "@/lib/utils";
 export type PagedViewMode = "single" | "continuous" | "spread" | "grid";
 
 interface ViewModeContainerProps {
-  /** ref returned by usePagedLayout - container holds .pagedjs_page elements. */
   sourceRef: React.MutableRefObject<HTMLDivElement | null>;
   pageCount: number;
   rendering: boolean;
@@ -25,8 +21,13 @@ interface ViewModeContainerProps {
   zoom: number;
   currentPage: number;
   onPageChange: (p: number) => void;
-  /** Forwarded to outer scroll element so keyboard nav can scroll it. */
   scrollRef?: React.MutableRefObject<HTMLDivElement | null>;
+  /** Indices (0-based, relative to paged.js output) that should be hidden. */
+  deletedPages?: number[];
+  onDeletePage?: (idx: number) => void;
+  /** Optional overlay heights (px) for visualising the strip zones. */
+  stripTopPx?: number;
+  stripBottomPx?: number;
 }
 
 // A4 at 96dpi for layout calculations (paged.js uses the same).
@@ -42,16 +43,21 @@ export default function ViewModeContainer({
   currentPage,
   onPageChange,
   scrollRef,
+  deletedPages = [],
+  onDeletePage,
+  stripTopPx = 0,
+  stripBottomPx = 0,
 }: ViewModeContainerProps) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const internalScrollRef = useRef<HTMLDivElement | null>(null);
   const targetScrollRef = scrollRef ?? internalScrollRef;
   const [version, setVersion] = useState(0);
 
-  // Re-clone pages from source whenever paged.js finishes or pageCount changes
   useLayoutEffect(() => {
     setVersion((v) => v + 1);
   }, [pageCount, rendering]);
+
+  const deletedSet = useMemo(() => new Set(deletedPages), [deletedPages]);
 
   const renderPages = useCallback(() => {
     if (!viewportRef.current || !sourceRef.current) return;
@@ -64,7 +70,11 @@ export default function ViewModeContainer({
     );
     if (pages.length === 0) return;
 
+    const visiblePages = pages.filter((_, i) => !deletedSet.has(i));
+    let visibleIdx = 0;
+
     pages.forEach((srcPage, idx) => {
+      if (deletedSet.has(idx)) return;
       const wrap = document.createElement("div");
       wrap.className = "paged-page-wrap";
       wrap.dataset.pageIdx = String(idx);
@@ -74,47 +84,71 @@ export default function ViewModeContainer({
       wrap.style.boxShadow = "0 2px 14px rgba(0,0,0,0.12)";
       wrap.style.overflow = "hidden";
       wrap.style.flexShrink = "0";
+      wrap.style.position = "relative";
 
       const clone = srcPage.cloneNode(true) as HTMLElement;
       clone.style.margin = "0";
       wrap.appendChild(clone);
 
+      // Strip overlays (visual guides — paged.js already keeps content out
+      // because they are @page margins; this is just a translucent indicator).
+      if (stripTopPx > 0) {
+        const top = document.createElement("div");
+        top.style.cssText = `position:absolute;left:0;right:0;top:0;height:${stripTopPx}px;background:rgba(216,172,39,0.08);border-bottom:1px dashed rgba(216,172,39,0.5);pointer-events:none;`;
+        wrap.appendChild(top);
+      }
+      if (stripBottomPx > 0) {
+        const bot = document.createElement("div");
+        bot.style.cssText = `position:absolute;left:0;right:0;bottom:0;height:${stripBottomPx}px;background:rgba(216,172,39,0.08);border-top:1px dashed rgba(216,172,39,0.5);pointer-events:none;`;
+        wrap.appendChild(bot);
+      }
+
       const label = document.createElement("div");
-      label.textContent = `${idx + 1} / ${pages.length}`;
+      label.textContent = `${visibleIdx + 1} / ${visiblePages.length}`;
       label.style.cssText =
-        "position:absolute;bottom:6px;left:8px;font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.55);color:#fff;pointer-events:none;font-family:sans-serif;";
-      wrap.style.position = "relative";
+        "position:absolute;bottom:6px;left:8px;font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.55);color:#fff;pointer-events:none;font-family:sans-serif;z-index:10;";
       wrap.appendChild(label);
 
-      // Click on a page in grid/continuous => focus / jump to it
+      if (onDeletePage) {
+        const del = document.createElement("button");
+        del.type = "button";
+        del.textContent = "🗑";
+        del.title = "מחק דף";
+        del.style.cssText =
+          "position:absolute;top:6px;right:6px;font-size:12px;padding:4px 8px;border-radius:6px;background:rgba(220,38,38,0.92);color:#fff;border:none;cursor:pointer;z-index:11;box-shadow:0 1px 4px rgba(0,0,0,0.3);";
+        del.addEventListener("click", (e) => {
+          e.stopPropagation();
+          onDeletePage(idx);
+        });
+        wrap.appendChild(del);
+      }
+
       if (mode === "grid" || mode === "continuous" || mode === "spread") {
         wrap.style.cursor = "pointer";
-        wrap.addEventListener("click", () => onPageChange(idx));
+        wrap.addEventListener("click", () => onPageChange(visibleIdx));
       }
 
       viewport.appendChild(wrap);
+      visibleIdx++;
     });
-  }, [sourceRef, mode, onPageChange]);
+  }, [sourceRef, mode, onPageChange, deletedSet, onDeletePage, stripTopPx, stripBottomPx]);
 
   useLayoutEffect(() => {
     renderPages();
   }, [renderPages, version, mode]);
 
-  // Scroll current page into view in continuous/spread modes
   useEffect(() => {
     if (mode !== "continuous" && mode !== "spread") return;
     const viewport = viewportRef.current;
     const scroller = targetScrollRef.current;
     if (!viewport || !scroller) return;
-    const target = viewport.querySelector<HTMLElement>(
-      `.paged-page-wrap[data-page-idx="${currentPage}"]`,
-    );
+    const wraps = viewport.querySelectorAll<HTMLElement>(".paged-page-wrap");
+    const target = wraps[currentPage];
     if (!target) return;
     const targetTop = target.offsetTop * zoom;
     scroller.scrollTo({ top: targetTop - 24, behavior: "smooth" });
   }, [currentPage, mode, zoom, targetScrollRef, version]);
 
-  // Layout classes per mode
   const viewportClass = useMemo(() => {
     switch (mode) {
       case "single":
@@ -122,29 +156,25 @@ export default function ViewModeContainer({
       case "continuous":
         return "flex flex-col items-center gap-6";
       case "spread":
-        // RTL: page 1 on the right, page 2 on the left
         return "grid grid-cols-2 gap-4 justify-items-center";
       case "grid":
         return "flex flex-wrap gap-4 justify-center";
     }
   }, [mode]);
 
-  // In single mode we hide all pages except the current via CSS
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
     const wraps = viewport.querySelectorAll<HTMLElement>(".paged-page-wrap");
-    wraps.forEach((w) => {
-      const idx = Number(w.dataset.pageIdx ?? "0");
+    wraps.forEach((w, i) => {
       if (mode === "single") {
-        w.style.display = idx === currentPage ? "block" : "none";
+        w.style.display = i === currentPage ? "block" : "none";
       } else {
         w.style.display = "block";
       }
     });
-  }, [mode, currentPage, version, pageCount]);
+  }, [mode, currentPage, version, pageCount, deletedSet]);
 
-  // Effective zoom per mode (grid uses smaller thumbnails)
   const effectiveZoom = mode === "grid" ? Math.min(0.35, zoom * 0.45) : zoom;
 
   return (
