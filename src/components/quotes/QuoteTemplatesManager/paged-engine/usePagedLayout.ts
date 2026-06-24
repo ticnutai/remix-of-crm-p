@@ -159,8 +159,8 @@ function splitHtml(raw: string): {
       styles += "\n" + (n.textContent || "");
     });
     const body = doc.body?.innerHTML ?? raw;
-    const headerHtml = pickFirst(doc, HEADER_SELECTORS);
-    const footerHtml = pickFirst(doc, FOOTER_SELECTORS);
+    const headerHtml = pickStrip(doc, HEADER_SOURCES);
+    const footerHtml = pickStrip(doc, FOOTER_SOURCES);
     return { body, styles, headerHtml, footerHtml };
   } catch {
     return { body: raw, styles: "", headerHtml: "", footerHtml: "" };
