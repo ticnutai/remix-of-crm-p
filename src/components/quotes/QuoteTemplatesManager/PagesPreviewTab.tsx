@@ -995,7 +995,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     return html.includes("</body>")
       ? html.replace("</body>", `${injection}</body>`)
       : `${html}${injection}`;
-  }, [html, highlightIssues, manualMode, paginationCss, fixState.autoPaths, fixState.manual, fixState.safeZoneTopMm, fixState.safeZoneBottomMm, fixState.protectedBlocks]);
+  }, [html, highlightIssues, manualMode, paginationCss, fixState.autoPaths, fixState.manual, fixState.safeZoneTopMm, fixState.safeZoneBottomMm, fixState.protectedBlocks, fixState.autoEnforceStrips, fixState.deletedPages]);
 
   // Measure
   const handleMeasureLoad = useCallback(() => {
