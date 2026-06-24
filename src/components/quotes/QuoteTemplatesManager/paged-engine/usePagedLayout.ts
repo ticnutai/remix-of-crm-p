@@ -163,6 +163,8 @@ export function usePagedLayout(
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [renderKey, setRenderKey] = useState(0);
+  const [headerHtml, setHeaderHtml] = useState("");
+  const [footerHtml, setFooterHtml] = useState("");
   const runIdRef = useRef(0);
 
   useEffect(() => {
