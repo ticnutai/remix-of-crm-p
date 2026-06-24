@@ -11,6 +11,57 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 
+// Inject (once) a stylesheet that forces strip contents to fit their overlay.
+// Uses !important so the legacy template's inline `position:absolute`,
+// fixed `height:171px`, etc. don't break the strip.
+const STRIP_STYLE_ID = "lov-paged-strip-fit-styles";
+function ensureStripStyles() {
+  if (typeof document === "undefined") return;
+  if (document.getElementById(STRIP_STYLE_ID)) return;
+  const s = document.createElement("style");
+  s.id = STRIP_STYLE_ID;
+  s.textContent = `
+    .paged-strip-top, .paged-strip-bottom {
+      box-sizing: border-box !important;
+    }
+    .paged-strip-top > *, .paged-strip-bottom > * {
+      position: static !important;
+      inset: auto !important;
+      top: auto !important; left: auto !important;
+      right: auto !important; bottom: auto !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      display: block !important;
+      transform: none !important;
+    }
+    .paged-strip-top *, .paged-strip-bottom * {
+      box-sizing: border-box !important;
+    }
+    .paged-strip-top [style*="position: fixed"],
+    .paged-strip-bottom [style*="position: fixed"],
+    .paged-strip-top [style*="position:fixed"],
+    .paged-strip-bottom [style*="position:fixed"] {
+      position: absolute !important;
+    }
+    .paged-strip-top img, .paged-strip-bottom img,
+    .paged-strip-top svg, .paged-strip-bottom svg,
+    .paged-strip-top canvas, .paged-strip-bottom canvas {
+      display: block !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      object-fit: contain !important;
+      object-position: center !important;
+    }
+  `;
+  document.head.appendChild(s);
+}
+
 export type PagedViewMode = "single" | "continuous" | "spread" | "grid";
 
 interface ViewModeContainerProps {
@@ -59,6 +110,10 @@ export default function ViewModeContainer({
   const [version, setVersion] = useState(0);
 
   useLayoutEffect(() => {
+    ensureStripStyles();
+  }, []);
+
+  useLayoutEffect(() => {
     setVersion((v) => v + 1);
   }, [pageCount, rendering]);
 
@@ -99,42 +154,56 @@ export default function ViewModeContainer({
       clone.style.margin = "0";
       wrap.appendChild(clone);
 
-      // Strip overlays (visual guides — paged.js already keeps content out
-      // because they are @page margins; this is just a translucent indicator).
       // Strip overlays — render the actual header/footer HTML so the logo
       // (and any other branding inside the strip) appears on every page.
+      // The overlays sit on top of the @page margin zones; paged.js already
+      // keeps body content out of those zones, so there is no coverage.
+      const fitChild = (parent: HTMLElement) => {
+        const child = parent.firstElementChild as HTMLElement | null;
+        if (child) {
+          child.style.display = "block";
+          child.style.position = "static";
+          child.style.width = "100%";
+          child.style.height = "100%";
+          child.style.margin = "0";
+          child.style.padding = "0";
+          child.style.maxWidth = "100%";
+          child.style.maxHeight = "100%";
+          child.style.boxSizing = "border-box";
+        }
+        // Make sure no descendant escapes / overflows the strip area.
+        parent.querySelectorAll<HTMLElement>("*").forEach((n) => {
+          const pos = n.style.position;
+          if (pos === "fixed") n.style.position = "absolute";
+        });
+        // Scale images/svg/canvas to fit the visible strip height.
+        parent.querySelectorAll<HTMLElement>("img, svg, canvas").forEach((m) => {
+          m.style.display = "block";
+          m.style.maxWidth = "100%";
+          m.style.maxHeight = "100%";
+          m.style.width = m.style.width || "100%";
+          m.style.height = m.style.height || "100%";
+          (m.style as CSSStyleDeclaration).objectFit = "contain";
+        });
+      };
+
       if (stripTopPx > 0) {
         const top = document.createElement("div");
         top.className = "paged-strip-top";
-        top.style.cssText = `position:absolute;left:0;right:0;top:0;height:${stripTopPx}px;overflow:hidden;pointer-events:none;`;
+        top.style.cssText = `position:absolute;left:0;right:0;top:0;height:${stripTopPx}px;overflow:hidden;pointer-events:none;z-index:5;`;
         if (headerHtml) {
           top.innerHTML = headerHtml;
-          // Force any extracted strip child to fill the overlay area.
-          const child = top.firstElementChild as HTMLElement | null;
-          if (child) {
-            child.style.display = "block";
-            child.style.position = "static";
-            child.style.width = "100%";
-            child.style.height = "100%";
-            child.style.margin = "0";
-          }
+          fitChild(top);
         }
         wrap.appendChild(top);
       }
       if (stripBottomPx > 0) {
         const bot = document.createElement("div");
         bot.className = "paged-strip-bottom";
-        bot.style.cssText = `position:absolute;left:0;right:0;bottom:0;height:${stripBottomPx}px;overflow:hidden;pointer-events:none;`;
+        bot.style.cssText = `position:absolute;left:0;right:0;bottom:0;height:${stripBottomPx}px;overflow:hidden;pointer-events:none;z-index:5;`;
         if (footerHtml) {
           bot.innerHTML = footerHtml;
-          const child = bot.firstElementChild as HTMLElement | null;
-          if (child) {
-            child.style.display = "block";
-            child.style.position = "static";
-            child.style.width = "100%";
-            child.style.height = "100%";
-            child.style.margin = "0";
-          }
+          fitChild(bot);
         }
         wrap.appendChild(bot);
       }

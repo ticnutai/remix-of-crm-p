@@ -299,7 +299,13 @@ ${debug ? `
 
   const stripTopPx = topMm * MM_TO_PX;
   const stripBottomPx = bottomMm * MM_TO_PX;
-  console.log(`[PagedPreviewTab] strips px — top=${stripTopPx.toFixed(1)} bottom=${stripBottomPx.toFixed(1)} headerHtmlLen=${headerHtml.length} footerHtmlLen=${footerHtml.length} pageCount=${pageCount} rendering=${rendering}`);
+  // Log strip metrics only when the meaningful values change (avoid spam).
+  useEffect(() => {
+    console.log(
+      `[PagedPreviewTab] strips — topPx=${stripTopPx.toFixed(1)} bottomPx=${stripBottomPx.toFixed(1)} ` +
+      `headerHtmlLen=${headerHtml.length} footerHtmlLen=${footerHtml.length} pageCount=${pageCount}`,
+    );
+  }, [stripTopPx, stripBottomPx, headerHtml.length, footerHtml.length, pageCount]);
 
   return (
     <TooltipProvider delayDuration={200}>
