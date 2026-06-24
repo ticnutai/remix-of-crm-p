@@ -123,19 +123,30 @@ const FOOTER_SOURCES: { sel: string; inner?: string }[] = [
 function pickStrip(
   doc: Document,
   sources: { sel: string; inner?: string }[],
+  label: string,
 ): string {
+  console.log(`[paged-engine] pickStrip(${label}) — scanning ${sources.length} selectors`);
   for (const { sel, inner } of sources) {
-    const el = doc.querySelector(sel);
+    const all = doc.querySelectorAll(sel);
+    console.log(`[paged-engine] pickStrip(${label}) sel="${sel}" matches=${all.length}`);
+    const el = all[0];
     if (!el) continue;
     if (inner) {
       const innerEl = el.querySelector(inner);
+      console.log(
+        `[paged-engine] pickStrip(${label}) inner="${inner}" found=${!!innerEl} innerLen=${innerEl?.innerHTML.trim().length ?? 0}`,
+      );
       if (innerEl && innerEl.innerHTML.trim()) return innerEl.innerHTML;
-      // fallback: use td-less content if any
-      if (el.textContent?.trim()) return el.innerHTML;
+      if (el.textContent?.trim()) {
+        console.log(`[paged-engine] pickStrip(${label}) fallback to outer innerHTML`);
+        return el.innerHTML;
+      }
       continue;
     }
+    console.log(`[paged-engine] pickStrip(${label}) — using outerHTML len=${el.outerHTML.length}`);
     return el.outerHTML;
   }
+  console.warn(`[paged-engine] pickStrip(${label}) — NO MATCH, returning empty`);
   return "";
 }
 
