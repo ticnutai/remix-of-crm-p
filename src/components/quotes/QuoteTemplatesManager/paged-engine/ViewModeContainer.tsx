@@ -28,6 +28,9 @@ interface ViewModeContainerProps {
   /** Optional overlay heights (px) for visualising the strip zones. */
   stripTopPx?: number;
   stripBottomPx?: number;
+  /** Repeating header/footer HTML rendered as an overlay on every page. */
+  headerHtml?: string;
+  footerHtml?: string;
 }
 
 // A4 at 96dpi for layout calculations (paged.js uses the same).
