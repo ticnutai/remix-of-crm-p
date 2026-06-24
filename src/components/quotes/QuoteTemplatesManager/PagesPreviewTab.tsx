@@ -650,7 +650,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   else window.addEventListener('load',function(){setTimeout(init,200);});
 })();
 </script>`;
-    const injection = `${highlightCss}${manualCss}${fixCssBlock}${script}`;
+    const injection = `${enforceCss}${highlightCss}${manualCss}${fixCssBlock}${script}`;
     return html.includes("</body>")
       ? html.replace("</body>", `${injection}</body>`)
       : `${html}${injection}`;
