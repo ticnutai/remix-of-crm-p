@@ -6162,25 +6162,25 @@ export function HtmlTemplateEditor({
                 layersHtml += `<img src="${layers.text.url}" alt="Text" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:${(layers.text.opacity ?? 100) / 100};">`;
               }
               return `
-    <div class="header-strip" style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
+    <div id="__header-drag-target" class="header-strip" style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
       ${layersHtml}
-      <div data-drag-strip="header" style="position:absolute;bottom:0;left:0;right:0;height:10px;cursor:ns-resize;z-index:20;display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(255,255,255,0.7);pointer-events:none;"></div></div>
-    </div>`;
+    </div>
+    <div data-drag-strip="header" style="width:100%;height:10px;cursor:ns-resize;background:rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(255,255,255,0.6);pointer-events:none;"></div></div>`;
             } else {
               const stripOpacity = (designSettings.stripLineOpacity ?? 100) / 100;
               const logoSrc = designSettings.logoUrl || "";
               const stripImgTag = logoSrc ? `<img src="${logoSrc}" alt="Header Strip" style="width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: ${stripOpacity}; mix-blend-mode: multiply;">` : "";
               return `
-    <div class="header-strip" style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
+    <div id="__header-drag-target" class="header-strip" style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
       ${stripImgTag}
-      <div data-drag-strip="header" style="position:absolute;bottom:0;left:0;right:0;height:10px;cursor:ns-resize;z-index:20;display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(255,255,255,0.7);pointer-events:none;"></div></div>
-    </div>`;
+    </div>
+    <div data-drag-strip="header" style="width:100%;height:10px;cursor:ns-resize;background:rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(255,255,255,0.6);pointer-events:none;"></div></div>`;
 
             }
           })()
         : designSettings.showHeaderStrip !== false
         ? `
-    <div class="header${designSettings.logoPosition === "full-width" ? " full-width-header" : ""}" style="position:relative;">
+    <div id="__header-drag-target" class="header${designSettings.logoPosition === "full-width" ? " full-width-header" : ""}" style="position:relative;">
       ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === "full-width" ? `<img src="${designSettings.logoUrl}" alt="Logo">` : ""}
       ${designSettings.showLogo && designSettings.logoUrl && (!designSettings.logoPosition || designSettings.logoPosition === "inside-header") ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoWidth || designSettings.logoSize || 120}px; ${designSettings.logoHeight ? `height: ${designSettings.logoHeight}px; object-fit: contain;` : "height: auto;"} margin-bottom: 15px;">` : ""}
       ${
@@ -6189,8 +6189,8 @@ export function HtmlTemplateEditor({
       <p data-editable="template.description" style="opacity: 0.9; margin: 10px 0 0;">${editedTemplate.description || ""}</p>`
           : ""
       }
-      <div data-drag-strip="header" style="position:absolute;bottom:0;left:0;right:0;height:10px;cursor:ns-resize;z-index:20;display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(255,255,255,0.7);pointer-events:none;"></div></div>
-    </div>`
+    </div>
+    <div data-drag-strip="header" style="width:100%;height:10px;cursor:ns-resize;background:rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(255,255,255,0.6);pointer-events:none;"></div></div>`
         : `
     <div style="padding: 40px; text-align: center; border-bottom: 2px solid ${designSettings.primaryColor};">
       ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition !== "full-width" ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoWidth || designSettings.logoSize || 120}px; ${designSettings.logoHeight ? `height: ${designSettings.logoHeight}px; object-fit: contain;` : "height: auto;"} margin-bottom: 15px;">` : ""}
@@ -6260,8 +6260,8 @@ export function HtmlTemplateEditor({
     </div>
       </td></tr></tbody>
       <tfoot class="print-repeat-footer"><tr><td>
-    <div class="footer">
-      <div data-drag-strip="footer" style="position:absolute;top:0;left:0;right:0;height:10px;cursor:ns-resize;z-index:20;display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(0,0,0,0.25);pointer-events:none;"></div></div>
+    <div data-drag-strip="footer" style="width:100%;height:10px;cursor:ns-resize;background:rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(0,0,0,0.25);pointer-events:none;"></div></div>
+    <div id="__footer-drag-target" class="footer">
       <strong>${designSettings.companyName}</strong><br>
       ${designSettings.companyAddress} | ${designSettings.companyPhone} | ${designSettings.companyEmail}
     </div>
@@ -6279,8 +6279,9 @@ export function HtmlTemplateEditor({
     if (!handle) return;
     e.preventDefault(); e.stopPropagation();
     var type = handle.getAttribute('data-drag-strip');
-    var container = handle.parentElement;
-    dragging = { type: type, container: container, startY: e.clientY, startH: container.offsetHeight };
+    var container = document.getElementById('__' + type + '-drag-target');
+    if (!container) return;
+    dragging = { type: type, container: container, startY: e.clientY, startH: container.offsetHeight, currentH: null };
     document.body.style.cursor = 'ns-resize';
     document.body.style.userSelect = 'none';
   }, true);
@@ -6290,10 +6291,13 @@ export function HtmlTemplateEditor({
     var newH = Math.max(40, dragging.type === 'footer' ? dragging.startH - delta : dragging.startH + delta);
     dragging.container.style.height = newH + 'px';
     dragging.container.style.minHeight = newH + 'px';
-    try { window.parent.postMessage({ __lovableInlineEdit: true, path: 'strip-height:' + dragging.type, value: String(Math.round(newH)) }, '*'); } catch(_){}
+    dragging.currentH = newH;
   });
   document.addEventListener('mouseup', function(){
     if (!dragging) return;
+    if (dragging.currentH != null) {
+      try { window.parent.postMessage({ __lovableInlineEdit: true, path: 'strip-height:' + dragging.type, value: String(Math.round(dragging.currentH)) }, '*'); } catch(_){}
+    }
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
     dragging = null;
