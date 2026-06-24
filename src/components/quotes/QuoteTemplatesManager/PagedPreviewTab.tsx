@@ -98,6 +98,15 @@ function clampMm(v: unknown, fallback: number): number {
 
 const MM_TO_PX = 96 / 25.4; // ~3.78
 
+function useDebouncedValue<T>(value: T, delay = 250): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), delay);
+    return () => window.clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
 interface PagedPreviewTabProps {
   html: string;
   onExportPdf?: () => void;
@@ -141,17 +150,26 @@ export default function PagedPreviewTab({
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Dynamic @page CSS — overrides margins (= strip heights). This is the
-  // *only* knob we need: paged.js guarantees no content lands inside the
-  // page margin, so changing margin = changing the safe strip zone.
+  // Debounce the strip values that drive @page margins so dragging sliders
+  // doesn't trigger paged.js fragmentation on every pixel (~300ms idle wait).
+  const debouncedTop = useDebouncedValue(topMm, 300);
+  const debouncedBottom = useDebouncedValue(bottomMm, 300);
+  const debouncedSide = useDebouncedValue(sideMm, 300);
+  const stripsSettling =
+    debouncedTop !== topMm ||
+    debouncedBottom !== bottomMm ||
+    debouncedSide !== sideMm;
+
+  // Dynamic @page CSS — overrides margins (= strip heights). paged.js
+  // guarantees no content lands inside the page margin.
   const extraCss = useMemo(
     () => `
 @page {
   size: A4;
-  margin: ${topMm}mm ${sideMm}mm ${bottomMm}mm ${sideMm}mm !important;
+  margin: ${debouncedTop}mm ${debouncedSide}mm ${debouncedBottom}mm ${debouncedSide}mm !important;
 }
 `,
-    [topMm, bottomMm, sideMm],
+    [debouncedTop, debouncedBottom, debouncedSide],
   );
 
   const { containerRef, pageCount, rendering, error, rerender } =
