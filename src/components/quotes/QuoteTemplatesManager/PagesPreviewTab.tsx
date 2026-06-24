@@ -199,12 +199,12 @@ export default function PagesPreviewTab({
     try {
       localStorage.setItem(
         LS_KEY,
-        JSON.stringify({ mode, zoom, highlightIssues } as Prefs),
+        JSON.stringify({ mode, zoom, highlightIssues, showSafeZones } as Prefs),
       );
     } catch {
       // ignore
     }
-  }, [mode, zoom, highlightIssues]);
+  }, [mode, zoom, highlightIssues, showSafeZones]);
 
   // Persist fix state
   useEffect(() => {
