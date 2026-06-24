@@ -40,12 +40,33 @@ body {
   margin: 0 !important;
 }
 
-/* === Legacy fixed strips → paged.js running elements ===
-   The legacy template positions the header/footer strips with
-   position:fixed, which paged.js can't fragment (they vanish and the
-   body text appears to be missing). Re-route them into the running
-   element slot so they repeat on every page inside the @page margins. */
-.quote-fixed-header, .header-strip, .page-header, .repeat-header,
+/* === Break the legacy <table class="print-page-shell"> wrapper ===
+   The legacy template wraps ALL content in a <table> with thead/tbody/tfoot
+   so the browser repeats header/footer when printing. paged.js can't
+   fragment that — the giant thead consumes a whole page and the body
+   appears empty. Flatten the table to block flow. */
+.print-page-shell,
+.print-page-shell > thead,
+.print-page-shell > tbody,
+.print-page-shell > tfoot,
+.print-page-shell > thead > tr,
+.print-page-shell > tbody > tr,
+.print-page-shell > tfoot > tr,
+.print-page-shell > thead > tr > td,
+.print-page-shell > tbody > tr > td,
+.print-page-shell > tfoot > tr > td {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Route the repeating strips into paged.js running elements so they
+   appear inside the @page top/bottom margin on every page. */
+.print-repeat-header,
+.quote-fixed-header, .header-strip, .repeat-header,
 .lov-repeat-overlay-header {
   position: running(pageHeader) !important;
   top: auto !important; left: auto !important; right: auto !important;
@@ -53,7 +74,8 @@ body {
   margin: 0 !important;
   z-index: auto !important;
 }
-.quote-fixed-footer, .footer-strip, .page-footer, .repeat-footer,
+.print-repeat-footer,
+.quote-fixed-footer, .footer-strip, .repeat-footer,
 .lov-repeat-overlay-footer {
   position: running(pageFooter) !important;
   top: auto !important; left: auto !important; right: auto !important;
@@ -63,14 +85,17 @@ body {
   z-index: auto !important;
 }
 
-/* Catch-all: anything still position:fixed gets dropped back into flow
-   so it doesn't disappear from the rendered pages. */
+/* Catch-all: anything still position:fixed gets dropped back into flow. */
 [style*="position: fixed"], [style*="position:fixed"] {
   position: static !important;
 }
 
-/* Hide any visual mask leftovers from the legacy preview engine. */
-.lov-safe-mask, .lov-safe-mask-top, .lov-safe-mask-bottom { display: none !important; }
+/* Hide leftover masks from the legacy preview engine. */
+.lov-safe-mask, .lov-safe-mask-top, .lov-safe-mask-bottom,
+.lov-repeat-overlay { display: none !important; }
+
+/* The legacy frame overlay is fixed-positioned full-screen — kill it. */
+.print-frame-overlay { display: none !important; }
 
 h1, h2, h3, h4 {
   break-after: avoid-page;
