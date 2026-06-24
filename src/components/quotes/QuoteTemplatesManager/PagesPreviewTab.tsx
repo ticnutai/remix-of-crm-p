@@ -140,6 +140,8 @@ const loadFixState = (templateKey: string): FixState => {
       protectedBlocks: Array.isArray(p.protectedBlocks)
         ? p.protectedBlocks
         : [...DEFAULT_PROTECTED],
+      autoEnforceStrips: p.autoEnforceStrips !== false,
+      deletedPages: Array.isArray(p.deletedPages) ? p.deletedPages.filter((n: unknown) => typeof n === "number") : [],
     };
   } catch {
     return { ...defaultFixState };
