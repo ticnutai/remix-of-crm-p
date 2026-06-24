@@ -15,6 +15,10 @@ export interface PagedLayoutResult {
   error: string | null;
   /** Bump to force re-render. */
   rerender: () => void;
+  /** Extracted header strip HTML (rendered as overlay on every page). */
+  headerHtml: string;
+  /** Extracted footer strip HTML (rendered as overlay on every page). */
+  footerHtml: string;
 }
 
 // CSS injected into every paged.js render. Defines @page rules and
