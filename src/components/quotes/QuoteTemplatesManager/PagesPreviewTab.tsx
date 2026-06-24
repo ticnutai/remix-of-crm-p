@@ -39,6 +39,7 @@ import { toast } from "sonner";
 // A4 at 96dpi
 const A4_W = 794;
 const A4_H = 1123;
+const PX_PER_MM = 3.7795;
 
 // How many convergence passes the auto-fix runs before stopping
 const MAX_AUTOFIX_PASSES = 4;
@@ -174,13 +175,20 @@ export default function PagesPreviewTab({
   const [issues, setIssues] = useState<number>(0);
   const [exporting, setExporting] = useState(false);
 
-  // Ephemeral drag overrides for the safe-zone lines — used while the user
-  // is actively dragging, so we DON'T rebuild the iframe srcDoc on every
-  // mousemove (which is what caused the "jumpy" feel). Committed on mouseup.
-  const [dragTopMm, setDragTopMm] = useState<number | null>(null);
-  const [dragBottomMm, setDragBottomMm] = useState<number | null>(null);
+  // Drag state for safe-zone lines — kept in refs so the entire preview
+  // does NOT re-render on every mousemove. Only the line DOM is updated.
+  const dragRef = useRef<{
+    active: boolean;
+    line: "top" | "bottom";
+    startY: number;
+    startMm: number;
+    lastMm: number;
+    scale: number;
+  }>({ active: false, line: "top", startY: 0, startMm: 0, lastMm: 0, scale: 1 });
 
-
+  // Keep a registry of all rendered page-viewport containers so we can update
+  // every visible strip line/background in sync during drag.
+  const pageContainersRef = useRef<Map<number, HTMLDivElement>>(new Map());
 
   // Pagination fix state
   const templateKey = templateName || "default";
@@ -201,6 +209,125 @@ export default function PagesPreviewTab({
   // Iterative auto-fix bookkeeping
   const autoFixIterRef = useRef(0);
   const autoFixCumulativeRef = useRef(0);
+
+  // Update the visual position of all strip lines/bgs/labels without React render.
+  const updateSafeZoneVisuals = useCallback(
+    (topMm: number, bottomMm: number, scale: number) => {
+      const topPx = topMm * PX_PER_MM * scale;
+      const bottomPx = bottomMm * PX_PER_MM * scale;
+      pageContainersRef.current.forEach((container) => {
+        const topLine = container.querySelector<HTMLElement>(
+          '[data-safe-line="top"]',
+        );
+        const bottomLine = container.querySelector<HTMLElement>(
+          '[data-safe-line="bottom"]',
+        );
+        const topBg = container.querySelector<HTMLElement>(
+          '[data-safe-bg="top"]',
+        );
+        const bottomBg = container.querySelector<HTMLElement>(
+          '[data-safe-bg="bottom"]',
+        );
+        const topLabel = container.querySelector<HTMLElement>(
+          '[data-safe-label="top"]',
+        );
+        const bottomLabel = container.querySelector<HTMLElement>(
+          '[data-safe-label="bottom"]',
+        );
+        if (topLine) topLine.style.top = `${topPx}px`;
+        if (topBg) topBg.style.height = `${topPx}px`;
+        if (topLabel)
+          topLabel.textContent = `סטריפ עליון · ${topMm} מ"מ`;
+        if (bottomLine) bottomLine.style.bottom = `${bottomPx}px`;
+        if (bottomBg) bottomBg.style.height = `${bottomPx}px`;
+        if (bottomLabel)
+          bottomLabel.textContent = `סטריפ תחתון · ${bottomMm} מ"מ`;
+      });
+    },
+    [],
+  );
+
+  // Start dragging a safe-zone boundary line.
+  const startSafeZoneDrag = useCallback(
+    (line: "top" | "bottom", scale: number) =>
+      (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const startMm =
+          line === "top" ? fixState.safeZoneTopMm : fixState.safeZoneBottomMm;
+        dragRef.current = {
+          active: true,
+          line,
+          startY: e.clientY,
+          startMm,
+          lastMm: startMm,
+          scale,
+        };
+        document.body.style.cursor = "ns-resize";
+        document.body.style.userSelect = "none";
+        // Disable pointer-events on all page iframes while dragging so the
+        // parent window keeps receiving mousemove/mouseup events even when the
+        // cursor leaves the thin drag handle and enters the preview iframe.
+        const disabledIframes: HTMLIFrameElement[] = [];
+        document.querySelectorAll("iframe").forEach((ifr) => {
+          if ((ifr.title || "").startsWith("page-")) {
+            ifr.style.pointerEvents = "none";
+            disabledIframes.push(ifr);
+          }
+        });
+
+        const onMove = (ev: MouseEvent) => {
+          const d = dragRef.current;
+          if (!d.active) return;
+          const dy = ev.clientY - d.startY;
+          // For the bottom line the CSS distance is from the bottom edge:
+          // dragging the mouse UP moves the line UP and INCREASES the strip.
+          const invert = d.line === "bottom";
+          const dmm = (invert ? -dy : dy) / d.scale / PX_PER_MM;
+          const snapped = Math.round(d.startMm + dmm);
+          const other =
+            d.line === "top"
+              ? fixState.safeZoneBottomMm
+              : fixState.safeZoneTopMm;
+          // Leave at least 60mm of content between the two strips.
+          const maxMm = Math.max(
+            0,
+            Math.round(A4_H / PX_PER_MM - other - 60),
+          );
+          const clamped = Math.max(0, Math.min(maxMm, snapped));
+          if (clamped !== d.lastMm) {
+            d.lastMm = clamped;
+            if (d.line === "top") {
+              updateSafeZoneVisuals(clamped, fixState.safeZoneBottomMm, d.scale);
+            } else {
+              updateSafeZoneVisuals(fixState.safeZoneTopMm, clamped, d.scale);
+            }
+          }
+        };
+
+        const onUp = () => {
+          disabledIframes.forEach((ifr) => {
+            ifr.style.pointerEvents = "";
+          });
+          const { line: dragLine } = dragRef.current;
+          dragRef.current.active = false;
+          document.body.style.cursor = "";
+          document.body.style.userSelect = "";
+          window.removeEventListener("mousemove", onMove);
+          window.removeEventListener("mouseup", onUp);
+          const finalMm = dragRef.current.lastMm;
+          if (dragLine === "top") {
+            setFixState((s) => ({ ...s, safeZoneTopMm: finalMm }));
+          } else {
+            setFixState((s) => ({ ...s, safeZoneBottomMm: finalMm }));
+          }
+        };
+
+        window.addEventListener("mousemove", onMove);
+        window.addEventListener("mouseup", onUp);
+      },
+    [fixState.safeZoneTopMm, fixState.safeZoneBottomMm, updateSafeZoneVisuals],
+  );
 
   // Persist prefs
   useEffect(() => {
@@ -326,13 +453,55 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       : DEFAULT_PROTECTED
     ).join(",");
     // Hard enforcement: regular content gets pushed inside the safe zones via
-    // body padding, and the repeated header/footer overlays are clipped so
-    // they can NEVER bleed past the line the user set.
+    // body padding, and @page margins are set so the print path uses the same
+    // strip reservations. Visual masks cover the strips so any text that still
+    // overflows is hidden; the repeating header/footer overlays are promoted
+    // above the masks so they remain visible in their reserved zones.
     const enforceCss = `<style data-lov-safe-enforce>
       html, body { box-sizing: border-box; }
+      @page {
+        margin-top: ${safeTopPx}px;
+        margin-bottom: ${safeBottomPx}px;
+      }
       body {
         padding-top: ${safeTopPx}px !important;
         padding-bottom: ${safeBottomPx}px !important;
+      }
+      /* Masks hide any regular content that bleeds into the strips. */
+      body::before {
+        content: "";
+        position: fixed;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: ${safeTopPx}px;
+        background: rgba(255,255,255,0.96);
+        z-index: 999999;
+        pointer-events: none;
+      }
+      body::after {
+        content: "";
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: ${safeBottomPx}px;
+        background: rgba(255,255,255,0.96);
+        z-index: 999999;
+        pointer-events: none;
+      }
+      /* Strip elements must render above the masks. */
+      .lov-repeat-overlay-header,
+      .lov-repeat-overlay-footer,
+      .print-repeat-header,
+      .print-repeat-footer,
+      .header-strip,
+      .quote-fixed-header,
+      .quote-fixed-footer,
+      .footer,
+      .header {
+        position: relative;
+        z-index: 1000000 !important;
       }
       /* The repeated overlays live in their reserved strip and never escape. */
       .lov-repeat-overlay-header {
@@ -1049,16 +1218,35 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     scale: number,
     interactive = false,
     label?: string,
-  ) => (
-    <div
-      data-page-index={pageIdx}
-      className="relative bg-card shadow-md border border-border"
-      style={{
-        width: A4_W * scale,
-        height: A4_H * scale,
-        overflow: "hidden",
-      }}
-    >
+  ) => {
+    const safeTopPx = fixState.safeZoneTopMm * PX_PER_MM * scale;
+    const safeBottomPx = fixState.safeZoneBottomMm * PX_PER_MM * scale;
+    return (
+      <div
+        data-page-index={pageIdx}
+        ref={(el) => {
+          if (el) {
+            pageContainersRef.current.set(pageIdx, el);
+            // Make sure the initial strip visuals are in sync with fixState
+            // (especially after zoom / mode switches that recreate containers).
+            requestAnimationFrame(() => {
+              updateSafeZoneVisuals(
+                fixState.safeZoneTopMm,
+                fixState.safeZoneBottomMm,
+                scale,
+              );
+            });
+          } else {
+            pageContainersRef.current.delete(pageIdx);
+          }
+        }}
+        className="relative bg-card shadow-md border border-border"
+        style={{
+          width: A4_W * scale,
+          height: A4_H * scale,
+          overflow: "hidden",
+        }}
+      >
       <div
         style={{
           width: A4_W * scale,
@@ -1084,119 +1272,108 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           }}
         />
       </div>
-      {showSafeZones && (() => {
-        // Live values (use drag ephemeral if active) to keep the line glued
-        // to the cursor without rebuilding the iframe on every mousemove.
-        const liveTopMm = dragTopMm ?? fixState.safeZoneTopMm;
-        const liveBottomMm = dragBottomMm ?? fixState.safeZoneBottomMm;
-        const PX_PER_MM = 3.7795;
-        const MAX_MM = Math.round((A4_H / PX_PER_MM) * 0.6); // up to 60% of page
+      {showSafeZones && (
+        <>
+          {/* Top strip background — visually marks the reserved logo area. */}
+          <div
+            data-safe-bg="top"
+            className="absolute left-0 right-0 top-0 pointer-events-none z-10"
+            style={{
+              height: safeTopPx,
+              background:
+                "repeating-linear-gradient(45deg, hsl(var(--accent) / 0.08), hsl(var(--accent) / 0.08) 10px, hsl(var(--accent) / 0.04) 10px, hsl(var(--accent) / 0.04) 20px)",
+            }}
+          />
+          {/* Bottom strip background — visually marks the reserved footer area. */}
+          <div
+            data-safe-bg="bottom"
+            className="absolute left-0 right-0 bottom-0 pointer-events-none z-10"
+            style={{
+              height: safeBottomPx,
+              background:
+                "repeating-linear-gradient(45deg, hsl(var(--accent) / 0.08), hsl(var(--accent) / 0.08) 10px, hsl(var(--accent) / 0.04) 10px, hsl(var(--accent) / 0.04) 20px)",
+            }}
+          />
 
-        const startDrag = (
-          startMmGetter: () => number,
-          setDraft: (n: number | null) => void,
-          commit: (n: number) => void,
-          invert: boolean,
-        ) => (e: React.MouseEvent) => {
-          if (!interactive) return;
-          e.preventDefault();
-          e.stopPropagation();
-          const startY = e.clientY;
-          const startMm = startMmGetter();
-          let lastMm = startMm;
-          document.body.style.cursor = "ns-resize";
-          document.body.style.userSelect = "none";
-          const onMove = (ev: MouseEvent) => {
-            const dy = ev.clientY - startY;
-            const dmm = (invert ? -dy : dy) / scale / PX_PER_MM;
-            // snap to 1mm grid
-            const snapped = Math.round(startMm + dmm);
-            const clamped = Math.max(0, Math.min(MAX_MM, snapped));
-            if (clamped !== lastMm) {
-              lastMm = clamped;
-              setDraft(clamped);
+          {/* Top safe-zone boundary — draggable dashed line. */}
+          <div
+            data-safe-line="top"
+            className="absolute left-0 right-0 group z-50"
+            style={{
+              top: safeTopPx,
+              height: 24,
+              marginTop: -12,
+              cursor: interactive ? "ns-resize" : "default",
+              pointerEvents: interactive ? "auto" : "none",
+            }}
+            title={
+              interactive
+                ? "גרור לשינוי גובה הסטריפ העליון (קפיצות של 1 מ\"מ)"
+                : undefined
             }
-          };
-          const onUp = () => {
-            window.removeEventListener("mousemove", onMove);
-            window.removeEventListener("mouseup", onUp);
-            document.body.style.cursor = "";
-            document.body.style.userSelect = "";
-            setDraft(null);
-            commit(lastMm);
-          };
-          window.addEventListener("mousemove", onMove);
-          window.addEventListener("mouseup", onUp);
-        };
-
-        return (
-          <>
-            {/* Top safe zone limit — draggable dashed gold line */}
+            onMouseDown={startSafeZoneDrag("top", scale)}
+            aria-label="גרור לשינוי גובה סטריפ עליון"
+          >
             <div
-              className="absolute left-0 right-0 group"
+              className="absolute left-0 right-0 top-1/2 -translate-y-1/2 transition-all"
               style={{
-                top: liveTopMm * PX_PER_MM * scale - 6,
-                height: 12,
-                cursor: interactive ? "ns-resize" : "default",
-                zIndex: 50,
-                pointerEvents: interactive ? "auto" : "none",
-                willChange: "top",
+                borderTop: "2px dashed hsl(var(--accent))",
+                boxShadow: "0 0 0 1px hsl(var(--accent) / 0.25)",
               }}
-              title={interactive ? "גרור לשינוי גובה הסטריפ העליון (קפיצות של 1 מ\"מ)" : undefined}
-              onMouseDown={startDrag(
-                () => fixState.safeZoneTopMm,
-                setDragTopMm,
-                (n) => setFixState((s) => ({ ...s, safeZoneTopMm: n })),
-                false,
-              )}
-              aria-label="גרור לשינוי גובה סטריפ עליון"
-            >
-              <div
-                className="absolute left-0 right-0 top-1/2 -translate-y-1/2 group-hover:border-t-[2.5px] transition-all"
-                style={{ borderTop: "1.5px dashed #d8ac27" }}
-              />
-              <span
-                className="absolute right-1 -top-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-sm select-none pointer-events-none"
-                style={{ background: "#d8ac27", color: "#162C58", lineHeight: 1 }}
-              >
-                סטריפ עליון · {liveTopMm} מ"מ
-              </span>
-            </div>
-            {/* Bottom safe zone limit — draggable */}
-            <div
-              className="absolute left-0 right-0 group"
+            />
+            <span
+              data-safe-label="top"
+              className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] font-semibold px-1.5 py-0.5 rounded-sm select-none pointer-events-none whitespace-nowrap"
               style={{
-                bottom: liveBottomMm * PX_PER_MM * scale - 6,
-                height: 12,
-                cursor: interactive ? "ns-resize" : "default",
-                zIndex: 50,
-                pointerEvents: interactive ? "auto" : "none",
-                willChange: "bottom",
+                background: "hsl(var(--accent))",
+                color: "hsl(var(--primary))",
+                lineHeight: 1,
               }}
-              title={interactive ? "גרור לשינוי גובה הסטריפ התחתון (קפיצות של 1 מ\"מ)" : undefined}
-              onMouseDown={startDrag(
-                () => fixState.safeZoneBottomMm,
-                setDragBottomMm,
-                (n) => setFixState((s) => ({ ...s, safeZoneBottomMm: n })),
-                true,
-              )}
-              aria-label="גרור לשינוי גובה סטריפ תחתון"
             >
-              <div
-                className="absolute left-0 right-0 top-1/2 -translate-y-1/2 group-hover:border-t-[2.5px] transition-all"
-                style={{ borderTop: "1.5px dashed #d8ac27" }}
-              />
-              <span
-                className="absolute right-1 bottom-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-sm select-none pointer-events-none"
-                style={{ background: "#d8ac27", color: "#162C58", lineHeight: 1 }}
-              >
-                סטריפ תחתון · {liveBottomMm} מ"מ
-              </span>
-            </div>
-          </>
-        );
-      })()}
+              סטריפ עליון · {fixState.safeZoneTopMm} מ"מ
+            </span>
+          </div>
 
+          {/* Bottom safe-zone boundary — draggable dashed line. */}
+          <div
+            data-safe-line="bottom"
+            className="absolute left-0 right-0 group z-50"
+            style={{
+              bottom: safeBottomPx,
+              height: 24,
+              marginBottom: -12,
+              cursor: interactive ? "ns-resize" : "default",
+              pointerEvents: interactive ? "auto" : "none",
+            }}
+            title={
+              interactive
+                ? "גרור לשינוי גובה הסטריפ התחתון (קפיצות של 1 מ\"מ)"
+                : undefined
+            }
+            onMouseDown={startSafeZoneDrag("bottom", scale)}
+            aria-label="גרור לשינוי גובה סטריפ תחתון"
+          >
+            <div
+              className="absolute left-0 right-0 top-1/2 -translate-y-1/2 transition-all"
+              style={{
+                borderTop: "2px dashed hsl(var(--accent))",
+                boxShadow: "0 0 0 1px hsl(var(--accent) / 0.25)",
+              }}
+            />
+            <span
+              data-safe-label="bottom"
+              className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] font-semibold px-1.5 py-0.5 rounded-sm select-none pointer-events-none whitespace-nowrap"
+              style={{
+                background: "hsl(var(--accent))",
+                color: "hsl(var(--primary))",
+                lineHeight: 1,
+              }}
+            >
+              סטריפ תחתון · {fixState.safeZoneBottomMm} מ"מ
+            </span>
+          </div>
+        </>
+      )}
 
       <div className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-foreground/70 text-background pointer-events-none">
         {label ? `${label} · ` : ""}
@@ -1204,6 +1381,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       </div>
     </div>
   );
+};
 
   useEffect(() => {
     if (mode === "single" || mode === "compare") return;
