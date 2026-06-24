@@ -28,6 +28,7 @@ import {
   Keyboard,
   Undo2,
   Ruler,
+  Bug,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
