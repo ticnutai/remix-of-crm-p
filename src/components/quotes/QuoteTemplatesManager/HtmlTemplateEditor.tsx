@@ -6172,8 +6172,8 @@ export function HtmlTemplateEditor({
     </div>`;
             } else {
               const stripOpacity = (designSettings.stripLineOpacity ?? 100) / 100;
-              const logoSrc = designSettings.logoUrl || "";
-              const stripImgTag = logoSrc ? `<img src="${logoSrc}" alt="Header Strip" style="width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: ${stripOpacity}; mix-blend-mode: multiply;">` : "";
+              const logoSrc = designSettings.logoUrl || companyHeaderImg;
+              const stripImgTag = `<img src="${logoSrc}" alt="Header Strip" onerror="this.onerror=null;this.src='${companyHeaderImg}'" style="width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: ${stripOpacity}; mix-blend-mode: multiply;">`;
               return `
     <div class="header-strip" style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
       ${stripImgTag}

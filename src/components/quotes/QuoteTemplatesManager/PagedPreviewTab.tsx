@@ -65,9 +65,9 @@ interface Prefs {
 const DEFAULT_PREFS: Prefs = {
   mode: "single",
   zoom: 0.85,
-  topMm: 22,
-  bottomMm: 18,
-  sideMm: 14,
+  topMm: 30,
+  bottomMm: 26,
+  sideMm: 20,
 };
 
 function loadPrefs(): Prefs {
@@ -83,9 +83,9 @@ function loadPrefs(): Prefs {
         typeof p.zoom === "number"
           ? Math.max(0.25, Math.min(2, p.zoom))
           : DEFAULT_PREFS.zoom,
-      topMm: clampMm(p.topMm, DEFAULT_PREFS.topMm),
-      bottomMm: clampMm(p.bottomMm, DEFAULT_PREFS.bottomMm),
-      sideMm: clampMm(p.sideMm, DEFAULT_PREFS.sideMm),
+      topMm: Math.max(DEFAULT_PREFS.topMm, clampMm(p.topMm, DEFAULT_PREFS.topMm)),
+      bottomMm: Math.max(DEFAULT_PREFS.bottomMm, clampMm(p.bottomMm, DEFAULT_PREFS.bottomMm)),
+      sideMm: Math.max(DEFAULT_PREFS.sideMm, clampMm(p.sideMm, DEFAULT_PREFS.sideMm)),
     };
   } catch {
     return DEFAULT_PREFS;
@@ -99,6 +99,7 @@ function clampMm(v: unknown, fallback: number): number {
 }
 
 const MM_TO_PX = 96 / 25.4; // ~3.78
+const STRIP_SAFE_GAP_MM = 5;
 
 function useDebouncedValue<T>(value: T, delay = 250): T {
   const [debounced, setDebounced] = useState(value);
@@ -169,7 +170,7 @@ export default function PagedPreviewTab({
     () => `
 @page {
   size: A4;
-  margin: ${debouncedTop}mm ${debouncedSide}mm ${debouncedBottom}mm ${debouncedSide}mm !important;
+  margin: ${debouncedTop + STRIP_SAFE_GAP_MM}mm ${debouncedSide}mm ${debouncedBottom + STRIP_SAFE_GAP_MM}mm ${debouncedSide}mm !important;
 ${debug ? `  /* DEBUG: outline the page box and margin boxes */
   border: 1px solid #ef4444 !important;
   @top-center { background: rgba(34,197,94,0.18) !important; outline: 1px dashed #16a34a !important; }
@@ -243,6 +244,7 @@ ${debug ? `
       let visibleTop = 0;
       let visibleBottom = 0;
       let overlaps = 0;
+      let sideOverlaps = 0;
 
       const restoredDisplays: Array<[HTMLElement, string]> = [];
       wraps.forEach((w) => {
@@ -311,6 +313,7 @@ ${debug ? `
           return { top, right, bottom, left, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
         };
 
+        const areaRect = w.querySelector<HTMLElement>(".pagedjs_area")?.getBoundingClientRect();
         w.querySelectorAll<HTMLElement>(".pagedjs_area *").forEach((el) => {
           const style = window.getComputedStyle(el);
           if (style.display === "none" || style.visibility === "hidden") return;
@@ -320,25 +323,27 @@ ${debug ? `
           const hitTop = topRect && r.bottom > topRect.top + 1 && r.top < topRect.bottom - 1;
           const hitBottom = botRect && r.bottom > botRect.top + 1 && r.top < botRect.bottom - 1;
           if (hitTop || hitBottom) overlaps++;
+          if (areaRect && (r.left < areaRect.left - 1 || r.right > areaRect.right + 1)) sideOverlaps++;
         });
       });
       restoredDisplays.forEach(([w, display]) => {
         w.style.display = display;
       });
       const pages = wraps.length;
-      setStripCheck({ pages, withTop, withBottom, visibleTop, visibleBottom, overlaps });
+      const totalOverlaps = overlaps + sideOverlaps;
+      setStripCheck({ pages, withTop, withBottom, visibleTop, visibleBottom, overlaps: totalOverlaps });
       if (
         pages > 0 &&
-        (withTop < pages || withBottom < pages || visibleTop < pages || visibleBottom < pages || overlaps > 0)
+        (withTop < pages || withBottom < pages || visibleTop < pages || visibleBottom < pages || totalOverlaps > 0)
       ) {
         console.warn(
           `[PagedPreviewTab] strip check: header ${withTop}/${pages} visible ${visibleTop}/${pages}, ` +
-          `footer ${withBottom}/${pages} visible ${visibleBottom}/${pages}, overlaps=${overlaps}`,
-          { headerHtmlPresent: !!headerHtml, footerHtmlPresent: !!footerHtml, overlaps },
+          `footer ${withBottom}/${pages} visible ${visibleBottom}/${pages}, stripOverlaps=${overlaps}, sideOverlaps=${sideOverlaps}`,
+          { headerHtmlPresent: !!headerHtml, footerHtmlPresent: !!footerHtml, overlaps, sideOverlaps },
         );
       } else if (pages > 0) {
         console.info(
-          `[PagedPreviewTab] strip check OK: visible header+footer on all ${pages} pages, overlaps=0`,
+          `[PagedPreviewTab] strip check OK: visible header+footer on all ${pages} pages, strip/side overlaps=0`,
         );
       }
     });
@@ -387,6 +392,8 @@ ${debug ? `
 
   const stripTopPx = topMm * MM_TO_PX;
   const stripBottomPx = bottomMm * MM_TO_PX;
+  const stripGapPx = STRIP_SAFE_GAP_MM * MM_TO_PX;
+  const sideInsetPx = sideMm * MM_TO_PX;
   // Log strip metrics only when the meaningful values change (avoid spam).
   useEffect(() => {
     console.log(
@@ -517,17 +524,20 @@ ${debug ? `
               <StripRow
                 label="עליון (מ״מ)"
                 value={topMm}
-                onChange={(v) => setTopMm(clampMm(v, DEFAULT_PREFS.topMm))}
+                min={DEFAULT_PREFS.topMm}
+                onChange={(v) => setTopMm(Math.max(DEFAULT_PREFS.topMm, clampMm(v, DEFAULT_PREFS.topMm)))}
               />
               <StripRow
                 label="תחתון (מ״מ)"
                 value={bottomMm}
-                onChange={(v) => setBottomMm(clampMm(v, DEFAULT_PREFS.bottomMm))}
+                min={DEFAULT_PREFS.bottomMm}
+                onChange={(v) => setBottomMm(Math.max(DEFAULT_PREFS.bottomMm, clampMm(v, DEFAULT_PREFS.bottomMm)))}
               />
               <StripRow
                 label="צד (מ״מ)"
                 value={sideMm}
-                onChange={(v) => setSideMm(clampMm(v, DEFAULT_PREFS.sideMm))}
+                min={DEFAULT_PREFS.sideMm}
+                onChange={(v) => setSideMm(Math.max(DEFAULT_PREFS.sideMm, clampMm(v, DEFAULT_PREFS.sideMm)))}
               />
               <Button
                 size="sm"
@@ -687,6 +697,8 @@ ${debug ? `
           onDeletePage={handleDeletePage}
           stripTopPx={stripTopPx}
           stripBottomPx={stripBottomPx}
+          stripGapPx={stripGapPx}
+          sideInsetPx={sideInsetPx}
           headerHtml={headerHtml}
           footerHtml={footerHtml}
         />
@@ -730,10 +742,12 @@ ${debug ? `
 function StripRow({
   label,
   value,
+  min = 5,
   onChange,
 }: {
   label: string;
   value: number;
+  min?: number;
   onChange: (v: number) => void;
 }) {
   return (
@@ -742,7 +756,7 @@ function StripRow({
       <div className="flex items-center gap-2">
         <Input
           type="range"
-          min={5}
+          min={min}
           max={60}
           step={1}
           value={value}
@@ -751,7 +765,7 @@ function StripRow({
         />
         <Input
           type="number"
-          min={5}
+          min={min}
           max={60}
           step={1}
           value={value}

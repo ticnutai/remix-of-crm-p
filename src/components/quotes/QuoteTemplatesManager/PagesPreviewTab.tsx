@@ -40,6 +40,9 @@ import { toast } from "sonner";
 const A4_W = 794;
 const A4_H = 1123;
 const PX_PER_MM = 3.7795;
+const MIN_SAFE_TOP_MM = 30;
+const MIN_SAFE_BOTTOM_MM = 26;
+const SAFE_SIDE_MM = 20;
 
 // How many convergence passes the auto-fix runs before stopping
 const MAX_AUTOFIX_PASSES = 4;
@@ -99,8 +102,8 @@ const defaultFixState: FixState = {
   globalEnabled: false,
   autoPaths: [],
   manual: [],
-  safeZoneTopMm: 20,
-  safeZoneBottomMm: 15,
+  safeZoneTopMm: MIN_SAFE_TOP_MM,
+  safeZoneBottomMm: MIN_SAFE_BOTTOM_MM,
   protectedBlocks: [...DEFAULT_PROTECTED],
   autoEnforceStrips: true,
   deletedPages: [],
@@ -134,9 +137,9 @@ const loadFixState = (templateKey: string): FixState => {
       autoPaths: Array.isArray(p.autoPaths) ? p.autoPaths : [],
       manual: Array.isArray(p.manual) ? p.manual : [],
       safeZoneTopMm:
-        typeof p.safeZoneTopMm === "number" ? p.safeZoneTopMm : 20,
+        Math.max(MIN_SAFE_TOP_MM, typeof p.safeZoneTopMm === "number" ? p.safeZoneTopMm : MIN_SAFE_TOP_MM),
       safeZoneBottomMm:
-        typeof p.safeZoneBottomMm === "number" ? p.safeZoneBottomMm : 15,
+        Math.max(MIN_SAFE_BOTTOM_MM, typeof p.safeZoneBottomMm === "number" ? p.safeZoneBottomMm : MIN_SAFE_BOTTOM_MM),
       protectedBlocks: Array.isArray(p.protectedBlocks)
         ? p.protectedBlocks
         : [...DEFAULT_PROTECTED],
@@ -454,6 +457,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     );
     const safeTopPx = Math.round(fixState.safeZoneTopMm * 3.7795);
     const safeBottomPx = Math.round(fixState.safeZoneBottomMm * 3.7795);
+    const safeSidePx = Math.round(SAFE_SIDE_MM * 3.7795);
     const protectSel = (fixState.protectedBlocks.length
       ? fixState.protectedBlocks
       : DEFAULT_PROTECTED
@@ -472,6 +476,73 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       body {
         padding-top: ${safeTopPx}px !important;
         padding-bottom: ${safeBottomPx}px !important;
+        padding-left: ${safeSidePx}px !important;
+        padding-right: ${safeSidePx}px !important;
+        width: ${A4_W}px !important;
+        max-width: ${A4_W}px !important;
+        overflow-x: hidden !important;
+      }
+      *, *::before, *::after { box-sizing: border-box !important; }
+      .container,
+      .content,
+      .project-details,
+      .stage-card,
+      .summary-card,
+      .card,
+      .payments,
+      .pricing-tiers,
+      .upgrades,
+      table,
+      tbody,
+      thead,
+      tfoot,
+      tr,
+      td,
+      th,
+      p,
+      div,
+      section,
+      article,
+      ul,
+      ol,
+      li {
+        max-width: 100% !important;
+      }
+      .container {
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        overflow: visible !important;
+      }
+      .content {
+        width: 100% !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+      }
+      table {
+        width: 100% !important;
+        table-layout: fixed !important;
+      }
+      td, th, p, li, [data-editable] {
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+      }
+      img, svg, canvas, video {
+        max-width: 100% !important;
+      }
+      .pricing-tiers,
+      .upgrades,
+      .payments {
+        display: block !important;
+      }
+      .pricing-tiers > *,
+      .upgrades > *,
+      .payments > * {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
       }
       /* ===== Strip / mask layering system =====
          Layer order (highest wins):

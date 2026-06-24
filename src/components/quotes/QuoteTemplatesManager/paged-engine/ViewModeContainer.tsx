@@ -93,6 +93,10 @@ interface ViewModeContainerProps {
   /** Optional overlay heights (px) for visualising the strip zones. */
   stripTopPx?: number;
   stripBottomPx?: number;
+  /** Extra clear space between body content and repeated strips. */
+  stripGapPx?: number;
+  /** Final visual side inset for body content. */
+  sideInsetPx?: number;
   /** Repeating header/footer HTML rendered as an overlay on every page. */
   headerHtml?: string;
   footerHtml?: string;
@@ -115,6 +119,8 @@ export default function ViewModeContainer({
   onDeletePage,
   stripTopPx = 0,
   stripBottomPx = 0,
+  stripGapPx = 0,
+  sideInsetPx = 0,
   headerHtml = "",
   footerHtml = "",
 }: ViewModeContainerProps) {
@@ -145,7 +151,7 @@ export default function ViewModeContainer({
     const pages = Array.from(
       source.querySelectorAll<HTMLElement>(".pagedjs_page"),
     );
-    console.log(`[ViewModeContainer] renderPages — pages=${pages.length} stripTopPx=${stripTopPx} stripBottomPx=${stripBottomPx} headerHtmlLen=${headerHtml.length} footerHtmlLen=${footerHtml.length}`);
+    console.log(`[ViewModeContainer] renderPages — pages=${pages.length} stripTopPx=${stripTopPx} stripBottomPx=${stripBottomPx} stripGapPx=${stripGapPx} sideInsetPx=${sideInsetPx} headerHtmlLen=${headerHtml.length} footerHtmlLen=${footerHtml.length}`);
     if (pages.length === 0) return;
 
     const visiblePages = pages.filter((_, i) => !deletedSet.has(i));
@@ -166,16 +172,48 @@ export default function ViewModeContainer({
 
       const clone = srcPage.cloneNode(true) as HTMLElement;
       clone.style.margin = "0";
+      clone.style.position = "absolute";
+      clone.style.inset = "0";
+      clone.style.width = "100%";
+      clone.style.height = "100%";
+      clone.style.overflow = "hidden";
+
+      // Defensive visual safe-area: paged.js already creates the main strip
+      // and side margins. Keep an extra inner gap, and clamp side bleed, while
+      // avoiding a double top/bottom offset that would hide the first page.
+      const safeTop = Math.max(0, Math.round(stripTopPx + stripGapPx));
+      const safeBottom = Math.max(0, Math.round(stripBottomPx + stripGapPx));
+      const safeSide = Math.max(0, Math.round(sideInsetPx));
+      const setImportant = (el: HTMLElement, prop: string, value: string) => {
+        el.style.setProperty(prop, value, "important");
+      };
+      clone
+        .querySelectorAll<HTMLElement>(
+          ".pagedjs_sheet, .pagedjs_pagebox, .pagedjs_area, .pagedjs_page_content",
+        )
+        .forEach((el) => setImportant(el, "overflow", "hidden"));
+      const area = clone.querySelector<HTMLElement>(".pagedjs_area");
+      if (area) {
+        setImportant(area, "position", "absolute");
+        setImportant(area, "top", `${safeTop}px`);
+        setImportant(area, "bottom", `${safeBottom}px`);
+        setImportant(area, "left", `${safeSide}px`);
+        setImportant(area, "right", `${safeSide}px`);
+        setImportant(area, "width", "auto");
+        setImportant(area, "height", "auto");
+        setImportant(area, "box-sizing", "border-box");
+      }
+      const pageContent = clone.querySelector<HTMLElement>(".pagedjs_page_content");
+      if (pageContent) {
+        setImportant(pageContent, "max-width", "100%");
+        setImportant(pageContent, "box-sizing", "border-box");
+      }
       wrap.appendChild(clone);
 
       // Strip overlays — render the actual header/footer HTML so the logo
       // (and any other branding inside the strip) appears on every page.
       // The overlays sit on top of the @page margin zones; paged.js already
       // keeps body content out of those zones, so there is no coverage.
-      const setImportant = (el: HTMLElement, prop: string, value: string) => {
-        el.style.setProperty(prop, value, "important");
-      };
-
       const fitChild = (parent: HTMLElement) => {
         const child = parent.firstElementChild as HTMLElement | null;
         if (child) {
@@ -200,12 +238,13 @@ export default function ViewModeContainer({
         parent.querySelectorAll<HTMLElement>("img, svg, canvas").forEach((m) => {
           if (m instanceof HTMLImageElement) {
             const src = m.getAttribute("src") || "";
-            if (src.includes("company-header")) {
+            const alt = m.getAttribute("alt") || "";
+            const isHeaderImage = parent.classList.contains("paged-strip-top");
+            if (src.includes("company-header") || alt.includes("Header Strip")) {
               m.src = resolvedCompanyHeaderImg;
             }
             m.addEventListener("error", () => {
-              const current = m.getAttribute("src") || "";
-              if (current.includes("company-header")) m.src = resolvedCompanyHeaderImg;
+              if (isHeaderImage) m.src = resolvedCompanyHeaderImg;
             }, { once: true });
           }
           setImportant(m, "display", "block");
@@ -267,7 +306,7 @@ export default function ViewModeContainer({
       viewport.appendChild(wrap);
       visibleIdx++;
     });
-  }, [sourceRef, mode, onPageChange, deletedSet, onDeletePage, stripTopPx, stripBottomPx, headerHtml, footerHtml]);
+  }, [sourceRef, mode, onPageChange, deletedSet, onDeletePage, stripTopPx, stripBottomPx, stripGapPx, sideInsetPx, headerHtml, footerHtml]);
 
   useLayoutEffect(() => {
     renderPages();

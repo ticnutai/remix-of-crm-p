@@ -65,6 +65,86 @@ body {
   margin: 0 !important;
 }
 
+/* The generated HTML was designed for a full-browser print view and often
+   contains max-width:800px containers, large horizontal padding, grids, flex
+   rows and inline tables. In a paged.js A4 page this is the source of the
+   side bleed the user sees. Normalize everything to the @page content box. */
+*, *::before, *::after {
+  box-sizing: border-box !important;
+}
+.container,
+.content,
+.project-details,
+.summary-card,
+.stage-card,
+.payments,
+.pricing-tiers,
+.upgrades,
+table,
+tbody,
+thead,
+tfoot,
+tr,
+td,
+th,
+p,
+div,
+section,
+article,
+ul,
+ol,
+li {
+  max-width: 100% !important;
+}
+.container {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+.content {
+  width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.project-details,
+.summary-card,
+.stage-card,
+.card,
+[data-editable^="textbox."] {
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+img, svg, canvas, video {
+  max-width: 100% !important;
+  height: auto !important;
+}
+table {
+  width: 100% !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+}
+td, th {
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+.pricing-tiers,
+.upgrades,
+.payments {
+  display: block !important;
+}
+.pricing-tiers > *,
+.upgrades > *,
+.payments > * {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
 /* Let paged.js really fragment the legacy shell. The template was built for
    browser print repetition, where tables/cards were kept whole. In paged.js
    that prevents proper cutting and content can visually run into margins. */
@@ -89,7 +169,7 @@ td,
 .container,
 .content {
   width: 100% !important;
-  max-width: none !important;
+  max-width: 100% !important;
   box-sizing: border-box !important;
 }
 
