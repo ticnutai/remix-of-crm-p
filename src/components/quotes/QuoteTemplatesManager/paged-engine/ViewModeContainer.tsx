@@ -125,6 +125,7 @@ export default function ViewModeContainer({
   sideInsetPx = 0,
   headerHtml = "",
   footerHtml = "",
+  debug = false,
 }: ViewModeContainerProps) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const internalScrollRef = useRef<HTMLDivElement | null>(null);
