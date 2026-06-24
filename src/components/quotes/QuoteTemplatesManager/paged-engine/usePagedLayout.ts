@@ -194,6 +194,7 @@ export function usePagedLayout(
 
   useEffect(() => {
     if (!containerRef.current || !html) return;
+    console.log(`[paged-engine] useEffect — htmlLen=${html.length} extraCssLen=${extraCss.length} renderKey=${renderKey}`);
     const myRun = ++runIdRef.current;
     let cancelled = false;
     setRendering(true);
@@ -206,6 +207,8 @@ export function usePagedLayout(
         if (cancelled || myRun !== runIdRef.current) return;
 
         const { body, styles, headerHtml: hh, footerHtml: fh } = splitHtml(html);
+        console.log(`[paged-engine] setHeaderHtml len=${hh.length} preview="${hh.slice(0, 120).replace(/\s+/g, " ")}"`);
+        console.log(`[paged-engine] setFooterHtml len=${fh.length} preview="${fh.slice(0, 120).replace(/\s+/g, " ")}"`);
         setHeaderHtml(hh);
         setFooterHtml(fh);
         const container = containerRef.current;
