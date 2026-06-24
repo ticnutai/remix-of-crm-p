@@ -473,7 +473,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
            --lov-z-mask    = 2147482000  (white masks that hide content bleed)
            --lov-z-content =          1  (regular quote content)
          Using near-max int values guarantees we beat any user CSS, and the
-         body gets `isolation: isolate` so an ancestor stacking context can't
+         body gets 'isolation: isolate' so an ancestor stacking context can't
          trap our layers underneath theirs. */
       :root {
         --lov-z-content: 1;
