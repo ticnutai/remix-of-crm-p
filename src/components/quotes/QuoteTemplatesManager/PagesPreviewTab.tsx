@@ -104,7 +104,7 @@ const defaultFixState: FixState = {
 const loadPrefs = (): Prefs => {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return { mode: "single", zoom: 0.85, highlightIssues: false };
+    if (!raw) return { mode: "single", zoom: 0.85, highlightIssues: false, showSafeZones: true };
     const p = JSON.parse(raw);
     return {
       mode: ["single", "continuous", "spread", "grid", "compare"].includes(p.mode)
@@ -112,9 +112,10 @@ const loadPrefs = (): Prefs => {
         : "single",
       zoom: typeof p.zoom === "number" ? Math.min(2, Math.max(0.25, p.zoom)) : 0.85,
       highlightIssues: !!p.highlightIssues,
+      showSafeZones: p.showSafeZones !== false,
     };
   } catch {
-    return { mode: "single", zoom: 0.85, highlightIssues: false };
+    return { mode: "single", zoom: 0.85, highlightIssues: false, showSafeZones: true };
   }
 };
 
