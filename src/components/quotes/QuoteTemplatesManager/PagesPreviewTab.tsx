@@ -164,6 +164,9 @@ export default function PagesPreviewTab({
   const [highlightIssues, setHighlightIssues] = useState(
     initial.current.highlightIssues,
   );
+  const [showSafeZones, setShowSafeZones] = useState<boolean>(
+    initial.current.showSafeZones !== false,
+  );
   const [page, setPage] = useState(0);
   const [comparePage, setComparePage] = useState(1);
   const [pageCount, setPageCount] = useState(1);
