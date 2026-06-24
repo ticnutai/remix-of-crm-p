@@ -485,10 +485,12 @@ interface ProjectDetails {
 
 /**
  * Replace dynamic placeholders with values from projectDetails.
- * Two supported formats (work everywhere - stages, items, text boxes, titles):
+ * Three supported formats (work everywhere - stages, items, text boxes, titles):
  *   1. Square bracket tokens: [גוש] [חלקה] [מגרש] [מושב] [משפחה]
  *      [לקוח] [כתובת] [סוג פרויקט] [תב"ע] [טלפון]
  *   2. Hebrew label + underscores / colon: "גוש ____", "חלקה:", "משפחת ____"
+ *   3. Bare keyword: just write "גוש" or "בגוש" and the value is appended automatically.
+ *      e.g. "בגוש חלקה עבור לקוח" → "בגוש 4532 חלקה 125 עבור משפחת כהן"
  * Missing values are left blank (the label stays, the placeholder becomes empty).
  */
 function applyProjectDetailsTokens(content: string, pd: any): string {
@@ -524,6 +526,21 @@ function applyProjectDetailsTokens(content: string, pd: any): string {
     const v = map[kw] ?? "";
     const cleanSep = sep && sep.includes(":") ? ": " : " ";
     return `${kw}${cleanSep}${v}`;
+  });
+  // 3) Bare keyword without underscores or brackets.
+  //    Matches the keyword at a word boundary (not already followed by a digit or "[").
+  //    e.g. "גוש" or "בגוש" or "חלקה," → appends the value.
+  //    Skips if value is empty to avoid adding trailing spaces.
+  const bareRe = new RegExp(
+    `(${keys})` +
+    `(?!\\s*\\[)` +          // not already followed by a bracket token
+    `(?!\\s+[0-9])` +        // not already followed by a number (already substituted)
+    `(?=[\\s,.:;!?\\n\\r]|$)`, // must end at whitespace, punctuation, or string end
+    "g",
+  );
+  out = out.replace(bareRe, (_full, kw) => {
+    const v = map[kw];
+    return v ? `${kw} ${v}` : _full;
   });
   return out;
 }
@@ -11927,18 +11944,18 @@ ${tbAt('footer')}
 
                     {/* Tokens helper hint */}
                     <div className="text-[11px] text-muted-foreground bg-[#FFFBEA] border border-[#DAA520]/30 rounded-md p-2 leading-relaxed">
-                      <strong className="text-[#B8860B]">תווים דינמיים זמינים בכל תיבה:</strong>{" "}
-                      <code className="font-mono">[גוש]</code>{" "}
-                      <code className="font-mono">[חלקה]</code>{" "}
-                      <code className="font-mono">[מגרש]</code>{" "}
-                      <code className="font-mono">[מושב]</code>{" "}
-                      <code className="font-mono">[משפחה]</code>{" "}
-                      <code className="font-mono">[לקוח]</code>{" "}
-                      <code className="font-mono">[כתובת]</code>{" "}
-                      <code className="font-mono">[סוג פרויקט]</code>{" "}
-                      <code className="font-mono">[תב"ע]</code>{" "}
-                      <code className="font-mono">[טלפון]</code>
-                      <div className="mt-1">השדות יוחלפו אוטומטית בנתוני הלקוח. שורה שבה הערך ריק - תוסתר לחלוטין מההצעה הסופית.</div>
+                      <strong className="text-[#B8860B]">שדות דינמיים — 3 דרכים לכתוב:</strong>
+                      <div className="mt-1 space-y-0.5">
+                        <div>① <strong>סוגריים מרובעים</strong> — <code className="font-mono">[גוש]</code> יוחלף בערך במדויק</div>
+                        <div>② <strong>מילה + קווים</strong> — <code className="font-mono">גוש ____</code> → ערך מוסף אחרי הקווים</div>
+                        <div>③ <strong>מילה בלבד</strong> — כתוב <code className="font-mono">גוש</code> או <code className="font-mono">בגוש</code> והערך יתווסף משמאלו אוטומטית</div>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {["גוש","חלקה","מגרש","מושב","משפחה","לקוח","כתובת","סוג פרויקט",'תב"ע',"טלפון"].map(t => (
+                          <code key={t} className="font-mono bg-white/70 px-1 rounded border border-[#DAA520]/40">{t}</code>
+                        ))}
+                      </div>
+                      <div className="mt-1">שורה שבה הערך ריק — תוסתר לחלוטין מההצעה הסופית.</div>
                     </div>
 
 
