@@ -244,6 +244,7 @@ ${debug ? `
       let visibleTop = 0;
       let visibleBottom = 0;
       let overlaps = 0;
+      let sideOverlaps = 0;
 
       const restoredDisplays: Array<[HTMLElement, string]> = [];
       wraps.forEach((w) => {
@@ -312,6 +313,7 @@ ${debug ? `
           return { top, right, bottom, left, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
         };
 
+        const areaRect = w.querySelector<HTMLElement>(".pagedjs_area")?.getBoundingClientRect();
         w.querySelectorAll<HTMLElement>(".pagedjs_area *").forEach((el) => {
           const style = window.getComputedStyle(el);
           if (style.display === "none" || style.visibility === "hidden") return;
@@ -321,25 +323,27 @@ ${debug ? `
           const hitTop = topRect && r.bottom > topRect.top + 1 && r.top < topRect.bottom - 1;
           const hitBottom = botRect && r.bottom > botRect.top + 1 && r.top < botRect.bottom - 1;
           if (hitTop || hitBottom) overlaps++;
+          if (areaRect && (r.left < areaRect.left - 1 || r.right > areaRect.right + 1)) sideOverlaps++;
         });
       });
       restoredDisplays.forEach(([w, display]) => {
         w.style.display = display;
       });
       const pages = wraps.length;
-      setStripCheck({ pages, withTop, withBottom, visibleTop, visibleBottom, overlaps });
+      const totalOverlaps = overlaps + sideOverlaps;
+      setStripCheck({ pages, withTop, withBottom, visibleTop, visibleBottom, overlaps: totalOverlaps });
       if (
         pages > 0 &&
-        (withTop < pages || withBottom < pages || visibleTop < pages || visibleBottom < pages || overlaps > 0)
+        (withTop < pages || withBottom < pages || visibleTop < pages || visibleBottom < pages || totalOverlaps > 0)
       ) {
         console.warn(
           `[PagedPreviewTab] strip check: header ${withTop}/${pages} visible ${visibleTop}/${pages}, ` +
-          `footer ${withBottom}/${pages} visible ${visibleBottom}/${pages}, overlaps=${overlaps}`,
-          { headerHtmlPresent: !!headerHtml, footerHtmlPresent: !!footerHtml, overlaps },
+          `footer ${withBottom}/${pages} visible ${visibleBottom}/${pages}, stripOverlaps=${overlaps}, sideOverlaps=${sideOverlaps}`,
+          { headerHtmlPresent: !!headerHtml, footerHtmlPresent: !!footerHtml, overlaps, sideOverlaps },
         );
       } else if (pages > 0) {
         console.info(
-          `[PagedPreviewTab] strip check OK: visible header+footer on all ${pages} pages, overlaps=0`,
+          `[PagedPreviewTab] strip check OK: visible header+footer on all ${pages} pages, strip/side overlaps=0`,
         );
       }
     });
