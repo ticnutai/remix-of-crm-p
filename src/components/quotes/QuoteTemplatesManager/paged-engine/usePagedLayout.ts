@@ -123,19 +123,30 @@ const FOOTER_SOURCES: { sel: string; inner?: string }[] = [
 function pickStrip(
   doc: Document,
   sources: { sel: string; inner?: string }[],
+  label: string,
 ): string {
+  console.log(`[paged-engine] pickStrip(${label}) — scanning ${sources.length} selectors`);
   for (const { sel, inner } of sources) {
-    const el = doc.querySelector(sel);
+    const all = doc.querySelectorAll(sel);
+    console.log(`[paged-engine] pickStrip(${label}) sel="${sel}" matches=${all.length}`);
+    const el = all[0];
     if (!el) continue;
     if (inner) {
       const innerEl = el.querySelector(inner);
+      console.log(
+        `[paged-engine] pickStrip(${label}) inner="${inner}" found=${!!innerEl} innerLen=${innerEl?.innerHTML.trim().length ?? 0}`,
+      );
       if (innerEl && innerEl.innerHTML.trim()) return innerEl.innerHTML;
-      // fallback: use td-less content if any
-      if (el.textContent?.trim()) return el.innerHTML;
+      if (el.textContent?.trim()) {
+        console.log(`[paged-engine] pickStrip(${label}) fallback to outer innerHTML`);
+        return el.innerHTML;
+      }
       continue;
     }
+    console.log(`[paged-engine] pickStrip(${label}) — using outerHTML len=${el.outerHTML.length}`);
     return el.outerHTML;
   }
+  console.warn(`[paged-engine] pickStrip(${label}) — NO MATCH, returning empty`);
   return "";
 }
 
@@ -159,8 +170,9 @@ function splitHtml(raw: string): {
       styles += "\n" + (n.textContent || "");
     });
     const body = doc.body?.innerHTML ?? raw;
-    const headerHtml = pickStrip(doc, HEADER_SOURCES);
-    const footerHtml = pickStrip(doc, FOOTER_SOURCES);
+    const headerHtml = pickStrip(doc, HEADER_SOURCES, "header");
+    const footerHtml = pickStrip(doc, FOOTER_SOURCES, "footer");
+    console.log(`[paged-engine] splitHtml — bodyLen=${body.length} stylesLen=${styles.length} headerLen=${headerHtml.length} footerLen=${footerHtml.length}`);
     return { body, styles, headerHtml, footerHtml };
   } catch {
     return { body: raw, styles: "", headerHtml: "", footerHtml: "" };
@@ -182,6 +194,7 @@ export function usePagedLayout(
 
   useEffect(() => {
     if (!containerRef.current || !html) return;
+    console.log(`[paged-engine] useEffect — htmlLen=${html.length} extraCssLen=${extraCss.length} renderKey=${renderKey}`);
     const myRun = ++runIdRef.current;
     let cancelled = false;
     setRendering(true);
@@ -194,6 +207,8 @@ export function usePagedLayout(
         if (cancelled || myRun !== runIdRef.current) return;
 
         const { body, styles, headerHtml: hh, footerHtml: fh } = splitHtml(html);
+        console.log(`[paged-engine] setHeaderHtml len=${hh.length} preview="${hh.slice(0, 120).replace(/\s+/g, " ")}"`);
+        console.log(`[paged-engine] setFooterHtml len=${fh.length} preview="${fh.slice(0, 120).replace(/\s+/g, " ")}"`);
         setHeaderHtml(hh);
         setFooterHtml(fh);
         const container = containerRef.current;

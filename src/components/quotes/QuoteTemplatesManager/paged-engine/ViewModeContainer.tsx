@@ -65,7 +65,10 @@ export default function ViewModeContainer({
   const deletedSet = useMemo(() => new Set(deletedPages), [deletedPages]);
 
   const renderPages = useCallback(() => {
-    if (!viewportRef.current || !sourceRef.current) return;
+    if (!viewportRef.current || !sourceRef.current) {
+      console.log(`[ViewModeContainer] renderPages skipped — viewport=${!!viewportRef.current} source=${!!sourceRef.current}`);
+      return;
+    }
     const source = sourceRef.current;
     const viewport = viewportRef.current;
     viewport.innerHTML = "";
@@ -73,6 +76,7 @@ export default function ViewModeContainer({
     const pages = Array.from(
       source.querySelectorAll<HTMLElement>(".pagedjs_page"),
     );
+    console.log(`[ViewModeContainer] renderPages — pages=${pages.length} stripTopPx=${stripTopPx} stripBottomPx=${stripBottomPx} headerHtmlLen=${headerHtml.length} footerHtmlLen=${footerHtml.length}`);
     if (pages.length === 0) return;
 
     const visiblePages = pages.filter((_, i) => !deletedSet.has(i));

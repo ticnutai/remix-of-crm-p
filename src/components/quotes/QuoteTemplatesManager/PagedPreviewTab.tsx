@@ -299,6 +299,7 @@ ${debug ? `
 
   const stripTopPx = topMm * MM_TO_PX;
   const stripBottomPx = bottomMm * MM_TO_PX;
+  console.log(`[PagedPreviewTab] strips px — top=${stripTopPx.toFixed(1)} bottom=${stripBottomPx.toFixed(1)} headerHtmlLen=${headerHtml.length} footerHtmlLen=${footerHtml.length} pageCount=${pageCount} rendering=${rendering}`);
 
   return (
     <TooltipProvider delayDuration={200}>
