@@ -493,6 +493,13 @@ interface ProjectDetails {
  *      e.g. "בגוש חלקה עבור לקוח" → "בגוש 4532 חלקה 125 עבור משפחת כהן"
  * Missing values are left blank (the label stays, the placeholder becomes empty).
  */
+// Normalize Hebrew gershayim (״ U+05F4) and smart quotes to ASCII " for map lookup.
+// This is needed because users may type תב״ע (gershayim) while map keys use ASCII ".
+const QUOTE_NORM_RE = /[״“”"]/g;
+function normalizeQuoteChars(s: string): string {
+  return s.replace(QUOTE_NORM_RE, '"');
+}
+
 function applyProjectDetailsTokens(content: string, pd: any): string {
   if (!content) return content;
   const family = pd?.family || (pd?.clientName ? String(pd.clientName).trim() : "");
@@ -510,38 +517,56 @@ function applyProjectDetailsTokens(content: string, pd: any): string {
     "תבע": pd?.taba || "",
     "טלפון": pd?.phone || "",
   };
-  // 1) Bracket tokens: [גוש] -> value (or empty)
-  let out = content.replace(/\[([^\[\]\n]+)\]/g, (full, raw) => {
-    const key = String(raw).trim();
-    return Object.prototype.hasOwnProperty.call(map, key) ? (map[key] ?? "") : full;
-  });
-  // 2) Bareword pattern: "גוש ____" / "חלקה: ___" / "משפחת______"
-  //    Matches keyword, optional ":", optional whitespace, then 2+ underscores.
+
+  // Helper: look up a captured keyword (which may contain gershayim/smart quotes) in map.
+  const lookup = (kw: string): string | undefined => {
+    if (Object.prototype.hasOwnProperty.call(map, kw)) return map[kw];
+    const normalized = normalizeQuoteChars(kw);
+    if (Object.prototype.hasOwnProperty.call(map, normalized)) return map[normalized];
+    return undefined;
+  };
+
+  // Build regex pattern from map keys. Replace " in keys with a char-class that also
+  // matches Hebrew gershayim (״) and smart quotes so תב״ע matches the תב"ע key.
   const keys = Object.keys(map)
     .sort((a, b) => b.length - a.length)
-    .map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .map((k) =>
+      k
+        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+        .replace(/"/g, '["\\u05F4\\u201C\\u201D]'),   // match any quote variant
+    )
     .join("|");
+
+  // 1) Bracket tokens: [גוש] / [תב"ע] / [תב״ע] -> value (or empty)
+  let out = content.replace(/\[([^\[\]\n]+)\]/g, (full, raw) => {
+    const key = String(raw).trim();
+    const v = lookup(key);
+    return v !== undefined ? (v ?? "") : full;
+  });
+
+  // 2) Bareword pattern: "גוש ____" / "חלקה: ___" / "משפחת______"
   const barewordRe = new RegExp(`(${keys})(\\s*:?\\s*)_{2,}`, "g");
   out = out.replace(barewordRe, (_full, kw, sep) => {
-    const v = map[kw] ?? "";
+    const v = lookup(kw) ?? "";
     const cleanSep = sep && sep.includes(":") ? ": " : " ";
     return `${kw}${cleanSep}${v}`;
   });
+
   // 3) Bare keyword without underscores or brackets.
-  //    Matches the keyword at a word boundary (not already followed by a digit or "[").
-  //    e.g. "גוש" or "בגוש" or "חלקה," → appends the value.
-  //    Skips if value is empty to avoid adding trailing spaces.
+  //    e.g. "גוש" / "בגוש" / "תב״ע" → appends the value to the right of the word.
+  //    Skips if value is empty to avoid trailing spaces.
   const bareRe = new RegExp(
     `(${keys})` +
-    `(?!\\s*\\[)` +          // not already followed by a bracket token
-    `(?!\\s+[0-9])` +        // not already followed by a number (already substituted)
-    `(?=[\\s,.:;!?\\n\\r]|$)`, // must end at whitespace, punctuation, or string end
+    `(?!\\s*\\[)` +             // not already followed by a bracket token
+    `(?!\\s+[0-9])` +           // not already followed by a number (already substituted)
+    `(?=[\\s,.:;!?\\n\\r]|$)`,  // must end at whitespace, punctuation, or string end
     "g",
   );
   out = out.replace(bareRe, (_full, kw) => {
-    const v = map[kw];
+    const v = lookup(kw);
     return v ? `${kw} ${v}` : _full;
   });
+
   return out;
 }
 
