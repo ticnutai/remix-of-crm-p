@@ -52,6 +52,7 @@ interface Prefs {
   mode: ViewMode;
   zoom: number;
   highlightIssues: boolean;
+  showSafeZones?: boolean;
 }
 
 interface ManualRule {
