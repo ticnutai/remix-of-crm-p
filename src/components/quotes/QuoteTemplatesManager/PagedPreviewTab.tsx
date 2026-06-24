@@ -524,17 +524,20 @@ ${debug ? `
               <StripRow
                 label="עליון (מ״מ)"
                 value={topMm}
-                onChange={(v) => setTopMm(clampMm(v, DEFAULT_PREFS.topMm))}
+                min={DEFAULT_PREFS.topMm}
+                onChange={(v) => setTopMm(Math.max(DEFAULT_PREFS.topMm, clampMm(v, DEFAULT_PREFS.topMm)))}
               />
               <StripRow
                 label="תחתון (מ״מ)"
                 value={bottomMm}
-                onChange={(v) => setBottomMm(clampMm(v, DEFAULT_PREFS.bottomMm))}
+                min={DEFAULT_PREFS.bottomMm}
+                onChange={(v) => setBottomMm(Math.max(DEFAULT_PREFS.bottomMm, clampMm(v, DEFAULT_PREFS.bottomMm)))}
               />
               <StripRow
                 label="צד (מ״מ)"
                 value={sideMm}
-                onChange={(v) => setSideMm(clampMm(v, DEFAULT_PREFS.sideMm))}
+                min={DEFAULT_PREFS.sideMm}
+                onChange={(v) => setSideMm(Math.max(DEFAULT_PREFS.sideMm, clampMm(v, DEFAULT_PREFS.sideMm)))}
               />
               <Button
                 size="sm"
@@ -739,10 +742,12 @@ ${debug ? `
 function StripRow({
   label,
   value,
+  min = 5,
   onChange,
 }: {
   label: string;
   value: number;
+  min?: number;
   onChange: (v: number) => void;
 }) {
   return (
@@ -751,7 +756,7 @@ function StripRow({
       <div className="flex items-center gap-2">
         <Input
           type="range"
-          min={5}
+          min={min}
           max={60}
           step={1}
           value={value}
@@ -760,7 +765,7 @@ function StripRow({
         />
         <Input
           type="number"
-          min={5}
+          min={min}
           max={60}
           step={1}
           value={value}
