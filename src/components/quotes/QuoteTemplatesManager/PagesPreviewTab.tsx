@@ -1055,42 +1055,96 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       </div>
       {showSafeZones && (
         <>
-          {/* Top safe zone limit — dashed gold line + label */}
+          {/* Top safe zone limit — draggable dashed gold line */}
           <div
-            className="absolute left-0 right-0 pointer-events-none"
+            className="absolute left-0 right-0 group"
             style={{
-              top: fixState.safeZoneTopMm * 3.7795 * scale,
-              borderTop: "1.5px dashed #d8ac27",
-              boxShadow: "0 -1px 0 rgba(216,172,39,0.15)",
+              top: fixState.safeZoneTopMm * 3.7795 * scale - 6,
+              height: 12,
+              cursor: interactive ? "ns-resize" : "default",
+              zIndex: 50,
+              pointerEvents: interactive ? "auto" : "none",
             }}
-            aria-hidden
+            title={interactive ? "גרור לשינוי גובה הסטריפ העליון" : undefined}
+            onMouseDown={(e) => {
+              if (!interactive) return;
+              e.preventDefault();
+              e.stopPropagation();
+              const startY = e.clientY;
+              const startMm = fixState.safeZoneTopMm;
+              const onMove = (ev: MouseEvent) => {
+                const dy = ev.clientY - startY;
+                const dmm = dy / scale / 3.7795;
+                const next = Math.max(0, Math.min(80, +(startMm + dmm).toFixed(1)));
+                setFixState((s) => ({ ...s, safeZoneTopMm: next }));
+              };
+              const onUp = () => {
+                window.removeEventListener("mousemove", onMove);
+                window.removeEventListener("mouseup", onUp);
+              };
+              window.addEventListener("mousemove", onMove);
+              window.addEventListener("mouseup", onUp);
+            }}
+            aria-label="גרור לשינוי גובה סטריפ עליון"
           >
+            <div
+              className="absolute left-0 right-0 top-1/2 -translate-y-1/2 group-hover:border-t-[2.5px] transition-all"
+              style={{ borderTop: "1.5px dashed #d8ac27" }}
+            />
             <span
-              className="absolute right-1 -top-[9px] text-[9px] font-semibold px-1.5 py-0.5 rounded-sm"
+              className="absolute right-1 -top-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-sm select-none pointer-events-none"
               style={{ background: "#d8ac27", color: "#162C58", lineHeight: 1 }}
             >
-              אזור סטריפ עליון · אין כניסת טקסט
+              סטריפ עליון · {fixState.safeZoneTopMm.toFixed(1)} מ"מ
             </span>
           </div>
-          {/* Bottom safe zone limit */}
+          {/* Bottom safe zone limit — draggable */}
           <div
-            className="absolute left-0 right-0 pointer-events-none"
+            className="absolute left-0 right-0 group"
             style={{
-              bottom: fixState.safeZoneBottomMm * 3.7795 * scale,
-              borderBottom: "1.5px dashed #d8ac27",
-              boxShadow: "0 1px 0 rgba(216,172,39,0.15)",
+              bottom: fixState.safeZoneBottomMm * 3.7795 * scale - 6,
+              height: 12,
+              cursor: interactive ? "ns-resize" : "default",
+              zIndex: 50,
+              pointerEvents: interactive ? "auto" : "none",
             }}
-            aria-hidden
+            title={interactive ? "גרור לשינוי גובה הסטריפ התחתון" : undefined}
+            onMouseDown={(e) => {
+              if (!interactive) return;
+              e.preventDefault();
+              e.stopPropagation();
+              const startY = e.clientY;
+              const startMm = fixState.safeZoneBottomMm;
+              const onMove = (ev: MouseEvent) => {
+                const dy = ev.clientY - startY;
+                // dragging down (positive dy) → smaller bottom strip
+                const dmm = -dy / scale / 3.7795;
+                const next = Math.max(0, Math.min(80, +(startMm + dmm).toFixed(1)));
+                setFixState((s) => ({ ...s, safeZoneBottomMm: next }));
+              };
+              const onUp = () => {
+                window.removeEventListener("mousemove", onMove);
+                window.removeEventListener("mouseup", onUp);
+              };
+              window.addEventListener("mousemove", onMove);
+              window.addEventListener("mouseup", onUp);
+            }}
+            aria-label="גרור לשינוי גובה סטריפ תחתון"
           >
+            <div
+              className="absolute left-0 right-0 top-1/2 -translate-y-1/2 group-hover:border-t-[2.5px] transition-all"
+              style={{ borderTop: "1.5px dashed #d8ac27" }}
+            />
             <span
-              className="absolute right-1 top-[2px] text-[9px] font-semibold px-1.5 py-0.5 rounded-sm"
+              className="absolute right-1 bottom-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-sm select-none pointer-events-none"
               style={{ background: "#d8ac27", color: "#162C58", lineHeight: 1 }}
             >
-              אזור סטריפ תחתון · אין כניסת טקסט
+              סטריפ תחתון · {fixState.safeZoneBottomMm.toFixed(1)} מ"מ
             </span>
           </div>
         </>
       )}
+
       <div className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-foreground/70 text-background pointer-events-none">
         {label ? `${label} · ` : ""}
         {pageIdx + 1} / {pageCount}
