@@ -895,6 +895,74 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     }catch(e){ /* noop */ }
   }
 
+  // Auto-cut: push content out of strip zones onto the next page.
+  // Walks elements that can absorb a margin push and adds a top margin large
+  // enough to escape the strip. Runs iteratively because each push may shift
+  // siblings. Idempotent via data-lov-cut marker.
+  function autoCutStrips(){
+    if(!AUTO_ENFORCE) return;
+    try{
+      var SEL=PROTECT_SEL || 'h1,h2,h3,h4,h5,p,li,tr,table,figure,blockquote,.stage-card,.summary-card,.card';
+      var maxIter=4;
+      for(var iter=0;iter<maxIter;iter++){
+        var changed=false;
+        document.querySelectorAll(SEL).forEach(function(el){
+          if(!el || !el.getBoundingClientRect) return;
+          if(el.closest && (el.closest('.lov-repeat-overlay')||el.closest('.print-repeat-header')||el.closest('.print-repeat-footer')||el.closest('.lov-safe-mask'))) return;
+          var r=el.getBoundingClientRect();
+          if(r.height<=0||r.height>=H*0.92) return;
+          var top=r.top+window.scrollY;
+          var bottom=top+r.height;
+          var startPage=Math.floor(top/H);
+          var endPage=Math.floor((bottom-1)/H);
+          var topInPage=top - startPage*H;
+          var bottomInPage=bottom - endPage*H;
+          var hitsHeader=topInPage < SAFE_TOP_PX;
+          var hitsFooter=bottomInPage > (H - SAFE_BOTTOM_PX);
+          var crosses=endPage>startPage;
+          var delta=0;
+          if(hitsHeader){
+            // push down past the top strip on the same page
+            delta=Math.ceil(SAFE_TOP_PX - topInPage + 4);
+          } else if(hitsFooter || crosses){
+            // push to the next page below the strip
+            delta=Math.ceil((H - topInPage) + SAFE_TOP_PX + 4);
+          }
+          if(delta>0 && delta<H*1.5){
+            var cur=parseInt(el.style.marginTop||'0',10)||0;
+            el.style.marginTop=(cur+delta)+'px';
+            el.setAttribute('data-lov-cut','1');
+            changed=true;
+          }
+        });
+        if(!changed) break;
+      }
+    }catch(e){ /* noop */ }
+  }
+
+  // Delete pages: hide any top-level body child whose vertical midpoint
+  // falls inside a deleted page range; remaining content reflows up.
+  function applyDeletedPages(){
+    if(!DELETED_PAGES || !DELETED_PAGES.length) return;
+    try{
+      var ranges=DELETED_PAGES.map(function(i){ return [i*H, (i+1)*H]; });
+      var children=document.body.children;
+      for(var i=0;i<children.length;i++){
+        var c=children[i];
+        if(c.classList && (c.classList.contains('lov-safe-mask')||c.classList.contains('lov-repeat-overlay'))) continue;
+        var r=c.getBoundingClientRect();
+        if(r.height<=0) continue;
+        var mid=r.top+window.scrollY+r.height/2;
+        for(var k=0;k<ranges.length;k++){
+          if(mid>=ranges[k][0] && mid<=ranges[k][1]){
+            c.style.display='none';
+            break;
+          }
+        }
+      }
+    }catch(e){ /* noop */ }
+  }
+
   function init(){
     try{
       document.body.setAttribute('data-safe-top', String(SAFE_TOP_PX));
@@ -902,12 +970,21 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       document.body.setAttribute('data-protect-sel', PROTECT_SEL);
     }catch(e){}
     tagAutoPaths();
+    applyDeletedPages();
+    autoCutStrips();
     setupRepeatOverlays();
     setupSafeMasks();
     enforceLayerOrder();
     setTimeout(detectIssues,300);
     // Re-run setup after content settles (fonts/images)
-    setTimeout(function(){ setupRepeatOverlays(); setupSafeMasks(); enforceLayerOrder(); },600);
+    setTimeout(function(){
+      applyDeletedPages();
+      autoCutStrips();
+      setupRepeatOverlays();
+      setupSafeMasks();
+      enforceLayerOrder();
+      try{window.parent.postMessage({__lovPageCountUpdate:true, h:document.documentElement.scrollHeight},'*');}catch(e){}
+    },600);
     setTimeout(function(){ enforceLayerOrder(); },1500);
   }
   if(document.readyState==='complete') setTimeout(init,200);
