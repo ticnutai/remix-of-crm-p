@@ -701,6 +701,7 @@ ${debug ? `
           sideInsetPx={sideInsetPx}
           headerHtml={headerHtml}
           footerHtml={footerHtml}
+          debug={debug}
         />
 
         <div className="border-t bg-card px-4 py-1.5 text-[11px] text-muted-foreground flex items-center justify-between shrink-0">

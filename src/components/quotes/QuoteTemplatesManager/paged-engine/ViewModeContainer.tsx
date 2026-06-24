@@ -100,6 +100,8 @@ interface ViewModeContainerProps {
   /** Repeating header/footer HTML rendered as an overlay on every page. */
   headerHtml?: string;
   footerHtml?: string;
+  /** When true, draws visible bounding boxes for strips + safe area + content. */
+  debug?: boolean;
 }
 
 // A4 at 96dpi for layout calculations (paged.js uses the same).
@@ -123,6 +125,7 @@ export default function ViewModeContainer({
   sideInsetPx = 0,
   headerHtml = "",
   footerHtml = "",
+  debug = false,
 }: ViewModeContainerProps) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const internalScrollRef = useRef<HTMLDivElement | null>(null);
@@ -278,6 +281,93 @@ export default function ViewModeContainer({
         wrap.appendChild(bot);
       }
 
+      // DEBUG overlay — bounding boxes for strips, safe-area gap, content area
+      // and side insets. Sits above everything (z=50) and ignores pointer events.
+      if (debug) {
+        const mkBox = (cssText: string, label: string, color: string) => {
+          const d = document.createElement("div");
+          d.className = "lov-debug-box";
+          d.style.cssText =
+            `position:absolute;pointer-events:none;z-index:50;` +
+            `outline:2px solid ${color};outline-offset:-2px;` +
+            `background:${color}1a;` + // ~10% alpha (hex 1a)
+            `font:600 10px/1 ui-sans-serif,system-ui;color:#fff;` +
+            cssText;
+          const tag = document.createElement("span");
+          tag.textContent = label;
+          tag.style.cssText =
+            `position:absolute;top:2px;left:2px;padding:1px 5px;border-radius:3px;` +
+            `background:${color};color:#fff;letter-spacing:.02em;`;
+          d.appendChild(tag);
+          return d;
+        };
+        const safeTopPx = Math.max(0, Math.round(stripTopPx + stripGapPx));
+        const safeBottomPx = Math.max(0, Math.round(stripBottomPx + stripGapPx));
+        const safeSidePx = Math.max(0, Math.round(sideInsetPx));
+        // Top strip box (blue)
+        if (stripTopPx > 0) {
+          wrap.appendChild(
+            mkBox(
+              `left:0;right:0;top:0;height:${stripTopPx}px;`,
+              `STRIP TOP ${Math.round(stripTopPx)}px`,
+              "#2563eb",
+            ),
+          );
+        }
+        // Bottom strip box (purple)
+        if (stripBottomPx > 0) {
+          wrap.appendChild(
+            mkBox(
+              `left:0;right:0;bottom:0;height:${stripBottomPx}px;`,
+              `STRIP BOT ${Math.round(stripBottomPx)}px`,
+              "#9333ea",
+            ),
+          );
+        }
+        // Safe-area gap above content (amber) — between strip and content area
+        if (stripGapPx > 0) {
+          wrap.appendChild(
+            mkBox(
+              `left:0;right:0;top:${stripTopPx}px;height:${Math.round(stripGapPx)}px;`,
+              `SAFE GAP ${Math.round(stripGapPx)}px`,
+              "#f59e0b",
+            ),
+          );
+          wrap.appendChild(
+            mkBox(
+              `left:0;right:0;bottom:${stripBottomPx}px;height:${Math.round(stripGapPx)}px;`,
+              `SAFE GAP ${Math.round(stripGapPx)}px`,
+              "#f59e0b",
+            ),
+          );
+        }
+        // Side insets (teal)
+        if (safeSidePx > 0) {
+          wrap.appendChild(
+            mkBox(
+              `left:0;top:${safeTopPx}px;bottom:${safeBottomPx}px;width:${safeSidePx}px;`,
+              `SIDE ${safeSidePx}px`,
+              "#0d9488",
+            ),
+          );
+          wrap.appendChild(
+            mkBox(
+              `right:0;top:${safeTopPx}px;bottom:${safeBottomPx}px;width:${safeSidePx}px;`,
+              `SIDE ${safeSidePx}px`,
+              "#0d9488",
+            ),
+          );
+        }
+        // Content safe area (green) — what's left for flowing content
+        wrap.appendChild(
+          mkBox(
+            `left:${safeSidePx}px;right:${safeSidePx}px;top:${safeTopPx}px;bottom:${safeBottomPx}px;background:transparent;outline:2px dashed #16a34a;`,
+            `CONTENT SAFE AREA`,
+            "#16a34a",
+          ),
+        );
+      }
+
       const label = document.createElement("div");
       label.textContent = `${visibleIdx + 1} / ${visiblePages.length}`;
       label.style.cssText =
@@ -306,7 +396,7 @@ export default function ViewModeContainer({
       viewport.appendChild(wrap);
       visibleIdx++;
     });
-  }, [sourceRef, mode, onPageChange, deletedSet, onDeletePage, stripTopPx, stripBottomPx, stripGapPx, sideInsetPx, headerHtml, footerHtml]);
+  }, [sourceRef, mode, onPageChange, deletedSet, onDeletePage, stripTopPx, stripBottomPx, stripGapPx, sideInsetPx, headerHtml, footerHtml, debug]);
 
   useLayoutEffect(() => {
     renderPages();
