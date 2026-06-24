@@ -218,6 +218,46 @@ ${debug ? `
     setDeletedPages((d) => d.filter((i) => i < pageCount));
   }, [pageCount]);
 
+  // Render-check: after every paged render, verify the logo strips actually
+  // exist on every visible page. Reports both to console and to a status flag
+  // surfaced in the bottom status bar.
+  const [stripCheck, setStripCheck] = useState<{
+    pages: number;
+    withTop: number;
+    withBottom: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (rendering) return;
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    // Wait one frame so ViewModeContainer has finished painting.
+    const raf = requestAnimationFrame(() => {
+      const wraps = scroller.querySelectorAll<HTMLElement>(".paged-page-wrap");
+      let withTop = 0;
+      let withBottom = 0;
+      wraps.forEach((w) => {
+        const top = w.querySelector(".paged-strip-top");
+        const bot = w.querySelector(".paged-strip-bottom");
+        if (top && top.children.length > 0) withTop++;
+        if (bot && bot.children.length > 0) withBottom++;
+      });
+      const pages = wraps.length;
+      setStripCheck({ pages, withTop, withBottom });
+      if (pages > 0 && (withTop < pages || withBottom < pages)) {
+        console.warn(
+          `[PagedPreviewTab] strip check: header ${withTop}/${pages}, footer ${withBottom}/${pages}`,
+          { headerHtmlPresent: !!headerHtml, footerHtmlPresent: !!footerHtml },
+        );
+      } else if (pages > 0) {
+        console.info(
+          `[PagedPreviewTab] strip check OK: header+footer on all ${pages} pages`,
+        );
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [rendering, pageCount, deletedPages, headerHtml, footerHtml, mode, zoom]);
+
   useEffect(() => {
     try {
       localStorage.setItem(
