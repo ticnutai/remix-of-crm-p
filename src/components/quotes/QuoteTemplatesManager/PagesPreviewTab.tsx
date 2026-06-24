@@ -73,6 +73,8 @@ interface FixState {
   safeZoneTopMm: number; // safe top margin (in mm) reserved for repeating header
   safeZoneBottomMm: number; // safe bottom margin (in mm) reserved for repeating footer
   protectedBlocks: string[]; // CSS selectors of blocks to keep intact / push from safe zones
+  autoEnforceStrips: boolean; // automatically push content out of strip zones on every render
+  deletedPages: number[]; // 0-indexed page numbers to remove from the document
 }
 
 const DEFAULT_PROTECTED = [
@@ -100,6 +102,8 @@ const defaultFixState: FixState = {
   safeZoneTopMm: 20,
   safeZoneBottomMm: 15,
   protectedBlocks: [...DEFAULT_PROTECTED],
+  autoEnforceStrips: true,
+  deletedPages: [],
 };
 
 const loadPrefs = (): Prefs => {
