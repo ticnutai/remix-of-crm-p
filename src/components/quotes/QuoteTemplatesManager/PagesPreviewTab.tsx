@@ -325,6 +325,29 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       ? fixState.protectedBlocks
       : DEFAULT_PROTECTED
     ).join(",");
+    // Hard enforcement: regular content gets pushed inside the safe zones via
+    // body padding, and the repeated header/footer overlays are clipped so
+    // they can NEVER bleed past the line the user set.
+    const enforceCss = `<style data-lov-safe-enforce>
+      html, body { box-sizing: border-box; }
+      body {
+        padding-top: ${safeTopPx}px !important;
+        padding-bottom: ${safeBottomPx}px !important;
+      }
+      /* The repeated overlays live in their reserved strip and never escape. */
+      .lov-repeat-overlay-header {
+        max-height: ${safeTopPx}px !important;
+        overflow: hidden !important;
+      }
+      .lov-repeat-overlay-footer {
+        max-height: ${safeBottomPx}px !important;
+        overflow: hidden !important;
+      }
+      /* Repeating originals (page-1 header / last-page footer) clipped too. */
+      .print-repeat-header td { max-height: ${safeTopPx}px; overflow: hidden; }
+      .print-repeat-footer td { max-height: ${safeBottomPx}px; overflow: hidden; }
+    </style>`;
+
     const script = `
 <script>
 (function(){
