@@ -169,9 +169,39 @@ export default function PagedPreviewTab({
 @page {
   size: A4;
   margin: ${debouncedTop}mm ${debouncedSide}mm ${debouncedBottom}mm ${debouncedSide}mm !important;
+${debug ? `  /* DEBUG: outline the page box and margin boxes */
+  border: 1px solid #ef4444 !important;
+  @top-center { background: rgba(34,197,94,0.18) !important; outline: 1px dashed #16a34a !important; }
+  @bottom-center { background: rgba(34,197,94,0.18) !important; outline: 1px dashed #16a34a !important; }
+` : ""}}
+${debug ? `
+/* DEBUG: highlight running elements (header/footer strips) */
+.print-repeat-header, .quote-fixed-header, .header-strip, .repeat-header, .lov-repeat-overlay-header {
+  outline: 2px solid #2563eb !important;
+  background: rgba(37,99,235,0.10) !important;
 }
+.print-repeat-footer, .quote-fixed-footer, .footer-strip, .repeat-footer, .lov-repeat-overlay-footer {
+  outline: 2px solid #9333ea !important;
+  background: rgba(147,51,234,0.10) !important;
+}
+/* DEBUG: outline each rendered page + the content area */
+.pagedjs_page { outline: 2px solid #ef4444 !important; }
+.pagedjs_page_content { outline: 1px dashed #f59e0b !important; background: rgba(245,158,11,0.04) !important; }
+.pagedjs_margin-top, .pagedjs_margin-bottom,
+.pagedjs_margin-left, .pagedjs_margin-right {
+  background: rgba(34,197,94,0.10) !important;
+  outline: 1px dashed #16a34a !important;
+}
+.pagedjs_margin-top-center, .pagedjs_margin-bottom-center {
+  background: rgba(34,197,94,0.22) !important;
+}
+/* DEBUG: tag every element inside a running header/footer */
+.print-repeat-header *, .print-repeat-footer * {
+  outline: 1px dotted rgba(37,99,235,0.5) !important;
+}
+` : ""}
 `,
-    [debouncedTop, debouncedBottom, debouncedSide],
+    [debouncedTop, debouncedBottom, debouncedSide, debug],
   );
 
   const { containerRef, pageCount, rendering, error, rerender } =
