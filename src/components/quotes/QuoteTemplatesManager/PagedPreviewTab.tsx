@@ -565,7 +565,7 @@ ${debug ? `
                 className={
                   stripCheck.withTop === stripCheck.pages &&
                   stripCheck.withBottom === stripCheck.pages
-                    ? "text-emerald-600"
+                    ? "text-success"
                     : "text-destructive"
                 }
                 title="בדיקת רינדור: כמה עמודים מכילים סטריפ עליון/תחתון"
