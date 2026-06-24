@@ -163,7 +163,7 @@ export default function ViewModeContainer({
       viewport.appendChild(wrap);
       visibleIdx++;
     });
-  }, [sourceRef, mode, onPageChange, deletedSet, onDeletePage, stripTopPx, stripBottomPx]);
+  }, [sourceRef, mode, onPageChange, deletedSet, onDeletePage, stripTopPx, stripBottomPx, headerHtml, footerHtml]);
 
   useLayoutEffect(() => {
     renderPages();
