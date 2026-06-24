@@ -170,7 +170,7 @@ export default function PagedPreviewTab({
     () => `
 @page {
   size: A4;
-  margin: ${debouncedTop}mm ${debouncedSide}mm ${debouncedBottom}mm ${debouncedSide}mm !important;
+  margin: ${debouncedTop + STRIP_SAFE_GAP_MM}mm ${debouncedSide}mm ${debouncedBottom + STRIP_SAFE_GAP_MM}mm ${debouncedSide}mm !important;
 ${debug ? `  /* DEBUG: outline the page box and margin boxes */
   border: 1px solid #ef4444 !important;
   @top-center { background: rgba(34,197,94,0.18) !important; outline: 1px dashed #16a34a !important; }
