@@ -27,8 +27,6 @@ const BASE_PAGED_CSS = `
 @page {
   size: A4;
   margin: 22mm 14mm 18mm 14mm;
-  @top-center { content: element(pageHeader); }
-  @bottom-center { content: element(pageFooter); }
 }
 html, body { background: #ffffff; color: #111; }
 body {
