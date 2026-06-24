@@ -421,6 +421,24 @@ ${debug ? `
             </Button>
           )}
 
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant={debug ? "default" : "outline"}
+                className="h-8 text-xs gap-1.5"
+                onClick={() => setDebug((v) => !v)}
+              >
+                <Bug className="h-3.5 w-3.5" />
+                דיבוג
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              מסמן גבולות דף (אדום), אזור תוכן (כתום), שולי @page (ירוק),
+              סטריפ עליון (כחול), תחתון (סגול)
+            </TooltipContent>
+          </Tooltip>
+
           <Popover>
             <PopoverTrigger asChild>
               <Button
