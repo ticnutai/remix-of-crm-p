@@ -52,6 +52,7 @@ interface Prefs {
   mode: ViewMode;
   zoom: number;
   highlightIssues: boolean;
+  showSafeZones?: boolean;
 }
 
 interface ManualRule {
@@ -103,7 +104,7 @@ const defaultFixState: FixState = {
 const loadPrefs = (): Prefs => {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return { mode: "single", zoom: 0.85, highlightIssues: false };
+    if (!raw) return { mode: "single", zoom: 0.85, highlightIssues: false, showSafeZones: true };
     const p = JSON.parse(raw);
     return {
       mode: ["single", "continuous", "spread", "grid", "compare"].includes(p.mode)
@@ -111,9 +112,10 @@ const loadPrefs = (): Prefs => {
         : "single",
       zoom: typeof p.zoom === "number" ? Math.min(2, Math.max(0.25, p.zoom)) : 0.85,
       highlightIssues: !!p.highlightIssues,
+      showSafeZones: p.showSafeZones !== false,
     };
   } catch {
-    return { mode: "single", zoom: 0.85, highlightIssues: false };
+    return { mode: "single", zoom: 0.85, highlightIssues: false, showSafeZones: true };
   }
 };
 
@@ -162,6 +164,9 @@ export default function PagesPreviewTab({
   const [highlightIssues, setHighlightIssues] = useState(
     initial.current.highlightIssues,
   );
+  const [showSafeZones, setShowSafeZones] = useState<boolean>(
+    initial.current.showSafeZones !== false,
+  );
   const [page, setPage] = useState(0);
   const [comparePage, setComparePage] = useState(1);
   const [pageCount, setPageCount] = useState(1);
@@ -194,12 +199,12 @@ export default function PagesPreviewTab({
     try {
       localStorage.setItem(
         LS_KEY,
-        JSON.stringify({ mode, zoom, highlightIssues } as Prefs),
+        JSON.stringify({ mode, zoom, highlightIssues, showSafeZones } as Prefs),
       );
     } catch {
       // ignore
     }
-  }, [mode, zoom, highlightIssues]);
+  }, [mode, zoom, highlightIssues, showSafeZones]);
 
   // Persist fix state
   useEffect(() => {
@@ -797,6 +802,40 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     return null;
   }, []);
 
+  // Auto-detect safe zones from the rendered preview:
+  // - top: read .header-strip OR .header height
+  // - bottom: read .footer OR .quote-fixed-footer height
+  const autoDetectSafeZones = useCallback(() => {
+    const ifr = findLiveIframe();
+    const doc = ifr?.contentDocument;
+    if (!doc) {
+      toast.error("לא ניתן לזהות אוטומטית — התצוגה לא טעונה");
+      return;
+    }
+    const PX_PER_MM = 3.7795;
+    const topEl =
+      doc.querySelector<HTMLElement>(".header-strip") ||
+      doc.querySelector<HTMLElement>(".header") ||
+      doc.querySelector<HTMLElement>(".quote-fixed-header");
+    const bottomEl =
+      doc.querySelector<HTMLElement>(".footer") ||
+      doc.querySelector<HTMLElement>(".quote-fixed-footer");
+    const topPx = topEl?.getBoundingClientRect().height || 0;
+    const bottomPx = bottomEl?.getBoundingClientRect().height || 0;
+    const topMm = Math.max(0, Math.min(60, Math.round(topPx / PX_PER_MM)));
+    const bottomMm = Math.max(0, Math.min(60, Math.round(bottomPx / PX_PER_MM)));
+    if (!topPx && !bottomPx) {
+      toast.message("לא נמצאו סטריפים בתצוגה");
+      return;
+    }
+    setFixState((s) => ({
+      ...s,
+      safeZoneTopMm: topPx ? topMm : s.safeZoneTopMm,
+      safeZoneBottomMm: bottomPx ? bottomMm : s.safeZoneBottomMm,
+    }));
+    toast.success(`זוהה: עליון ${topMm}מ"מ · תחתון ${bottomMm}מ"מ`);
+  }, [findLiveIframe]);
+
   // Post a single auto-fix analysis request to the live iframe.
   const postAutoFixRequest = useCallback((): boolean => {
     const ifr = findLiveIframe();
@@ -1014,6 +1053,44 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           }}
         />
       </div>
+      {showSafeZones && (
+        <>
+          {/* Top safe zone limit — dashed gold line + label */}
+          <div
+            className="absolute left-0 right-0 pointer-events-none"
+            style={{
+              top: fixState.safeZoneTopMm * 3.7795 * scale,
+              borderTop: "1.5px dashed #d8ac27",
+              boxShadow: "0 -1px 0 rgba(216,172,39,0.15)",
+            }}
+            aria-hidden
+          >
+            <span
+              className="absolute right-1 -top-[9px] text-[9px] font-semibold px-1.5 py-0.5 rounded-sm"
+              style={{ background: "#d8ac27", color: "#162C58", lineHeight: 1 }}
+            >
+              אזור סטריפ עליון · אין כניסת טקסט
+            </span>
+          </div>
+          {/* Bottom safe zone limit */}
+          <div
+            className="absolute left-0 right-0 pointer-events-none"
+            style={{
+              bottom: fixState.safeZoneBottomMm * 3.7795 * scale,
+              borderBottom: "1.5px dashed #d8ac27",
+              boxShadow: "0 1px 0 rgba(216,172,39,0.15)",
+            }}
+            aria-hidden
+          >
+            <span
+              className="absolute right-1 top-[2px] text-[9px] font-semibold px-1.5 py-0.5 rounded-sm"
+              style={{ background: "#d8ac27", color: "#162C58", lineHeight: 1 }}
+            >
+              אזור סטריפ תחתון · אין כניסת טקסט
+            </span>
+          </div>
+        </>
+      )}
       <div className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-foreground/70 text-background pointer-events-none">
         {label ? `${label} · ` : ""}
         {pageIdx + 1} / {pageCount}
@@ -1206,6 +1283,28 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
               className="w-80 p-4 space-y-4"
               dir="rtl"
             >
+              <div className="flex items-center justify-between pb-2 border-b">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="show-safe-zones"
+                    checked={showSafeZones}
+                    onCheckedChange={(v) => setShowSafeZones(!!v)}
+                  />
+                  <Label htmlFor="show-safe-zones" className="text-xs font-semibold cursor-pointer">
+                    הצג קווי גבול סטריפים
+                  </Label>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-[11px] gap-1"
+                  onClick={autoDetectSafeZones}
+                  title="זיהוי אוטומטי לפי גובה הסטריפ העליון/תחתון בתבנית"
+                >
+                  <Wand2 className="h-3 w-3" />
+                  זיהוי אוטומטי
+                </Button>
+              </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label className="text-xs font-semibold">
