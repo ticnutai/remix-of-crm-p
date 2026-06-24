@@ -1551,9 +1551,24 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         {label ? `${label} · ` : ""}
         {pageIdx + 1} / {pageCount}
       </div>
-    </div>
-  );
-};
+
+      {interactive && (
+        <button
+          type="button"
+          title="מחק את הדף הזה (התוכן יוסר)"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!confirm(`למחוק את עמוד ${pageIdx + 1}? התוכן שעליו יוסר מההצגה.`)) return;
+            setFixState((s) => ({
+              ...s,
+              deletedPages: Array.from(new Set([...(s.deletedPages || []), pageIdx])).sort((a, b) => a - b),
+            }));
+          }}
+          className="absolute top-1 left-1 z-[60] text-[10px] font-semibold px-2 py-1 rounded bg-destructive text-destructive-foreground shadow hover:opacity-90"
+        >
+          🗑 מחק דף
+        </button>
+      )}
 
   useEffect(() => {
     if (mode === "single" || mode === "compare") return;
