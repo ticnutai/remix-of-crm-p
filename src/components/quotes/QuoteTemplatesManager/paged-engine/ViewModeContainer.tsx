@@ -178,10 +178,9 @@ export default function ViewModeContainer({
       clone.style.height = "100%";
       clone.style.overflow = "hidden";
 
-      // Defensive visual safe-area: paged.js should already create this via
-      // @page margins, but legacy inline/table styles can still paint outside
-      // the box. Clamp the cloned page's paint area so nothing can sit under
-      // the strips or bleed sideways in the preview.
+      // Defensive visual safe-area: paged.js already creates the main strip
+      // and side margins. Keep an extra inner gap, and clamp side bleed, while
+      // avoiding a double top/bottom offset that would hide the first page.
       const safeTop = Math.max(0, Math.round(stripGapPx));
       const safeBottom = Math.max(0, Math.round(stripGapPx));
       const safeSide = Math.max(0, Math.round(sideInsetPx));
