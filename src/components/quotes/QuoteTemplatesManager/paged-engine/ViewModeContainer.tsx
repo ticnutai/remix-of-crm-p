@@ -238,12 +238,13 @@ export default function ViewModeContainer({
         parent.querySelectorAll<HTMLElement>("img, svg, canvas").forEach((m) => {
           if (m instanceof HTMLImageElement) {
             const src = m.getAttribute("src") || "";
-            if (src.includes("company-header")) {
+            const alt = m.getAttribute("alt") || "";
+            const isHeaderImage = parent.classList.contains("paged-strip-top");
+            if (src.includes("company-header") || alt.includes("Header Strip")) {
               m.src = resolvedCompanyHeaderImg;
             }
             m.addEventListener("error", () => {
-              const current = m.getAttribute("src") || "";
-              if (current.includes("company-header")) m.src = resolvedCompanyHeaderImg;
+              if (isHeaderImage) m.src = resolvedCompanyHeaderImg;
             }, { once: true });
           }
           setImportant(m, "display", "block");
