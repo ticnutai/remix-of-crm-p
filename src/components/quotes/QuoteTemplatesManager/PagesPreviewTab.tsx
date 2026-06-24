@@ -802,6 +802,40 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     return null;
   }, []);
 
+  // Auto-detect safe zones from the rendered preview:
+  // - top: read .header-strip OR .header height
+  // - bottom: read .footer OR .quote-fixed-footer height
+  const autoDetectSafeZones = useCallback(() => {
+    const ifr = findLiveIframe();
+    const doc = ifr?.contentDocument;
+    if (!doc) {
+      toast.error("לא ניתן לזהות אוטומטית — התצוגה לא טעונה");
+      return;
+    }
+    const PX_PER_MM = 3.7795;
+    const topEl =
+      doc.querySelector<HTMLElement>(".header-strip") ||
+      doc.querySelector<HTMLElement>(".header") ||
+      doc.querySelector<HTMLElement>(".quote-fixed-header");
+    const bottomEl =
+      doc.querySelector<HTMLElement>(".footer") ||
+      doc.querySelector<HTMLElement>(".quote-fixed-footer");
+    const topPx = topEl?.getBoundingClientRect().height || 0;
+    const bottomPx = bottomEl?.getBoundingClientRect().height || 0;
+    const topMm = Math.max(0, Math.min(60, Math.round(topPx / PX_PER_MM)));
+    const bottomMm = Math.max(0, Math.min(60, Math.round(bottomPx / PX_PER_MM)));
+    if (!topPx && !bottomPx) {
+      toast.message("לא נמצאו סטריפים בתצוגה");
+      return;
+    }
+    setFixState((s) => ({
+      ...s,
+      safeZoneTopMm: topPx ? topMm : s.safeZoneTopMm,
+      safeZoneBottomMm: bottomPx ? bottomMm : s.safeZoneBottomMm,
+    }));
+    toast.success(`זוהה: עליון ${topMm}מ"מ · תחתון ${bottomMm}מ"מ`);
+  }, [findLiveIframe]);
+
   // Post a single auto-fix analysis request to the live iframe.
   const postAutoFixRequest = useCallback((): boolean => {
     const ifr = findLiveIframe();
