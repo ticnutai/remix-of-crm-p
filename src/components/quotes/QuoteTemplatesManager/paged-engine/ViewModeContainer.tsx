@@ -99,42 +99,56 @@ export default function ViewModeContainer({
       clone.style.margin = "0";
       wrap.appendChild(clone);
 
-      // Strip overlays (visual guides — paged.js already keeps content out
-      // because they are @page margins; this is just a translucent indicator).
       // Strip overlays — render the actual header/footer HTML so the logo
       // (and any other branding inside the strip) appears on every page.
+      // The overlays sit on top of the @page margin zones; paged.js already
+      // keeps body content out of those zones, so there is no coverage.
+      const fitChild = (parent: HTMLElement) => {
+        const child = parent.firstElementChild as HTMLElement | null;
+        if (child) {
+          child.style.display = "block";
+          child.style.position = "static";
+          child.style.width = "100%";
+          child.style.height = "100%";
+          child.style.margin = "0";
+          child.style.padding = "0";
+          child.style.maxWidth = "100%";
+          child.style.maxHeight = "100%";
+          child.style.boxSizing = "border-box";
+        }
+        // Make sure no descendant escapes / overflows the strip area.
+        parent.querySelectorAll<HTMLElement>("*").forEach((n) => {
+          const pos = n.style.position;
+          if (pos === "fixed") n.style.position = "absolute";
+        });
+        // Scale images/svg/canvas to fit the visible strip height.
+        parent.querySelectorAll<HTMLElement>("img, svg, canvas").forEach((m) => {
+          m.style.display = "block";
+          m.style.maxWidth = "100%";
+          m.style.maxHeight = "100%";
+          m.style.width = m.style.width || "100%";
+          m.style.height = m.style.height || "100%";
+          (m.style as CSSStyleDeclaration).objectFit = "contain";
+        });
+      };
+
       if (stripTopPx > 0) {
         const top = document.createElement("div");
         top.className = "paged-strip-top";
-        top.style.cssText = `position:absolute;left:0;right:0;top:0;height:${stripTopPx}px;overflow:hidden;pointer-events:none;`;
+        top.style.cssText = `position:absolute;left:0;right:0;top:0;height:${stripTopPx}px;overflow:hidden;pointer-events:none;z-index:5;`;
         if (headerHtml) {
           top.innerHTML = headerHtml;
-          // Force any extracted strip child to fill the overlay area.
-          const child = top.firstElementChild as HTMLElement | null;
-          if (child) {
-            child.style.display = "block";
-            child.style.position = "static";
-            child.style.width = "100%";
-            child.style.height = "100%";
-            child.style.margin = "0";
-          }
+          fitChild(top);
         }
         wrap.appendChild(top);
       }
       if (stripBottomPx > 0) {
         const bot = document.createElement("div");
         bot.className = "paged-strip-bottom";
-        bot.style.cssText = `position:absolute;left:0;right:0;bottom:0;height:${stripBottomPx}px;overflow:hidden;pointer-events:none;`;
+        bot.style.cssText = `position:absolute;left:0;right:0;bottom:0;height:${stripBottomPx}px;overflow:hidden;pointer-events:none;z-index:5;`;
         if (footerHtml) {
           bot.innerHTML = footerHtml;
-          const child = bot.firstElementChild as HTMLElement | null;
-          if (child) {
-            child.style.display = "block";
-            child.style.position = "static";
-            child.style.width = "100%";
-            child.style.height = "100%";
-            child.style.margin = "0";
-          }
+          fitChild(bot);
         }
         wrap.appendChild(bot);
       }
