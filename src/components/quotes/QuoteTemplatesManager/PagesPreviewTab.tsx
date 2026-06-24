@@ -829,9 +829,10 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     }catch(e){}
     tagAutoPaths();
     setupRepeatOverlays();
+    setupSafeMasks();
     setTimeout(detectIssues,300);
-    // Re-run overlay setup after content settles (fonts/images)
-    setTimeout(setupRepeatOverlays,600);
+    // Re-run setup after content settles (fonts/images)
+    setTimeout(function(){ setupRepeatOverlays(); setupSafeMasks(); },600);
   }
   if(document.readyState==='complete') setTimeout(init,200);
   else window.addEventListener('load',function(){setTimeout(init,200);});
