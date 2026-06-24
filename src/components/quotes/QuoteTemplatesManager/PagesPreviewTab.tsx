@@ -1053,6 +1053,44 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           }}
         />
       </div>
+      {showSafeZones && (
+        <>
+          {/* Top safe zone limit — dashed gold line + label */}
+          <div
+            className="absolute left-0 right-0 pointer-events-none"
+            style={{
+              top: fixState.safeZoneTopMm * 3.7795 * scale,
+              borderTop: "1.5px dashed #d8ac27",
+              boxShadow: "0 -1px 0 rgba(216,172,39,0.15)",
+            }}
+            aria-hidden
+          >
+            <span
+              className="absolute right-1 -top-[9px] text-[9px] font-semibold px-1.5 py-0.5 rounded-sm"
+              style={{ background: "#d8ac27", color: "#162C58", lineHeight: 1 }}
+            >
+              אזור סטריפ עליון · אין כניסת טקסט
+            </span>
+          </div>
+          {/* Bottom safe zone limit */}
+          <div
+            className="absolute left-0 right-0 pointer-events-none"
+            style={{
+              bottom: fixState.safeZoneBottomMm * 3.7795 * scale,
+              borderBottom: "1.5px dashed #d8ac27",
+              boxShadow: "0 1px 0 rgba(216,172,39,0.15)",
+            }}
+            aria-hidden
+          >
+            <span
+              className="absolute right-1 top-[2px] text-[9px] font-semibold px-1.5 py-0.5 rounded-sm"
+              style={{ background: "#d8ac27", color: "#162C58", lineHeight: 1 }}
+            >
+              אזור סטריפ תחתון · אין כניסת טקסט
+            </span>
+          </div>
+        </>
+      )}
       <div className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-foreground/70 text-background pointer-events-none">
         {label ? `${label} · ` : ""}
         {pageIdx + 1} / {pageCount}
