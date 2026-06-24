@@ -392,6 +392,8 @@ ${debug ? `
 
   const stripTopPx = topMm * MM_TO_PX;
   const stripBottomPx = bottomMm * MM_TO_PX;
+  const stripGapPx = STRIP_SAFE_GAP_MM * MM_TO_PX;
+  const sideInsetPx = sideMm * MM_TO_PX;
   // Log strip metrics only when the meaningful values change (avoid spam).
   useEffect(() => {
     console.log(
@@ -692,6 +694,8 @@ ${debug ? `
           onDeletePage={handleDeletePage}
           stripTopPx={stripTopPx}
           stripBottomPx={stripBottomPx}
+          stripGapPx={stripGapPx}
+          sideInsetPx={sideInsetPx}
           headerHtml={headerHtml}
           footerHtml={footerHtml}
         />
