@@ -1731,6 +1731,35 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           )}
         </Toggle>
 
+        {/* Auto-enforce strip cutting toggle */}
+        <Toggle
+          size="sm"
+          pressed={fixState.autoEnforceStrips}
+          onPressedChange={(v) =>
+            setFixState((s) => ({ ...s, autoEnforceStrips: v }))
+          }
+          className="h-8 text-xs"
+          title="אם פעיל, טקסט שחורג לסטריפים יידחף אוטומטית לדף הבא"
+        >
+          חיתוך אוטומטי
+        </Toggle>
+
+        {/* Restore deleted pages */}
+        {fixState.deletedPages && fixState.deletedPages.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs gap-1.5"
+            title={`שחזר ${fixState.deletedPages.length} דפים שנמחקו`}
+            onClick={() =>
+              setFixState((s) => ({ ...s, deletedPages: [] }))
+            }
+          >
+            ↩ שחזר {fixState.deletedPages.length} דפים
+          </Button>
+        )}
+
+
         {/* Pagination fix controls */}
         <div className="bg-muted rounded-md p-0.5 flex items-center gap-0.5">
           <Button
