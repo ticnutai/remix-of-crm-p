@@ -1084,97 +1084,119 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           }}
         />
       </div>
-      {showSafeZones && (
-        <>
-          {/* Top safe zone limit — draggable dashed gold line */}
-          <div
-            className="absolute left-0 right-0 group"
-            style={{
-              top: fixState.safeZoneTopMm * 3.7795 * scale - 6,
-              height: 12,
-              cursor: interactive ? "ns-resize" : "default",
-              zIndex: 50,
-              pointerEvents: interactive ? "auto" : "none",
-            }}
-            title={interactive ? "גרור לשינוי גובה הסטריפ העליון" : undefined}
-            onMouseDown={(e) => {
-              if (!interactive) return;
-              e.preventDefault();
-              e.stopPropagation();
-              const startY = e.clientY;
-              const startMm = fixState.safeZoneTopMm;
-              const onMove = (ev: MouseEvent) => {
-                const dy = ev.clientY - startY;
-                const dmm = dy / scale / 3.7795;
-                const next = Math.max(0, Math.min(80, +(startMm + dmm).toFixed(1)));
-                setFixState((s) => ({ ...s, safeZoneTopMm: next }));
-              };
-              const onUp = () => {
-                window.removeEventListener("mousemove", onMove);
-                window.removeEventListener("mouseup", onUp);
-              };
-              window.addEventListener("mousemove", onMove);
-              window.addEventListener("mouseup", onUp);
-            }}
-            aria-label="גרור לשינוי גובה סטריפ עליון"
-          >
+      {showSafeZones && (() => {
+        // Live values (use drag ephemeral if active) to keep the line glued
+        // to the cursor without rebuilding the iframe on every mousemove.
+        const liveTopMm = dragTopMm ?? fixState.safeZoneTopMm;
+        const liveBottomMm = dragBottomMm ?? fixState.safeZoneBottomMm;
+        const PX_PER_MM = 3.7795;
+        const MAX_MM = Math.round((A4_H / PX_PER_MM) * 0.6); // up to 60% of page
+
+        const startDrag = (
+          startMmGetter: () => number,
+          setDraft: (n: number | null) => void,
+          commit: (n: number) => void,
+          invert: boolean,
+        ) => (e: React.MouseEvent) => {
+          if (!interactive) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const startY = e.clientY;
+          const startMm = startMmGetter();
+          let lastMm = startMm;
+          document.body.style.cursor = "ns-resize";
+          document.body.style.userSelect = "none";
+          const onMove = (ev: MouseEvent) => {
+            const dy = ev.clientY - startY;
+            const dmm = (invert ? -dy : dy) / scale / PX_PER_MM;
+            // snap to 1mm grid
+            const snapped = Math.round(startMm + dmm);
+            const clamped = Math.max(0, Math.min(MAX_MM, snapped));
+            if (clamped !== lastMm) {
+              lastMm = clamped;
+              setDraft(clamped);
+            }
+          };
+          const onUp = () => {
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("mouseup", onUp);
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+            setDraft(null);
+            commit(lastMm);
+          };
+          window.addEventListener("mousemove", onMove);
+          window.addEventListener("mouseup", onUp);
+        };
+
+        return (
+          <>
+            {/* Top safe zone limit — draggable dashed gold line */}
             <div
-              className="absolute left-0 right-0 top-1/2 -translate-y-1/2 group-hover:border-t-[2.5px] transition-all"
-              style={{ borderTop: "1.5px dashed #d8ac27" }}
-            />
-            <span
-              className="absolute right-1 -top-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-sm select-none pointer-events-none"
-              style={{ background: "#d8ac27", color: "#162C58", lineHeight: 1 }}
+              className="absolute left-0 right-0 group"
+              style={{
+                top: liveTopMm * PX_PER_MM * scale - 6,
+                height: 12,
+                cursor: interactive ? "ns-resize" : "default",
+                zIndex: 50,
+                pointerEvents: interactive ? "auto" : "none",
+                willChange: "top",
+              }}
+              title={interactive ? "גרור לשינוי גובה הסטריפ העליון (קפיצות של 1 מ\"מ)" : undefined}
+              onMouseDown={startDrag(
+                () => fixState.safeZoneTopMm,
+                setDragTopMm,
+                (n) => setFixState((s) => ({ ...s, safeZoneTopMm: n })),
+                false,
+              )}
+              aria-label="גרור לשינוי גובה סטריפ עליון"
             >
-              סטריפ עליון · {fixState.safeZoneTopMm.toFixed(1)} מ"מ
-            </span>
-          </div>
-          {/* Bottom safe zone limit — draggable */}
-          <div
-            className="absolute left-0 right-0 group"
-            style={{
-              bottom: fixState.safeZoneBottomMm * 3.7795 * scale - 6,
-              height: 12,
-              cursor: interactive ? "ns-resize" : "default",
-              zIndex: 50,
-              pointerEvents: interactive ? "auto" : "none",
-            }}
-            title={interactive ? "גרור לשינוי גובה הסטריפ התחתון" : undefined}
-            onMouseDown={(e) => {
-              if (!interactive) return;
-              e.preventDefault();
-              e.stopPropagation();
-              const startY = e.clientY;
-              const startMm = fixState.safeZoneBottomMm;
-              const onMove = (ev: MouseEvent) => {
-                const dy = ev.clientY - startY;
-                // dragging down (positive dy) → smaller bottom strip
-                const dmm = -dy / scale / 3.7795;
-                const next = Math.max(0, Math.min(80, +(startMm + dmm).toFixed(1)));
-                setFixState((s) => ({ ...s, safeZoneBottomMm: next }));
-              };
-              const onUp = () => {
-                window.removeEventListener("mousemove", onMove);
-                window.removeEventListener("mouseup", onUp);
-              };
-              window.addEventListener("mousemove", onMove);
-              window.addEventListener("mouseup", onUp);
-            }}
-            aria-label="גרור לשינוי גובה סטריפ תחתון"
-          >
+              <div
+                className="absolute left-0 right-0 top-1/2 -translate-y-1/2 group-hover:border-t-[2.5px] transition-all"
+                style={{ borderTop: "1.5px dashed #d8ac27" }}
+              />
+              <span
+                className="absolute right-1 -top-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-sm select-none pointer-events-none"
+                style={{ background: "#d8ac27", color: "#162C58", lineHeight: 1 }}
+              >
+                סטריפ עליון · {liveTopMm} מ"מ
+              </span>
+            </div>
+            {/* Bottom safe zone limit — draggable */}
             <div
-              className="absolute left-0 right-0 top-1/2 -translate-y-1/2 group-hover:border-t-[2.5px] transition-all"
-              style={{ borderTop: "1.5px dashed #d8ac27" }}
-            />
-            <span
-              className="absolute right-1 bottom-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-sm select-none pointer-events-none"
-              style={{ background: "#d8ac27", color: "#162C58", lineHeight: 1 }}
+              className="absolute left-0 right-0 group"
+              style={{
+                bottom: liveBottomMm * PX_PER_MM * scale - 6,
+                height: 12,
+                cursor: interactive ? "ns-resize" : "default",
+                zIndex: 50,
+                pointerEvents: interactive ? "auto" : "none",
+                willChange: "bottom",
+              }}
+              title={interactive ? "גרור לשינוי גובה הסטריפ התחתון (קפיצות של 1 מ\"מ)" : undefined}
+              onMouseDown={startDrag(
+                () => fixState.safeZoneBottomMm,
+                setDragBottomMm,
+                (n) => setFixState((s) => ({ ...s, safeZoneBottomMm: n })),
+                true,
+              )}
+              aria-label="גרור לשינוי גובה סטריפ תחתון"
             >
-              סטריפ תחתון · {fixState.safeZoneBottomMm.toFixed(1)} מ"מ
-            </span>
-          </div>
-        </>
-      )}
+              <div
+                className="absolute left-0 right-0 top-1/2 -translate-y-1/2 group-hover:border-t-[2.5px] transition-all"
+                style={{ borderTop: "1.5px dashed #d8ac27" }}
+              />
+              <span
+                className="absolute right-1 bottom-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-sm select-none pointer-events-none"
+                style={{ background: "#d8ac27", color: "#162C58", lineHeight: 1 }}
+              >
+                סטריפ תחתון · {liveBottomMm} מ"מ
+              </span>
+            </div>
+          </>
+        );
+      })()}
+
 
       <div className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-foreground/70 text-background pointer-events-none">
         {label ? `${label} · ` : ""}
