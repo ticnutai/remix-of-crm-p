@@ -507,6 +507,8 @@ ${debug ? `
           onDeletePage={handleDeletePage}
           stripTopPx={stripTopPx}
           stripBottomPx={stripBottomPx}
+          headerHtml={headerHtml}
+          footerHtml={footerHtml}
         />
 
         <div className="border-t bg-card px-4 py-1.5 text-[11px] text-muted-foreground flex items-center justify-between shrink-0">
