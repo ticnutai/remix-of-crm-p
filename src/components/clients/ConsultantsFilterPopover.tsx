@@ -18,9 +18,11 @@ import {
   Search,
   Plus,
   Trash2,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useConsultants } from "@/hooks/useConsultants";
+import { AssignClientsToConsultantDialog } from "@/components/clients/AssignClientsToConsultantDialog";
 
 interface ConsultantsFilterPopoverProps {
   selectedConsultantIds: string[];
@@ -36,11 +38,12 @@ export function ConsultantsFilterPopover({
   selectedProfessions,
   onChange,
 }: ConsultantsFilterPopoverProps) {
-  const { consultants, addConsultant, deleteConsultant } = useConsultants();
+  const { consultants, addConsultant, deleteConsultant, refresh } = useConsultants();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [newConsultantName, setNewConsultantName] = useState("");
   const [newConsultantProfession, setNewConsultantProfession] = useState("");
+  const [assignDialog, setAssignDialog] = useState<{ id: string; name: string; profession: string | null } | null>(null);
 
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -136,6 +139,7 @@ export function ConsultantsFilterPopover({
   };
 
   return (
+    <>
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
@@ -323,6 +327,17 @@ export function ConsultantsFilterPopover({
                             </div>
                             <button
                               type="button"
+                              className="shrink-0 rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                              title="שייך לקוחות ליועץ"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAssignDialog({ id: c.id, name: c.name, profession: c.profession ?? null });
+                              }}
+                            >
+                              <UserPlus className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
                               className="shrink-0 rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                               title="מחק יועץ"
                               onClick={(e) => {
@@ -344,5 +359,17 @@ export function ConsultantsFilterPopover({
         </div>
       </PopoverContent>
     </Popover>
+
+    {assignDialog && (
+      <AssignClientsToConsultantDialog
+        open={!!assignDialog}
+        onOpenChange={(o) => { if (!o) setAssignDialog(null); }}
+        consultantId={assignDialog.id}
+        consultantName={assignDialog.name}
+        consultantProfession={assignDialog.profession}
+        onSaved={() => { refresh(); setAssignDialog(null); }}
+      />
+    )}
+    </>
   );
 }
