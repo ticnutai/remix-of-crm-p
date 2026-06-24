@@ -1,14 +1,15 @@
-// Modern pages-preview tab powered by paged.js (CSS Paged Media polyfill).
-// Replaces the legacy transform-based viewport with real DOM fragmentation:
-// each page is its own .pagedjs_page element with proper widows/orphans,
-// break-inside:avoid, and @page margins.
+// Pages preview tab powered by paged.js (CSS Paged Media polyfill).
+// Real DOM fragmentation: each page is a .pagedjs_page with proper
+// widows/orphans, break-inside:avoid, and @page margins (= the top/bottom
+// strips). Text is physically impossible to leak into the strip areas
+// because paged.js fragments at the page-box boundary.
 //
-// Features:
-//  - 4 view modes: single | continuous | spread (book) | grid
-//  - Full keyboard navigation (←/→, Space/Shift+Space, Home/End, Ctrl+G)
-//  - Zoom controls + fit-to-width
-//  - Manual page jump
-//  - Drop-in compatible with the old PagesPreviewTab props
+// Features wired here:
+//   - 4 view modes (single / continuous / spread / grid)
+//   - Dynamic strip heights (mm) via @page margin overrides
+//   - Per-page delete + restore
+//   - PDF/Word export hooks
+//   - Persisted preferences
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ZoomIn,
@@ -25,6 +26,8 @@ import {
   ScrollText,
   BookOpen,
   Keyboard,
+  Undo2,
+  Ruler,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +41,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 import { usePagedLayout } from "./paged-engine/usePagedLayout";
 import { useKeyboardNav } from "./paged-engine/useKeyboardNav";
@@ -45,35 +50,53 @@ import ViewModeContainer, {
   type PagedViewMode,
 } from "./paged-engine/ViewModeContainer";
 
-const LS_KEY = "lov-paged-preview-prefs-v1";
+const LS_KEY = "lov-paged-preview-prefs-v2";
 
 interface Prefs {
   mode: PagedViewMode;
   zoom: number;
+  topMm: number;
+  bottomMm: number;
+  sideMm: number;
 }
+
+const DEFAULT_PREFS: Prefs = {
+  mode: "single",
+  zoom: 0.85,
+  topMm: 22,
+  bottomMm: 18,
+  sideMm: 14,
+};
 
 function loadPrefs(): Prefs {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return { mode: "single", zoom: 0.85 };
+    if (!raw) return DEFAULT_PREFS;
     const p = JSON.parse(raw);
-    const validModes: PagedViewMode[] = [
-      "single",
-      "continuous",
-      "spread",
-      "grid",
-    ];
     return {
-      mode: validModes.includes(p.mode) ? p.mode : "single",
+      mode: ["single", "continuous", "spread", "grid"].includes(p.mode)
+        ? p.mode
+        : DEFAULT_PREFS.mode,
       zoom:
         typeof p.zoom === "number"
           ? Math.max(0.25, Math.min(2, p.zoom))
-          : 0.85,
+          : DEFAULT_PREFS.zoom,
+      topMm: clampMm(p.topMm, DEFAULT_PREFS.topMm),
+      bottomMm: clampMm(p.bottomMm, DEFAULT_PREFS.bottomMm),
+      sideMm: clampMm(p.sideMm, DEFAULT_PREFS.sideMm),
     };
   } catch {
-    return { mode: "single", zoom: 0.85 };
+    return DEFAULT_PREFS;
   }
 }
+
+function clampMm(v: unknown, fallback: number): number {
+  const n = typeof v === "number" ? v : Number(v);
+  if (!isFinite(n)) return fallback;
+  return Math.max(5, Math.min(60, n));
+}
+
+const MM_TO_PX = 96 / 25.4; // ~3.78
 
 interface PagedPreviewTabProps {
   html: string;
@@ -95,20 +118,10 @@ const MODE_BUTTONS: {
     mode: "continuous",
     label: "גלילה",
     Icon: ScrollText,
-    hint: "כל העמודים זה מתחת לזה (כמו Word)",
+    hint: "כל העמודים זה מתחת לזה",
   },
-  {
-    mode: "spread",
-    label: "ספר",
-    Icon: BookOpen,
-    hint: "שני עמודים זה לצד זה",
-  },
-  {
-    mode: "grid",
-    label: "רשת",
-    Icon: Grid3x3,
-    hint: "תצוגה ממוזערת של כל העמודים",
-  },
+  { mode: "spread", label: "ספר", Icon: BookOpen, hint: "שני עמודים זה לצד זה" },
+  { mode: "grid", label: "רשת", Icon: Grid3x3, hint: "תצוגה ממוזערת" },
 ];
 
 export default function PagedPreviewTab({
@@ -120,36 +133,54 @@ export default function PagedPreviewTab({
   const initial = useRef(loadPrefs());
   const [mode, setMode] = useState<PagedViewMode>(initial.current.mode);
   const [zoom, setZoom] = useState(initial.current.zoom);
+  const [topMm, setTopMm] = useState(initial.current.topMm);
+  const [bottomMm, setBottomMm] = useState(initial.current.bottomMm);
+  const [sideMm, setSideMm] = useState(initial.current.sideMm);
   const [currentPage, setCurrentPage] = useState(0);
+  const [deletedPages, setDeletedPages] = useState<number[]>([]);
 
-  // Off-screen render container - paged.js writes the fragmented DOM here.
-  // ViewModeContainer clones the resulting .pagedjs_page nodes into the
-  // visible viewport, so the heavy fragmentation only runs once per HTML.
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  const { containerRef, pageCount, rendering, error, rerender } =
-    usePagedLayout(html);
+  // Dynamic @page CSS — overrides margins (= strip heights). This is the
+  // *only* knob we need: paged.js guarantees no content lands inside the
+  // page margin, so changing margin = changing the safe strip zone.
+  const extraCss = useMemo(
+    () => `
+@page {
+  size: A4;
+  margin: ${topMm}mm ${sideMm}mm ${bottomMm}mm ${sideMm}mm !important;
+}
+`,
+    [topMm, bottomMm, sideMm],
+  );
 
-  // Clamp current page when count changes
+  const { containerRef, pageCount, rendering, error, rerender } =
+    usePagedLayout(html, extraCss);
+
+  const visibleCount = Math.max(0, pageCount - deletedPages.length);
+
   useEffect(() => {
-    setCurrentPage((p) => Math.min(p, Math.max(0, pageCount - 1)));
+    setCurrentPage((p) => Math.min(p, Math.max(0, visibleCount - 1)));
+  }, [visibleCount]);
+
+  // Reset deleted pages when the underlying HTML changes substantially.
+  useEffect(() => {
+    setDeletedPages((d) => d.filter((i) => i < pageCount));
   }, [pageCount]);
 
-  // Persist prefs
   useEffect(() => {
     try {
       localStorage.setItem(
         LS_KEY,
-        JSON.stringify({ mode, zoom } as Prefs),
+        JSON.stringify({ mode, zoom, topMm, bottomMm, sideMm } as Prefs),
       );
     } catch {
-      // ignore
+      /* ignore */
     }
-  }, [mode, zoom]);
+  }, [mode, zoom, topMm, bottomMm, sideMm]);
 
-  // Keyboard navigation
   useKeyboardNav({
-    pageCount,
+    pageCount: visibleCount,
     currentPage,
     onPageChange: setCurrentPage,
     scrollContainerRef: scrollRef,
@@ -159,25 +190,29 @@ export default function PagedPreviewTab({
     const el = scrollRef.current;
     if (!el) return;
     const availableW = el.clientWidth - 64;
-    const newZoom = Math.max(
-      0.3,
-      Math.min(1.5, +(availableW / 794).toFixed(2)),
-    );
-    setZoom(newZoom);
+    setZoom(Math.max(0.3, Math.min(1.5, +(availableW / 794).toFixed(2))));
   }, []);
 
-  const totalLabel = useMemo(
-    () =>
-      pageCount === 1
-        ? "1 דף"
-        : `${pageCount} דפים`,
-    [pageCount],
-  );
+  const handleDeletePage = useCallback((idx: number) => {
+    setDeletedPages((d) => (d.includes(idx) ? d : [...d, idx].sort((a, b) => a - b)));
+  }, []);
+
+  const restoreDeleted = useCallback(() => setDeletedPages([]), []);
+
+  const totalLabel = useMemo(() => {
+    if (deletedPages.length > 0) {
+      return `${visibleCount} מתוך ${pageCount} דפים`;
+    }
+    return visibleCount === 1 ? "1 דף" : `${visibleCount} דפים`;
+  }, [visibleCount, pageCount, deletedPages.length]);
+
+  const stripTopPx = topMm * MM_TO_PX;
+  const stripBottomPx = bottomMm * MM_TO_PX;
 
   return (
     <TooltipProvider delayDuration={200}>
       <div className="h-full flex flex-col bg-muted/30 relative" dir="rtl">
-        {/* Off-screen source: paged.js renders into here. */}
+        {/* Off-screen source */}
         <div
           aria-hidden
           ref={containerRef}
@@ -219,9 +254,7 @@ export default function PagedPreviewTab({
               size="icon"
               variant="ghost"
               className="h-8 w-8"
-              onClick={() =>
-                setZoom((z) => Math.max(0.25, +(z - 0.1).toFixed(2)))
-              }
+              onClick={() => setZoom((z) => Math.max(0.25, +(z - 0.1).toFixed(2)))}
               aria-label="הקטן"
             >
               <ZoomOut className="h-4 w-4" />
@@ -233,9 +266,7 @@ export default function PagedPreviewTab({
               size="icon"
               variant="ghost"
               className="h-8 w-8"
-              onClick={() =>
-                setZoom((z) => Math.min(2, +(z + 0.1).toFixed(2)))
-              }
+              onClick={() => setZoom((z) => Math.min(2, +(z + 0.1).toFixed(2)))}
               aria-label="הגדל"
             >
               <ZoomIn className="h-4 w-4" />
@@ -256,7 +287,7 @@ export default function PagedPreviewTab({
             </Tooltip>
           </div>
 
-          {/* Page nav (single mode mainly) */}
+          {/* Page nav */}
           <div className="bg-muted rounded-md p-0.5 flex items-center gap-0.5">
             <Button
               size="icon"
@@ -269,23 +300,77 @@ export default function PagedPreviewTab({
               <ChevronRight className="h-4 w-4" />
             </Button>
             <span className="text-xs font-medium min-w-[5.5rem] text-center tabular-nums">
-              דף {currentPage + 1} / {pageCount}
+              דף {Math.min(currentPage + 1, visibleCount)} / {visibleCount}
             </span>
             <Button
               size="icon"
               variant="ghost"
               className="h-8 w-8"
-              onClick={() =>
-                setCurrentPage((p) => Math.min(pageCount - 1, p + 1))
-              }
-              disabled={currentPage >= pageCount - 1}
+              onClick={() => setCurrentPage((p) => Math.min(visibleCount - 1, p + 1))}
+              disabled={currentPage >= visibleCount - 1}
               aria-label="הבא"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
           </div>
 
-          {/* Keyboard hint */}
+          {/* Strip height controls */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5">
+                <Ruler className="h-3.5 w-3.5" />
+                סטריפים: {topMm}/{bottomMm} מ"מ
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 space-y-3" dir="rtl">
+              <div className="text-sm font-semibold">גובה סטריפים ושוליים</div>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                Paged.js מבטיח שטקסט לא ייכנס לאזורים האלה — הוא נחתך אוטומטית
+                לדף הבא.
+              </p>
+              <StripRow
+                label="עליון (מ״מ)"
+                value={topMm}
+                onChange={(v) => setTopMm(clampMm(v, DEFAULT_PREFS.topMm))}
+              />
+              <StripRow
+                label="תחתון (מ״מ)"
+                value={bottomMm}
+                onChange={(v) => setBottomMm(clampMm(v, DEFAULT_PREFS.bottomMm))}
+              />
+              <StripRow
+                label="צד (מ״מ)"
+                value={sideMm}
+                onChange={(v) => setSideMm(clampMm(v, DEFAULT_PREFS.sideMm))}
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                className="w-full text-xs"
+                onClick={() => {
+                  setTopMm(DEFAULT_PREFS.topMm);
+                  setBottomMm(DEFAULT_PREFS.bottomMm);
+                  setSideMm(DEFAULT_PREFS.sideMm);
+                }}
+              >
+                איפוס ברירת מחדל
+              </Button>
+            </PopoverContent>
+          </Popover>
+
+          {/* Restore deleted pages */}
+          {deletedPages.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs gap-1.5"
+              onClick={restoreDeleted}
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+              שחזר {deletedPages.length} דפים
+            </Button>
+          )}
+
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -297,24 +382,16 @@ export default function PagedPreviewTab({
                 <Keyboard className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent
-              align="end"
-              className="w-72 text-xs space-y-1.5"
-            >
+            <PopoverContent align="end" className="w-72 text-xs space-y-1.5" dir="rtl">
               <div className="font-semibold mb-1.5 text-sm">קיצורי מקלדת</div>
-              <Shortcut keys="←" desc="עמוד הבא" />
-              <Shortcut keys="→" desc="עמוד קודם" />
-              <Shortcut keys="Space" desc="גלילה למטה" />
-              <Shortcut keys="Shift+Space" desc="גלילה למעלה" />
-              <Shortcut keys="Home / End" desc="עמוד ראשון / אחרון" />
-              <Shortcut keys="PageUp / PageDown" desc="עמוד שלם" />
-              <Shortcut keys="Ctrl+G" desc="קפיצה לעמוד" />
+              <Shortcut keys="←/→" desc="ניווט בין דפים" />
+              <Shortcut keys="Space / Shift+Space" desc="גלילה" />
+              <Shortcut keys="Home / End" desc="ראשון / אחרון" />
             </PopoverContent>
           </Popover>
 
           <div className="flex-1" />
 
-          {/* Export */}
           {onExportPdf && (
             <Button
               size="sm"
@@ -349,7 +426,6 @@ export default function PagedPreviewTab({
           </Button>
         </div>
 
-        {/* Viewport */}
         <ViewModeContainer
           sourceRef={containerRef}
           pageCount={pageCount}
@@ -359,9 +435,12 @@ export default function PagedPreviewTab({
           currentPage={currentPage}
           onPageChange={setCurrentPage}
           scrollRef={scrollRef}
+          deletedPages={deletedPages}
+          onDeletePage={handleDeletePage}
+          stripTopPx={stripTopPx}
+          stripBottomPx={stripBottomPx}
         />
 
-        {/* Status bar */}
         <div className="border-t bg-card px-4 py-1.5 text-[11px] text-muted-foreground flex items-center justify-between shrink-0">
           <span>תבנית: {templateName}</span>
           <span className="flex items-center gap-3">
@@ -372,12 +451,48 @@ export default function PagedPreviewTab({
               </span>
             )}
             <span>
-              {totalLabel} • paged.js {rendering ? "(מעבד...)" : "(מוכן)"}
+              {totalLabel} • paged.js {rendering ? "(מעבד…)" : "(מוכן)"}
             </span>
           </span>
         </div>
       </div>
     </TooltipProvider>
+  );
+}
+
+function StripRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs">{label}</Label>
+      <div className="flex items-center gap-2">
+        <Input
+          type="range"
+          min={5}
+          max={60}
+          step={1}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="flex-1"
+        />
+        <Input
+          type="number"
+          min={5}
+          max={60}
+          step={1}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-16 h-8 text-xs"
+        />
+      </div>
+    </div>
   );
 }
 
