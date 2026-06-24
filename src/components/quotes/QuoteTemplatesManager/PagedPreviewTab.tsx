@@ -29,6 +29,7 @@ import {
   Undo2,
   Ruler,
   Bug,
+  ScanLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
