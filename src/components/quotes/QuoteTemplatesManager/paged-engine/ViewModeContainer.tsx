@@ -11,6 +11,57 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 
+// Inject (once) a stylesheet that forces strip contents to fit their overlay.
+// Uses !important so the legacy template's inline `position:absolute`,
+// fixed `height:171px`, etc. don't break the strip.
+const STRIP_STYLE_ID = "lov-paged-strip-fit-styles";
+function ensureStripStyles() {
+  if (typeof document === "undefined") return;
+  if (document.getElementById(STRIP_STYLE_ID)) return;
+  const s = document.createElement("style");
+  s.id = STRIP_STYLE_ID;
+  s.textContent = `
+    .paged-strip-top, .paged-strip-bottom {
+      box-sizing: border-box !important;
+    }
+    .paged-strip-top > *, .paged-strip-bottom > * {
+      position: static !important;
+      inset: auto !important;
+      top: auto !important; left: auto !important;
+      right: auto !important; bottom: auto !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      display: block !important;
+      transform: none !important;
+    }
+    .paged-strip-top *, .paged-strip-bottom * {
+      box-sizing: border-box !important;
+    }
+    .paged-strip-top [style*="position: fixed"],
+    .paged-strip-bottom [style*="position: fixed"],
+    .paged-strip-top [style*="position:fixed"],
+    .paged-strip-bottom [style*="position:fixed"] {
+      position: absolute !important;
+    }
+    .paged-strip-top img, .paged-strip-bottom img,
+    .paged-strip-top svg, .paged-strip-bottom svg,
+    .paged-strip-top canvas, .paged-strip-bottom canvas {
+      display: block !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      object-fit: contain !important;
+      object-position: center !important;
+    }
+  `;
+  document.head.appendChild(s);
+}
+
 export type PagedViewMode = "single" | "continuous" | "spread" | "grid";
 
 interface ViewModeContainerProps {
