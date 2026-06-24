@@ -180,7 +180,9 @@ export function usePagedLayout(
         const { Previewer } = await import("pagedjs");
         if (cancelled || myRun !== runIdRef.current) return;
 
-        const { body, styles } = splitHtml(html);
+        const { body, styles, headerHtml: hh, footerHtml: fh } = splitHtml(html);
+        setHeaderHtml(hh);
+        setFooterHtml(fh);
         const container = containerRef.current;
         if (!container) return;
 
