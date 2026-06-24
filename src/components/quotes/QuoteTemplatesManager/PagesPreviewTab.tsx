@@ -40,6 +40,9 @@ import { toast } from "sonner";
 const A4_W = 794;
 const A4_H = 1123;
 const PX_PER_MM = 3.7795;
+const MIN_SAFE_TOP_MM = 30;
+const MIN_SAFE_BOTTOM_MM = 26;
+const SAFE_SIDE_MM = 20;
 
 // How many convergence passes the auto-fix runs before stopping
 const MAX_AUTOFIX_PASSES = 4;
@@ -99,8 +102,8 @@ const defaultFixState: FixState = {
   globalEnabled: false,
   autoPaths: [],
   manual: [],
-  safeZoneTopMm: 20,
-  safeZoneBottomMm: 15,
+  safeZoneTopMm: MIN_SAFE_TOP_MM,
+  safeZoneBottomMm: MIN_SAFE_BOTTOM_MM,
   protectedBlocks: [...DEFAULT_PROTECTED],
   autoEnforceStrips: true,
   deletedPages: [],
@@ -134,9 +137,9 @@ const loadFixState = (templateKey: string): FixState => {
       autoPaths: Array.isArray(p.autoPaths) ? p.autoPaths : [],
       manual: Array.isArray(p.manual) ? p.manual : [],
       safeZoneTopMm:
-        typeof p.safeZoneTopMm === "number" ? p.safeZoneTopMm : 20,
+        Math.max(MIN_SAFE_TOP_MM, typeof p.safeZoneTopMm === "number" ? p.safeZoneTopMm : MIN_SAFE_TOP_MM),
       safeZoneBottomMm:
-        typeof p.safeZoneBottomMm === "number" ? p.safeZoneBottomMm : 15,
+        Math.max(MIN_SAFE_BOTTOM_MM, typeof p.safeZoneBottomMm === "number" ? p.safeZoneBottomMm : MIN_SAFE_BOTTOM_MM),
       protectedBlocks: Array.isArray(p.protectedBlocks)
         ? p.protectedBlocks
         : [...DEFAULT_PROTECTED],
