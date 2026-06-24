@@ -28,6 +28,9 @@ interface ViewModeContainerProps {
   /** Optional overlay heights (px) for visualising the strip zones. */
   stripTopPx?: number;
   stripBottomPx?: number;
+  /** Repeating header/footer HTML rendered as an overlay on every page. */
+  headerHtml?: string;
+  footerHtml?: string;
 }
 
 // A4 at 96dpi for layout calculations (paged.js uses the same).
@@ -47,6 +50,8 @@ export default function ViewModeContainer({
   onDeletePage,
   stripTopPx = 0,
   stripBottomPx = 0,
+  headerHtml = "",
+  footerHtml = "",
 }: ViewModeContainerProps) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const internalScrollRef = useRef<HTMLDivElement | null>(null);
@@ -92,14 +97,41 @@ export default function ViewModeContainer({
 
       // Strip overlays (visual guides — paged.js already keeps content out
       // because they are @page margins; this is just a translucent indicator).
+      // Strip overlays — render the actual header/footer HTML so the logo
+      // (and any other branding inside the strip) appears on every page.
       if (stripTopPx > 0) {
         const top = document.createElement("div");
-        top.style.cssText = `position:absolute;left:0;right:0;top:0;height:${stripTopPx}px;background:rgba(216,172,39,0.08);border-bottom:1px dashed rgba(216,172,39,0.5);pointer-events:none;`;
+        top.className = "paged-strip-top";
+        top.style.cssText = `position:absolute;left:0;right:0;top:0;height:${stripTopPx}px;overflow:hidden;pointer-events:none;`;
+        if (headerHtml) {
+          top.innerHTML = headerHtml;
+          // Force any extracted strip child to fill the overlay area.
+          const child = top.firstElementChild as HTMLElement | null;
+          if (child) {
+            child.style.display = "block";
+            child.style.position = "static";
+            child.style.width = "100%";
+            child.style.height = "100%";
+            child.style.margin = "0";
+          }
+        }
         wrap.appendChild(top);
       }
       if (stripBottomPx > 0) {
         const bot = document.createElement("div");
-        bot.style.cssText = `position:absolute;left:0;right:0;bottom:0;height:${stripBottomPx}px;background:rgba(216,172,39,0.08);border-top:1px dashed rgba(216,172,39,0.5);pointer-events:none;`;
+        bot.className = "paged-strip-bottom";
+        bot.style.cssText = `position:absolute;left:0;right:0;bottom:0;height:${stripBottomPx}px;overflow:hidden;pointer-events:none;`;
+        if (footerHtml) {
+          bot.innerHTML = footerHtml;
+          const child = bot.firstElementChild as HTMLElement | null;
+          if (child) {
+            child.style.display = "block";
+            child.style.position = "static";
+            child.style.width = "100%";
+            child.style.height = "100%";
+            child.style.margin = "0";
+          }
+        }
         wrap.appendChild(bot);
       }
 
@@ -131,7 +163,7 @@ export default function ViewModeContainer({
       viewport.appendChild(wrap);
       visibleIdx++;
     });
-  }, [sourceRef, mode, onPageChange, deletedSet, onDeletePage, stripTopPx, stripBottomPx]);
+  }, [sourceRef, mode, onPageChange, deletedSet, onDeletePage, stripTopPx, stripBottomPx, headerHtml, footerHtml]);
 
   useLayoutEffect(() => {
     renderPages();

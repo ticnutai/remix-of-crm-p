@@ -15,6 +15,10 @@ export interface PagedLayoutResult {
   error: string | null;
   /** Bump to force re-render. */
   rerender: () => void;
+  /** Extracted header strip HTML (rendered as overlay on every page). */
+  headerHtml: string;
+  /** Extracted footer strip HTML (rendered as overlay on every page). */
+  footerHtml: string;
 }
 
 // CSS injected into every paged.js render. Defines @page rules and
@@ -23,8 +27,6 @@ const BASE_PAGED_CSS = `
 @page {
   size: A4;
   margin: 22mm 14mm 18mm 14mm;
-  @top-center { content: element(pageHeader); }
-  @bottom-center { content: element(pageFooter); }
 }
 html, body { background: #ffffff; color: #111; }
 body {
@@ -63,26 +65,13 @@ body {
   margin: 0 !important;
 }
 
-/* Route the repeating strips into paged.js running elements so they
-   appear inside the @page top/bottom margin on every page. */
-.print-repeat-header,
-.quote-fixed-header, .header-strip, .repeat-header,
-.lov-repeat-overlay-header {
-  position: running(pageHeader) !important;
-  top: auto !important; left: auto !important; right: auto !important;
-  width: 100% !important;
-  margin: 0 !important;
-  z-index: auto !important;
-}
-.print-repeat-footer,
-.quote-fixed-footer, .footer-strip, .repeat-footer,
-.lov-repeat-overlay-footer {
-  position: running(pageFooter) !important;
-  top: auto !important; left: auto !important; right: auto !important;
-  bottom: auto !important;
-  width: 100% !important;
-  margin: 0 !important;
-  z-index: auto !important;
+/* Hide the original strips inside the paged.js flow — we render them as
+   overlays on top of every page wrap instead (much more reliable than
+   paged.js running elements, which mangle inline-styled / image strips). */
+.print-repeat-header, .print-repeat-footer,
+.quote-fixed-header, .header-strip, .repeat-header, .lov-repeat-overlay-header,
+.quote-fixed-footer, .footer-strip, .repeat-footer, .lov-repeat-overlay-footer {
+  display: none !important;
 }
 
 /* Catch-all: anything still position:fixed gets dropped back into flow. */
@@ -114,13 +103,40 @@ ul, ol { break-inside: auto; }
 }
 `;
 
+const HEADER_SELECTORS = [
+  ".print-repeat-header",
+  ".quote-fixed-header",
+  ".header-strip",
+  ".repeat-header",
+  ".lov-repeat-overlay-header",
+];
+const FOOTER_SELECTORS = [
+  ".print-repeat-footer",
+  ".quote-fixed-footer",
+  ".footer-strip",
+  ".repeat-footer",
+  ".lov-repeat-overlay-footer",
+];
+
+function pickFirst(doc: Document, selectors: string[]): string {
+  for (const sel of selectors) {
+    const el = doc.querySelector(sel);
+    if (el) return el.outerHTML;
+  }
+  return "";
+}
+
 /**
- * Extract just the body HTML and stylesheet text from a full HTML doc.
- * paged.js needs the body content; styles are passed separately.
+ * Extract body HTML, stylesheet text, and the repeating header/footer strips.
+ * paged.js receives the body content; strips are rendered as overlays.
  */
-function splitHtml(raw: string): { body: string; styles: string } {
-  if (!raw) return { body: "", styles: "" };
-  // Quick parse via DOMParser
+function splitHtml(raw: string): {
+  body: string;
+  styles: string;
+  headerHtml: string;
+  footerHtml: string;
+} {
+  if (!raw) return { body: "", styles: "", headerHtml: "", footerHtml: "" };
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(raw, "text/html");
@@ -130,9 +146,11 @@ function splitHtml(raw: string): { body: string; styles: string } {
       styles += "\n" + (n.textContent || "");
     });
     const body = doc.body?.innerHTML ?? raw;
-    return { body, styles };
+    const headerHtml = pickFirst(doc, HEADER_SELECTORS);
+    const footerHtml = pickFirst(doc, FOOTER_SELECTORS);
+    return { body, styles, headerHtml, footerHtml };
   } catch {
-    return { body: raw, styles: "" };
+    return { body: raw, styles: "", headerHtml: "", footerHtml: "" };
   }
 }
 
@@ -145,6 +163,8 @@ export function usePagedLayout(
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [renderKey, setRenderKey] = useState(0);
+  const [headerHtml, setHeaderHtml] = useState("");
+  const [footerHtml, setFooterHtml] = useState("");
   const runIdRef = useRef(0);
 
   useEffect(() => {
@@ -160,7 +180,9 @@ export function usePagedLayout(
         const { Previewer } = await import("pagedjs");
         if (cancelled || myRun !== runIdRef.current) return;
 
-        const { body, styles } = splitHtml(html);
+        const { body, styles, headerHtml: hh, footerHtml: fh } = splitHtml(html);
+        setHeaderHtml(hh);
+        setFooterHtml(fh);
         const container = containerRef.current;
         if (!container) return;
 
@@ -210,5 +232,7 @@ export function usePagedLayout(
     rendering,
     error,
     rerender: () => setRenderKey((k) => k + 1),
+    headerHtml,
+    footerHtml,
   };
 }
