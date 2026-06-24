@@ -103,25 +103,38 @@ ul, ol { break-inside: auto; }
 }
 `;
 
-const HEADER_SELECTORS = [
-  ".print-repeat-header",
-  ".quote-fixed-header",
-  ".header-strip",
-  ".repeat-header",
-  ".lov-repeat-overlay-header",
+// Selector → strategy. For table-based wrappers (thead/tfoot) we must pull
+// the inner <td> content; for plain divs we keep outerHTML.
+const HEADER_SOURCES: { sel: string; inner?: string }[] = [
+  { sel: ".print-repeat-header", inner: "tr > td" },
+  { sel: ".quote-fixed-header" },
+  { sel: ".header-strip" },
+  { sel: ".repeat-header" },
+  { sel: ".lov-repeat-overlay-header" },
 ];
-const FOOTER_SELECTORS = [
-  ".print-repeat-footer",
-  ".quote-fixed-footer",
-  ".footer-strip",
-  ".repeat-footer",
-  ".lov-repeat-overlay-footer",
+const FOOTER_SOURCES: { sel: string; inner?: string }[] = [
+  { sel: ".print-repeat-footer", inner: "tr > td" },
+  { sel: ".quote-fixed-footer" },
+  { sel: ".footer-strip" },
+  { sel: ".repeat-footer" },
+  { sel: ".lov-repeat-overlay-footer" },
 ];
 
-function pickFirst(doc: Document, selectors: string[]): string {
-  for (const sel of selectors) {
+function pickStrip(
+  doc: Document,
+  sources: { sel: string; inner?: string }[],
+): string {
+  for (const { sel, inner } of sources) {
     const el = doc.querySelector(sel);
-    if (el) return el.outerHTML;
+    if (!el) continue;
+    if (inner) {
+      const innerEl = el.querySelector(inner);
+      if (innerEl && innerEl.innerHTML.trim()) return innerEl.innerHTML;
+      // fallback: use td-less content if any
+      if (el.textContent?.trim()) return el.innerHTML;
+      continue;
+    }
+    return el.outerHTML;
   }
   return "";
 }
