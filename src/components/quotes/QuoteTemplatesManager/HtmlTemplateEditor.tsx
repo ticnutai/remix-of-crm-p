@@ -14183,6 +14183,16 @@ ${tbAt('footer')}
               templateName={editedTemplate.name}
             />
           </TabsContent>
+
+          {/* Paged.js Pro - real CSS Paged Media engine (client-side) */}
+          <TabsContent value="paged-pro" className="flex-1 m-0 overflow-hidden">
+            <PagedPreviewTab
+              html={debouncedPreviewHtml}
+              onExportPdf={handleExportPdf}
+              onExportWord={handleExportWord}
+              templateName={editedTemplate.name}
+            />
+          </TabsContent>
         </Tabs>
         </div>
 
