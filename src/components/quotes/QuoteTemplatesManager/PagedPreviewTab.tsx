@@ -83,9 +83,9 @@ function loadPrefs(): Prefs {
         typeof p.zoom === "number"
           ? Math.max(0.25, Math.min(2, p.zoom))
           : DEFAULT_PREFS.zoom,
-      topMm: clampMm(p.topMm, DEFAULT_PREFS.topMm),
-      bottomMm: clampMm(p.bottomMm, DEFAULT_PREFS.bottomMm),
-      sideMm: clampMm(p.sideMm, DEFAULT_PREFS.sideMm),
+      topMm: Math.max(DEFAULT_PREFS.topMm, clampMm(p.topMm, DEFAULT_PREFS.topMm)),
+      bottomMm: Math.max(DEFAULT_PREFS.bottomMm, clampMm(p.bottomMm, DEFAULT_PREFS.bottomMm)),
+      sideMm: Math.max(DEFAULT_PREFS.sideMm, clampMm(p.sideMm, DEFAULT_PREFS.sideMm)),
     };
   } catch {
     return DEFAULT_PREFS;
