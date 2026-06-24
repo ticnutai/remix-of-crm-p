@@ -232,5 +232,9 @@ export function usePagedLayout(
     rendering,
     error,
     rerender: () => setRenderKey((k) => k + 1),
+    headerHtml,
+    footerHtml,
+  };
+}
   };
 }
