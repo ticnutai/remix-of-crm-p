@@ -65,9 +65,9 @@ interface Prefs {
 const DEFAULT_PREFS: Prefs = {
   mode: "single",
   zoom: 0.85,
-  topMm: 22,
-  bottomMm: 18,
-  sideMm: 14,
+  topMm: 30,
+  bottomMm: 26,
+  sideMm: 20,
 };
 
 function loadPrefs(): Prefs {
@@ -99,6 +99,7 @@ function clampMm(v: unknown, fallback: number): number {
 }
 
 const MM_TO_PX = 96 / 25.4; // ~3.78
+const STRIP_SAFE_GAP_MM = 5;
 
 function useDebouncedValue<T>(value: T, delay = 250): T {
   const [debounced, setDebounced] = useState(value);
