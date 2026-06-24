@@ -50,6 +50,8 @@ export default function ViewModeContainer({
   onDeletePage,
   stripTopPx = 0,
   stripBottomPx = 0,
+  headerHtml = "",
+  footerHtml = "",
 }: ViewModeContainerProps) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const internalScrollRef = useRef<HTMLDivElement | null>(null);
