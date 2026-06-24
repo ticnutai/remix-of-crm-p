@@ -1569,6 +1569,11 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           🗑 מחק דף
         </button>
       )}
+    </div>
+  );
+};
+
+
 
   useEffect(() => {
     if (mode === "single" || mode === "compare") return;
