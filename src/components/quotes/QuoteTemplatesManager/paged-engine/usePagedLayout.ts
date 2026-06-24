@@ -170,8 +170,9 @@ function splitHtml(raw: string): {
       styles += "\n" + (n.textContent || "");
     });
     const body = doc.body?.innerHTML ?? raw;
-    const headerHtml = pickStrip(doc, HEADER_SOURCES);
-    const footerHtml = pickStrip(doc, FOOTER_SOURCES);
+    const headerHtml = pickStrip(doc, HEADER_SOURCES, "header");
+    const footerHtml = pickStrip(doc, FOOTER_SOURCES, "footer");
+    console.log(`[paged-engine] splitHtml — bodyLen=${body.length} stylesLen=${styles.length} headerLen=${headerHtml.length} footerLen=${footerHtml.length}`);
     return { body, styles, headerHtml, footerHtml };
   } catch {
     return { body: raw, styles: "", headerHtml: "", footerHtml: "" };
