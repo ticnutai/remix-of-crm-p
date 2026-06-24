@@ -110,6 +110,10 @@ export default function ViewModeContainer({
   const [version, setVersion] = useState(0);
 
   useLayoutEffect(() => {
+    ensureStripStyles();
+  }, []);
+
+  useLayoutEffect(() => {
     setVersion((v) => v + 1);
   }, [pageCount, rendering]);
 
