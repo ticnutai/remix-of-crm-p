@@ -98,6 +98,15 @@ function clampMm(v: unknown, fallback: number): number {
 
 const MM_TO_PX = 96 / 25.4; // ~3.78
 
+function useDebouncedValue<T>(value: T, delay = 250): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), delay);
+    return () => window.clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
 interface PagedPreviewTabProps {
   html: string;
   onExportPdf?: () => void;
