@@ -534,6 +534,33 @@ ${debug ? `
           </Button>
         </div>
 
+        {stripCheck && stripCheck.pages > 0 &&
+          (stripCheck.withTop < stripCheck.pages ||
+            stripCheck.withBottom < stripCheck.pages) && (
+            <div
+              role="alert"
+              className="border-b border-destructive/40 bg-destructive/10 text-destructive px-4 py-2 text-xs flex items-center gap-2 shrink-0"
+            >
+              <span className="font-semibold">⚠ בדיקת רינדור:</span>
+              <span>
+                סטריפ עליון מופיע ב-{stripCheck.withTop} מתוך {stripCheck.pages}{" "}
+                עמודים, סטריפ תחתון ב-{stripCheck.withBottom} מתוך{" "}
+                {stripCheck.pages}.
+              </span>
+              {!headerHtml && stripCheck.withTop === 0 && (
+                <span className="text-destructive/80">
+                  (לא נמצא אלמנט סטריפ עליון בתבנית)
+                </span>
+              )}
+              {!footerHtml && stripCheck.withBottom === 0 && (
+                <span className="text-destructive/80">
+                  (לא נמצא אלמנט סטריפ תחתון בתבנית)
+                </span>
+              )}
+            </div>
+          )}
+
+
         <ViewModeContainer
           sourceRef={containerRef}
           pageCount={pageCount}
