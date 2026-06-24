@@ -100,6 +100,8 @@ interface ViewModeContainerProps {
   /** Repeating header/footer HTML rendered as an overlay on every page. */
   headerHtml?: string;
   footerHtml?: string;
+  /** When true, draws visible bounding boxes for strips + safe area + content. */
+  debug?: boolean;
 }
 
 // A4 at 96dpi for layout calculations (paged.js uses the same).
