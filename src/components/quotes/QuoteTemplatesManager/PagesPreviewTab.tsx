@@ -174,13 +174,20 @@ export default function PagesPreviewTab({
   const [issues, setIssues] = useState<number>(0);
   const [exporting, setExporting] = useState(false);
 
-  // Ephemeral drag overrides for the safe-zone lines — used while the user
-  // is actively dragging, so we DON'T rebuild the iframe srcDoc on every
-  // mousemove (which is what caused the "jumpy" feel). Committed on mouseup.
-  const [dragTopMm, setDragTopMm] = useState<number | null>(null);
-  const [dragBottomMm, setDragBottomMm] = useState<number | null>(null);
+  // Drag state for safe-zone lines — kept in refs so the entire preview
+  // does NOT re-render on every mousemove. Only the line DOM is updated.
+  const dragRef = useRef<{
+    active: boolean;
+    line: "top" | "bottom";
+    startY: number;
+    startMm: number;
+    lastMm: number;
+    scale: number;
+  }>({ active: false, line: "top", startY: 0, startMm: 0, lastMm: 0, scale: 1 });
 
-
+  // Keep a registry of all rendered page-viewport containers so we can update
+  // every visible strip line/background in sync during drag.
+  const pageContainersRef = useRef<Map<number, HTMLDivElement>>(new Map());
 
   // Pagination fix state
   const templateKey = templateName || "default";
@@ -201,6 +208,111 @@ export default function PagesPreviewTab({
   // Iterative auto-fix bookkeeping
   const autoFixIterRef = useRef(0);
   const autoFixCumulativeRef = useRef(0);
+
+  // Update the visual position of all strip lines/bgs/labels without React render.
+  const updateSafeZoneVisuals = useCallback(
+    (topMm: number, bottomMm: number, scale: number) => {
+      const topPx = topMm * PX_PER_MM * scale;
+      const bottomPx = bottomMm * PX_PER_MM * scale;
+      pageContainersRef.current.forEach((container) => {
+        const topLine = container.querySelector<HTMLElement>(
+          '[data-safe-line="top"]',
+        );
+        const bottomLine = container.querySelector<HTMLElement>(
+          '[data-safe-line="bottom"]',
+        );
+        const topBg = container.querySelector<HTMLElement>(
+          '[data-safe-bg="top"]',
+        );
+        const bottomBg = container.querySelector<HTMLElement>(
+          '[data-safe-bg="bottom"]',
+        );
+        const topLabel = container.querySelector<HTMLElement>(
+          '[data-safe-label="top"]',
+        );
+        const bottomLabel = container.querySelector<HTMLElement>(
+          '[data-safe-label="bottom"]',
+        );
+        if (topLine) topLine.style.top = `${topPx}px`;
+        if (topBg) topBg.style.height = `${topPx}px`;
+        if (topLabel)
+          topLabel.textContent = `סטריפ עליון · ${topMm} מ"מ`;
+        if (bottomLine) bottomLine.style.bottom = `${bottomPx}px`;
+        if (bottomBg) bottomBg.style.height = `${bottomPx}px`;
+        if (bottomLabel)
+          bottomLabel.textContent = `סטריפ תחתון · ${bottomMm} מ"מ`;
+      });
+    },
+    [],
+  );
+
+  // Start dragging a safe-zone boundary line.
+  const startSafeZoneDrag = useCallback(
+    (line: "top" | "bottom", scale: number) =>
+      (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const startMm =
+          line === "top" ? fixState.safeZoneTopMm : fixState.safeZoneBottomMm;
+        dragRef.current = {
+          active: true,
+          line,
+          startY: e.clientY,
+          startMm,
+          lastMm: startMm,
+          scale,
+        };
+        document.body.style.cursor = "ns-resize";
+        document.body.style.userSelect = "none";
+
+        const onMove = (ev: MouseEvent) => {
+          const d = dragRef.current;
+          if (!d.active) return;
+          const dy = ev.clientY - d.startY;
+          // For the bottom line the CSS distance is from the bottom edge:
+          // dragging the mouse UP moves the line UP and INCREASES the strip.
+          const invert = d.line === "bottom";
+          const dmm = (invert ? -dy : dy) / d.scale / PX_PER_MM;
+          const snapped = Math.round(d.startMm + dmm);
+          const other =
+            d.line === "top"
+              ? fixState.safeZoneBottomMm
+              : fixState.safeZoneTopMm;
+          // Leave at least 60mm of content between the two strips.
+          const maxMm = Math.max(
+            0,
+            Math.round(A4_H / PX_PER_MM - other - 60),
+          );
+          const clamped = Math.max(0, Math.min(maxMm, snapped));
+          if (clamped !== d.lastMm) {
+            d.lastMm = clamped;
+            if (d.line === "top") {
+              updateSafeZoneVisuals(clamped, fixState.safeZoneBottomMm, d.scale);
+            } else {
+              updateSafeZoneVisuals(fixState.safeZoneTopMm, clamped, d.scale);
+            }
+          }
+        };
+
+        const onUp = () => {
+          dragRef.current.active = false;
+          document.body.style.cursor = "";
+          document.body.style.userSelect = "";
+          window.removeEventListener("mousemove", onMove);
+          window.removeEventListener("mouseup", onUp);
+          const finalMm = dragRef.current.lastMm;
+          if (d.line === "top") {
+            setFixState((s) => ({ ...s, safeZoneTopMm: finalMm }));
+          } else {
+            setFixState((s) => ({ ...s, safeZoneBottomMm: finalMm }));
+          }
+        };
+
+        window.addEventListener("mousemove", onMove);
+        window.addEventListener("mouseup", onUp);
+      },
+    [fixState.safeZoneTopMm, fixState.safeZoneBottomMm, updateSafeZoneVisuals],
+  );
 
   // Persist prefs
   useEffect(() => {
