@@ -467,6 +467,23 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         padding-top: ${safeTopPx}px !important;
         padding-bottom: ${safeBottomPx}px !important;
       }
+      /* ===== Strip / mask layering system =====
+         Layer order (highest wins):
+           --lov-z-strip   = 2147483600  (logo + footer strips — ALWAYS on top)
+           --lov-z-mask    = 2147482000  (white masks that hide content bleed)
+           --lov-z-content =          1  (regular quote content)
+         Using near-max int values guarantees we beat any user CSS, and the
+         body gets `isolation: isolate` so an ancestor stacking context can't
+         trap our layers underneath theirs. */
+      :root {
+        --lov-z-content: 1;
+        --lov-z-mask: 2147482000;
+        --lov-z-strip: 2147483600;
+      }
+      body {
+        isolation: isolate;
+        position: relative;
+      }
       /* Per-page masks (injected absolutely by the runtime script below) hide
          any regular content that bleeds into the strips on EVERY page. */
       .lov-safe-mask {
@@ -474,21 +491,39 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         left: 0 !important;
         right: 0 !important;
         background: #ffffff !important;
-        z-index: 999998 !important;
+        z-index: var(--lov-z-mask) !important;
         pointer-events: none !important;
+        transform: none !important;
+        filter: none !important;
+        opacity: 1 !important;
       }
-      /* Strip elements must render above the masks. */
+      /* Strip elements must render above the masks in EVERY scenario.
+         We promote both the wrapper AND its inner cell so table-based
+         repeating headers/footers (<thead>/<tfoot>) layer correctly. */
       .lov-repeat-overlay-header,
       .lov-repeat-overlay-footer,
-      .print-repeat-header,
-      .print-repeat-footer,
       .header-strip,
       .quote-fixed-header,
       .quote-fixed-footer,
       .footer,
       .header {
+        position: relative !important;
+        z-index: var(--lov-z-strip) !important;
+        isolation: isolate;
+      }
+      /* thead/tfoot themselves don't honour z-index reliably — promote the
+         td/div children that actually paint. */
+      .print-repeat-header,
+      .print-repeat-footer {
         position: relative;
-        z-index: 1000000 !important;
+        z-index: var(--lov-z-strip);
+      }
+      .print-repeat-header td,
+      .print-repeat-footer td,
+      .print-repeat-header > tr > td > *,
+      .print-repeat-footer > tr > td > * {
+        position: relative;
+        z-index: var(--lov-z-strip) !important;
       }
       /* The repeated overlays live in their reserved strip and never escape. */
       .lov-repeat-overlay-header {
