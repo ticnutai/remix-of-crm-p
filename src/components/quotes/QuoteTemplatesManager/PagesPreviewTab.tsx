@@ -1283,6 +1283,28 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
               className="w-80 p-4 space-y-4"
               dir="rtl"
             >
+              <div className="flex items-center justify-between pb-2 border-b">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="show-safe-zones"
+                    checked={showSafeZones}
+                    onCheckedChange={(v) => setShowSafeZones(!!v)}
+                  />
+                  <Label htmlFor="show-safe-zones" className="text-xs font-semibold cursor-pointer">
+                    הצג קווי גבול סטריפים
+                  </Label>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-[11px] gap-1"
+                  onClick={autoDetectSafeZones}
+                  title="זיהוי אוטומטי לפי גובה הסטריפ העליון/תחתון בתבנית"
+                >
+                  <Wand2 className="h-3 w-3" />
+                  זיהוי אוטומטי
+                </Button>
+              </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label className="text-xs font-semibold">
