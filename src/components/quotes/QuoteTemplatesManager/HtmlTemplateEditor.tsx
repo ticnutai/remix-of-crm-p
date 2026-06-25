@@ -4571,6 +4571,7 @@ export function HtmlTemplateEditor({
   savedQuoteId,
 }: HtmlTemplateEditorProps) {
   const { toast } = useToast();
+  const [splitEditorCollapsed, setSplitEditorCollapsed] = useState(false);
   const { clients } = useClients();
   const { saveToCloud } = useCloudPreferences();
   const globalDefaultVat = useDefaultVatRate();
