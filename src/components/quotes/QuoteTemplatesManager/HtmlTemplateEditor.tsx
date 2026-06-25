@@ -9,7 +9,11 @@ import React, {
   useContext,
 } from "react";
 import { createPortal } from "react-dom";
-import { PreviewIframe, type InlineEditPayload } from "./PreviewIframe";
+import {
+  PreviewIframe,
+  type FreeTextEditPayload,
+  type InlineEditPayload,
+} from "./PreviewIframe";
 import { FrameDesignPanel } from "./FrameDesignPanel";
 import PagesPreviewTab from "./PagesPreviewTab";
 import PagedPreviewTab from "./PagedPreviewTab";
@@ -4870,6 +4874,10 @@ export function HtmlTemplateEditor({
   const [plainTextMode, setPlainTextMode] = useState(false);
   const [plainTextScope, setPlainTextScope] =
     useState<PlainTextScope>("document");
+  const [freeTextEditMode, setFreeTextEditMode] = useState(false);
+  const [freeTextHtmlOverride, setFreeTextHtmlOverride] = useState<string | null>(
+    null,
+  );
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const cropCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -4899,6 +4907,7 @@ export function HtmlTemplateEditor({
       projectDetails,
       selectedTier,
       activeTab,
+      freeTextHtmlOverride,
     }),
     [
       editedTemplate,
@@ -4910,6 +4919,7 @@ export function HtmlTemplateEditor({
       projectDetails,
       selectedTier,
       activeTab,
+      freeTextHtmlOverride,
     ],
   );
   const {
@@ -5019,6 +5029,11 @@ export function HtmlTemplateEditor({
         if (data.projectDetails) setProjectDetails(data.projectDetails);
         if (typeof data.selectedTier === "string") setSelectedTier(data.selectedTier);
         if (typeof data.activeTab === "string") setActiveTab(data.activeTab);
+        if (typeof data.freeTextHtmlOverride === "string") {
+          setFreeTextHtmlOverride(data.freeTextHtmlOverride);
+        } else if (data.freeTextHtmlOverride === null) {
+          setFreeTextHtmlOverride(null);
+        }
         toast({
           title: source === "cloud" ? "טיוטה שוחזרה מהענן" : "טיוטה שוחזרה",
           description: "הצעת המחיר שוחזרה למצב שבו עזבת אותה",
@@ -6319,6 +6334,7 @@ export function HtmlTemplateEditor({
   const liveHtml = useMemo(() => generateHtmlContent(), [generateHtmlContent]);
   // Debounce the HTML fed into the preview iframe to prevent flicker while typing
   const debouncedPreviewHtml = useDebouncedValue(liveHtml, 300);
+  const activePreviewHtml = freeTextHtmlOverride || debouncedPreviewHtml;
 
   // Paged view: opens a separate browser window with the rendered HTML and
   // triggers the native print preview, which uses the existing print CSS to
@@ -6328,7 +6344,7 @@ export function HtmlTemplateEditor({
   const [pagedRendering, setPagedRendering] = useState(false);
 
   const openPrintPreview = useCallback(() => {
-    if (!debouncedPreviewHtml) return;
+    if (!activePreviewHtml) return;
     setPagedRendering(true);
     setPagedPageCount(null);
     const win = window.open("", "_blank", "width=900,height=1200");
@@ -6359,14 +6375,14 @@ export function HtmlTemplateEditor({
         else window.addEventListener('load', function(){ setTimeout(reportPages, 400); });
       })();
     <\/script>`;
-    const html = debouncedPreviewHtml.replace(
+    const html = activePreviewHtml.replace(
       "</body>",
       `${measureScript}</body>`
     );
     win.document.open();
     win.document.write(html);
     win.document.close();
-  }, [debouncedPreviewHtml]);
+  }, [activePreviewHtml]);
 
   // Listen for page-count report from the print preview window.
   useEffect(() => {
@@ -6457,6 +6473,22 @@ export function HtmlTemplateEditor({
     }
   }, []);
 
+  const handleFreeTextSave = useCallback(({ html }: FreeTextEditPayload) => {
+    setFreeTextHtmlOverride(html);
+    toast({
+      title: "עריכת הטקסט נשמרה",
+      description: "המסמך נשמר כגרסת טקסט חופשית. אפשר לאפס ולחזור לתבנית בכל רגע.",
+    });
+  }, [toast]);
+
+  const resetFreeTextOverride = useCallback(() => {
+    setFreeTextHtmlOverride(null);
+    toast({
+      title: "חזרת לתבנית המקורית",
+      description: "המסמך שוב נבנה מהשדות והתבניות המחוברים.",
+    });
+  }, [toast]);
+
 
   // Helper: convert image URL to base64 data URL for standalone exports
   const convertImageToBase64 = (url: string): Promise<string> => {
@@ -6486,7 +6518,7 @@ export function HtmlTemplateEditor({
 
   // Generate HTML with embedded base64 images for standalone export
   const generateExportHtml = async (): Promise<string> => {
-    let html = generateHtmlContent();
+    let html = freeTextHtmlOverride || generateHtmlContent();
     // Find all image src attributes and convert to base64
     const logoUrl = designSettings.logoUrl;
     if (logoUrl && !logoUrl.startsWith('data:')) {
@@ -12238,11 +12270,13 @@ ${tbAt('footer')}
                   </div>
                   <div className="h-[calc(100%-24px)] bg-white rounded-lg shadow-lg overflow-hidden">
                     <PreviewIframe
-                      html={debouncedPreviewHtml}
+                      html={activePreviewHtml}
                       title="תצוגה מקדימה"
                       className="w-full h-full border-0"
                       style={{ minHeight: "100%" }}
                       onInlineEdit={handleInlineEdit}
+                      freeTextEditMode={freeTextEditMode}
+                      onFreeTextSave={handleFreeTextSave}
                     />
                   </div>
                 </div>
@@ -12502,7 +12536,7 @@ ${tbAt('footer')}
                     variant={interactiveEditMode ? "default" : "ghost"}
                     className={`h-8 text-xs ${interactiveEditMode ? "bg-purple-500 hover:bg-purple-600 text-white" : ""}`}
                     onClick={() => setInteractiveEditMode(!interactiveEditMode)}
-                    disabled={plainTextMode}
+                    disabled={plainTextMode || freeTextEditMode}
                   >
                     <Edit className="h-3.5 w-3.5 ml-1" />
                     עריכה ישירה
@@ -12511,15 +12545,45 @@ ${tbAt('footer')}
                     size="sm"
                     variant={plainTextMode ? "default" : "ghost"}
                     className={`h-8 text-xs ${plainTextMode ? "bg-[#162C58] hover:bg-[#0f1f40] text-white" : ""}`}
-                    onClick={() => setPlainTextMode((v) => !v)}
+                    onClick={() => {
+                      setPlainTextMode((v) => !v);
+                      setFreeTextEditMode(false);
+                    }}
+                    disabled={freeTextEditMode}
                     title="מצב טקסט רגיל משאיר את השדות מחוברים ומכבה בחירת תבניות"
                   >
                     <Type className="h-3.5 w-3.5 ml-1" />
                     טקסט רגיל
                   </Button>
+                  <Button
+                    size="sm"
+                    variant={freeTextEditMode ? "default" : "ghost"}
+                    className={`h-8 text-xs ${freeTextEditMode ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}`}
+                    onClick={() => {
+                      setFreeTextEditMode((v) => !v);
+                      setPlainTextMode(false);
+                      setInteractiveEditMode(false);
+                    }}
+                    title="עריכה חופשית של הטקסט בתוך המסמך עם סרגל עיצוב צף"
+                  >
+                    <Pencil className="h-3.5 w-3.5 ml-1" />
+                    עריכת טקסט
+                  </Button>
+                  {freeTextHtmlOverride && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 text-xs"
+                      onClick={resetFreeTextOverride}
+                      title="איפוס העריכה החופשית וחזרה לתבנית המחוברת"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 ml-1" />
+                      אפס עריכה
+                    </Button>
+                  )}
                 </div>
 
-                {plainTextMode && (
+                {plainTextMode && !freeTextEditMode && (
                   <div className="bg-white rounded-lg shadow-sm border p-1 flex items-center gap-2">
                     <span className="text-xs text-gray-500 px-1">תחום:</span>
                     <Select
@@ -12540,7 +12604,7 @@ ${tbAt('footer')}
                 )}
 
                 {/* Global Page Settings - only shown in edit mode */}
-                {interactiveEditMode && !plainTextMode && (
+                {interactiveEditMode && !plainTextMode && !freeTextEditMode && (
                   <div className="bg-white rounded-lg shadow-sm border p-1 flex gap-2 items-center">
                     <span className="text-xs text-gray-500 px-1">
                       עיצוב כללי:
@@ -12681,7 +12745,7 @@ ${tbAt('footer')}
                   )}
 
                   {/* Interactive Edit Preview */}
-                  {interactiveEditMode && !plainTextMode ? (
+                  {interactiveEditMode && !plainTextMode && !freeTextEditMode ? (
                     <ScrollArea
                       className="w-full h-full"
                       style={{
@@ -13689,7 +13753,7 @@ ${tbAt('footer')}
                     </ScrollArea>
                   ) : (
                     <PreviewIframe
-                      html={debouncedPreviewHtml}
+                      html={activePreviewHtml}
                       title="תצוגה מקדימה"
                       className="w-full border-0"
                       style={{
@@ -13702,10 +13766,12 @@ ${tbAt('footer')}
                       }}
                       autoHeight={previewDevice === "desktop"}
                       minAutoHeight={720}
-                      enableInlineEdit={!plainTextMode}
+                      enableInlineEdit={!plainTextMode && !freeTextEditMode}
                       plainTextMode={plainTextMode}
                       plainTextScope={plainTextScope}
                       onInlineEdit={handleInlineEdit}
+                      freeTextEditMode={freeTextEditMode}
+                      onFreeTextSave={handleFreeTextSave}
                     />
                   )}
 
@@ -13763,11 +13829,13 @@ ${tbAt('footer')}
                   </div>
                   <div className="flex-1 bg-white rounded-lg shadow-lg overflow-hidden">
                     <PreviewIframe
-                      html={debouncedPreviewHtml}
+                      html={activePreviewHtml}
                       title="תצוגה מקדימה חיה"
                       className="w-full h-full border-0"
                       style={{ minHeight: "100%" }}
                       onInlineEdit={handleInlineEdit}
+                      freeTextEditMode={freeTextEditMode}
+                      onFreeTextSave={handleFreeTextSave}
                     />
                   </div>
                 </div>
@@ -14257,11 +14325,13 @@ ${tbAt('footer')}
                   </div>
                   <div className="flex-1 bg-white rounded-lg shadow-lg overflow-hidden">
                     <PreviewIframe
-                      html={debouncedPreviewHtml}
+                      html={activePreviewHtml}
                       title="תצוגה מקדימה חיה"
                       className="w-full h-full border-0"
                       style={{ minHeight: "100%" }}
                       onInlineEdit={handleInlineEdit}
+                      freeTextEditMode={freeTextEditMode}
+                      onFreeTextSave={handleFreeTextSave}
                     />
                   </div>
                 </div>
@@ -14274,7 +14344,7 @@ ${tbAt('footer')}
           {/* Pages Preview Tab - paged A4 preview */}
           <TabsContent value="pages" className="flex-1 m-0 overflow-hidden">
             <PagesPreviewTab
-              html={debouncedPreviewHtml}
+              html={activePreviewHtml}
               onExportPdf={handleExportPdf}
               onExportWord={handleExportWord}
               onJumpToEditor={(path) => {
@@ -14293,7 +14363,7 @@ ${tbAt('footer')}
           {/* Paged.js Pro - real CSS Paged Media engine (client-side) */}
           <TabsContent value="paged-pro" className="flex-1 m-0 overflow-hidden">
             <PagedPreviewTab
-              html={debouncedPreviewHtml}
+              html={activePreviewHtml}
               onExportPdf={handleExportPdf}
               onExportWord={handleExportWord}
               templateName={editedTemplate.name}
