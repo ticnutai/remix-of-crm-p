@@ -493,7 +493,29 @@ function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
   const [selectedElement, setSelectedElement] = useState<{
     tagName: string; id: string; className: string; dimensions: string;
   } | null>(null);
+  const [paused, setPaused] = useState(false);
   const highlightRef = useRef<HTMLDivElement | null>(null);
+
+  // Alt שמאלי = toggle השהיה של בוחר האלמנטים
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Alt' && !e.repeat && e.location === 1) {
+        e.preventDefault();
+        setPaused(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  // סמן crosshair גלובלי כשפעיל ולא מושהה
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.cursor;
+    document.body.style.cursor = paused ? '' : 'crosshair';
+    return () => { document.body.style.cursor = prev; };
+  }, [isOpen, paused]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -507,8 +529,8 @@ function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     const handleMouseMove = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target || target.closest('[data-dev-tool]')) return;
-      // כשמחזיקים Ctrl/Cmd – מסתירים את ההיילייט ומאפשרים פעולה רגילה
-      if (e.ctrlKey || e.metaKey) {
+      // השהיה (Alt-toggle) או Ctrl/Cmd מוחזק – מסתירים היילייט ומאפשרים פעולה רגילה
+      if (paused || e.ctrlKey || e.metaKey) {
         if (highlightRef.current) {
           highlightRef.current.style.display = 'none';
         }
@@ -534,8 +556,8 @@ function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target || target.closest('[data-dev-tool]')) return;
-      // Ctrl/Cmd + Click = פעולה רגילה, לא בחירת אלמנט
-      if (e.ctrlKey || e.metaKey) return;
+      // השהיה או Ctrl/Cmd = פעולה רגילה, לא בחירת אלמנט
+      if (paused || e.ctrlKey || e.metaKey) return;
       e.preventDefault();
       e.stopPropagation();
       const rect = target.getBoundingClientRect();
@@ -558,7 +580,7 @@ function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
         highlightRef.current = null;
       }
     };
-  }, [isOpen]);
+  }, [isOpen, paused]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -574,10 +596,12 @@ function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     <>
       <div 
         data-dev-tool="true"
-        className="fixed top-4 left-1/2 -translate-x-1/2 z-[100001] bg-[#1e3a5f] text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2"
+        className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100001] px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transition-colors ${paused ? 'bg-muted text-muted-foreground' : 'bg-[#1e3a5f] text-white'}`}
       >
-        <Bug className="h-4 w-4 text-[#D4A843]" />
-        <span className="text-sm">מצב בדיקה פעיל - לחץ על אלמנט</span>
+        <Bug className={`h-4 w-4 ${paused ? '' : 'text-[#D4A843]'}`} />
+        <span className="text-sm">
+          {paused ? 'מושהה - Alt שמאלי לחידוש' : 'מצב בדיקה פעיל - Alt שמאלי להשהיה'}
+        </span>
         <Button size="sm" variant="ghost" className="h-6 px-2 hover:bg-white/20" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
