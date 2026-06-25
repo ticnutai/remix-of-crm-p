@@ -12458,8 +12458,8 @@ ${tbAt('footer')}
 
 
           {/* Preview Tab - Full Preview with Device Switcher */}
-          <TabsContent value="preview" className="flex-1 m-0 overflow-hidden">
-            <div className="h-full bg-gray-100 p-4 flex flex-col">
+          <TabsContent value="preview" className="flex-1 min-h-0 m-0 overflow-hidden flex flex-col">
+            <div className="flex-1 min-h-0 bg-gray-100 p-4 flex flex-col">
               {/* Device switcher toolbar */}
               <div className="flex items-center justify-center gap-2 mb-3">
                 <div className="bg-white rounded-lg shadow-sm border p-1 flex gap-1">
@@ -12620,14 +12620,14 @@ ${tbAt('footer')}
               </div>
 
               {/* Device frame */}
-              <div className="flex-1 flex items-start justify-center overflow-auto">
+              <div className="flex-1 min-h-0 flex items-start justify-center overflow-auto">
                 <div
-                  className={`bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-300 ${
+                  className={`bg-white transition-all duration-300 ${
                     previewDevice === "mobile"
-                      ? "w-[375px] border-[8px] border-gray-800 rounded-[2rem]"
+                      ? "w-[375px] border-[8px] border-gray-800 rounded-[2rem] shadow-lg overflow-hidden"
                       : previewDevice === "tablet"
-                        ? "w-[768px] border-[6px] border-gray-700 rounded-[1.5rem]"
-                        : "w-full h-full"
+                        ? "w-[768px] border-[6px] border-gray-700 rounded-[1.5rem] shadow-lg overflow-hidden"
+                        : "w-full min-h-full overflow-visible"
                   }`}
                   style={
                     previewDevice !== "desktop"
@@ -12635,7 +12635,7 @@ ${tbAt('footer')}
                           height:
                             previewDevice === "mobile" ? "667px" : "1024px",
                         }
-                      : { height: "100%" }
+                      : {}
                   }
                 >
                   {/* Phone notch */}
@@ -13663,8 +13663,10 @@ ${tbAt('footer')}
                             ? "630px"
                             : previewDevice === "tablet"
                               ? "1000px"
-                              : "100%",
+                              : undefined,
                       }}
+                      autoHeight={previewDevice === "desktop"}
+                      minAutoHeight={720}
                       onInlineEdit={handleInlineEdit}
                     />
                   )}

@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useRef } from "react";
+import React, { memo, useEffect, useRef, useState } from "react";
 
 export type InlineEditPayload = {
   path: string;
@@ -12,6 +12,8 @@ interface PreviewIframeProps {
   style?: React.CSSProperties;
   onInlineEdit?: (payload: InlineEditPayload) => void;
   enableInlineEdit?: boolean;
+  autoHeight?: boolean;
+  minAutoHeight?: number;
 }
 
 const INLINE_EDIT_SCRIPT = `
@@ -100,8 +102,12 @@ const PreviewIframeComponent: React.FC<PreviewIframeProps> = ({
   style,
   onInlineEdit,
   enableInlineEdit = true,
+  autoHeight = false,
+  minAutoHeight = 0,
 }) => {
   const handlerRef = useRef(onInlineEdit);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [measuredHeight, setMeasuredHeight] = useState(minAutoHeight);
   useEffect(() => {
     handlerRef.current = onInlineEdit;
   }, [onInlineEdit]);
@@ -120,12 +126,84 @@ const PreviewIframeComponent: React.FC<PreviewIframeProps> = ({
 
   const finalHtml = enableInlineEdit ? injectInlineEditAssets(html) : html;
 
+  useEffect(() => {
+    if (!autoHeight) return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    let resizeObserver: ResizeObserver | null = null;
+    let raf = 0;
+
+    const measure = () => {
+      const doc = iframe.contentDocument;
+      if (!doc) return;
+      const nextHeight = Math.max(
+        minAutoHeight,
+        doc.documentElement?.scrollHeight || 0,
+        doc.body?.scrollHeight || 0,
+        doc.documentElement?.offsetHeight || 0,
+        doc.body?.offsetHeight || 0,
+      );
+      setMeasuredHeight((current) =>
+        Math.abs(current - nextHeight) > 2 ? nextHeight : current,
+      );
+    };
+
+    const scheduleMeasure = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(measure);
+    };
+
+    const attachObservers = () => {
+      const doc = iframe.contentDocument;
+      if (!doc) return;
+      measure();
+      setTimeout(measure, 250);
+      setTimeout(measure, 900);
+      try {
+        const fonts = (doc as Document & { fonts?: FontFaceSet }).fonts;
+        fonts?.ready?.then(scheduleMeasure).catch(() => undefined);
+      } catch {
+        // ignore
+      }
+      try {
+        resizeObserver?.disconnect();
+        resizeObserver = new ResizeObserver(scheduleMeasure);
+        resizeObserver.observe(doc.documentElement);
+        if (doc.body) resizeObserver.observe(doc.body);
+      } catch {
+        // ignore
+      }
+    };
+
+    attachObservers();
+    iframe.addEventListener("load", attachObservers);
+
+    return () => {
+      iframe.removeEventListener("load", attachObservers);
+      if (raf) cancelAnimationFrame(raf);
+      resizeObserver?.disconnect();
+    };
+  }, [autoHeight, finalHtml, minAutoHeight]);
+
+  const iframeStyle: React.CSSProperties = {
+    ...style,
+    ...(autoHeight
+      ? {
+          height: measuredHeight ? `${measuredHeight}px` : style?.height,
+          minHeight: minAutoHeight || style?.minHeight,
+          overflow: "hidden",
+        }
+      : {}),
+  };
+
   return (
     <iframe
+      ref={iframeRef}
       srcDoc={finalHtml}
       title={title || "תצוגה מקדימה"}
       className={className}
-      style={style}
+      style={iframeStyle}
     />
   );
 };
@@ -140,6 +218,8 @@ export const PreviewIframe = memo(PreviewIframeComponent, (prev, next) => {
     prev.title === next.title &&
     prev.className === next.className &&
     prev.enableInlineEdit === next.enableInlineEdit &&
+    prev.autoHeight === next.autoHeight &&
+    prev.minAutoHeight === next.minAutoHeight &&
     JSON.stringify(prev.style) === JSON.stringify(next.style)
   );
 });
