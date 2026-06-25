@@ -10300,7 +10300,7 @@ ${tbAt('footer')}
 
                   {/* Inline company details — edit here, persisted as part of designSettings */}
                   {designSettings.repeatFooterOnAllPages !== false && (
-                    <div className="border-t pt-3 space-y-3 bg-gray-50 -mx-4 -mb-4 px-4 pb-4 rounded-b-xl">
+                    <div className="border-t pt-3 space-y-3 bg-gray-50 -mx-4 px-4 pb-4">
                       <p className="text-xs font-semibold text-gray-700">פרטי החברה (יוצגו בתחתית)</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
@@ -10350,6 +10350,60 @@ ${tbAt('footer')}
                       </div>
                     </div>
                   )}
+
+                  <div className="border-t pt-3 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <Label className="text-sm font-medium">גובה סטריפ עליון</Label>
+                        <p className="text-xs text-gray-500 mt-0.5">קובע את אזור הלוגו שיופיע בכל דף</p>
+                      </div>
+                      <span className="text-xs font-semibold tabular-nums text-[#162C58]">
+                        {designSettings.headerStripHeight || 150}px
+                      </span>
+                    </div>
+                    <Slider
+                      value={[designSettings.headerStripHeight || 150]}
+                      min={90}
+                      max={260}
+                      step={5}
+                      onValueChange={([v]) =>
+                        setDesignSettings((prev) => ({ ...prev, headerStripHeight: v }))
+                      }
+                    />
+
+                    <div className="flex items-center justify-between gap-3 pt-1">
+                      <div>
+                        <Label className="text-sm font-medium">גובה סטריפ תחתון</Label>
+                        <p className="text-xs text-gray-500 mt-0.5">קובע כמה מקום נשמר לפרטי החברה בתחתית</p>
+                      </div>
+                      <span className="text-xs font-semibold tabular-nums text-[#162C58]">
+                        {designSettings.footerStripHeight || 90}px
+                      </span>
+                    </div>
+                    <Slider
+                      value={[designSettings.footerStripHeight || 90]}
+                      min={55}
+                      max={160}
+                      step={5}
+                      onValueChange={([v]) =>
+                        setDesignSettings((prev) => ({ ...prev, footerStripHeight: v }))
+                      }
+                    />
+
+                    <div className="flex justify-end pt-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs border-[#162C58]/30 text-[#162C58] hover:bg-[#162C58]/10"
+                        onClick={() => setActiveTab("pages")}
+                        title="פתח תצוגת A4 עם הסטריפים בכל דף"
+                      >
+                        <Layers className="h-3.5 w-3.5 ml-1.5" />
+                        פתח בדיקת PDF / עימוד
+                      </Button>
+                    </div>
+                  </div>
 
                   {(designSettings.repeatHeaderOnAllPages || designSettings.repeatFooterOnAllPages !== false) && (
                     <p className="text-xs text-[#B8860B] bg-[#FFF8E1] rounded p-2">
