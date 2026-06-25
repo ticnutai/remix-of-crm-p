@@ -13682,6 +13682,57 @@ ${tbAt('footer')}
 
           {/* Split View Tab - Block Editor + Live Preview */}
           <TabsContent value="split" className="flex-1 m-0 overflow-hidden">
+            {splitEditorCollapsed ? (
+              <div className="h-full flex">
+                {/* Collapsed mini sidebar */}
+                <div className="w-10 shrink-0 bg-gray-50 border-l flex flex-col items-center py-2 gap-2">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={() => setSplitEditorCollapsed(false)}
+                    title="פתח פאנל עריכה"
+                  >
+                    <PanelLeftOpen className="h-4 w-4" />
+                  </Button>
+                </div>
+                {/* Full-width preview */}
+                <div className="flex-1 bg-gray-100 p-2 flex flex-col min-w-0">
+                  <div className="shrink-0 flex items-center justify-between gap-2 px-2 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        תצוגה חיה - לחיצה לעריכה מהירה
+                      </span>
+                      {(pagedRendering || pagedPageCount != null) && (
+                        <Badge variant="secondary" className="text-[10px] h-5">
+                          {pagedRendering
+                            ? "סופר עמודים..."
+                            : `${pagedPageCount} עמודים בהדפסה`}
+                        </Badge>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={openPrintPreview}
+                    >
+                      <FileText className="h-3.5 w-3.5 ml-1" />
+                      תצוגת עמודים / הדפסה
+                    </Button>
+                  </div>
+                  <div className="flex-1 bg-white rounded-lg shadow-lg overflow-hidden">
+                    <PreviewIframe
+                      html={debouncedPreviewHtml}
+                      title="תצוגה מקדימה חיה"
+                      className="w-full h-full border-0"
+                      style={{ minHeight: "100%" }}
+                      onInlineEdit={handleInlineEdit}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
             <ResizablePanelGroup direction="horizontal" className="h-full">
               {/* Editor Panel - Draggable blocks */}
               <ResizablePanel defaultSize={50} minSize={30}>
