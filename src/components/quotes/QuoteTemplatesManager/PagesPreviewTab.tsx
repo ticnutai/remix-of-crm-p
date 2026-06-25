@@ -57,6 +57,10 @@ interface Prefs {
   zoom: number;
   highlightIssues: boolean;
   showSafeZones?: boolean;
+  showGrid?: boolean;
+  showRulers?: boolean;
+  cleanPages?: boolean;
+  showPageMap?: boolean;
 }
 
 interface ManualRule {
@@ -112,7 +116,7 @@ const defaultFixState: FixState = {
 const loadPrefs = (): Prefs => {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return { mode: "single", zoom: 0.85, highlightIssues: false, showSafeZones: true };
+    if (!raw) return { mode: "single", zoom: 0.85, highlightIssues: false, showSafeZones: true, showGrid: false, showRulers: true, cleanPages: true, showPageMap: true };
     const p = JSON.parse(raw);
     return {
       mode: ["single", "continuous", "spread", "grid", "compare"].includes(p.mode)
@@ -121,9 +125,13 @@ const loadPrefs = (): Prefs => {
       zoom: typeof p.zoom === "number" ? Math.min(2, Math.max(0.25, p.zoom)) : 0.85,
       highlightIssues: !!p.highlightIssues,
       showSafeZones: p.showSafeZones !== false,
+      showGrid: !!p.showGrid,
+      showRulers: p.showRulers !== false,
+      cleanPages: p.cleanPages !== false,
+      showPageMap: p.showPageMap !== false,
     };
   } catch {
-    return { mode: "single", zoom: 0.85, highlightIssues: false, showSafeZones: true };
+    return { mode: "single", zoom: 0.85, highlightIssues: false, showSafeZones: true, showGrid: false, showRulers: true, cleanPages: true, showPageMap: true };
   }
 };
 
@@ -176,6 +184,16 @@ export default function PagesPreviewTab({
   );
   const [showSafeZones, setShowSafeZones] = useState<boolean>(
     initial.current.showSafeZones !== false,
+  );
+  const [showGrid, setShowGrid] = useState<boolean>(!!initial.current.showGrid);
+  const [showRulers, setShowRulers] = useState<boolean>(
+    initial.current.showRulers !== false,
+  );
+  const [cleanPages, setCleanPages] = useState<boolean>(
+    initial.current.cleanPages !== false,
+  );
+  const [showPageMap, setShowPageMap] = useState<boolean>(
+    initial.current.showPageMap !== false,
   );
   const [page, setPage] = useState(0);
   const [comparePage, setComparePage] = useState(1);
@@ -343,12 +361,30 @@ export default function PagesPreviewTab({
     try {
       localStorage.setItem(
         LS_KEY,
-        JSON.stringify({ mode, zoom, highlightIssues, showSafeZones } as Prefs),
+        JSON.stringify({
+          mode,
+          zoom,
+          highlightIssues,
+          showSafeZones,
+          showGrid,
+          showRulers,
+          cleanPages,
+          showPageMap,
+        } as Prefs),
       );
     } catch {
       // ignore
     }
-  }, [mode, zoom, highlightIssues, showSafeZones]);
+  }, [
+    mode,
+    zoom,
+    highlightIssues,
+    showSafeZones,
+    showGrid,
+    showRulers,
+    cleanPages,
+    showPageMap,
+  ]);
 
   // Persist fix state
   useEffect(() => {
@@ -1500,6 +1536,12 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   ) => {
     const safeTopPx = fixState.safeZoneTopMm * PX_PER_MM * scale;
     const safeBottomPx = fixState.safeZoneBottomMm * PX_PER_MM * scale;
+    const grid5 = 5 * PX_PER_MM * scale;
+    const grid10 = 10 * PX_PER_MM * scale;
+    const rulerTop = 22 * scale;
+    const rulerSide = 26 * scale;
+    const rulerLabelsX = [0, 50, 100, 150, 200];
+    const rulerLabelsY = [0, 50, 100, 150, 200, 250];
     return (
       <div
         data-page-index={pageIdx}
@@ -1519,7 +1561,11 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
             pageContainersRef.current.delete(pageIdx);
           }
         }}
-        className="relative bg-card shadow-md border border-border"
+        className={`relative bg-white border transition-shadow ${
+          cleanPages
+            ? "shadow-[0_12px_35px_rgba(15,23,42,0.18)] border-slate-300"
+            : "shadow-md border-border"
+        }`}
         style={{
           width: A4_W * scale,
           height: A4_H * scale,
@@ -1551,6 +1597,71 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           }}
         />
       </div>
+
+      {showGrid && (
+        <>
+          <div
+            className="absolute inset-0 pointer-events-none z-20"
+            style={{
+              backgroundImage: `
+                linear-gradient(to right, rgba(22,44,88,0.11) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(22,44,88,0.11) 1px, transparent 1px),
+                linear-gradient(to right, rgba(216,172,39,0.24) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(216,172,39,0.24) 1px, transparent 1px)
+              `,
+              backgroundSize: `${grid5}px ${grid5}px, ${grid5}px ${grid5}px, ${grid10}px ${grid10}px, ${grid10}px ${grid10}px`,
+            }}
+          />
+          <div
+            className="absolute top-0 bottom-0 pointer-events-none z-30"
+            style={{
+              left: A4_W * scale * 0.5,
+              borderLeft: "1px solid rgba(220,38,38,0.35)",
+            }}
+          />
+          <div
+            className="absolute left-0 right-0 pointer-events-none z-30"
+            style={{
+              top: A4_H * scale * 0.5,
+              borderTop: "1px solid rgba(220,38,38,0.35)",
+            }}
+          />
+        </>
+      )}
+
+      {showRulers && (
+        <>
+          <div
+            className="absolute left-0 right-0 top-0 z-40 pointer-events-none border-b border-slate-300 bg-white/90 text-[9px] text-slate-600"
+            style={{ height: rulerTop }}
+          >
+            {rulerLabelsX.map((mm) => (
+              <span
+                key={`x-${mm}`}
+                className="absolute top-1 font-medium tabular-nums"
+                style={{ left: mm * PX_PER_MM * scale + 4 }}
+              >
+                {mm}
+              </span>
+            ))}
+          </div>
+          <div
+            className="absolute top-0 bottom-0 right-0 z-40 pointer-events-none border-l border-slate-300 bg-white/90 text-[9px] text-slate-600"
+            style={{ width: rulerSide }}
+          >
+            {rulerLabelsY.map((mm) => (
+              <span
+                key={`y-${mm}`}
+                className="absolute right-1 font-medium tabular-nums"
+                style={{ top: mm * PX_PER_MM * scale + 24 }}
+              >
+                {mm}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+
       {showSafeZones && (
         <>
           {/* Top strip background — visually marks the reserved logo area. */}
@@ -1857,6 +1968,55 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         >
           סטריפ עליון + תחתון בכל דף
         </span>
+
+        <div className="bg-muted rounded-md p-0.5 flex items-center gap-0.5">
+          <Toggle
+            pressed={cleanPages}
+            onPressedChange={setCleanPages}
+            size="sm"
+            className="h-8 text-xs"
+            title="תצוגת דפים נקייה עם גבולות וצל ברור"
+          >
+            נקי
+          </Toggle>
+          <Toggle
+            pressed={showGrid}
+            onPressedChange={setShowGrid}
+            size="sm"
+            className="h-8 text-xs data-[state=on]:bg-[#162C58]/15 data-[state=on]:text-[#162C58]"
+            title="הצג גריד 5 מ״מ ו-10 מ״מ על כל דף"
+          >
+            <Grid3x3 className="h-3.5 w-3.5 ml-1.5" />
+            גריד
+          </Toggle>
+          <Toggle
+            pressed={showRulers}
+            onPressedChange={setShowRulers}
+            size="sm"
+            className="h-8 text-xs"
+            title="הצג סרגלים במ״מ בחלק העליון ובצד הדף"
+          >
+            סרגלים
+          </Toggle>
+          <Toggle
+            pressed={showSafeZones}
+            onPressedChange={setShowSafeZones}
+            size="sm"
+            className="h-8 text-xs"
+            title="הצג אזורי סטריפ עליון ותחתון"
+          >
+            אזורים
+          </Toggle>
+          <Toggle
+            pressed={showPageMap}
+            onPressedChange={setShowPageMap}
+            size="sm"
+            className="h-8 text-xs"
+            title="הצג מפת עמודים מהירה"
+          >
+            מפת עמודים
+          </Toggle>
+        </div>
 
         {/* Restore deleted pages */}
         {fixState.deletedPages && fixState.deletedPages.length > 0 && (
@@ -2236,12 +2396,67 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       </div>
 
       {/* Viewport */}
-      <div ref={scrollerRef} className="pages-preview-scroll flex-1 overflow-auto p-6" dir="ltr">
-        {mode === "single" && (
-          <div className="flex justify-center">
-            <div ref={captureRef}>{renderPageViewport(page, zoom, true)}</div>
-          </div>
+      <div className="flex-1 min-h-0 flex bg-slate-100/70" dir="rtl">
+        {showPageMap && (
+          <aside className="w-32 shrink-0 border-l bg-white/90 p-2 overflow-auto">
+            <div className="text-[11px] font-semibold text-slate-600 mb-2 px-1">
+              עמודים
+            </div>
+            <div className="space-y-2">
+              {Array.from({ length: pageCount }).map((_, i) => {
+                const active = i === page;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      setPage(i);
+                      if (mode === "grid") setMode("single");
+                    }}
+                    className={`w-full rounded-md border p-1.5 text-right transition ${
+                      active
+                        ? "border-[#162C58] bg-[#162C58]/10 text-[#162C58]"
+                        : "border-slate-200 bg-white hover:border-[#d8ac27] hover:bg-[#fff8e1]"
+                    }`}
+                    title={`עבור לעמוד ${i + 1}`}
+                  >
+                    <div
+                      className="mx-auto mb-1 rounded-sm border bg-white shadow-sm"
+                      style={{
+                        width: 46,
+                        height: 65,
+                        backgroundImage: showGrid
+                          ? "linear-gradient(to right, rgba(22,44,88,.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(22,44,88,.12) 1px, transparent 1px)"
+                          : undefined,
+                        backgroundSize: "8px 8px",
+                      }}
+                    >
+                      <div className="h-2 bg-[#162C58]/15 border-b border-[#d8ac27]/50" />
+                      <div className="mt-2 mx-2 space-y-1">
+                        <div className="h-1 bg-slate-300 rounded" />
+                        <div className="h-1 bg-slate-200 rounded" />
+                        <div className="h-1 bg-slate-200 rounded w-2/3" />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] font-medium">
+                      <span>עמוד {i + 1}</span>
+                      {active && highlightIssues && issues > 0 && (
+                        <span className="h-2 w-2 rounded-full bg-red-500" />
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
         )}
+
+        <div ref={scrollerRef} className="pages-preview-scroll flex-1 overflow-auto p-6" dir="ltr">
+          {mode === "single" && (
+            <div className="flex justify-center">
+              <div ref={captureRef}>{renderPageViewport(page, zoom, true)}</div>
+            </div>
+          )}
 
         {mode === "continuous" && (
           <div className="flex flex-col gap-8 items-center pb-8">
@@ -2354,6 +2569,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* Floating manual-edit panel */}
