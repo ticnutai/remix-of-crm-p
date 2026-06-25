@@ -410,7 +410,8 @@ export default function ViewModeContainer({
     const wraps = viewport.querySelectorAll<HTMLElement>(".paged-page-wrap");
     const target = wraps[currentPage];
     if (!target) return;
-    const targetTop = target.offsetTop * zoom;
+    // With CSS `zoom`, offsetTop already reflects the scaled layout.
+    const targetTop = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
     scroller.scrollTo({ top: targetTop - 24, behavior: "smooth" });
   }, [currentPage, mode, zoom, targetScrollRef, version]);
 
@@ -469,18 +470,20 @@ export default function ViewModeContainer({
   return (
     <div
       ref={targetScrollRef}
-      className="flex-1 overflow-auto bg-muted/30"
+      className="flex-1 min-h-0 overflow-auto bg-muted/30"
       dir="ltr"
       tabIndex={0}
     >
-      <div className="p-1 min-h-full w-full flex justify-center">
+      <div className="p-1 w-full flex justify-center">
         <div
           ref={viewportRef}
           className={cn("paged-viewport", viewportClass)}
           style={{
-            transform: `scale(${effectiveZoom})`,
-            transformOrigin: "top center",
-          }}
+            // Use `zoom` so the scaled pages reserve real layout space
+            // and the outer scroller grows to fit. `transform: scale()` would
+            // keep the unscaled box and clip / leave empty space.
+            zoom: effectiveZoom,
+          } as React.CSSProperties}
         />
       </div>
 
