@@ -14,6 +14,8 @@ interface PreviewIframeProps {
   enableInlineEdit?: boolean;
   autoHeight?: boolean;
   minAutoHeight?: number;
+  plainTextMode?: boolean;
+  plainTextScope?: "document" | "selection";
 }
 
 const INLINE_EDIT_SCRIPT = `
@@ -86,6 +88,52 @@ const INLINE_EDIT_SCRIPT = `
 </script>
 `;
 
+const PLAIN_TEXT_SCRIPT = `
+<style>
+  html, body, body * {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+  }
+  [data-editable],
+  [data-editable]:hover,
+  [data-editable][contenteditable="true"] {
+    outline: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    cursor: text !important;
+  }
+  ::selection {
+    background: rgba(216, 172, 39, 0.28);
+  }
+  [data-plain-text-scope="selection"] .container {
+    cursor: text;
+  }
+  [data-plain-text-active="1"] {
+    outline: 2px solid rgba(22, 44, 88, 0.22) !important;
+    outline-offset: 8px;
+    border-radius: 6px;
+  }
+</style>
+<script>
+(function(){
+  document.documentElement.setAttribute('data-plain-text-mode', '1');
+  var scope = '__PLAIN_TEXT_SCOPE__';
+  document.documentElement.setAttribute('data-plain-text-scope', scope);
+  if (scope === 'selection') {
+    document.addEventListener('click', function(e){
+      var target = e.target && e.target.closest
+        ? e.target.closest('.stage-card, .project-details, .summary-card, .footer, .header, [data-editable]')
+        : null;
+      document.querySelectorAll('[data-plain-text-active="1"]').forEach(function(el){
+        el.removeAttribute('data-plain-text-active');
+      });
+      if (target) target.setAttribute('data-plain-text-active', '1');
+    }, true);
+  }
+})();
+</script>
+`;
+
 function injectInlineEditAssets(html: string): string {
   if (!html) return html;
   if (html.includes("__lovableInlineEditInit")) return html;
@@ -93,6 +141,18 @@ function injectInlineEditAssets(html: string): string {
     return html.replace("</body>", `${INLINE_EDIT_SCRIPT}</body>`);
   }
   return html + INLINE_EDIT_SCRIPT;
+}
+
+function injectPlainTextAssets(
+  html: string,
+  scope: "document" | "selection",
+): string {
+  if (!html) return html;
+  const script = PLAIN_TEXT_SCRIPT.replace("__PLAIN_TEXT_SCOPE__", scope);
+  if (html.includes("</body>")) {
+    return html.replace("</body>", `${script}</body>`);
+  }
+  return html + script;
 }
 
 const PreviewIframeComponent: React.FC<PreviewIframeProps> = ({
@@ -104,6 +164,8 @@ const PreviewIframeComponent: React.FC<PreviewIframeProps> = ({
   enableInlineEdit = true,
   autoHeight = false,
   minAutoHeight = 0,
+  plainTextMode = false,
+  plainTextScope = "document",
 }) => {
   const handlerRef = useRef(onInlineEdit);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -124,7 +186,11 @@ const PreviewIframeComponent: React.FC<PreviewIframeProps> = ({
     return () => window.removeEventListener("message", onMsg);
   }, [enableInlineEdit]);
 
-  const finalHtml = enableInlineEdit ? injectInlineEditAssets(html) : html;
+  const finalHtml = plainTextMode
+    ? injectPlainTextAssets(html, plainTextScope)
+    : enableInlineEdit
+      ? injectInlineEditAssets(html)
+      : html;
 
   useEffect(() => {
     if (!autoHeight) return;
@@ -220,6 +286,8 @@ export const PreviewIframe = memo(PreviewIframeComponent, (prev, next) => {
     prev.enableInlineEdit === next.enableInlineEdit &&
     prev.autoHeight === next.autoHeight &&
     prev.minAutoHeight === next.minAutoHeight &&
+    prev.plainTextMode === next.plainTextMode &&
+    prev.plainTextScope === next.plainTextScope &&
     JSON.stringify(prev.style) === JSON.stringify(next.style)
   );
 });
