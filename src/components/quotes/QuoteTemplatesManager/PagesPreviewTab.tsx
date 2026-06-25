@@ -896,12 +896,11 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       // Remove previous masks
       document.querySelectorAll('.lov-safe-mask').forEach(function(n){ n.parentNode && n.parentNode.removeChild(n); });
       var PH=parseInt(body.getAttribute('data-page-height')||'1123',10) || 1123;
-      var docH=Math.max(document.documentElement.scrollHeight, body.scrollHeight, PH);
-      var pageCount=Math.max(1, Math.ceil(docH/PH));
+      var range=pageRangeForPreview(body, PH);
       // Ensure body is positioned so absolute masks anchor to it
       var bs=getComputedStyle(body);
       if(bs.position==='static') body.style.position='relative';
-      for(var i=0;i<pageCount;i++){
+      for(var i=range.first;i<=range.last;i++){
         if(SAFE_TOP_PX>0){
           var mt=document.createElement('div');
           mt.className='lov-safe-mask lov-safe-mask-top';
@@ -918,6 +917,32 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         }
       }
     }catch(e){ /* noop */ }
+  }
+
+  function cleanPageCount(body, PH){
+    var attrTotal=parseInt(body.getAttribute('data-lov-preview-total-pages')||'',10);
+    if(attrTotal>0) return attrTotal;
+    var docH=Math.max(
+      document.documentElement.offsetHeight || 0,
+      body.offsetHeight || 0,
+      PH
+    );
+    return Math.max(1, Math.ceil(docH/PH));
+  }
+
+  function previewPageIndex(body){
+    var raw=body.getAttribute('data-lov-preview-page-index');
+    if(raw===null || raw==='') return null;
+    var n=parseInt(raw,10);
+    return isNaN(n) ? null : Math.max(0,n);
+  }
+
+  function pageRangeForPreview(body, PH){
+    var total=cleanPageCount(body, PH);
+    var idx=previewPageIndex(body);
+    if(idx===null) return {first:0,last:total-1,total:total,single:false};
+    var page=Math.min(idx,total-1);
+    return {first:page,last:page,total:total,single:true};
   }
 
   function setupRepeatOverlays(){
@@ -943,12 +968,12 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       if(repH) headerH=headerSrc.getBoundingClientRect().height || 0;
       if(repF) footerH=footerSrc.getBoundingClientRect().height || 90;
 
-      var docH=document.documentElement.scrollHeight;
-      var pageCount=Math.max(1, Math.ceil(docH/PH));
+      var range=pageRangeForPreview(body, PH);
+      var pageCount=range.total;
 
       // Header clones for pages 2..N (page 1 already has the original header)
       if(repH){
-        for(var i=1;i<pageCount;i++){
+        for(var i=Math.max(1,range.first);i<=range.last;i++){
           var el=document.createElement('div');
           el.className='lov-repeat-overlay lov-repeat-overlay-header';
           el.style.top=(i*PH)+'px';
@@ -959,7 +984,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       }
       // Footer clones for pages 1..N-1 (last page already has the original footer)
       if(repF){
-        for(var j=0;j<pageCount-1;j++){
+        for(var j=range.first;j<=Math.min(range.last,pageCount-2);j++){
           var ef=document.createElement('div');
           ef.className='lov-repeat-overlay lov-repeat-overlay-footer';
           ef.style.top=((j+1)*PH-footerH)+'px';
@@ -1528,6 +1553,20 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     issues,
   ]);
 
+  const htmlForPreviewPage = useCallback(
+    (pageIdx: number) => {
+      const attrs = `data-lov-preview-page-index="${pageIdx}" data-lov-preview-total-pages="${pageCount}"`;
+      if (finalHtml.includes("<body ")) {
+        return finalHtml.replace("<body ", `<body ${attrs} `);
+      }
+      if (finalHtml.includes("<body>")) {
+        return finalHtml.replace("<body>", `<body ${attrs}>`);
+      }
+      return finalHtml;
+    },
+    [finalHtml, pageCount],
+  );
+
   const renderPageViewport = (
     pageIdx: number,
     scale: number,
@@ -1582,7 +1621,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       >
         <iframe
           title={`page-${pageIdx + 1}${label ? "-" + label : ""}`}
-          srcDoc={finalHtml}
+          srcDoc={htmlForPreviewPage(pageIdx)}
           style={{
             position: "absolute",
             left: 0,
