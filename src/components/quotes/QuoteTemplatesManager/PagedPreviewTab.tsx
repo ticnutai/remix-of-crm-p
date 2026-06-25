@@ -705,8 +705,8 @@ ${debug ? `
           stripBottomPx={stripBottomPx}
           stripGapPx={stripGapPx}
           sideInsetPx={sideInsetPx}
-          headerHtml={headerHtml}
-          footerHtml={footerHtml}
+          headerHtml={headerHtml && headerHtml.replace(/<[^>]+>/g, "").trim().length > 0 ? headerHtml : fallbackHeaderHtml}
+          footerHtml={footerHtml && footerHtml.replace(/<[^>]+>/g, "").trim().length > 0 ? footerHtml : fallbackFooterHtml}
           debug={debug}
         />
 
