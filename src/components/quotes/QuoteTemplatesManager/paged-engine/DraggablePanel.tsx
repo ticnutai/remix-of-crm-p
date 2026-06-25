@@ -216,7 +216,7 @@ export default function DraggablePanel({
 
       {/* Body */}
       {!minimized && (
-        <div className="flex-1 overflow-auto p-3 space-y-3">{(arguments as never)["0"].children}</div>
+        <div className="flex-1 overflow-auto p-3 space-y-3">{children}</div>
       )}
 
       {/* Resize handles */}
