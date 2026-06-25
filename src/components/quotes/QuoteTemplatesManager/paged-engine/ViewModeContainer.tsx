@@ -446,7 +446,7 @@ export default function ViewModeContainer({
     const scroller = targetScrollRef.current;
     if (!scroller) return;
     const compute = () => {
-      const pad = 48; // p-6 * 2
+      const pad = 8; // minimal padding
       const avail = scroller.clientWidth - pad;
       const cols = mode === "spread" ? 2 : 1;
       const needed = A4_W * cols + (cols - 1) * 16;
