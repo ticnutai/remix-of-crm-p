@@ -1815,6 +1815,13 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           חיתוך אוטומטי
         </Toggle>
 
+        <span
+          className="h-8 px-2.5 inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-medium"
+          title="הסטריפ העליון והתחתון נשמרים ומוצגים בכל דף בתצוגת A4"
+        >
+          סטריפ עליון + תחתון בכל דף
+        </span>
+
         {/* Restore deleted pages */}
         {fixState.deletedPages && fixState.deletedPages.length > 0 && (
           <Button

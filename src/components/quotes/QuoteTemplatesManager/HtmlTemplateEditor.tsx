@@ -4629,8 +4629,8 @@ export function HtmlTemplateEditor({
     tools: { label: "כלים", icon: Wrench, activeClass: "data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700" },
     preview: { label: "תצוגה מקדימה", icon: Eye, activeClass: "data-[state=active]:bg-green-100 data-[state=active]:text-green-700" },
     split: { label: "עריכה + תצוגה", icon: Columns, activeClass: "data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700" },
-    pages: { label: "תצוגת דפים", icon: Layers, activeClass: "data-[state=active]:bg-[#162C58]/10 data-[state=active]:text-[#162C58]" },
-    "paged-pro": { label: "עימוד מתקדם (Paged.js)", icon: Layers, activeClass: "data-[state=active]:bg-[#d8ac27]/15 data-[state=active]:text-[#162C58]" },
+    pages: { label: "בדיקת PDF / עימוד", icon: Layers, activeClass: "data-[state=active]:bg-[#162C58]/10 data-[state=active]:text-[#162C58]" },
+    "paged-pro": { label: "עימוד מתקדם", icon: Layers, activeClass: "data-[state=active]:bg-[#d8ac27]/15 data-[state=active]:text-[#162C58]" },
   };
   const [tabConfig, setTabConfig] = useState<
     Array<{ value: EditorTabKey; visible: boolean }>
@@ -4720,9 +4720,18 @@ export function HtmlTemplateEditor({
     if (ds && ds.primaryColor) {
       const settings = ds as DesignSettings;
       if (settings.logoPosition === "custom-strip" && !settings.logoUrl) {
-        return { ...settings, logoUrl: companyHeaderImg };
+        return {
+          ...settings,
+          logoUrl: companyHeaderImg,
+          repeatHeaderOnAllPages: true,
+          repeatFooterOnAllPages: true,
+        };
       }
-      return settings;
+      return {
+        ...settings,
+        repeatHeaderOnAllPages: true,
+        repeatFooterOnAllPages: true,
+      };
     }
     return {
       primaryColor: "#B8860B",
@@ -4743,6 +4752,8 @@ export function HtmlTemplateEditor({
       logoPosition: "inside-header",
       showHeaderStrip: true,
       headerStripHeight: 150,
+      repeatHeaderOnAllPages: true,
+      repeatFooterOnAllPages: true,
     };
   });
   const [textBoxes, setTextBoxes] = useState<TextBox[]>(() => {
@@ -6066,7 +6077,37 @@ export function HtmlTemplateEditor({
     .project-details td:first-child { font-weight: 600; width: 120px; }
     table.payments { width: 100%; border-collapse: collapse; margin-top: 20px; }
     table.payments th { background: ${designSettings.primaryColor}; color: white; padding: 12px; text-align: right; }
-    .footer { text-align: center; padding: 30px; background: #f9f9f9; color: #666; font-size: 14px; position: relative; min-height: ${footerHeightPx}px; box-sizing: border-box; }
+    .footer {
+      text-align: center;
+      padding: 18px 40px;
+      background: ${designSettings.primaryColor};
+      color: #ffffff;
+      font-size: 14px;
+      position: relative;
+      min-height: ${footerHeightPx}px;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .footer::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(255,255,255,0.12), transparent 26%, rgba(255,255,255,0.08));
+      pointer-events: none;
+    }
+    .footer-content {
+      position: relative;
+      z-index: 1;
+      line-height: 1.55;
+    }
+    .footer-content strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 2px;
+    }
     .full-width-header { padding: 0 !important; overflow: hidden; background: transparent !important; margin: 0; }
     .full-width-header img { width: 100%; height: auto; display: block; object-fit: fill; object-position: center; margin: 0 auto; }
     .stage-card { position: relative; ${borderToCss(fd.stageBorder)} }
@@ -6114,7 +6155,8 @@ export function HtmlTemplateEditor({
       }
       .footer {
         margin: 0 !important;
-        background: #f9f9f9 !important;
+        background: ${designSettings.primaryColor} !important;
+        color: #ffffff !important;
         min-height: ${footerHeightPx}px !important;
         box-sizing: border-box !important;
       }
@@ -6288,8 +6330,10 @@ export function HtmlTemplateEditor({
       <tfoot class="print-repeat-footer"><tr><td>
     <div class="footer">
       <div data-drag-strip="footer" style="position:absolute;top:0;left:0;right:0;height:10px;cursor:ns-resize;z-index:20;display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(0,0,0,0.25);pointer-events:none;"></div></div>
-      <strong>${designSettings.companyName}</strong><br>
-      ${designSettings.companyAddress} | ${designSettings.companyPhone} | ${designSettings.companyEmail}
+      <div class="footer-content">
+        <strong>${designSettings.companyName || ""}</strong>
+        <span>${[designSettings.companyAddress, designSettings.companyPhone, designSettings.companyEmail].filter(Boolean).join(" | ")}</span>
+      </div>
     </div>
       </td></tr></tfoot>
     </table>
@@ -12531,6 +12575,21 @@ ${tbAt('footer')}
                 </div>
                 {/* Interactive Edit Mode Toggle */}
                 <div className="bg-white rounded-lg shadow-sm border p-1 flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 text-xs text-[#162C58] hover:bg-[#162C58]/10"
+                    onClick={() => {
+                      setActiveTab("pages");
+                      setInteractiveEditMode(false);
+                      setPlainTextMode(false);
+                      setFreeTextEditMode(false);
+                    }}
+                    title="פתח תצוגת A4 שמראה סטריפ עליון ותחתון בכל דף לפני PDF או הדפסה"
+                  >
+                    <Layers className="h-3.5 w-3.5 ml-1" />
+                    בדיקת PDF / עימוד
+                  </Button>
                   <Button
                     size="sm"
                     variant={interactiveEditMode ? "default" : "ghost"}
