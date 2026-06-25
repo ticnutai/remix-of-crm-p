@@ -11,6 +11,7 @@ import React, {
 import { createPortal } from "react-dom";
 import {
   PreviewIframe,
+  type FreeTextCommand,
   type FreeTextEditPayload,
   type InlineEditPayload,
 } from "./PreviewIframe";
@@ -4878,6 +4879,11 @@ export function HtmlTemplateEditor({
   const [freeTextHtmlOverride, setFreeTextHtmlOverride] = useState<string | null>(
     null,
   );
+  const [freeTextCommand, setFreeTextCommand] =
+    useState<FreeTextCommand | null>(null);
+  const [freeTextFont, setFreeTextFont] = useState("Arial");
+  const [freeTextSize, setFreeTextSize] = useState(16);
+  const [freeTextColor, setFreeTextColor] = useState("#333333");
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const cropCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -6488,6 +6494,16 @@ export function HtmlTemplateEditor({
       description: "המסמך שוב נבנה מהשדות והתבניות המחוברים.",
     });
   }, [toast]);
+
+  const sendFreeTextCommand = useCallback(
+    (command: Omit<FreeTextCommand, "id">) => {
+      setFreeTextCommand({
+        id: Date.now() + Math.random(),
+        ...command,
+      });
+    },
+    [],
+  );
 
 
   // Helper: convert image URL to base64 data URL for standalone exports
@@ -12276,6 +12292,7 @@ ${tbAt('footer')}
                       style={{ minHeight: "100%" }}
                       onInlineEdit={handleInlineEdit}
                       freeTextEditMode={freeTextEditMode}
+                      freeTextCommand={freeTextCommand}
                       onFreeTextSave={handleFreeTextSave}
                     />
                   </div>
@@ -12600,6 +12617,169 @@ ${tbAt('footer')}
                         <SelectItem value="selection">אזור מסומן</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                )}
+
+                {freeTextEditMode && (
+                  <div className="bg-white rounded-lg shadow-sm border p-1 flex flex-wrap items-center gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => sendFreeTextCommand({ command: "bold" })}
+                      title="מודגש"
+                    >
+                      <Bold className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => sendFreeTextCommand({ command: "italic" })}
+                      title="נטוי"
+                    >
+                      <Italic className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => sendFreeTextCommand({ command: "underline" })}
+                      title="קו תחתון"
+                    >
+                      <Underline className="h-3.5 w-3.5" />
+                    </Button>
+                    <span className="h-6 w-px bg-gray-200 mx-1" />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => sendFreeTextCommand({ command: "justifyRight" })}
+                      title="יישור ימין"
+                    >
+                      <AlignRight className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => sendFreeTextCommand({ command: "justifyCenter" })}
+                      title="יישור למרכז"
+                    >
+                      <AlignCenter className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => sendFreeTextCommand({ command: "justifyLeft" })}
+                      title="יישור שמאל"
+                    >
+                      <AlignLeft className="h-3.5 w-3.5" />
+                    </Button>
+                    <span className="h-6 w-px bg-gray-200 mx-1" />
+                    <select
+                      value={freeTextFont}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setFreeTextFont(value);
+                        sendFreeTextCommand({ action: "font", value });
+                      }}
+                      className="h-8 w-[118px] rounded-md border bg-white px-2 text-xs"
+                      title="גופן"
+                    >
+                      {["Arial", "Heebo", "Assistant", "David", "Times New Roman"].map((font) => (
+                        <option key={font} value={font}>
+                          {font}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min={8}
+                      max={72}
+                      value={freeTextSize}
+                      onChange={(event) => {
+                        const value = Math.max(8, Math.min(72, Number(event.target.value) || 16));
+                        setFreeTextSize(value);
+                        sendFreeTextCommand({ action: "size", value: String(value) });
+                      }}
+                      className="h-8 w-14 rounded-md border px-2 text-center text-xs"
+                      title="גודל"
+                    />
+                    <input
+                      type="color"
+                      value={freeTextColor}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setFreeTextColor(value);
+                        sendFreeTextCommand({ action: "color", value });
+                      }}
+                      className="h-8 w-8 rounded-md border bg-white p-1"
+                      title="צבע טקסט"
+                    />
+                    <span className="h-6 w-px bg-gray-200 mx-1" />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 text-xs"
+                      onClick={() => sendFreeTextCommand({ action: "line" })}
+                    >
+                      שורה
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => sendFreeTextCommand({ action: "up" })}
+                      title="העבר למעלה"
+                    >
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => sendFreeTextCommand({ action: "down" })}
+                      title="העבר למטה"
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 text-xs"
+                      onClick={() => sendFreeTextCommand({ action: "cut" })}
+                    >
+                      חתוך
+                    </Button>
+                    <span className="h-6 w-px bg-gray-200 mx-1" />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => sendFreeTextCommand({ action: "undo" })}
+                      title="בטל"
+                    >
+                      <Undo2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => sendFreeTextCommand({ action: "redo" })}
+                      title="בצע שוב"
+                    >
+                      <Redo2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-8 bg-[#162C58] text-xs text-white hover:bg-[#0f1f40]"
+                      onClick={() => sendFreeTextCommand({ action: "save" })}
+                    >
+                      <Save className="h-3.5 w-3.5 ml-1" />
+                      שמור טקסט
+                    </Button>
                   </div>
                 )}
 
@@ -13771,6 +13951,7 @@ ${tbAt('footer')}
                       plainTextScope={plainTextScope}
                       onInlineEdit={handleInlineEdit}
                       freeTextEditMode={freeTextEditMode}
+                      freeTextCommand={freeTextCommand}
                       onFreeTextSave={handleFreeTextSave}
                     />
                   )}
@@ -13835,6 +14016,7 @@ ${tbAt('footer')}
                       style={{ minHeight: "100%" }}
                       onInlineEdit={handleInlineEdit}
                       freeTextEditMode={freeTextEditMode}
+                      freeTextCommand={freeTextCommand}
                       onFreeTextSave={handleFreeTextSave}
                     />
                   </div>
@@ -14331,6 +14513,7 @@ ${tbAt('footer')}
                       style={{ minHeight: "100%" }}
                       onInlineEdit={handleInlineEdit}
                       freeTextEditMode={freeTextEditMode}
+                      freeTextCommand={freeTextCommand}
                       onFreeTextSave={handleFreeTextSave}
                     />
                   </div>
