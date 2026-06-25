@@ -1555,6 +1555,8 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
 
   const htmlForPreviewPage = useCallback(
     (pageIdx: number) => {
+      // Page preview iframes render one A4 slice at a time, so strip overlays
+      // must be scoped to that slice instead of cloning the whole document.
       const attrs = `data-lov-preview-page-index="${pageIdx}" data-lov-preview-total-pages="${pageCount}"`;
       if (finalHtml.includes("<body ")) {
         return finalHtml.replace("<body ", `<body ${attrs} `);
