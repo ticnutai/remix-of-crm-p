@@ -9,6 +9,13 @@ export type FreeTextEditPayload = {
   html: string;
 };
 
+export type FreeTextCommand = {
+  id: number;
+  action?: string;
+  command?: string;
+  value?: string;
+};
+
 interface PreviewIframeProps {
   html: string;
   title?: string;
@@ -22,6 +29,7 @@ interface PreviewIframeProps {
   plainTextMode?: boolean;
   plainTextScope?: "document" | "selection";
   freeTextEditMode?: boolean;
+  freeTextCommand?: FreeTextCommand | null;
 }
 
 const INLINE_EDIT_SCRIPT = `
@@ -338,6 +346,30 @@ const FREE_TEXT_EDIT_SCRIPT = `
     } catch (e) {}
   }
 
+  function runFreeTextAction(action, command, value) {
+    if (command) {
+      exec(command, value);
+      return;
+    }
+    if (action === 'line') exec('insertLineBreak');
+    if (action === 'up') moveBlock(-1);
+    if (action === 'down') moveBlock(1);
+    if (action === 'cut') cutBlock();
+    if (action === 'undo') exec('undo');
+    if (action === 'redo') exec('redo');
+    if (action === 'save') save();
+    if (action === 'font') exec('fontName', value || 'Arial');
+    if (action === 'color') exec('foreColor', value || '#333333');
+    if (action === 'size') {
+      var size = Math.max(8, Math.min(72, parseInt(value, 10) || 16));
+      exec('fontSize', '4');
+      Array.prototype.forEach.call(document.querySelectorAll('font[size="4"]'), function(font) {
+        font.removeAttribute('size');
+        font.style.fontSize = size + 'px';
+      });
+    }
+  }
+
   function addToolbar() {
     if (document.getElementById('free-text-toolbar')) return;
     var toolbar = document.createElement('div');
@@ -377,30 +409,24 @@ const FREE_TEXT_EDIT_SCRIPT = `
       if (!target) return;
       var cmd = target.getAttribute('data-cmd');
       var action = target.getAttribute('data-action');
-      if (cmd) exec(cmd);
-      if (action === 'line') exec('insertLineBreak');
-      if (action === 'up') moveBlock(-1);
-      if (action === 'down') moveBlock(1);
-      if (action === 'cut') cutBlock();
-      if (action === 'undo') exec('undo');
-      if (action === 'redo') exec('redo');
-      if (action === 'save') save();
+      runFreeTextAction(action, cmd);
     });
     toolbar.querySelector('[data-font]').addEventListener('change', function(e){
-      exec('fontName', e.target.value);
+      runFreeTextAction('font', null, e.target.value);
     });
     toolbar.querySelector('[data-size]').addEventListener('change', function(e){
-      var size = Math.max(8, Math.min(72, parseInt(e.target.value, 10) || 16));
-      exec('fontSize', '4');
-      Array.prototype.forEach.call(document.querySelectorAll('font[size="4"]'), function(font) {
-        font.removeAttribute('size');
-        font.style.fontSize = size + 'px';
-      });
+      runFreeTextAction('size', null, e.target.value);
     });
     toolbar.querySelector('[data-color]').addEventListener('input', function(e){
-      exec('foreColor', e.target.value);
+      runFreeTextAction('color', null, e.target.value);
     });
   }
+
+  window.addEventListener('message', function(e) {
+    var data = e.data;
+    if (!data || !data.__lovableFreeTextCommand) return;
+    runFreeTextAction(data.action, data.command, data.value);
+  });
 
   document.addEventListener('focusin', function(e){ setCurrent(e.target); }, true);
   document.addEventListener('click', function(e){ setCurrent(e.target); }, true);
@@ -460,6 +486,7 @@ const PreviewIframeComponent: React.FC<PreviewIframeProps> = ({
   plainTextMode = false,
   plainTextScope = "document",
   freeTextEditMode = false,
+  freeTextCommand = null,
 }) => {
   const handlerRef = useRef(onInlineEdit);
   const freeTextSaveRef = useRef(onFreeTextSave);
@@ -491,6 +518,19 @@ const PreviewIframeComponent: React.FC<PreviewIframeProps> = ({
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, [enableInlineEdit, freeTextEditMode]);
+
+  useEffect(() => {
+    if (!freeTextEditMode || !freeTextCommand) return;
+    iframeRef.current?.contentWindow?.postMessage(
+      {
+        __lovableFreeTextCommand: true,
+        action: freeTextCommand.action,
+        command: freeTextCommand.command,
+        value: freeTextCommand.value,
+      },
+      "*",
+    );
+  }, [freeTextCommand, freeTextEditMode]);
 
   const finalHtml = freeTextEditMode
     ? injectFreeTextEditAssets(html)
@@ -597,6 +637,7 @@ export const PreviewIframe = memo(PreviewIframeComponent, (prev, next) => {
     prev.plainTextMode === next.plainTextMode &&
     prev.plainTextScope === next.plainTextScope &&
     prev.freeTextEditMode === next.freeTextEditMode &&
+    prev.freeTextCommand?.id === next.freeTextCommand?.id &&
     JSON.stringify(prev.style) === JSON.stringify(next.style)
   );
 });
