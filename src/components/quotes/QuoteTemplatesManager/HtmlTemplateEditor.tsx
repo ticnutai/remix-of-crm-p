@@ -471,6 +471,7 @@ function buildAutoVersionLabel(
 }
 
 type PreviewDevice = "desktop" | "tablet" | "mobile";
+type PlainTextScope = "document" | "selection";
 interface ProjectDetails {
   clientId: string;
   clientName: string;
@@ -4866,6 +4867,9 @@ export function HtmlTemplateEditor({
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
   const [interactiveEditMode, setInteractiveEditMode] = useState(false);
+  const [plainTextMode, setPlainTextMode] = useState(false);
+  const [plainTextScope, setPlainTextScope] =
+    useState<PlainTextScope>("document");
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const cropCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -12498,14 +12502,45 @@ ${tbAt('footer')}
                     variant={interactiveEditMode ? "default" : "ghost"}
                     className={`h-8 text-xs ${interactiveEditMode ? "bg-purple-500 hover:bg-purple-600 text-white" : ""}`}
                     onClick={() => setInteractiveEditMode(!interactiveEditMode)}
+                    disabled={plainTextMode}
                   >
                     <Edit className="h-3.5 w-3.5 ml-1" />
                     עריכה ישירה
                   </Button>
+                  <Button
+                    size="sm"
+                    variant={plainTextMode ? "default" : "ghost"}
+                    className={`h-8 text-xs ${plainTextMode ? "bg-[#162C58] hover:bg-[#0f1f40] text-white" : ""}`}
+                    onClick={() => setPlainTextMode((v) => !v)}
+                    title="מצב טקסט רגיל משאיר את השדות מחוברים ומכבה בחירת תבניות"
+                  >
+                    <Type className="h-3.5 w-3.5 ml-1" />
+                    טקסט רגיל
+                  </Button>
                 </div>
 
+                {plainTextMode && (
+                  <div className="bg-white rounded-lg shadow-sm border p-1 flex items-center gap-2">
+                    <span className="text-xs text-gray-500 px-1">תחום:</span>
+                    <Select
+                      value={plainTextScope}
+                      onValueChange={(value) =>
+                        setPlainTextScope(value as PlainTextScope)
+                      }
+                    >
+                      <SelectTrigger className="h-8 w-[122px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="document">כל המסמך</SelectItem>
+                        <SelectItem value="selection">אזור מסומן</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 {/* Global Page Settings - only shown in edit mode */}
-                {interactiveEditMode && (
+                {interactiveEditMode && !plainTextMode && (
                   <div className="bg-white rounded-lg shadow-sm border p-1 flex gap-2 items-center">
                     <span className="text-xs text-gray-500 px-1">
                       עיצוב כללי:
@@ -12646,7 +12681,7 @@ ${tbAt('footer')}
                   )}
 
                   {/* Interactive Edit Preview */}
-                  {interactiveEditMode ? (
+                  {interactiveEditMode && !plainTextMode ? (
                     <ScrollArea
                       className="w-full h-full"
                       style={{
@@ -13667,6 +13702,9 @@ ${tbAt('footer')}
                       }}
                       autoHeight={previewDevice === "desktop"}
                       minAutoHeight={720}
+                      enableInlineEdit={!plainTextMode}
+                      plainTextMode={plainTextMode}
+                      plainTextScope={plainTextScope}
                       onInlineEdit={handleInlineEdit}
                     />
                   )}
