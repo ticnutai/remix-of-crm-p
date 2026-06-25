@@ -594,7 +594,6 @@ function EmailDialog({
     "שלום רב,\n\nמצורפת הצעת המחיר כמבוקש.\n\nבברכה",
   );
   const [showClientPicker, setShowClientPicker] = useState(false);
-  const [splitEditorCollapsed, setSplitEditorCollapsed] = useState(false);
   const [search, setSearch] = useState("");
   const clientsWithEmail = useMemo(
     () => clients.filter((c) => c.email),
