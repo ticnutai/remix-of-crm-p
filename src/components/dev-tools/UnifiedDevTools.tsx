@@ -489,10 +489,44 @@ function PerformanceWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () =
 }
 
 // חלון Inspector צף
+type InspectedElement = {
+  tagName: string;
+  id: string;
+  classes: string[];
+  dimensions: string;
+  position: string;
+  selector: string;
+  text: string;
+  attributes: Array<{ name: string; value: string }>;
+  styles: Record<string, string>;
+  parentChain: string[];
+  outerHTML: string;
+};
+
+function buildSelector(el: HTMLElement): string {
+  const parts: string[] = [];
+  let node: HTMLElement | null = el;
+  let depth = 0;
+  while (node && node.nodeType === 1 && depth < 5) {
+    let part = node.tagName.toLowerCase();
+    if (node.id) { part += `#${node.id}`; parts.unshift(part); break; }
+    const cls = (node.getAttribute('class') || '').trim().split(/\s+/).filter(Boolean).slice(0, 2);
+    if (cls.length) part += '.' + cls.join('.');
+    const parent = node.parentElement;
+    if (parent) {
+      const sameTag = Array.from(parent.children).filter(c => c.tagName === node!.tagName);
+      if (sameTag.length > 1) part += `:nth-of-type(${sameTag.indexOf(node) + 1})`;
+    }
+    parts.unshift(part);
+    node = node.parentElement;
+    depth++;
+  }
+  return parts.join(' > ');
+}
+
 function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const [selectedElement, setSelectedElement] = useState<{
-    tagName: string; id: string; className: string; dimensions: string;
-  } | null>(null);
+  const [selectedElement, setSelectedElement] = useState<InspectedElement | null>(null);
+
   const [paused, setPaused] = useState(false);
   const highlightRef = useRef<HTMLDivElement | null>(null);
 
@@ -561,11 +595,42 @@ function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
       e.preventDefault();
       e.stopPropagation();
       const rect = target.getBoundingClientRect();
+      const cs = window.getComputedStyle(target);
+      const parents: string[] = [];
+      let p = target.parentElement;
+      while (p && parents.length < 6 && p !== document.body) {
+        const cls = (p.getAttribute('class') || '').trim().split(/\s+/).filter(Boolean)[0];
+        parents.push(p.tagName.toLowerCase() + (p.id ? `#${p.id}` : cls ? `.${cls}` : ''));
+        p = p.parentElement;
+      }
+      const interestingAttrs = ['href', 'src', 'alt', 'title', 'role', 'aria-label', 'data-testid', 'type', 'name', 'value', 'placeholder'];
+      const attrs = interestingAttrs
+        .filter(a => target.hasAttribute(a))
+        .map(a => ({ name: a, value: target.getAttribute(a) || '' }));
+      const text = (target.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 120);
       setSelectedElement({
         tagName: target.tagName.toLowerCase(),
         id: target.id || '(ללא)',
-        className: target.className || '(ללא)',
-        dimensions: `${Math.round(rect.width)}x${Math.round(rect.height)}`,
+        classes: (target.getAttribute('class') || '').trim().split(/\s+/).filter(Boolean),
+        dimensions: `${Math.round(rect.width)} × ${Math.round(rect.height)} px`,
+        position: `${Math.round(rect.left)}, ${Math.round(rect.top)}`,
+        selector: buildSelector(target),
+        text,
+        attributes: attrs,
+        styles: {
+          display: cs.display,
+          position: cs.position,
+          color: cs.color,
+          background: cs.backgroundColor,
+          font: `${cs.fontSize} / ${cs.fontWeight} ${cs.fontFamily.split(',')[0]}`,
+          padding: cs.padding,
+          margin: cs.margin,
+          border: cs.border,
+          'z-index': cs.zIndex,
+          opacity: cs.opacity,
+        },
+        parentChain: parents.reverse(),
+        outerHTML: target.outerHTML.slice(0, 500),
       });
     };
 
@@ -590,6 +655,10 @@ function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  const copyToClipboard = (text: string) => {
+    try { navigator.clipboard.writeText(text); } catch { /* noop */ }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -607,28 +676,123 @@ function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
         </Button>
       </div>
       {selectedElement && (
-        <Card data-dev-tool="true" className="fixed bottom-4 right-4 z-[100001] bg-white border-2 border-[#D4A843] shadow-xl p-4 w-[280px]">
-          <div className="flex justify-between items-center mb-3">
-            <span className="font-semibold text-[#1e3a5f]">פרטי אלמנט</span>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedElement(null)}>
-              <X className="h-4 w-4" />
-            </Button>
+        <Card
+          data-dev-tool="true"
+          dir="rtl"
+          className="fixed bottom-4 right-4 z-[100001] bg-card text-card-foreground border-2 border-[#D4A843] shadow-xl w-[380px] max-h-[80vh] flex flex-col"
+        >
+          <div className="flex justify-between items-center px-4 py-2 border-b border-border bg-[#1e3a5f] text-white rounded-t">
+            <span className="font-semibold flex items-center gap-2">
+              <Bug className="h-4 w-4 text-[#D4A843]" />
+              פרטי אלמנט
+            </span>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs hover:bg-white/20" onClick={() => copyToClipboard(selectedElement.selector)}>
+                העתק selector
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-white/20" onClick={() => setSelectedElement(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500">תגית:</span>
-              <code className="bg-gray-100 px-2 rounded">{selectedElement.tagName}</code>
+          <div className="overflow-y-auto p-3 space-y-3 text-xs">
+            {/* Basics */}
+            <div className="space-y-1">
+              <div className="flex justify-between gap-2">
+                <span className="text-muted-foreground">תגית</span>
+                <code className="bg-muted px-2 rounded">{selectedElement.tagName}</code>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-muted-foreground">ID</span>
+                <code className="bg-muted px-2 rounded break-all max-w-[240px] text-left" dir="ltr">{selectedElement.id}</code>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-muted-foreground">גודל</span>
+                <code className="bg-muted px-2 rounded" dir="ltr">{selectedElement.dimensions}</code>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-muted-foreground">מיקום</span>
+                <code className="bg-muted px-2 rounded" dir="ltr">{selectedElement.position}</code>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">ID:</span>
-              <code className="bg-gray-100 px-2 rounded text-xs">{selectedElement.id}</code>
+
+            {/* Classes */}
+            {selectedElement.classes.length > 0 && (
+              <div>
+                <div className="text-muted-foreground mb-1">Classes ({selectedElement.classes.length})</div>
+                <div className="flex flex-wrap gap-1" dir="ltr">
+                  {selectedElement.classes.map((c, i) => (
+                    <code key={i} className="bg-muted px-1.5 py-0.5 rounded text-[11px]">{c}</code>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Selector */}
+            <div>
+              <div className="text-muted-foreground mb-1">CSS Selector</div>
+              <code className="block bg-muted p-2 rounded text-[11px] break-all" dir="ltr">{selectedElement.selector}</code>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">גודל:</span>
-              <code className="bg-gray-100 px-2 rounded">{selectedElement.dimensions}</code>
+
+            {/* Parent chain */}
+            {selectedElement.parentChain.length > 0 && (
+              <div>
+                <div className="text-muted-foreground mb-1">שרשרת הורים</div>
+                <code className="block bg-muted p-2 rounded text-[11px] break-all" dir="ltr">
+                  {selectedElement.parentChain.join(' › ')} › <strong>{selectedElement.tagName}</strong>
+                </code>
+              </div>
+            )}
+
+            {/* Attributes */}
+            {selectedElement.attributes.length > 0 && (
+              <div>
+                <div className="text-muted-foreground mb-1">מאפיינים</div>
+                <div className="space-y-1" dir="ltr">
+                  {selectedElement.attributes.map((a, i) => (
+                    <div key={i} className="flex gap-2 bg-muted/50 px-2 py-1 rounded">
+                      <code className="text-[#D4A843] font-semibold">{a.name}</code>
+                      <code className="text-[11px] break-all flex-1">{a.value}</code>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Computed styles */}
+            <div>
+              <div className="text-muted-foreground mb-1">סגנונות (computed)</div>
+              <div className="grid grid-cols-1 gap-0.5" dir="ltr">
+                {Object.entries(selectedElement.styles).map(([k, v]) => (
+                  <div key={k} className="flex justify-between gap-2 px-2 py-0.5 hover:bg-muted/50 rounded">
+                    <span className="text-muted-foreground">{k}</span>
+                    <code className="text-[11px] break-all text-right">{v}</code>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Text content */}
+            {selectedElement.text && (
+              <div>
+                <div className="text-muted-foreground mb-1">טקסט</div>
+                <div className="bg-muted p-2 rounded text-[11px]">{selectedElement.text}</div>
+              </div>
+            )}
+
+            {/* outerHTML */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-muted-foreground">HTML</span>
+                <Button variant="ghost" size="sm" className="h-5 px-2 text-[10px]" onClick={() => copyToClipboard(selectedElement.outerHTML)}>
+                  העתק
+                </Button>
+              </div>
+              <pre className="bg-muted p-2 rounded text-[10px] max-h-32 overflow-auto" dir="ltr">{selectedElement.outerHTML}</pre>
             </div>
           </div>
         </Card>
+
       )}
     </>
   );
