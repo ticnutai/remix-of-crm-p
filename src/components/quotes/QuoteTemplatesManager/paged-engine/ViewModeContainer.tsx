@@ -263,7 +263,7 @@ export default function ViewModeContainer({
       if (stripTopPx > 0) {
         const top = document.createElement("div");
         top.className = "paged-strip-top";
-        top.style.cssText = `position:absolute;left:0;right:0;top:0;height:${stripTopPx}px;overflow:hidden;pointer-events:none;z-index:5;display:block;`;
+        top.style.cssText = `position:absolute;left:0;right:0;top:0;height:${stripTopPx}px;overflow:hidden;pointer-events:none;z-index:5;display:flex;align-items:center;justify-content:center;`;
         if (headerHtml) {
           top.innerHTML = headerHtml;
           fitChild(top);
@@ -273,7 +273,7 @@ export default function ViewModeContainer({
       if (stripBottomPx > 0) {
         const bot = document.createElement("div");
         bot.className = "paged-strip-bottom";
-        bot.style.cssText = `position:absolute;left:0;right:0;bottom:0;height:${stripBottomPx}px;overflow:hidden;pointer-events:none;z-index:5;display:block;`;
+        bot.style.cssText = `position:absolute;left:0;right:0;bottom:0;height:${stripBottomPx}px;overflow:hidden;pointer-events:none;z-index:5;display:flex;align-items:center;justify-content:center;`;
         if (footerHtml) {
           bot.innerHTML = footerHtml;
           fitChild(bot);
