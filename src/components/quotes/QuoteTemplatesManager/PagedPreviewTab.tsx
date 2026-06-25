@@ -515,52 +515,60 @@ ${debug ? `
             </Button>
           </div>
 
-          {/* Strip height controls */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5">
-                <Ruler className="h-3.5 w-3.5" />
-                סטריפים: {topMm}/{bottomMm} מ"מ
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-72 space-y-3" dir="rtl">
-              <div className="text-sm font-semibold">גובה סטריפים ושוליים</div>
-              <p className="text-[11px] text-muted-foreground leading-snug">
-                Paged.js מבטיח שטקסט לא ייכנס לאזורים האלה — הוא נחתך אוטומטית
-                לדף הבא.
-              </p>
-              <StripRow
-                label="עליון (מ״מ)"
-                value={topMm}
-                min={DEFAULT_PREFS.topMm}
-                onChange={(v) => setTopMm(Math.max(DEFAULT_PREFS.topMm, clampMm(v, DEFAULT_PREFS.topMm)))}
-              />
-              <StripRow
-                label="תחתון (מ״מ)"
-                value={bottomMm}
-                min={DEFAULT_PREFS.bottomMm}
-                onChange={(v) => setBottomMm(Math.max(DEFAULT_PREFS.bottomMm, clampMm(v, DEFAULT_PREFS.bottomMm)))}
-              />
-              <StripRow
-                label="צד (מ״מ)"
-                value={sideMm}
-                min={DEFAULT_PREFS.sideMm}
-                onChange={(v) => setSideMm(Math.max(DEFAULT_PREFS.sideMm, clampMm(v, DEFAULT_PREFS.sideMm)))}
-              />
-              <Button
-                size="sm"
-                variant="ghost"
-                className="w-full text-xs"
-                onClick={() => {
-                  setTopMm(DEFAULT_PREFS.topMm);
-                  setBottomMm(DEFAULT_PREFS.bottomMm);
-                  setSideMm(DEFAULT_PREFS.sideMm);
-                }}
-              >
-                איפוס ברירת מחדל
-              </Button>
-            </PopoverContent>
-          </Popover>
+          {/* Strip height controls — draggable floating panel */}
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs gap-1.5"
+            onClick={() => setStripPanelOpen((v) => !v)}
+          >
+            <Ruler className="h-3.5 w-3.5" />
+            סטריפים: {topMm}/{bottomMm} מ"מ
+          </Button>
+          <DraggablePanel
+            open={stripPanelOpen}
+            onClose={() => setStripPanelOpen(false)}
+            title="גובה סטריפים ושוליים"
+            storageKey="paged-strip-panel"
+            defaultWidth={320}
+            defaultHeight={380}
+          >
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              Paged.js מבטיח שטקסט לא ייכנס לאזורים האלה — הוא נחתך אוטומטית
+              לדף הבא.
+            </p>
+            <StripRow
+              label="עליון (מ״מ)"
+              value={topMm}
+              min={DEFAULT_PREFS.topMm}
+              onChange={(v) => setTopMm(Math.max(DEFAULT_PREFS.topMm, clampMm(v, DEFAULT_PREFS.topMm)))}
+            />
+            <StripRow
+              label="תחתון (מ״מ)"
+              value={bottomMm}
+              min={DEFAULT_PREFS.bottomMm}
+              onChange={(v) => setBottomMm(Math.max(DEFAULT_PREFS.bottomMm, clampMm(v, DEFAULT_PREFS.bottomMm)))}
+            />
+            <StripRow
+              label="צד (מ״מ)"
+              value={sideMm}
+              min={DEFAULT_PREFS.sideMm}
+              onChange={(v) => setSideMm(Math.max(DEFAULT_PREFS.sideMm, clampMm(v, DEFAULT_PREFS.sideMm)))}
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="w-full text-xs"
+              onClick={() => {
+                setTopMm(DEFAULT_PREFS.topMm);
+                setBottomMm(DEFAULT_PREFS.bottomMm);
+                setSideMm(DEFAULT_PREFS.sideMm);
+              }}
+            >
+              איפוס ברירת מחדל
+            </Button>
+          </DraggablePanel>
+
 
           {/* Restore deleted pages */}
           {deletedPages.length > 0 && (
