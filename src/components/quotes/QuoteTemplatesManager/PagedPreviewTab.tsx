@@ -117,6 +117,10 @@ interface PagedPreviewTabProps {
   onJumpToEditor?: (editablePath: string) => void;
   templateName?: string;
   onPaginationCssChange?: (css: string) => void;
+  /** Fallback HTML for the bottom strip when the template has no .footer. */
+  fallbackFooterHtml?: string;
+  /** Fallback HTML for the top strip when the template has no .header. */
+  fallbackHeaderHtml?: string;
 }
 
 const MODE_BUTTONS: {
@@ -141,6 +145,8 @@ export default function PagedPreviewTab({
   onExportPdf,
   onExportWord,
   templateName = "הצעת מחיר",
+  fallbackFooterHtml = "",
+  fallbackHeaderHtml = "",
 }: PagedPreviewTabProps) {
   const initial = useRef(loadPrefs());
   const [mode, setMode] = useState<PagedViewMode>(initial.current.mode);
@@ -699,8 +705,8 @@ ${debug ? `
           stripBottomPx={stripBottomPx}
           stripGapPx={stripGapPx}
           sideInsetPx={sideInsetPx}
-          headerHtml={headerHtml}
-          footerHtml={footerHtml}
+          headerHtml={headerHtml && headerHtml.replace(/<[^>]+>/g, "").trim().length > 0 ? headerHtml : fallbackHeaderHtml}
+          footerHtml={footerHtml && footerHtml.replace(/<[^>]+>/g, "").trim().length > 0 ? footerHtml : fallbackFooterHtml}
           debug={debug}
         />
 
