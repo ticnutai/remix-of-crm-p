@@ -14217,6 +14217,7 @@ ${tbAt('footer')}
               </ResizablePanel>
 
             </ResizablePanelGroup>
+            )}
           </TabsContent>
 
           {/* Pages Preview Tab - paged A4 preview */}
