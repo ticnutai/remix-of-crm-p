@@ -248,6 +248,7 @@ const FREE_TEXT_EDIT_SCRIPT = `
   var currentBlock = null;
   var toolbarEl = null;
   var toolbarRaf = 0;
+  var savedRange = null;
   var selector = [
     'h1','h2','h3','h4','h5','h6','p','li','td','th',
     '.stage-card div','.project-details div','.summary-card div',
@@ -284,8 +285,75 @@ const FREE_TEXT_EDIT_SCRIPT = `
   }
 
   function exec(command, value) {
+    restoreSavedRange();
     document.execCommand(command, false, value || null);
     if (currentBlock) currentBlock.focus();
+    scheduleToolbarPosition();
+  }
+
+  function rangeInsideEditable(range) {
+    if (!range) return false;
+    var node = range.commonAncestorContainer;
+    if (node && node.nodeType === 3) node = node.parentElement;
+    return !!(node && node.closest && node.closest('[data-free-text-block="1"]'));
+  }
+
+  function rememberSelection() {
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    var range = sel.getRangeAt(0);
+    if (!rangeInsideEditable(range)) return;
+    savedRange = range.cloneRange();
+  }
+
+  function restoreSavedRange() {
+    if (!savedRange || !rangeInsideEditable(savedRange)) return false;
+    var sel = window.getSelection();
+    if (!sel) return false;
+    sel.removeAllRanges();
+    sel.addRange(savedRange);
+    return true;
+  }
+
+  function applyInlineStyle(stylePatch) {
+    restoreSavedRange();
+    var sel = window.getSelection();
+    var range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
+    var block = rangeInsideEditable(range) ? blockFromSelection() : currentBlock;
+    if (!block) return;
+
+    if (!range || range.collapsed || !rangeInsideEditable(range)) {
+      Object.keys(stylePatch).forEach(function(key) {
+        block.style[key] = stylePatch[key];
+      });
+      setCurrent(block);
+      scheduleToolbarPosition();
+      return;
+    }
+
+    var span = document.createElement('span');
+    Object.keys(stylePatch).forEach(function(key) {
+      span.style[key] = stylePatch[key];
+    });
+    span.appendChild(range.extractContents());
+    range.insertNode(span);
+
+    sel.removeAllRanges();
+    var nextRange = document.createRange();
+    nextRange.selectNodeContents(span);
+    sel.addRange(nextRange);
+    savedRange = nextRange.cloneRange();
+    setCurrent(block);
+    scheduleToolbarPosition();
+  }
+
+  function insertSoftLineBreak() {
+    restoreSavedRange();
+    if (!document.execCommand('insertHTML', false, '<br>')) {
+      var block = blockFromSelection();
+      if (block) block.appendChild(document.createElement('br'));
+    }
+    rememberSelection();
     scheduleToolbarPosition();
   }
 
@@ -376,6 +444,7 @@ const FREE_TEXT_EDIT_SCRIPT = `
       top = rect.bottom + 10;
       toolbarEl.setAttribute('data-placement', 'below');
     }
+    top = Math.max(height + 14, Math.min(window.innerHeight - 14, top));
     toolbarEl.style.left = x + 'px';
     toolbarEl.style.top = top + 'px';
   }
@@ -415,22 +484,18 @@ const FREE_TEXT_EDIT_SCRIPT = `
       exec(command, value);
       return;
     }
-    if (action === 'line') exec('insertLineBreak');
+    if (action === 'line') insertSoftLineBreak();
     if (action === 'up') moveBlock(-1);
     if (action === 'down') moveBlock(1);
     if (action === 'cut') cutBlock();
     if (action === 'undo') exec('undo');
     if (action === 'redo') exec('redo');
     if (action === 'save') save();
-    if (action === 'font') exec('fontName', value || 'Arial');
-    if (action === 'color') exec('foreColor', value || '#333333');
+    if (action === 'font') applyInlineStyle({ fontFamily: value || 'Arial' });
+    if (action === 'color') applyInlineStyle({ color: value || '#333333' });
     if (action === 'size') {
       var size = Math.max(8, Math.min(72, parseInt(value, 10) || 16));
-      exec('fontSize', '4');
-      Array.prototype.forEach.call(document.querySelectorAll('font[size="4"]'), function(font) {
-        font.removeAttribute('size');
-        font.style.fontSize = size + 'px';
-      });
+      applyInlineStyle({ fontSize: size + 'px' });
     }
   }
 
@@ -468,7 +533,10 @@ const FREE_TEXT_EDIT_SCRIPT = `
       '<button type="button" class="free-text-save" data-action="save" title="שמור">שמור</button>';
     document.body.appendChild(toolbar);
     toolbarEl = toolbar;
-    toolbar.addEventListener('mousedown', function(e){ e.preventDefault(); });
+    toolbar.addEventListener('mousedown', function(e){
+      if (e.target && e.target.closest && e.target.closest('select,input')) return;
+      e.preventDefault();
+    });
     toolbar.addEventListener('click', function(e) {
       var target = e.target.closest('button');
       if (!target) return;
@@ -496,7 +564,10 @@ const FREE_TEXT_EDIT_SCRIPT = `
 
   document.addEventListener('focusin', function(e){ setCurrent(e.target); }, true);
   document.addEventListener('click', function(e){ setCurrent(e.target); }, true);
-  document.addEventListener('selectionchange', scheduleToolbarPosition);
+  document.addEventListener('selectionchange', function(){
+    rememberSelection();
+    scheduleToolbarPosition();
+  });
   document.addEventListener('mouseup', scheduleToolbarPosition, true);
   document.addEventListener('keyup', scheduleToolbarPosition, true);
   document.addEventListener('scroll', scheduleToolbarPosition, true);
