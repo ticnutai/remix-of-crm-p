@@ -158,6 +158,7 @@ export default function PagedPreviewTab({
   const [currentPage, setCurrentPage] = useState(0);
   const [deletedPages, setDeletedPages] = useState<number[]>([]);
   const [debug, setDebug] = useState(false);
+  const [stripPanelOpen, setStripPanelOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
