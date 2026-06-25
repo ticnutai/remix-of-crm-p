@@ -14191,7 +14191,19 @@ ${tbAt('footer')}
               onExportPdf={handleExportPdf}
               onExportWord={handleExportWord}
               templateName={editedTemplate.name}
+              fallbackFooterHtml={`
+                <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:0 12mm;font-family:${(designSettings as any).fontFamily || 'Heebo'},sans-serif;color:${(designSettings as any).primaryColor || '#162C58'};text-align:center;direction:rtl;">
+                  <div style="line-height:1.4;">
+                    <div style="font-weight:700;font-size:11pt;">${(designSettings as any).companyName || ''}</div>
+                    <div style="font-size:9pt;opacity:.85;">
+                      ${[(designSettings as any).companyAddress, (designSettings as any).companyPhone, (designSettings as any).companyEmail]
+                        .filter(Boolean).join(' &nbsp;|&nbsp; ')}
+                    </div>
+                  </div>
+                </div>
+              `}
             />
+
           </TabsContent>
         </Tabs>
         </div>
