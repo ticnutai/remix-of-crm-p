@@ -126,6 +126,8 @@ import {
   ListPlus,
   Heading2,
   Star,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import {
   ResizablePanelGroup,
