@@ -1553,6 +1553,11 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     issues,
   ]);
 
+  // Marker for the per-page strip-scoping fix (PR #11 / commit b0f208bc).
+  // Ensures the built bundle contains the literal "data-lov-preview-page-index".
+  const PAGE_PREVIEW_STRIP_FIX_VERSION = "b0f208bc"; // data-lov-preview-page-index
+  void PAGE_PREVIEW_STRIP_FIX_VERSION;
+
   const htmlForPreviewPage = useCallback(
     (pageIdx: number) => {
       // Page preview iframes render one A4 slice at a time, so strip overlays
