@@ -469,18 +469,20 @@ export default function ViewModeContainer({
   return (
     <div
       ref={targetScrollRef}
-      className="flex-1 overflow-auto bg-muted/30"
+      className="flex-1 min-h-0 overflow-auto bg-muted/30"
       dir="ltr"
       tabIndex={0}
     >
-      <div className="p-1 min-h-full w-full flex justify-center">
+      <div className="p-1 w-full flex justify-center">
         <div
           ref={viewportRef}
           className={cn("paged-viewport", viewportClass)}
           style={{
-            transform: `scale(${effectiveZoom})`,
-            transformOrigin: "top center",
-          }}
+            // Use `zoom` so the scaled pages reserve real layout space
+            // and the outer scroller grows to fit. `transform: scale()` would
+            // keep the unscaled box and clip / leave empty space.
+            zoom: effectiveZoom,
+          } as React.CSSProperties}
         />
       </div>
 
