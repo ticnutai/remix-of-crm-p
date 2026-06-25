@@ -190,7 +190,8 @@ td,
    paged.js running elements, which mangle inline-styled / image strips). */
 .print-repeat-header, .print-repeat-footer,
 .quote-fixed-header, .header-strip, .repeat-header, .lov-repeat-overlay-header,
-.quote-fixed-footer, .footer-strip, .repeat-footer, .lov-repeat-overlay-footer {
+.quote-fixed-footer, .footer-strip, .repeat-footer, .lov-repeat-overlay-footer,
+.container > .header, .container > .footer {
   display: none !important;
 }
 
@@ -235,6 +236,8 @@ const HEADER_SOURCES: { sel: string; inner?: string }[] = [
   { sel: ".header-strip" },
   { sel: ".repeat-header" },
   { sel: ".lov-repeat-overlay-header" },
+  { sel: ".container > .header" },
+  { sel: ".header" },
 ];
 const FOOTER_SOURCES: { sel: string; inner?: string }[] = [
   { sel: ".print-repeat-footer", inner: "tr > td" },
@@ -242,6 +245,8 @@ const FOOTER_SOURCES: { sel: string; inner?: string }[] = [
   { sel: ".footer-strip" },
   { sel: ".repeat-footer" },
   { sel: ".lov-repeat-overlay-footer" },
+  { sel: ".container > .footer" },
+  { sel: ".footer" },
 ];
 
 function pickStrip(
