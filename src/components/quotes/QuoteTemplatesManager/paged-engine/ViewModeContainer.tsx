@@ -410,7 +410,8 @@ export default function ViewModeContainer({
     const wraps = viewport.querySelectorAll<HTMLElement>(".paged-page-wrap");
     const target = wraps[currentPage];
     if (!target) return;
-    const targetTop = target.offsetTop * zoom;
+    // With CSS `zoom`, offsetTop already reflects the scaled layout.
+    const targetTop = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
     scroller.scrollTo({ top: targetTop - 24, behavior: "smooth" });
   }, [currentPage, mode, zoom, targetScrollRef, version]);
 
