@@ -51,6 +51,7 @@ import { useKeyboardNav } from "./paged-engine/useKeyboardNav";
 import ViewModeContainer, {
   type PagedViewMode,
 } from "./paged-engine/ViewModeContainer";
+import DraggablePanel from "./paged-engine/DraggablePanel";
 
 const LS_KEY = "lov-paged-preview-prefs-v2";
 
