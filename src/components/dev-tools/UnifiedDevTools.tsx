@@ -489,10 +489,44 @@ function PerformanceWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () =
 }
 
 // חלון Inspector צף
+type InspectedElement = {
+  tagName: string;
+  id: string;
+  classes: string[];
+  dimensions: string;
+  position: string;
+  selector: string;
+  text: string;
+  attributes: Array<{ name: string; value: string }>;
+  styles: Record<string, string>;
+  parentChain: string[];
+  outerHTML: string;
+};
+
+function buildSelector(el: HTMLElement): string {
+  const parts: string[] = [];
+  let node: HTMLElement | null = el;
+  let depth = 0;
+  while (node && node.nodeType === 1 && depth < 5) {
+    let part = node.tagName.toLowerCase();
+    if (node.id) { part += `#${node.id}`; parts.unshift(part); break; }
+    const cls = (node.getAttribute('class') || '').trim().split(/\s+/).filter(Boolean).slice(0, 2);
+    if (cls.length) part += '.' + cls.join('.');
+    const parent = node.parentElement;
+    if (parent) {
+      const sameTag = Array.from(parent.children).filter(c => c.tagName === node!.tagName);
+      if (sameTag.length > 1) part += `:nth-of-type(${sameTag.indexOf(node) + 1})`;
+    }
+    parts.unshift(part);
+    node = node.parentElement;
+    depth++;
+  }
+  return parts.join(' > ');
+}
+
 function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const [selectedElement, setSelectedElement] = useState<{
-    tagName: string; id: string; className: string; dimensions: string;
-  } | null>(null);
+  const [selectedElement, setSelectedElement] = useState<InspectedElement | null>(null);
+
   const [paused, setPaused] = useState(false);
   const highlightRef = useRef<HTMLDivElement | null>(null);
 
