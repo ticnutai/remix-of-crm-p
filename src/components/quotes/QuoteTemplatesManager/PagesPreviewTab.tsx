@@ -1456,6 +1456,42 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     ).length +
     (fixState.globalEnabled ? 1 : 0);
 
+  const printReadiness = useMemo(() => {
+    const usableHeightMm = Math.max(
+      0,
+      Math.round(297 - fixState.safeZoneTopMm - fixState.safeZoneBottomMm),
+    );
+    const hasTightContent = usableHeightMm < 210;
+    const hasIssues = issues > 0;
+    const ready = !hasIssues && !hasTightContent && fixState.autoEnforceStrips;
+
+    return {
+      ready,
+      hasIssues,
+      hasTightContent,
+      usableHeightMm,
+      label: ready
+        ? "מוכן ל-PDF"
+        : hasIssues
+          ? "דורש תיקון"
+          : hasTightContent
+            ? "אזור תוכן צפוף"
+            : "בדיקה מומלצת",
+      detail: hasIssues
+        ? `${issues} אזורים חשודים בחיתוך`
+        : hasTightContent
+          ? "הסטריפים משאירים מעט מקום לתוכן בכל דף"
+          : fixState.autoEnforceStrips
+            ? "הסטריפים נשמרים בכל דף והחיתוך האוטומטי פעיל"
+            : "מומלץ להפעיל חיתוך אוטומטי לפני יצוא",
+    };
+  }, [
+    fixState.autoEnforceStrips,
+    fixState.safeZoneBottomMm,
+    fixState.safeZoneTopMm,
+    issues,
+  ]);
+
   const renderPageViewport = (
     pageIdx: number,
     scale: number,
@@ -1979,6 +2015,41 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
 
               <div className="pt-2 border-t">
                 <Label className="text-xs font-semibold mb-2 block">
+                  פריסטים מקצועיים לסטריפים
+                </Label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { label: "קומפקטי", top: 30, bottom: 26 },
+                    { label: "סטנדרטי", top: 38, bottom: 30 },
+                    { label: "ממותג", top: 50, bottom: 34 },
+                  ].map((preset) => (
+                    <Button
+                      key={preset.label}
+                      size="sm"
+                      variant={
+                        fixState.safeZoneTopMm === preset.top &&
+                        fixState.safeZoneBottomMm === preset.bottom
+                          ? "default"
+                          : "outline"
+                      }
+                      className="h-8 px-2 text-[11px]"
+                      onClick={() =>
+                        setFixState((s) => ({
+                          ...s,
+                          safeZoneTopMm: preset.top,
+                          safeZoneBottomMm: preset.bottom,
+                        }))
+                      }
+                      title={`עליון ${preset.top} מ"מ / תחתון ${preset.bottom} מ"מ`}
+                    >
+                      {preset.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2 border-t">
+                <Label className="text-xs font-semibold mb-2 block">
                   בלוקים מוגנים (לא יחתכו)
                 </Label>
                 <div className="space-y-1.5 max-h-48 overflow-auto pr-1">
@@ -2135,6 +2206,32 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
+        </div>
+      </div>
+
+      <div
+        className={`border-b px-4 py-2 flex items-center justify-between gap-3 flex-wrap text-xs ${
+          printReadiness.ready
+            ? "bg-emerald-50 text-emerald-800 border-emerald-100"
+            : printReadiness.hasIssues
+              ? "bg-red-50 text-red-800 border-red-100"
+              : "bg-amber-50 text-amber-800 border-amber-100"
+        }`}
+      >
+        <div className="flex items-center gap-2 font-semibold">
+          {printReadiness.ready ? (
+            <FileText className="h-4 w-4" />
+          ) : (
+            <AlertTriangle className="h-4 w-4" />
+          )}
+          <span>{printReadiness.label}</span>
+          <span className="font-normal opacity-80">{printReadiness.detail}</span>
+        </div>
+        <div className="flex items-center gap-3 text-[11px] font-medium">
+          <span>A4</span>
+          <span>{pageCount} {pageCount === 1 ? "דף" : "דפים"}</span>
+          <span>תוכן נטו: {printReadiness.usableHeightMm} מ"מ</span>
+          <span>עליון {fixState.safeZoneTopMm} מ"מ / תחתון {fixState.safeZoneBottomMm} מ"מ</span>
         </div>
       </div>
 
