@@ -190,7 +190,8 @@ td,
    paged.js running elements, which mangle inline-styled / image strips). */
 .print-repeat-header, .print-repeat-footer,
 .quote-fixed-header, .header-strip, .repeat-header, .lov-repeat-overlay-header,
-.quote-fixed-footer, .footer-strip, .repeat-footer, .lov-repeat-overlay-footer {
+.quote-fixed-footer, .footer-strip, .repeat-footer, .lov-repeat-overlay-footer,
+.container > .header, .container > .footer {
   display: none !important;
 }
 
