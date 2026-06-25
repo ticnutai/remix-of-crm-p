@@ -473,7 +473,7 @@ export default function ViewModeContainer({
       dir="ltr"
       tabIndex={0}
     >
-      <div className="p-6 min-h-full flex justify-center">
+      <div className="p-1 min-h-full w-full flex justify-center">
         <div
           ref={viewportRef}
           className={cn("paged-viewport", viewportClass)}
