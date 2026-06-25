@@ -235,6 +235,8 @@ const HEADER_SOURCES: { sel: string; inner?: string }[] = [
   { sel: ".header-strip" },
   { sel: ".repeat-header" },
   { sel: ".lov-repeat-overlay-header" },
+  { sel: ".container > .header" },
+  { sel: ".header" },
 ];
 const FOOTER_SOURCES: { sel: string; inner?: string }[] = [
   { sel: ".print-repeat-footer", inner: "tr > td" },
@@ -242,6 +244,8 @@ const FOOTER_SOURCES: { sel: string; inner?: string }[] = [
   { sel: ".footer-strip" },
   { sel: ".repeat-footer" },
   { sel: ".lov-repeat-overlay-footer" },
+  { sel: ".container > .footer" },
+  { sel: ".footer" },
 ];
 
 function pickStrip(
