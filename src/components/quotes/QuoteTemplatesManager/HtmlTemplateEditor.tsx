@@ -13738,20 +13738,31 @@ ${tbAt('footer')}
               <ResizablePanel defaultSize={50} minSize={30}>
                 <ScrollArea className="h-full bg-gray-50">
                   <div className="p-6 space-y-4">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-2 gap-2">
                       <span className="text-xs text-gray-400 flex items-center gap-1">
                         <GripVertical className="h-3 w-3" />
                         גרור סקשנים לשינוי סדר
                       </span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs"
-                        onClick={() => saveVersion()}
-                      >
-                        <GitBranch className="h-3 w-3 ml-1" />
-                        שמור גרסה
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => saveVersion()}
+                        >
+                          <GitBranch className="h-3 w-3 ml-1" />
+                          שמור גרסה
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={() => setSplitEditorCollapsed(true)}
+                          title="מזער פאנל עריכה"
+                        >
+                          <PanelLeftClose className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Logo Strip Quick Control */}
