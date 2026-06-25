@@ -440,7 +440,31 @@ export default function ViewModeContainer({
     });
   }, [mode, currentPage, version, pageCount, deletedSet]);
 
-  const effectiveZoom = mode === "grid" ? Math.min(0.35, zoom * 0.45) : zoom;
+  // Auto-fit-width: when zoom <= 0, fit page width to scroller width.
+  const [fitZoom, setFitZoom] = useState(1);
+  useEffect(() => {
+    const scroller = targetScrollRef.current;
+    if (!scroller) return;
+    const compute = () => {
+      const pad = 48; // p-6 * 2
+      const avail = scroller.clientWidth - pad;
+      const cols = mode === "spread" ? 2 : 1;
+      const needed = A4_W * cols + (cols - 1) * 16;
+      const ratio = avail / needed;
+      setFitZoom(Math.max(0.2, ratio));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(scroller);
+    return () => ro.disconnect();
+  }, [targetScrollRef, mode]);
+
+  const effectiveZoom =
+    mode === "grid"
+      ? Math.min(0.35, zoom * 0.45)
+      : zoom <= 0
+        ? fitZoom
+        : Math.max(zoom, fitZoom);
 
   return (
     <div
