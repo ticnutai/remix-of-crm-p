@@ -154,9 +154,6 @@ const FREE_TEXT_EDIT_SCRIPT = `
     user-select: text !important;
     -webkit-user-select: text !important;
   }
-  body {
-    padding-bottom: 86px !important;
-  }
   [data-editable],
   [data-editable]:hover,
   [data-editable][contenteditable="true"] {
@@ -178,12 +175,13 @@ const FREE_TEXT_EDIT_SCRIPT = `
   }
   #free-text-toolbar {
     position: fixed;
-    right: 50%;
-    bottom: 16px;
-    transform: translateX(50%);
+    top: 0;
+    left: 0;
+    transform: translate(-50%, calc(-100% - 10px));
     z-index: 2147483647;
-    display: flex;
+    display: none;
     align-items: center;
+    flex-wrap: wrap;
     gap: 6px;
     padding: 8px;
     border: 1px solid rgba(15, 23, 42, 0.16);
@@ -192,6 +190,14 @@ const FREE_TEXT_EDIT_SCRIPT = `
     box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
     direction: rtl;
     font-family: Arial, sans-serif;
+    max-width: calc(100vw - 24px);
+    pointer-events: auto;
+  }
+  #free-text-toolbar[data-visible="1"] {
+    display: flex;
+  }
+  #free-text-toolbar[data-placement="below"] {
+    transform: translate(-50%, 10px);
   }
   #free-text-toolbar button,
   #free-text-toolbar select,
@@ -240,6 +246,8 @@ const FREE_TEXT_EDIT_SCRIPT = `
   window.__lovableFreeTextEditInit = true;
 
   var currentBlock = null;
+  var toolbarEl = null;
+  var toolbarRaf = 0;
   var selector = [
     'h1','h2','h3','h4','h5','h6','p','li','td','th',
     '.stage-card div','.project-details div','.summary-card div',
@@ -272,11 +280,13 @@ const FREE_TEXT_EDIT_SCRIPT = `
     }
     currentBlock = block;
     currentBlock.setAttribute('data-free-text-current', '1');
+    scheduleToolbarPosition();
   }
 
   function exec(command, value) {
     document.execCommand(command, false, value || null);
     if (currentBlock) currentBlock.focus();
+    scheduleToolbarPosition();
   }
 
   function blockFromSelection() {
@@ -315,10 +325,64 @@ const FREE_TEXT_EDIT_SCRIPT = `
     if ((block.tagName === 'TD' || block.tagName === 'TH') && block.closest('tr')) {
       block.closest('tr').remove();
       currentBlock = null;
+      hideToolbar();
       return;
     }
     block.remove();
     currentBlock = null;
+    hideToolbar();
+  }
+
+  function selectionRect() {
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      var range = sel.getRangeAt(0);
+      var node = sel.anchorNode;
+      if (node && node.nodeType === 3) node = node.parentElement;
+      var insideEditable = node && node.closest && node.closest('[data-free-text-block="1"]');
+      if (insideEditable) {
+        var rect = range.getBoundingClientRect();
+        if ((!rect || (!rect.width && !rect.height)) && range.getClientRects) {
+          rect = range.getClientRects()[0];
+        }
+        if (rect && (rect.width || rect.height)) return rect;
+      }
+    }
+    return currentBlock ? currentBlock.getBoundingClientRect() : null;
+  }
+
+  function hideToolbar() {
+    if (!toolbarEl) return;
+    toolbarEl.removeAttribute('data-visible');
+  }
+
+  function positionToolbar() {
+    if (!toolbarEl) return;
+    var rect = selectionRect();
+    if (!rect) {
+      hideToolbar();
+      return;
+    }
+    toolbarEl.setAttribute('data-visible', '1');
+    toolbarEl.setAttribute('data-placement', 'above');
+
+    var width = toolbarEl.offsetWidth || 320;
+    var height = toolbarEl.offsetHeight || 48;
+    var x = rect.left + rect.width / 2;
+    x = Math.max(12 + width / 2, Math.min(window.innerWidth - 12 - width / 2, x));
+
+    var top = rect.top - 10;
+    if (top - height < 8) {
+      top = rect.bottom + 10;
+      toolbarEl.setAttribute('data-placement', 'below');
+    }
+    toolbarEl.style.left = x + 'px';
+    toolbarEl.style.top = top + 'px';
+  }
+
+  function scheduleToolbarPosition() {
+    if (toolbarRaf) cancelAnimationFrame(toolbarRaf);
+    toolbarRaf = requestAnimationFrame(positionToolbar);
   }
 
   function cleanAndSerialize() {
@@ -403,6 +467,7 @@ const FREE_TEXT_EDIT_SCRIPT = `
       '<button type="button" data-action="redo" title="בצע שוב">↷</button>' +
       '<button type="button" class="free-text-save" data-action="save" title="שמור">שמור</button>';
     document.body.appendChild(toolbar);
+    toolbarEl = toolbar;
     toolbar.addEventListener('mousedown', function(e){ e.preventDefault(); });
     toolbar.addEventListener('click', function(e) {
       var target = e.target.closest('button');
@@ -420,6 +485,7 @@ const FREE_TEXT_EDIT_SCRIPT = `
     toolbar.querySelector('[data-color]').addEventListener('input', function(e){
       runFreeTextAction('color', null, e.target.value);
     });
+    scheduleToolbarPosition();
   }
 
   window.addEventListener('message', function(e) {
@@ -430,6 +496,11 @@ const FREE_TEXT_EDIT_SCRIPT = `
 
   document.addEventListener('focusin', function(e){ setCurrent(e.target); }, true);
   document.addEventListener('click', function(e){ setCurrent(e.target); }, true);
+  document.addEventListener('selectionchange', scheduleToolbarPosition);
+  document.addEventListener('mouseup', scheduleToolbarPosition, true);
+  document.addEventListener('keyup', scheduleToolbarPosition, true);
+  document.addEventListener('scroll', scheduleToolbarPosition, true);
+  window.addEventListener('resize', scheduleToolbarPosition);
   document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
       e.preventDefault();
