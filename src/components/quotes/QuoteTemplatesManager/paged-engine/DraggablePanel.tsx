@@ -29,7 +29,8 @@ export default function DraggablePanel({
   storageKey,
   defaultWidth = 320,
   defaultHeight = 380,
-}: DraggablePanelProps & { children: React.ReactNode }) {
+  children,
+}: DraggablePanelProps) {
   const { state, update, loaded } = useDialogPersistence(storageKey);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [size, setSize] = useState({ w: defaultWidth, h: defaultHeight });
