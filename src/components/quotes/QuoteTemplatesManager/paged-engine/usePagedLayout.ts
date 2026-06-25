@@ -191,7 +191,10 @@ td,
 .print-repeat-header, .print-repeat-footer,
 .quote-fixed-header, .header-strip, .repeat-header, .lov-repeat-overlay-header,
 .quote-fixed-footer, .footer-strip, .repeat-footer, .lov-repeat-overlay-footer,
-.container > .header, .container > .footer {
+.container > .header, .container > .footer,
+body > .header, body > .footer,
+.page > .header, .page > .footer,
+.header, .footer {
   display: none !important;
 }
 
