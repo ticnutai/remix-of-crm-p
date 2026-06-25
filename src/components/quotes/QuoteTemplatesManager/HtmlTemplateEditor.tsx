@@ -4933,6 +4933,144 @@ export function HtmlTemplateEditor({
       freeTextHtmlOverride,
     ],
   );
+  const editorUndoSnapshot = useMemo(
+    () => ({
+      editedTemplate,
+      paymentSteps,
+      designSettings,
+      textBoxes,
+      upgrades,
+      pricingTiers,
+      projectDetails,
+      selectedTier,
+      freeTextHtmlOverride,
+    }),
+    [
+      editedTemplate,
+      paymentSteps,
+      designSettings,
+      textBoxes,
+      upgrades,
+      pricingTiers,
+      projectDetails,
+      selectedTier,
+      freeTextHtmlOverride,
+    ],
+  );
+  type EditorUndoSnapshot = typeof editorUndoSnapshot;
+  const undoStackRef = useRef<EditorUndoSnapshot[]>([]);
+  const redoStackRef = useRef<EditorUndoSnapshot[]>([]);
+  const lastUndoJsonRef = useRef<string>("");
+  const isRestoringUndoRef = useRef(false);
+  const [, forceUndoRedoRender] = useState(0);
+  const refreshUndoRedoControls = useCallback(
+    () => forceUndoRedoRender((v) => v + 1),
+    [],
+  );
+  const cloneUndoSnapshot = useCallback(
+    (snapshot: EditorUndoSnapshot): EditorUndoSnapshot =>
+      JSON.parse(JSON.stringify(snapshot)) as EditorUndoSnapshot,
+    [],
+  );
+  const applyUndoSnapshot = useCallback((snapshot: EditorUndoSnapshot) => {
+    setEditedTemplate(snapshot.editedTemplate);
+    setPaymentSteps(snapshot.paymentSteps);
+    setDesignSettings(snapshot.designSettings);
+    setTextBoxes(snapshot.textBoxes);
+    setUpgrades(snapshot.upgrades);
+    setPricingTiers(snapshot.pricingTiers);
+    setProjectDetails(snapshot.projectDetails);
+    setSelectedTier(snapshot.selectedTier);
+    setFreeTextHtmlOverride(snapshot.freeTextHtmlOverride);
+  }, []);
+  const undoCount = undoStackRef.current.length;
+  const redoCount = redoStackRef.current.length;
+  const canUndo = undoCount > 0;
+  const canRedo = redoCount > 0;
+  const handleUndo = useCallback(() => {
+    const previous = undoStackRef.current.pop();
+    if (!previous) return;
+    redoStackRef.current.push(cloneUndoSnapshot(editorUndoSnapshot));
+    redoStackRef.current = redoStackRef.current.slice(-80);
+    isRestoringUndoRef.current = true;
+    applyUndoSnapshot(previous);
+    refreshUndoRedoControls();
+    toast({
+      title: "השינוי בוטל",
+      description: "הוחזר המצב הקודם של ההצעה",
+    });
+  }, [applyUndoSnapshot, cloneUndoSnapshot, editorUndoSnapshot, refreshUndoRedoControls, toast]);
+  const handleRedo = useCallback(() => {
+    const next = redoStackRef.current.pop();
+    if (!next) return;
+    undoStackRef.current.push(cloneUndoSnapshot(editorUndoSnapshot));
+    undoStackRef.current = undoStackRef.current.slice(-80);
+    isRestoringUndoRef.current = true;
+    applyUndoSnapshot(next);
+    refreshUndoRedoControls();
+    toast({
+      title: "השינוי הוחזר",
+      description: "בוצע Redo למצב הבא",
+    });
+  }, [applyUndoSnapshot, cloneUndoSnapshot, editorUndoSnapshot, refreshUndoRedoControls, toast]);
+  useEffect(() => {
+    let json = "";
+    try {
+      json = JSON.stringify(editorUndoSnapshot);
+    } catch {
+      return;
+    }
+
+    if (!lastUndoJsonRef.current) {
+      lastUndoJsonRef.current = json;
+      return;
+    }
+
+    if (json === lastUndoJsonRef.current) return;
+
+    if (isRestoringUndoRef.current) {
+      isRestoringUndoRef.current = false;
+      lastUndoJsonRef.current = json;
+      return;
+    }
+
+    try {
+      const previous = JSON.parse(lastUndoJsonRef.current) as EditorUndoSnapshot;
+      undoStackRef.current.push(previous);
+      undoStackRef.current = undoStackRef.current.slice(-80);
+      redoStackRef.current = [];
+      lastUndoJsonRef.current = json;
+      refreshUndoRedoControls();
+    } catch {
+      lastUndoJsonRef.current = json;
+    }
+  }, [editorUndoSnapshot, refreshUndoRedoControls]);
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      const isTypingField =
+        target?.isContentEditable ||
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "select";
+      if (isTypingField) return;
+      const mod = event.ctrlKey || event.metaKey;
+      if (!mod) return;
+      const key = event.key.toLowerCase();
+      if (key === "z") {
+        event.preventDefault();
+        if (event.shiftKey) handleRedo();
+        else handleUndo();
+      } else if (key === "y") {
+        event.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleRedo, handleUndo, open]);
   const {
     status: autosaveStatus,
     lastSavedAt: autosaveLastSavedAt,
@@ -5031,6 +5169,7 @@ export function HtmlTemplateEditor({
     const applyDraft = (data: any, source: "local" | "cloud") => {
       if (!data || typeof data !== "object") return;
       try {
+        isRestoringUndoRef.current = true;
         if (data.editedTemplate) setEditedTemplate(data.editedTemplate);
         if (Array.isArray(data.paymentSteps)) setPaymentSteps(data.paymentSteps);
         if (data.designSettings) setDesignSettings(data.designSettings);
@@ -12810,6 +12949,40 @@ ${tbAt('footer')}
                   </div>
                 )}
                 {/* Version save button */}
+                <div className="bg-white rounded-lg shadow-sm border p-1 flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 text-xs"
+                    onClick={handleUndo}
+                    disabled={!canUndo}
+                    title="בטל שינוי אחרון (Ctrl/Cmd+Z)"
+                  >
+                    <Undo2 className="h-3.5 w-3.5 ml-1" />
+                    בטל
+                    {undoCount > 0 && (
+                      <span className="mr-1 text-[10px] text-muted-foreground">
+                        {undoCount}
+                      </span>
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 text-xs"
+                    onClick={handleRedo}
+                    disabled={!canRedo}
+                    title="החזר שינוי שבוטל (Ctrl/Cmd+Shift+Z או Ctrl/Cmd+Y)"
+                  >
+                    <Redo2 className="h-3.5 w-3.5 ml-1" />
+                    החזר
+                    {redoCount > 0 && (
+                      <span className="mr-1 text-[10px] text-muted-foreground">
+                        {redoCount}
+                      </span>
+                    )}
+                  </Button>
+                </div>
                 <Button
                   size="sm"
                   variant="outline"
