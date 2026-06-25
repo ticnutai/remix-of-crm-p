@@ -507,6 +507,13 @@ function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     const handleMouseMove = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target || target.closest('[data-dev-tool]')) return;
+      // כשמחזיקים Ctrl/Cmd – מסתירים את ההיילייט ומאפשרים פעולה רגילה
+      if (e.ctrlKey || e.metaKey) {
+        if (highlightRef.current) {
+          highlightRef.current.style.display = 'none';
+        }
+        return;
+      }
       if (!highlightRef.current) {
         highlightRef.current = document.createElement('div');
         highlightRef.current.setAttribute('data-dev-tool', 'true');
@@ -516,6 +523,7 @@ function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
         `;
         document.body.appendChild(highlightRef.current);
       }
+      highlightRef.current.style.display = 'block';
       const rect = target.getBoundingClientRect();
       highlightRef.current.style.left = `${rect.left}px`;
       highlightRef.current.style.top = `${rect.top}px`;
@@ -526,6 +534,8 @@ function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target || target.closest('[data-dev-tool]')) return;
+      // Ctrl/Cmd + Click = פעולה רגילה, לא בחירת אלמנט
+      if (e.ctrlKey || e.metaKey) return;
       e.preventDefault();
       e.stopPropagation();
       const rect = target.getBoundingClientRect();
