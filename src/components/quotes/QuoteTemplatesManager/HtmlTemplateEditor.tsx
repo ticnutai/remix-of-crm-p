@@ -17,7 +17,7 @@ import {
 import { FrameDesignPanel } from "./FrameDesignPanel";
 import PagesPreviewTab from "./PagesPreviewTab";
 import PagedPreviewTab from "./PagedPreviewTab";
-import FlowPreviewTab from "./flow-engine/FlowPreviewTab";
+import FlowWorkspaceTab from "./flow-engine/FlowWorkspaceTab";
 import {
   DEFAULT_FRAME_SETTINGS,
   borderToCss,
