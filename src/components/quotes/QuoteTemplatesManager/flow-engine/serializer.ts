@@ -17,6 +17,37 @@ import type {
 
 export type MergeData = Record<string, string | number | undefined | null>;
 
+/** אפשרויות סריאליזציה. שומרות תאימות לאחור — ברירת מחדל = false. */
+export interface SerializeOptions {
+  /** שכבה 1: מיפוי סגנונות פר-פריט (צבע/פונט/גודל/Bold/Italic/Underline/יישור) מהתבנית לפלט הזורם. */
+  preserveItemStyling?: boolean;
+}
+
+const esc = (s: string) =>
+  s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+/** בונה מחרוזת style מ-formatting של פריט; מחזיר ריק אם אין מה לשמור. */
+function itemStyleString(it: {
+  fontFamily?: string;
+  fontSize?: number;
+  fontColor?: string;
+  isUnderline?: boolean;
+  isItalic?: boolean;
+  textAlign?: "right" | "center" | "left";
+}): string {
+  const parts: string[] = [];
+  if (it.fontColor) parts.push(`color:${it.fontColor}`);
+  if (it.fontFamily) parts.push(`font-family:${it.fontFamily}`);
+  if (it.fontSize) parts.push(`font-size:${it.fontSize}px`);
+  if (it.isUnderline) parts.push("text-decoration:underline");
+  if (it.isItalic) parts.push("font-style:italic");
+  return parts.join(";");
+}
+
 /** מחליף {{path.to.value}} בתוך טקסט. ערכים חסרים נשארים כ-placeholder. */
 function resolveField(key: string, data: MergeData | undefined): string {
   if (!data) return `{{${key}}}`;
