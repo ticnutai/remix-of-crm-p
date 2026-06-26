@@ -6731,6 +6731,193 @@ export type Database = {
           },
         ]
       }
+      qp_documents: {
+        Row: {
+          blocks: Json
+          category: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          folder_id: string | null
+          id: string
+          is_active: boolean | null
+          is_public: boolean | null
+          meta: Json
+          name: string
+          page: Json
+          pricing: Json
+          share_token: string | null
+          strips: Json
+          theme: Json
+          theme_id: string | null
+          updated_at: string | null
+          validity_days: number | null
+        }
+        Insert: {
+          blocks?: Json
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          folder_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_public?: boolean | null
+          meta?: Json
+          name?: string
+          page?: Json
+          pricing?: Json
+          share_token?: string | null
+          strips?: Json
+          theme?: Json
+          theme_id?: string | null
+          updated_at?: string | null
+          validity_days?: number | null
+        }
+        Update: {
+          blocks?: Json
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          folder_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_public?: boolean | null
+          meta?: Json
+          name?: string
+          page?: Json
+          pricing?: Json
+          share_token?: string | null
+          strips?: Json
+          theme?: Json
+          theme_id?: string | null
+          updated_at?: string | null
+          validity_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qp_documents_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "qp_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qp_documents_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "qp_themes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qp_folders: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          created_by: string | null
+          icon: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qp_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "qp_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qp_themes: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          name: string
+          theme: Json
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name: string
+          theme?: Json
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name?: string
+          theme?: Json
+        }
+        Relationships: []
+      }
+      qp_versions: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          document_id: string
+          id: string
+          label: string
+          snapshot: Json
+          version_number: number
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          document_id: string
+          id?: string
+          label?: string
+          snapshot?: Json
+          version_number?: number
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          document_id?: string
+          id?: string
+          label?: string
+          snapshot?: Json
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qp_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "qp_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_items: {
         Row: {
           category: string | null
@@ -8911,6 +9098,10 @@ export type Database = {
       move_file_to_folder: {
         Args: { p_file_id: string; p_folder_id: string }
         Returns: boolean
+      }
+      qp_next_version_number: {
+        Args: { p_document_id: string }
+        Returns: number
       }
       quick_health_check: { Args: never; Returns: Json }
       reject_user: { Args: { _user_id: string }; Returns: undefined }
