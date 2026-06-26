@@ -218,9 +218,10 @@ export default function MenuBar({ editor }: Props) {
           type="button"
           size="sm"
           variant="ghost"
-          className="bg-transparent hover:bg-muted"
+          className="bg-transparent hover:bg-muted disabled:opacity-40"
+          disabled={!(editor as any).can?.().undo?.()}
           onClick={() => (editor.chain().focus() as any).undo().run()}
-          title="בטל"
+          title="בטל (Ctrl+Z)"
         >
           <Undo2 className="h-3.5 w-3.5" />
         </Button>
@@ -228,9 +229,10 @@ export default function MenuBar({ editor }: Props) {
           type="button"
           size="sm"
           variant="ghost"
-          className="bg-transparent hover:bg-muted"
+          className="bg-transparent hover:bg-muted disabled:opacity-40"
+          disabled={!(editor as any).can?.().redo?.()}
           onClick={() => (editor.chain().focus() as any).redo().run()}
-          title="בצע שוב"
+          title="בצע שוב (Ctrl+Y / Ctrl+Shift+Z)"
         >
           <Redo2 className="h-3.5 w-3.5" />
         </Button>
