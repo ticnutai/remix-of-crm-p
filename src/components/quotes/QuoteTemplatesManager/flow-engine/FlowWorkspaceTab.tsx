@@ -14,7 +14,7 @@ import FlowPreviewTab from "./FlowPreviewTab";
 import { templateToEditableHtml } from "./editor/templateToHtml";
 import PresetPicker from "./presets/PresetPicker";
 import type { DesignPreset } from "./presets/types";
-import { safeConfig } from "./presets/usePresets";
+import { safeConfig, usePresets } from "./presets/usePresets";
 
 interface Props {
   template: QuoteTemplate;
@@ -35,7 +35,7 @@ export default function FlowWorkspaceTab({ template }: Props) {
   });
 
   // ערכת עיצוב נבחרת — נשמרת לפי תבנית
-  const [selectedPreset, setSelectedPreset] = useState<DesignPreset | null>(null);
+  const { presets } = usePresets();
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(() => {
     try {
       return localStorage.getItem(presetKey(template.id));
@@ -43,10 +43,13 @@ export default function FlowWorkspaceTab({ template }: Props) {
       return null;
     }
   });
+  const selectedPreset = useMemo<DesignPreset | null>(
+    () => presets.find((p) => p.id === selectedPresetId) || null,
+    [presets, selectedPresetId],
+  );
   const presetCfg = selectedPreset ? safeConfig(selectedPreset) : undefined;
 
   const handlePresetSelect = (p: DesignPreset | null) => {
-    setSelectedPreset(p);
     setSelectedPresetId(p?.id || null);
     try {
       if (p) localStorage.setItem(presetKey(template.id), p.id);
