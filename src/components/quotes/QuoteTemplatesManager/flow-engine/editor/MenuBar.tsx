@@ -66,7 +66,7 @@ export default function MenuBar({ editor }: Props) {
         size="sm"
         variant="ghost"
         className={btn(editor.isActive("bold"))}
-        onClick={() => editor.chain().focus().toggleBold().run()}
+        onClick={() => (editor.chain().focus() as any).toggleBold().run()}
         title="מודגש"
       >
         <Bold className="h-3.5 w-3.5" />
@@ -76,7 +76,7 @@ export default function MenuBar({ editor }: Props) {
         size="sm"
         variant="ghost"
         className={btn(editor.isActive("italic"))}
-        onClick={() => editor.chain().focus().toggleItalic().run()}
+        onClick={() => (editor.chain().focus() as any).toggleItalic().run()}
         title="נטוי"
       >
         <Italic className="h-3.5 w-3.5" />
@@ -86,7 +86,7 @@ export default function MenuBar({ editor }: Props) {
         size="sm"
         variant="ghost"
         className={btn(editor.isActive("highlight"))}
-        onClick={() => editor.chain().focus().toggleHighlight().run()}
+        onClick={() => (editor.chain().focus() as any).toggleHighlight().run()}
         title="הדגשה"
       >
         <Highlighter className="h-3.5 w-3.5" />
@@ -99,7 +99,7 @@ export default function MenuBar({ editor }: Props) {
         size="sm"
         variant="ghost"
         className={btn(editor.isActive("heading", { level: 1 }))}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+        onClick={() => (editor.chain().focus() as any).toggleHeading({ level: 1 }).run()}
         title="כותרת 1"
       >
         <Heading1 className="h-3.5 w-3.5" />
@@ -109,7 +109,7 @@ export default function MenuBar({ editor }: Props) {
         size="sm"
         variant="ghost"
         className={btn(editor.isActive("heading", { level: 2 }))}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        onClick={() => (editor.chain().focus() as any).toggleHeading({ level: 2 }).run()}
         title="כותרת 2"
       >
         <Heading2 className="h-3.5 w-3.5" />
@@ -119,7 +119,7 @@ export default function MenuBar({ editor }: Props) {
         size="sm"
         variant="ghost"
         className={btn(editor.isActive("heading", { level: 3 }))}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+        onClick={() => (editor.chain().focus() as any).toggleHeading({ level: 3 }).run()}
         title="כותרת 3"
       >
         <Heading3 className="h-3.5 w-3.5" />
@@ -132,7 +132,7 @@ export default function MenuBar({ editor }: Props) {
         size="sm"
         variant="ghost"
         className={btn(editor.isActive("bulletList"))}
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        onClick={() => (editor.chain().focus() as any).toggleBulletList().run()}
         title="רשימה"
       >
         <List className="h-3.5 w-3.5" />
@@ -142,7 +142,7 @@ export default function MenuBar({ editor }: Props) {
         size="sm"
         variant="ghost"
         className={btn(editor.isActive("orderedList"))}
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        onClick={() => (editor.chain().focus() as any).toggleOrderedList().run()}
         title="רשימה ממוספרת"
       >
         <ListOrdered className="h-3.5 w-3.5" />
@@ -156,7 +156,7 @@ export default function MenuBar({ editor }: Props) {
         variant="ghost"
         className="bg-transparent hover:bg-muted"
         onClick={() =>
-          editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+          (editor.chain().focus() as any).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
         }
         title="טבלה"
       >
@@ -167,7 +167,7 @@ export default function MenuBar({ editor }: Props) {
         size="sm"
         variant="ghost"
         className="bg-transparent hover:bg-muted"
-        onClick={() => editor.chain().focus().setHorizontalRule().run()}
+        onClick={() => (editor.chain().focus() as any).setHorizontalRule().run()}
         title="קו מפריד"
       >
         <Minus className="h-3.5 w-3.5" />
@@ -199,7 +199,7 @@ export default function MenuBar({ editor }: Props) {
                 <DropdownMenuItem
                   key={f.key}
                   onSelect={() => {
-                    editor.chain().focus().insertDynamicField(f.key, f.label).run();
+                    (editor.chain().focus() as any).insertDynamicField(f.key, f.label).run();
                   }}
                 >
                   <span className="text-sm">{f.label}</span>
@@ -219,7 +219,7 @@ export default function MenuBar({ editor }: Props) {
           size="sm"
           variant="ghost"
           className="bg-transparent hover:bg-muted"
-          onClick={() => editor.chain().focus().undo().run()}
+          onClick={() => (editor.chain().focus() as any).undo().run()}
           title="בטל"
         >
           <Undo2 className="h-3.5 w-3.5" />
@@ -229,7 +229,7 @@ export default function MenuBar({ editor }: Props) {
           size="sm"
           variant="ghost"
           className="bg-transparent hover:bg-muted"
-          onClick={() => editor.chain().focus().redo().run()}
+          onClick={() => (editor.chain().focus() as any).redo().run()}
           title="בצע שוב"
         >
           <Redo2 className="h-3.5 w-3.5" />
