@@ -68,18 +68,29 @@ export default function FlowPreviewTab({ template, mergeData, editedHtml }: Flow
   const handlePrint = () => {
     const w = window.open("", "_blank", "width=900,height=1200");
     if (!w) return;
+    // מזריקים את Paged.js לתוך חלון ההדפסה — בלעדיו @page running() לא יעבוד
+    // ולכן ה-Header/Footer/מספור עמודים והעימוד הנכון יילכו לאיבוד ב-PDF.
+    const injected = html.replace(
+      "</head>",
+      `<script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"><\/script>
+       <style>@media print { .pagedjs_pages { gap:0 !important; } }<\/style>
+       </head>`,
+    );
     w.document.open();
-    w.document.write(html);
+    w.document.write(injected);
     w.document.close();
-    // נותן ל-pagedjs רגע להריץ עימוד דרך CSS Paged Media של הדפדפן (להדפסה)
-    setTimeout(() => {
+    // Paged.js מפעיל ב-DOMContentLoaded; ממתינים שיסיים לפני print
+    const tryPrint = () => {
       try {
+        const ready = (w as any).PagedPolyfill || w.document.querySelector(".pagedjs_page");
+        if (!ready) return window.setTimeout(tryPrint, 200);
         w.focus();
         w.print();
       } catch {
         /* ignore */
       }
-    }, 400);
+    };
+    window.setTimeout(tryPrint, 600);
   };
 
   return (

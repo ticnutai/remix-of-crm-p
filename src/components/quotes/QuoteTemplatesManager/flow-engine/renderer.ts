@@ -133,6 +133,22 @@ export function renderFlowToHtml(doc: FlowDocument): string {
     direction: rtl;
     font-size: 11pt;
     line-height: 1.55;
+    /* קריטי: שומר על צבעים, רקעים וגרדיאנטים בהדפסה ל-PDF */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+  /* גרדיאנטים, רקעים וצבעי טקסט נשמרים בכל אלמנט */
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* ספאן עם גרדיאנט טקסט (data-gradient) — fallback בטוח גם אם clip לא נתמך */
+  span[data-gradient] {
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    color: transparent !important;
   }
 
   .flow-section { break-inside: auto; margin-bottom: 6mm; }
