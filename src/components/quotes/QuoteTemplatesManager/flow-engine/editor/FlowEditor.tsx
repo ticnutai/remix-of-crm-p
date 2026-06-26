@@ -17,12 +17,15 @@ import MenuBar from "./MenuBar";
 import BubbleToolbar from "./BubbleToolbar";
 import AdvancedTextStyle from "./AdvancedTextStyle";
 
+import type { DesignPresetConfig } from "../presets/types";
+
 interface Props {
   initialHtml: string;
   onChange: (html: string) => void;
+  preset?: DesignPresetConfig;
 }
 
-export default function FlowEditor({ initialHtml, onChange }: Props) {
+export default function FlowEditor({ initialHtml, onChange, preset }: Props) {
   const debounceRef = useRef<number | null>(null);
 
   const editor = useEditor({
@@ -97,18 +100,18 @@ export default function FlowEditor({ initialHtml, onChange }: Props) {
         </div>
       </div>
       <style>{`
-        .flow-editor-content { font-family: Heebo, Arial, sans-serif; line-height: 1.7; color: hsl(var(--foreground)); }
-        .flow-editor-content h1 { font-size: 1.6rem; font-weight: 700; margin: 1rem 0 0.5rem; color: hsl(var(--primary)); border-bottom: 2px solid hsl(var(--accent)); padding-bottom: .3rem; }
-        .flow-editor-content h2 { font-size: 1.3rem; font-weight: 700; margin: .9rem 0 .4rem; color: hsl(var(--primary)); }
-        .flow-editor-content h3 { font-size: 1.1rem; font-weight: 600; margin: .7rem 0 .3rem; color: hsl(var(--primary)); }
-        .flow-editor-content p { margin: 0 0 .5rem; }
+        .flow-editor-content { font-family: ${preset?.fonts.body || "Heebo, Arial, sans-serif"}; font-size: ${preset?.fonts.size || "14px"}; line-height: ${preset?.spacing.lineHeight || "1.7"}; color: ${preset?.colors.text || "hsl(var(--foreground))"}; }
+        .flow-editor-content h1 { font-size: ${preset?.headings.h1.size || "1.6rem"}; font-weight: ${preset?.headings.h1.weight || "700"}; margin: 1rem 0 0.5rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; border-bottom: 2px solid ${preset?.colors.accent || "hsl(var(--accent))"}; padding-bottom: .3rem; font-family: ${preset?.fonts.heading || "inherit"}; }
+        .flow-editor-content h2 { font-size: ${preset?.headings.h2.size || "1.3rem"}; font-weight: ${preset?.headings.h2.weight || "700"}; margin: .9rem 0 .4rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; font-family: ${preset?.fonts.heading || "inherit"}; }
+        .flow-editor-content h3 { font-size: 1.1rem; font-weight: 600; margin: .7rem 0 .3rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; }
+        .flow-editor-content p { margin: 0 0 ${preset?.spacing.paragraphGap || ".5rem"}; }
         .flow-editor-content ul, .flow-editor-content ol { padding-inline-start: 1.5rem; margin: 0 0 .7rem; }
         .flow-editor-content li { margin-bottom: .2rem; }
         .flow-editor-content table { border-collapse: collapse; width: 100%; margin: .5rem 0; }
         .flow-editor-content th, .flow-editor-content td { border: 1px solid hsl(var(--border)); padding: .35rem .55rem; text-align: right; }
-        .flow-editor-content th { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+        .flow-editor-content th { background: ${preset?.colors.heading || "hsl(var(--primary))"}; color: #fff; }
         .flow-editor-content hr { border: 0; border-top: 1px dashed hsl(var(--border)); margin: .8rem 0; }
-        .flow-editor-content mark { background: hsl(var(--accent) / 0.35); padding: 0 .15rem; border-radius: .15rem; }
+        .flow-editor-content mark { background: ${preset?.colors.accent || "hsl(var(--accent))"}59; padding: 0 .15rem; border-radius: .15rem; }
         .flow-editor-content [data-field] { user-select: all; }
         .flow-editor-content .ProseMirror-focused { outline: none; }
       `}</style>

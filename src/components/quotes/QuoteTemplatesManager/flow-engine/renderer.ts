@@ -7,6 +7,7 @@
 // בלי clip-path, בלי safe masks, בלי overlays.
 
 import type { FlowBlock, FlowDocument, FlowInline } from "./types";
+import type { DesignPresetConfig } from "./presets/types";
 
 const esc = (s: string) =>
   s
@@ -66,7 +67,7 @@ function renderBlock(block: FlowBlock): string {
   }
 }
 
-export function renderFlowToHtml(doc: FlowDocument): string {
+export function renderFlowToHtml(doc: FlowDocument, preset?: DesignPresetConfig): string {
   const { branding, page, sections } = doc;
   const m = page.marginMm;
 
@@ -180,6 +181,20 @@ export function renderFlowToHtml(doc: FlowDocument): string {
     background: ${branding.accentColor}22; color: ${branding.primaryColor};
     font-size: 0.92em;
   }
+  ${preset ? `
+  /* ===== Design Preset override ===== */
+  @page { margin: ${preset.page.margin}; }
+  body { font-family: ${preset.fonts.body}; font-size: ${preset.fonts.size}; line-height: ${preset.spacing.lineHeight}; color: ${preset.colors.text}; }
+  .flow-h { color: ${preset.colors.heading}; font-family: ${preset.fonts.heading}; }
+  .flow-h1 { font-size: ${preset.headings.h1.size}; font-weight: ${preset.headings.h1.weight}; border-bottom-color: ${preset.colors.accent}; }
+  .flow-h2 { font-size: ${preset.headings.h2.size}; font-weight: ${preset.headings.h2.weight}; }
+  .flow-p { margin: 0 0 ${preset.spacing.paragraphGap}; }
+  .flow-table th { background: ${preset.colors.heading}; }
+  .rh-name { color: ${preset.colors.heading}; }
+  .running-header { border-bottom-color: ${preset.colors.accent}; }
+  .running-footer { border-top-color: ${preset.colors.accent}; color: ${preset.colors.muted}; }
+  .fld { background: ${preset.colors.accent}22; color: ${preset.colors.heading}; }
+  ` : ""}
 </style>
 </head>
 <body>

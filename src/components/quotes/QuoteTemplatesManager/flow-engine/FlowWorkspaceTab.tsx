@@ -12,6 +12,9 @@ import type { QuoteTemplate } from "../types";
 import FlowEditor from "./editor/FlowEditor";
 import FlowPreviewTab from "./FlowPreviewTab";
 import { templateToEditableHtml } from "./editor/templateToHtml";
+import PresetPicker from "./presets/PresetPicker";
+import type { DesignPreset } from "./presets/types";
+import { safeConfig, usePresets } from "./presets/usePresets";
 
 interface Props {
   template: QuoteTemplate;
@@ -19,6 +22,7 @@ interface Props {
 
 const storageKey = (id?: string) => `flow-edit:${id || "untitled"}`;
 const styleKey = (id?: string) => `flow-edit:${id || "untitled"}:preserveStyles`;
+const presetKey = (id?: string) => `flow-edit:${id || "untitled"}:presetId`;
 
 export default function FlowWorkspaceTab({ template }: Props) {
   // toggle: שמירת עיצוב מקורי מהתבנית (off = הזרימה הקיימת, on = שכבה 1)
@@ -29,6 +33,31 @@ export default function FlowWorkspaceTab({ template }: Props) {
       return false;
     }
   });
+
+  // ערכת עיצוב נבחרת — נשמרת לפי תבנית
+  const { presets } = usePresets();
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(presetKey(template.id));
+    } catch {
+      return null;
+    }
+  });
+  const selectedPreset = useMemo<DesignPreset | null>(
+    () => presets.find((p) => p.id === selectedPresetId) || null,
+    [presets, selectedPresetId],
+  );
+  const presetCfg = selectedPreset ? safeConfig(selectedPreset) : undefined;
+
+  const handlePresetSelect = (p: DesignPreset | null) => {
+    setSelectedPresetId(p?.id || null);
+    try {
+      if (p) localStorage.setItem(presetKey(template.id), p.id);
+      else localStorage.removeItem(presetKey(template.id));
+    } catch {
+      /* ignore */
+    }
+  };
 
   const baseHtml = useMemo(
     () => templateToEditableHtml(template, { preserveItemStyling: preserveStyles }),
@@ -130,6 +159,7 @@ export default function FlowWorkspaceTab({ template }: Props) {
               שמור עיצוב מקורי מהתבנית
             </Label>
           </div>
+          <PresetPicker selectedId={selectedPresetId} onSelect={handlePresetSelect} />
           <TabsList className="h-8">
             <TabsTrigger value="edit" className="h-7 gap-1 text-xs">
               <Pencil className="h-3.5 w-3.5" />
@@ -154,10 +184,10 @@ export default function FlowWorkspaceTab({ template }: Props) {
       </div>
 
       <TabsContent value="edit" className="m-0 flex-1 overflow-hidden">
-        <FlowEditor initialHtml={html} onChange={handleChange} />
+        <FlowEditor initialHtml={html} onChange={handleChange} preset={presetCfg} />
       </TabsContent>
       <TabsContent value="preview" className="m-0 flex-1 overflow-hidden">
-        <FlowPreviewTab template={template} editedHtml={html} />
+        <FlowPreviewTab template={template} editedHtml={html} preset={presetCfg} />
       </TabsContent>
     </Tabs>
   );

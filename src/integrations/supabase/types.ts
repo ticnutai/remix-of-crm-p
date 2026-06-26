@@ -5356,6 +5356,36 @@ export type Database = {
           },
         ]
       }
+      flow_design_presets: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          is_builtin: boolean
+          name: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_builtin?: boolean
+          name: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_builtin?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       gmail_senders_cache: {
         Row: {
           created_at: string
