@@ -4603,7 +4603,8 @@ export function HtmlTemplateEditor({
     | "preview"
     | "split"
     | "pages"
-    | "paged-pro";
+    | "paged-pro"
+    | "flow-v2";
   const DEFAULT_TAB_ORDER: EditorTabKey[] = [
     "project",
     "content",
@@ -4616,6 +4617,7 @@ export function HtmlTemplateEditor({
     "split",
     "pages",
     "paged-pro",
+    "flow-v2",
   ];
   const TAB_META: Record<
     EditorTabKey,
