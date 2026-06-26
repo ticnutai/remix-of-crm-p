@@ -19,6 +19,9 @@ function renderInline(node: FlowInline): string {
   if (node.type === "field") {
     return `<span class="fld">{{${esc(node.key)}}}</span>`;
   }
+  if (node.type === "raw") {
+    return node.html;
+  }
   let html = esc(node.text);
   if (node.bold) html = `<strong>${html}</strong>`;
   if (node.italic) html = `<em>${html}</em>`;
