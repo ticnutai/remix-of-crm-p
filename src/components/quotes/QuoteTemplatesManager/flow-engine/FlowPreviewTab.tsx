@@ -9,23 +9,28 @@ import { Loader2, Printer, RefreshCw, Sparkles } from "lucide-react";
 import type { QuoteTemplate } from "../types";
 import { serializeTemplate, type MergeData } from "./serializer";
 import { renderFlowToHtml } from "./renderer";
+import { htmlToFlowDoc } from "./editor/htmlToFlowDoc";
 
 interface FlowPreviewTabProps {
   template: QuoteTemplate;
   mergeData?: MergeData;
+  /** HTML שנערך בעורך החדש. אם קיים — מקבל עדיפות על פני סריאליזציה מהתבנית. */
+  editedHtml?: string;
 }
 
-export default function FlowPreviewTab({ template, mergeData }: FlowPreviewTabProps) {
+export default function FlowPreviewTab({ template, mergeData, editedHtml }: FlowPreviewTabProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [rendering, setRendering] = useState(false);
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [renderToken, setRenderToken] = useState(0);
 
-  const flowDoc = useMemo(
-    () => serializeTemplate(template, mergeData),
-    [template, mergeData],
-  );
+  const flowDoc = useMemo(() => {
+    if (editedHtml && editedHtml.trim()) {
+      return htmlToFlowDoc(editedHtml, template);
+    }
+    return serializeTemplate(template, mergeData);
+  }, [template, mergeData, editedHtml]);
   const html = useMemo(() => renderFlowToHtml(flowDoc), [flowDoc]);
 
   useEffect(() => {
