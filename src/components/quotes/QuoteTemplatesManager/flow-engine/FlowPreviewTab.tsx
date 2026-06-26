@@ -10,15 +10,17 @@ import type { QuoteTemplate } from "../types";
 import { serializeTemplate, type MergeData } from "./serializer";
 import { renderFlowToHtml } from "./renderer";
 import { htmlToFlowDoc } from "./editor/htmlToFlowDoc";
+import type { DesignPresetConfig } from "./presets/types";
 
 interface FlowPreviewTabProps {
   template: QuoteTemplate;
   mergeData?: MergeData;
   /** HTML שנערך בעורך החדש. אם קיים — מקבל עדיפות על פני סריאליזציה מהתבנית. */
   editedHtml?: string;
+  preset?: DesignPresetConfig;
 }
 
-export default function FlowPreviewTab({ template, mergeData, editedHtml }: FlowPreviewTabProps) {
+export default function FlowPreviewTab({ template, mergeData, editedHtml, preset }: FlowPreviewTabProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [rendering, setRendering] = useState(false);
   const [pageCount, setPageCount] = useState<number | null>(null);
@@ -31,7 +33,7 @@ export default function FlowPreviewTab({ template, mergeData, editedHtml }: Flow
     }
     return serializeTemplate(template, mergeData);
   }, [template, mergeData, editedHtml]);
-  const html = useMemo(() => renderFlowToHtml(flowDoc), [flowDoc]);
+  const html = useMemo(() => renderFlowToHtml(flowDoc, preset), [flowDoc, preset]);
 
   useEffect(() => {
     let cancelled = false;
