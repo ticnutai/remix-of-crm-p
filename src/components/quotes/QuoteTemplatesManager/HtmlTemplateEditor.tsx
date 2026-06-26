@@ -4634,6 +4634,7 @@ export function HtmlTemplateEditor({
     split: { label: "עריכה + תצוגה", icon: Columns, activeClass: "data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700" },
     pages: { label: "בדיקת PDF / עימוד", icon: Layers, activeClass: "data-[state=active]:bg-[#162C58]/10 data-[state=active]:text-[#162C58]" },
     "paged-pro": { label: "עימוד מתקדם", icon: Layers, activeClass: "data-[state=active]:bg-[#d8ac27]/15 data-[state=active]:text-[#162C58]" },
+    "flow-v2": { label: "Flow V2 (חדש)", icon: Sparkles, activeClass: "data-[state=active]:bg-emerald-100 data-[state=active]:text-emerald-700" },
   };
   const [tabConfig, setTabConfig] = useState<
     Array<{ value: EditorTabKey; visible: boolean }>
