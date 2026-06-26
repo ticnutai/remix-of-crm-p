@@ -7,6 +7,7 @@
 // בלי clip-path, בלי safe masks, בלי overlays.
 
 import type { FlowBlock, FlowDocument, FlowInline } from "./types";
+import type { DesignPresetConfig } from "./presets/types";
 
 const esc = (s: string) =>
   s
@@ -66,7 +67,7 @@ function renderBlock(block: FlowBlock): string {
   }
 }
 
-export function renderFlowToHtml(doc: FlowDocument): string {
+export function renderFlowToHtml(doc: FlowDocument, preset?: DesignPresetConfig): string {
   const { branding, page, sections } = doc;
   const m = page.marginMm;
 
