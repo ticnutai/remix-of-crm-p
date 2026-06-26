@@ -2,7 +2,7 @@
 // משתמש ב-serializer הקיים כדי להישאר עקבי, ואז ממיר FlowDocument ל-HTML פשוט.
 
 import type { QuoteTemplate } from "../../types";
-import { serializeTemplate } from "../serializer";
+import { serializeTemplate, type SerializeOptions } from "../serializer";
 import type { FlowBlock, FlowDocument, FlowInline } from "../types";
 
 const esc = (s: string) =>
