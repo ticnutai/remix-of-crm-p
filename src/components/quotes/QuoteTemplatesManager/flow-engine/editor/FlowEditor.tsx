@@ -27,7 +27,10 @@ export default function FlowEditor({ initialHtml, onChange }: Props) {
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+        history: { depth: 200, newGroupDelay: 400 },
+      }),
       AdvancedTextStyle,
       Color,
       FontFamily,
@@ -47,6 +50,23 @@ export default function FlowEditor({ initialHtml, onChange }: Props) {
         dir: "rtl",
         class:
           "flow-editor-content min-h-[60vh] max-w-none px-6 py-6 focus:outline-none",
+      },
+      handleKeyDown(view, event) {
+        const mod = event.ctrlKey || event.metaKey;
+        if (!mod) return false;
+        const key = event.key.toLowerCase();
+        // Ctrl/Cmd + Z = undo, Ctrl/Cmd + Shift + Z = redo, Ctrl/Cmd + Y = redo
+        if (key === "z" && !event.shiftKey) {
+          event.preventDefault();
+          (editor as any)?.chain().focus().undo().run();
+          return true;
+        }
+        if ((key === "z" && event.shiftKey) || key === "y") {
+          event.preventDefault();
+          (editor as any)?.chain().focus().redo().run();
+          return true;
+        }
+        return false;
       },
     },
     onUpdate({ editor }) {
