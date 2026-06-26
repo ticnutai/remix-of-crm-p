@@ -2,7 +2,6 @@
 import React, { useEffect, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
@@ -11,8 +10,12 @@ import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
 import Placeholder from "@tiptap/extension-placeholder";
+import Underline from "@tiptap/extension-underline";
+import { FontFamily } from "@tiptap/extension-font-family";
 import DynamicField from "./DynamicField";
 import MenuBar from "./MenuBar";
+import BubbleToolbar from "./BubbleToolbar";
+import AdvancedTextStyle from "./AdvancedTextStyle";
 
 interface Props {
   initialHtml: string;
@@ -25,8 +28,10 @@ export default function FlowEditor({ initialHtml, onChange }: Props) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
-      TextStyle,
+      AdvancedTextStyle,
       Color,
+      FontFamily,
+      Underline,
       Highlight.configure({ multicolor: false }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Table.configure({ resizable: false }),
@@ -65,6 +70,7 @@ export default function FlowEditor({ initialHtml, onChange }: Props) {
   return (
     <div className="flex h-full flex-col bg-background">
       <MenuBar editor={editor} />
+      <BubbleToolbar editor={editor} />
       <div className="flex-1 overflow-auto bg-muted/30">
         <div className="mx-auto my-4 max-w-[860px] rounded-md border bg-background shadow-sm">
           <EditorContent editor={editor} />
