@@ -30,7 +30,7 @@ export default function FlowEditor({ initialHtml, onChange }: Props) {
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
         history: { depth: 200, newGroupDelay: 400 },
-      }),
+      } as any),
       AdvancedTextStyle,
       Color,
       FontFamily,
