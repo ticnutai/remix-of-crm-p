@@ -212,7 +212,7 @@ export function serializeTemplate(
     });
   }
   (template.stages || []).forEach((stage) => {
-    stageBlocks.push(...buildStageBlocks(stage, data));
+    stageBlocks.push(...buildStageBlocks(stage, data, opts));
   });
   if (stageBlocks.length) {
     sections.push({ id: "stages", blocks: stageBlocks });
