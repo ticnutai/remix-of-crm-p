@@ -17,7 +17,7 @@ import {
 import { FrameDesignPanel } from "./FrameDesignPanel";
 import PagesPreviewTab from "./PagesPreviewTab";
 import PagedPreviewTab from "./PagedPreviewTab";
-import FlowPreviewTab from "./flow-engine/FlowPreviewTab";
+import FlowWorkspaceTab from "./flow-engine/FlowWorkspaceTab";
 import {
   DEFAULT_FRAME_SETTINGS,
   borderToCss,
@@ -14674,7 +14674,7 @@ ${tbAt('footer')}
 
           {/* Flow V2 — Clean isolated pagination pipeline (flow-engine/) */}
           <TabsContent value="flow-v2" className="flex-1 m-0 overflow-hidden">
-            <FlowPreviewTab template={editedTemplate} />
+            <FlowWorkspaceTab template={editedTemplate} />
           </TabsContent>
         </Tabs>
         </div>

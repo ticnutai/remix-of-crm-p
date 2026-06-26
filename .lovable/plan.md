@@ -1,105 +1,55 @@
+## המטרה
 
-## המצב הנוכחי
+להוסיף ל-Flow Engine **עורך עשיר** (Rich Text Editor) שמקבל את התבנית הקיימת, ממיר אותה למסמך זורם אחד, מאפשר עריכה חופשית — ואז מציג תצוגה מקדימה מעומדת עם Header/Footer/לוגו/מספור עמודים.
 
-הקובץ `PagesPreviewTab.tsx` (1699 שורות) משתמש כיום בשיטה פרימיטיבית:
-- iframe יחיד עם כל ה-HTML
-- כל "עמוד" הוא בעצם `translateY(-pageIdx * 1123px)` על אותו iframe
-- חישוב מספר עמודים = `scrollHeight / A4_H` (גרוס - לא מתחשב באלמנטים שנחתכים)
-- "תקן עימוד" - heuristic שמזריק `page-break-before` ידנית
-- אין `widows/orphans`, אין שליטה אמיתית על חיתוכים
-
-זו הסיבה שהפריסה "נוראית" - אין מנוע פריסה אמיתי, רק הזזה ויזואלית.
-
-## הפתרון: paged.js + ארכיטקטורה חדשה
-
-[paged.js](https://pagedjs.org/) הוא polyfill ל-CSS Paged Media מ-W3C - מנוע פריסה אמיתי שמשמש את Hugo, MDN, ועיתונאות מקצועית. הוא מבצע fragmentation אמיתי של DOM לעמודים נפרדים עם `@page`, headers/footers חוזרים, ושמירה על widows/orphans.
-
-### מבנה חדש
+## הזרימה
 
 ```text
-src/components/quotes/QuoteTemplatesManager/
-├── PagesPreviewTab.tsx          (orchestrator - ~300 שורות)
-└── paged-engine/
-    ├── PagedRenderer.tsx        (מריץ paged.js ב-iframe מבודד)
-    ├── PageViewport.tsx         (תצוגה של עמוד יחיד אחרי fragmentation)
-    ├── ViewModeContainer.tsx    (single/continuous/spread/grid)
-    ├── useKeyboardNav.ts        (hook לניווט מקלדת)
-    └── usePagedLayout.ts        (hook שמטפל ב-paged.js lifecycle)
+תבנית קיימת (תיבות, סעיפים, שדות דינמיים)
+        │
+        ▼
+[המרה חד-פעמית] ──►  מסמך Flow אחד (HTML/JSON זורם)
+        │
+        ▼
+[Tab 1: עורך עשיר]   ◄── המשתמש עורך טקסט חופשי
+   - Bold/Italic/צבעים/הדגשה
+   - כותרות, רשימות, טבלאות
+   - שדות דינמיים {{customer.name}} כצ׳יפס
+   - RTL מלא, עברית
+        │
+   (autosave לזיכרון מקומי per-template)
+        │
+        ▼
+[Tab 2: תצוגה מקדימה]  ◄── עימוד אוטומטי + Header/Footer/לוגו/מספור
+   - כפתור הדפסה / PDF
 ```
 
-### צעדי ביצוע
+## מבנה הקבצים החדשים
 
-**1. התקנת paged.js**
-```
-bun add pagedjs
-```
+הכל בתוך `src/components/quotes/QuoteTemplatesManager/flow-engine/` (מבודד מהמערכת הישנה):
 
-**2. PagedRenderer - מנוע פריסה אמיתי**
-- iframe נסתר שמריץ את paged.js על ה-HTML
-- paged.js מחלק את התוכן ל-`.pagedjs_page` divs נפרדים (אחד לכל עמוד)
-- מאזין `afterRendered` → מחזיר מספר עמודים אמיתי + DOM של כל עמוד
-- תוצאה: כל עמוד הוא div עצמאי שלא נחתך - ה-engine ספציפי לכך
+- `editor/FlowEditor.tsx` — עורך מבוסס **TipTap** (ProseMirror) עם תפריט עליון.
+- `editor/extensions/DynamicField.ts` — Node מותאם לשדות דינמיים `{{...}}` כצ׳יפס לא-עריך.
+- `editor/MenuBar.tsx` — סרגל כלים (Bold, Italic, צבע, כותרת, רשימה, טבלה, הוספת שדה).
+- `editor/templateToHtml.ts` — ממיר חד-פעמי: `QuoteTemplate` → HTML זורם נקי (משתמש ב-`sanitizeRaw` הקיים).
+- `editor/htmlToFlowDoc.ts` — ממיר HTML מהעורך → `FlowDocument` הקיים, כך שה-`renderer.ts` ממשיך לעבוד בלי שינוי.
+- `FlowWorkspaceTab.tsx` — הטאב הראשי החדש עם שני תתי-טאבים פנימיים: "עריכה" / "תצוגה מקדימה".
 
-**3. CSS Paged Media מקצועי**
-```css
-@page {
-  size: A4;
-  margin: 20mm 15mm;
-  @top-center { content: element(header); }
-  @bottom-center { content: counter(page) " / " counter(pages); }
-}
-h1, h2, h3 { break-after: avoid; widows: 3; orphans: 3; }
-table, figure, .stage-card { break-inside: avoid; }
-.page-break { break-before: page; }
-```
+## שינויים בקבצים קיימים
 
-**4. 4 מצבי תצוגה (toggle בטולבר)**
-- **דף בודד** - עמוד אחד מרכזי, גלילה חלקה בין עמודים (קיים)
-- **גלילה רציפה** - כל העמודים גלולים אנכית עם רווח בין כל אחד (חדש - כמו Word/Google Docs) ← פותר את תלונת "אין גלילה אנכית"
-- **תצוגת ספר (Spread)** - שני עמודים זה לצד זה כמו InDesign (חדש)
-- **רשת (Grid)** - thumbnails של כל העמודים (קיים)
-
-**5. ניווט מקלדת (`useKeyboardNav` hook)**
-- `←` / `→` - עמוד הבא/קודם (RTL aware: ← = הבא בעברית)
-- `Space` - גלילה למטה (חצי עמוד)
-- `Shift+Space` - גלילה למעלה
-- `Home` / `End` - עמוד ראשון / אחרון
-- `Ctrl+G` - דיאלוג קפיצה לעמוד
-- `PageUp` / `PageDown` - עמוד שלם
-
-מאזין ב-`document` כשהפוקוס באזור התצוגה (לא מפריע לעריכת טקסט בטולבר/popover).
-
-**6. תאימות לאחור**
-- שמירת ה-FixState הקיים (safe zones, protected blocks) - paged.js יקבל אותם כ-CSS
-- שמירת תפריט "תקן עימוד" - יעבוד עם המנוע החדש
-- שמירת PDF/Word export - יקבלו את ה-HTML שעבר fragmentation
+- `HtmlTemplateEditor.tsx` — מחליף את הטאב "Flow V2" הקיים ב-`FlowWorkspaceTab` (אותו שם טאב, אותו אייקון).
+- `FlowPreviewTab.tsx` — מקבל פרופ אופציונלי `editedHtml?: string` במקום לסרייליז מהתבנית; אם קיים — מרנדר אותו, אחרת מתנהג כמו היום.
 
 ## פרטים טכניים
 
-**אינטגרציה עם paged.js:**
-```ts
-import { Previewer } from 'pagedjs';
-const previewer = new Previewer();
-const flow = await previewer.preview(html, [stylesheet], renderContainer);
-// flow.total = מספר עמודים אמיתי
-// flow.pages = מערך של DOM elements, אחד לעמוד
-```
+- **TipTap**: `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-color`, `@tiptap/extension-text-style`, `@tiptap/extension-highlight`, `@tiptap/extension-table` (+row/cell/header), `@tiptap/extension-text-align`. תוספים שמורים — אין צורך ב-Pro.
+- **כיוון RTL**: `editorProps.attributes.dir = 'rtl'` + class על ה-`prose` של Tailwind Typography.
+- **שדות דינמיים**: Node מסוג `inline atom` שמוצג כ-badge כחול-זהב (טוקנים סמנטיים בלבד — `bg-accent/20 text-accent-foreground`). הוספה דרך תפריט "הוסף שדה" (רשימת שדות מותרת: `customer.name`, `parcel.block`, `parcel.lot`, `parcel.plot`, `customer.address`, `quote.number`, `quote.date`, וכו'). בייצוא ל-HTML הם נשמרים כ-`{{key}}` רגיל, וה-`renderer` הקיים יודע לעבד.
+- **אחסון**: HTML שנערך נשמר ב-`localStorage` תחת `flow-edit:${templateId}` (autosave 600ms debounce). כפתור "אפס לתבנית" מחזיר ל-HTML המקורי.
+- **תצוגה מקדימה**: ממירה HTML → `FlowDocument` ע"י parsing פשוט של DOM (h1-h3 → heading, p → paragraph, ul/ol → list, table → table) ואז `renderFlowToHtml` הקיים + Paged.js → אותו pipeline נקי שכבר עובד.
+- **צבעים**: שימוש בלעדי בטוקנים סמנטיים מ-`index.css` (primary/accent/muted/foreground). ללא `text-white`/`#xxx` בקוד הקומפוננטות.
+- **אין נגיעה** ב-`paged-engine/` הישן, ב-`text_boxes`, או בעורך התבניות הקיים. כל מה שמתווסף חי בתוך `flow-engine/editor/`.
 
-**ביצועים:** paged.js רץ פעם אחת כש-`finalHtml` משתנה (debounced 500ms), התוצאה נשמרת ב-state. החלפת מצב תצוגה לא מריצה rerender של המנוע.
+## אישור לפני בנייה
 
-**RTL:** paged.js תומך מלא ב-`direction: rtl` כולל ניווט עמודים מימין-לשמאל בתצוגת spread.
-
-## קבצים שייווצרו/ישתנו
-
-**חדש:**
-- `src/components/quotes/QuoteTemplatesManager/paged-engine/PagedRenderer.tsx`
-- `src/components/quotes/QuoteTemplatesManager/paged-engine/PageViewport.tsx`
-- `src/components/quotes/QuoteTemplatesManager/paged-engine/ViewModeContainer.tsx`
-- `src/components/quotes/QuoteTemplatesManager/paged-engine/useKeyboardNav.ts`
-- `src/components/quotes/QuoteTemplatesManager/paged-engine/usePagedLayout.ts`
-
-**שינוי:**
-- `src/components/quotes/QuoteTemplatesManager/PagesPreviewTab.tsx` - refactor למשתמש במנוע החדש (יקוצר משמעותית)
-- `package.json` - הוספת `pagedjs`
-
-לאישור והתחלת ביצוע.
+האם להמשיך עם המבנה הזה? (TipTap + טאב עריכה + טאב תצוגה מקדימה בתוך אותו workspace).
