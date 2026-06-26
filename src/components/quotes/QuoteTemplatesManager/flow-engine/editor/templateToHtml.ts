@@ -2,7 +2,7 @@
 // משתמש ב-serializer הקיים כדי להישאר עקבי, ואז ממיר FlowDocument ל-HTML פשוט.
 
 import type { QuoteTemplate } from "../../types";
-import { serializeTemplate } from "../serializer";
+import { serializeTemplate, type SerializeOptions } from "../serializer";
 import type { FlowBlock, FlowDocument, FlowInline } from "../types";
 
 const esc = (s: string) =>
@@ -67,7 +67,10 @@ export function flowDocToEditableHtml(doc: FlowDocument): string {
     .join("");
 }
 
-export function templateToEditableHtml(template: QuoteTemplate): string {
-  const doc = serializeTemplate(template);
+export function templateToEditableHtml(
+  template: QuoteTemplate,
+  opts?: SerializeOptions,
+): string {
+  const doc = serializeTemplate(template, undefined, opts);
   return flowDocToEditableHtml(doc);
 }
