@@ -16,6 +16,9 @@ function inlineToHtml(node: FlowInline): string {
   if (node.type === "field") {
     return `<span data-field="${esc(node.key)}">{{${esc(node.key)}}}</span>`;
   }
+  if (node.type === "raw") {
+    return node.html;
+  }
   // טקסט: אם מכיל {{...}} — פיצול לצ׳יפס שדה דינמי
   const parts: string[] = [];
   const regex = /\{\{\s*([^}\s]+)\s*\}\}/g;

@@ -4,7 +4,8 @@
 
 export type FlowInline =
   | { type: "text"; text: string; bold?: boolean; italic?: boolean; color?: string }
-  | { type: "field"; key: string; fallback?: string }; // {{customer.name}} → רץ דרך merger
+  | { type: "field"; key: string; fallback?: string } // {{customer.name}} → רץ דרך merger
+  | { type: "raw"; html: string }; // עיצוב מורחב שמגיע מהעורך (גרדיאנט, גופן, מרווחים)
 
 export type FlowBlock =
   | { type: "heading"; level: 1 | 2 | 3; content: FlowInline[] }

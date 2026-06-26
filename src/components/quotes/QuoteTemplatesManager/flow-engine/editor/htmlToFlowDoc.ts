@@ -5,6 +5,21 @@ import type { QuoteTemplate } from "../../types";
 import { serializeTemplate } from "../serializer";
 import type { FlowBlock, FlowDocument, FlowInline } from "../types";
 
+// תגיות שיש להן מטפל ייעודי ב-FlowInline (text/bold/italic/color/field)
+const SIMPLE_WRAPPERS = new Set(["strong", "b", "em", "i"]);
+
+function isPlainColorSpan(el: HTMLElement): boolean {
+  // span רגיל עם color בלבד — נמופה ל-FlowInline.color
+  if (el.tagName.toLowerCase() !== "span") return false;
+  if (el.hasAttribute("data-field")) return false;
+  const style = el.getAttribute("style") || "";
+  if (!style) return false;
+  // יש color אבל אין מאפיין אחר משמעותי
+  const hasColor = /(^|;)\s*color\s*:/.test(style);
+  const hasOther = /(font-|letter-|word-|background|text-decoration|gradient)/i.test(style);
+  return hasColor && !hasOther;
+}
+
 function parseInlines(node: Node): FlowInline[] {
   const out: FlowInline[] = [];
   node.childNodes.forEach((child) => {
@@ -21,17 +36,32 @@ function parseInlines(node: Node): FlowInline[] {
       out.push({ type: "field", key: el.getAttribute("data-field") || "" });
       return;
     }
-    const childInlines = parseInlines(el);
-    if (tag === "strong" || tag === "b") {
-      childInlines.forEach((n) => n.type === "text" && (n.bold = true));
+
+    if (SIMPLE_WRAPPERS.has(tag)) {
+      const childInlines = parseInlines(el);
+      if (tag === "strong" || tag === "b") {
+        childInlines.forEach((n) => n.type === "text" && (n.bold = true));
+      } else {
+        childInlines.forEach((n) => n.type === "text" && (n.italic = true));
+      }
+      out.push(...childInlines);
+      return;
     }
-    if (tag === "em" || tag === "i") {
-      childInlines.forEach((n) => n.type === "text" && (n.italic = true));
-    }
-    if (tag === "span" && el.style?.color) {
+
+    if (isPlainColorSpan(el)) {
+      const childInlines = parseInlines(el);
       childInlines.forEach((n) => n.type === "text" && (n.color = el.style.color));
+      out.push(...childInlines);
+      return;
     }
-    out.push(...childInlines);
+
+    // כל השאר (u, mark, span עם font-family/font-size/letter-spacing/word-spacing/גרדיאנט וכו') —
+    // שמור כ-HTML גולמי כדי שהעיצוב יישמר בתצוגה המקדימה וב-PDF
+    if (el.outerHTML) {
+      out.push({ type: "raw", html: el.outerHTML });
+    } else {
+      out.push(...parseInlines(el));
+    }
   });
   return out;
 }
