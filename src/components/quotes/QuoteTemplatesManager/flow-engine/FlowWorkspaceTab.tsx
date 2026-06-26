@@ -34,6 +34,28 @@ export default function FlowWorkspaceTab({ template }: Props) {
     }
   });
 
+  // ערכת עיצוב נבחרת — נשמרת לפי תבנית
+  const [selectedPreset, setSelectedPreset] = useState<DesignPreset | null>(null);
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(presetKey(template.id));
+    } catch {
+      return null;
+    }
+  });
+  const presetCfg = selectedPreset ? safeConfig(selectedPreset) : undefined;
+
+  const handlePresetSelect = (p: DesignPreset | null) => {
+    setSelectedPreset(p);
+    setSelectedPresetId(p?.id || null);
+    try {
+      if (p) localStorage.setItem(presetKey(template.id), p.id);
+      else localStorage.removeItem(presetKey(template.id));
+    } catch {
+      /* ignore */
+    }
+  };
+
   const baseHtml = useMemo(
     () => templateToEditableHtml(template, { preserveItemStyling: preserveStyles }),
     [template, preserveStyles],
