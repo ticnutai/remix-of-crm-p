@@ -83,7 +83,8 @@ export default function FlowPreviewTab({ template, mergeData }: FlowPreviewTabPr
       <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-background px-4 py-2">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          <span className="text-sm font-medium">תצוגת Flow (V2) — מנוע עימוד נקי</span>
+          <span className="text-sm font-medium">תצוגה מקדימה (Flow V2) — לקריאה והדפסה בלבד</span>
+          <Badge variant="outline" className="h-5 text-[10px]">העריכה מתבצעת בטאבים האחרים</Badge>
           {rendering ? (
             <Badge variant="secondary" className="h-5 text-[10px]">
               <Loader2 className="ml-1 h-3 w-3 animate-spin" /> מעמד...

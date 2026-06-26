@@ -25,21 +25,55 @@ function resolveField(key: string, data: MergeData | undefined): string {
   return String(value);
 }
 
+/**
+ * מנקה טקסט שהגיע מהעורך הישן: מסיר תגיות HTML, מסיר CSS noise
+ * (משתני --tw-, הצהרות style שדלפו), מצמצם רווחים.
+ * זו הסיבה שבטאב Flow ראינו טקסטים כמו "--tw-translate-x: 0;".
+ */
+function sanitizeRaw(input: string | undefined | null): string {
+  if (!input) return "";
+  let s = String(input);
+  // הסר בלוקי <style>...</style> ו-<script>...</script>
+  s = s.replace(/<style[\s\S]*?<\/style>/gi, "");
+  s = s.replace(/<script[\s\S]*?<\/script>/gi, "");
+  // החלף <br> ו-</p> ברווחי שורה לפני הסרת תגיות
+  s = s.replace(/<\s*br\s*\/?\s*>/gi, "\n");
+  s = s.replace(/<\/(p|div|li|h[1-6])\s*>/gi, "\n");
+  // הסר את כל תגיות ה-HTML
+  s = s.replace(/<[^>]+>/g, "");
+  // הסר רצפים של הצהרות CSS שדלפו (--tw-..., property: value;)
+  s = s.replace(/--[a-z0-9-]+\s*:[^;]*;?/gi, "");
+  s = s.replace(/\b(?:rgb|rgba|hsl|hsla)\s*\([^)]*\)/gi, "");
+  // הסר הצהרות CSS כלליות שנותרו (key: value;) כשהן עומדות לבדן
+  s = s.replace(/(?:^|\s)[a-z-]{3,30}\s*:\s*[^;\n]{1,80};/gi, " ");
+  // Decode HTML entities בסיסיים
+  s = s
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"');
+  // נקה רווחים
+  s = s.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  return s;
+}
+
 function textToInlines(raw: string, data?: MergeData): FlowInline[] {
-  if (!raw) return [];
+  const clean = sanitizeRaw(raw);
+  if (!clean) return [{ type: "text", text: "" }];
   const out: FlowInline[] = [];
   const regex = /\{\{\s*([^}\s]+)\s*\}\}/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
-  while ((match = regex.exec(raw)) !== null) {
+  while ((match = regex.exec(clean)) !== null) {
     if (match.index > lastIndex) {
-      out.push({ type: "text", text: raw.slice(lastIndex, match.index) });
+      out.push({ type: "text", text: clean.slice(lastIndex, match.index) });
     }
     out.push({ type: "text", text: resolveField(match[1], data) });
     lastIndex = match.index + match[0].length;
   }
-  if (lastIndex < raw.length) {
-    out.push({ type: "text", text: raw.slice(lastIndex) });
+  if (lastIndex < clean.length) {
+    out.push({ type: "text", text: clean.slice(lastIndex) });
   }
   return out.length ? out : [{ type: "text", text: "" }];
 }
