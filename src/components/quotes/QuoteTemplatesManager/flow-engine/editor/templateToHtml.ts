@@ -67,7 +67,10 @@ export function flowDocToEditableHtml(doc: FlowDocument): string {
     .join("");
 }
 
-export function templateToEditableHtml(template: QuoteTemplate): string {
-  const doc = serializeTemplate(template);
+export function templateToEditableHtml(
+  template: QuoteTemplate,
+  opts?: SerializeOptions,
+): string {
+  const doc = serializeTemplate(template, undefined, opts);
   return flowDocToEditableHtml(doc);
 }
