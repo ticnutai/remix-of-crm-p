@@ -14671,6 +14671,11 @@ ${tbAt('footer')}
             />
 
           </TabsContent>
+
+          {/* Flow V2 — Clean isolated pagination pipeline (flow-engine/) */}
+          <TabsContent value="flow-v2" className="flex-1 m-0 overflow-hidden">
+            <FlowPreviewTab template={editedTemplate} />
+          </TabsContent>
         </Tabs>
         </div>
 
