@@ -18,9 +18,10 @@ interface FlowPreviewTabProps {
   /** HTML שנערך בעורך החדש. אם קיים — מקבל עדיפות על פני סריאליזציה מהתבנית. */
   editedHtml?: string;
   preset?: DesignPresetConfig;
+  projectDetails?: any;
 }
 
-export default function FlowPreviewTab({ template, mergeData, editedHtml, preset }: FlowPreviewTabProps) {
+export default function FlowPreviewTab({ template, mergeData, editedHtml, preset, projectDetails }: FlowPreviewTabProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [rendering, setRendering] = useState(false);
   const [pageCount, setPageCount] = useState<number | null>(null);
@@ -31,8 +32,8 @@ export default function FlowPreviewTab({ template, mergeData, editedHtml, preset
     if (editedHtml && editedHtml.trim()) {
       return htmlToFlowDoc(editedHtml, template);
     }
-    return serializeTemplate(template, mergeData);
-  }, [template, mergeData, editedHtml]);
+    return serializeTemplate(template, mergeData, { projectDetails });
+  }, [template, mergeData, editedHtml, projectDetails]);
   const html = useMemo(() => renderFlowToHtml(flowDoc, preset), [flowDoc, preset]);
 
   useEffect(() => {
@@ -68,31 +69,62 @@ export default function FlowPreviewTab({ template, mergeData, editedHtml, preset
   }, [html, renderToken]);
 
   const handlePrint = () => {
+    // משתמשים בתוצר ה-Paged.js שכבר עומד מול המשתמש (containerRef).
+    // מעתיקים את אותו DOM לחלון חדש ומוסיפים CSS הדפסה שמבטיח שכל
+    // .pagedjs_page יתפוס דף בפועל ב-PDF (break-after: page).
+    const target = containerRef.current;
+    if (!target || !target.querySelector(".pagedjs_page")) {
+      window.alert("התצוגה עוד לא הסתיימה לטעון. נסה שוב בעוד רגע.");
+      return;
+    }
     const w = window.open("", "_blank", "width=900,height=1200");
     if (!w) return;
-    // מזריקים את Paged.js לתוך חלון ההדפסה — בלעדיו @page running() לא יעבוד
-    // ולכן ה-Header/Footer/מספור עמודים והעימוד הנכון יילכו לאיבוד ב-PDF.
-    const injected = html.replace(
-      "</head>",
-      `<script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"><\/script>
-       <style>@media print { .pagedjs_pages { gap:0 !important; } }<\/style>
-       </head>`,
-    );
+    const m = flowDoc.page.marginMm;
+    const printDoc = `<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8" />
+<title>${flowDoc.title.replace(/</g, "&lt;")}</title>
+<style>
+  @page { size: ${flowDoc.page.size}; margin: 0; }
+  html, body { margin: 0; padding: 0; background: #fff;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  *, *::before, *::after { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .pagedjs_pages { display: block; }
+  .pagedjs_page {
+    display: block !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    page-break-after: always;
+    break-after: page;
+  }
+  .pagedjs_page:last-child { page-break-after: auto; break-after: auto; }
+  /* paged.js מציב .pagedjs_pagebox עם רוחב/גובה דף — נשמור עליהם */
+  @media print {
+    body { background: #fff; }
+    .pagedjs_pages { gap: 0 !important; }
+  }
+</style>
+</head>
+<body>${target.innerHTML}</body>
+</html>`;
     w.document.open();
-    w.document.write(injected);
+    w.document.write(printDoc);
     w.document.close();
-    // Paged.js מפעיל ב-DOMContentLoaded; ממתינים שיסיים לפני print
     const tryPrint = () => {
       try {
-        const ready = (w as any).PagedPolyfill || w.document.querySelector(".pagedjs_page");
-        if (!ready) return window.setTimeout(tryPrint, 200);
+        if (!w.document.querySelector(".pagedjs_page")) {
+          return window.setTimeout(tryPrint, 150);
+        }
         w.focus();
         w.print();
       } catch {
         /* ignore */
       }
     };
-    window.setTimeout(tryPrint, 600);
+    window.setTimeout(tryPrint, 400);
+    // suppress unused
+    void m;
   };
 
   return (
