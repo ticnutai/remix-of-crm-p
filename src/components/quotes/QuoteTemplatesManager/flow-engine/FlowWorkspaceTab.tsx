@@ -12,6 +12,9 @@ import type { QuoteTemplate } from "../types";
 import FlowEditor from "./editor/FlowEditor";
 import FlowPreviewTab from "./FlowPreviewTab";
 import { templateToEditableHtml } from "./editor/templateToHtml";
+import PresetPicker from "./presets/PresetPicker";
+import type { DesignPreset } from "./presets/types";
+import { safeConfig } from "./presets/usePresets";
 
 interface Props {
   template: QuoteTemplate;
@@ -19,6 +22,7 @@ interface Props {
 
 const storageKey = (id?: string) => `flow-edit:${id || "untitled"}`;
 const styleKey = (id?: string) => `flow-edit:${id || "untitled"}:preserveStyles`;
+const presetKey = (id?: string) => `flow-edit:${id || "untitled"}:presetId`;
 
 export default function FlowWorkspaceTab({ template }: Props) {
   // toggle: שמירת עיצוב מקורי מהתבנית (off = הזרימה הקיימת, on = שכבה 1)
