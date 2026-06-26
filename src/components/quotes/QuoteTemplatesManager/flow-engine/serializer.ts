@@ -59,20 +59,21 @@ function sanitizeRaw(input: string | undefined | null): string {
 }
 
 function textToInlines(raw: string, data?: MergeData): FlowInline[] {
-  if (!raw) return [];
+  const clean = sanitizeRaw(raw);
+  if (!clean) return [{ type: "text", text: "" }];
   const out: FlowInline[] = [];
   const regex = /\{\{\s*([^}\s]+)\s*\}\}/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
-  while ((match = regex.exec(raw)) !== null) {
+  while ((match = regex.exec(clean)) !== null) {
     if (match.index > lastIndex) {
-      out.push({ type: "text", text: raw.slice(lastIndex, match.index) });
+      out.push({ type: "text", text: clean.slice(lastIndex, match.index) });
     }
     out.push({ type: "text", text: resolveField(match[1], data) });
     lastIndex = match.index + match[0].length;
   }
-  if (lastIndex < raw.length) {
-    out.push({ type: "text", text: raw.slice(lastIndex) });
+  if (lastIndex < clean.length) {
+    out.push({ type: "text", text: clean.slice(lastIndex) });
   }
   return out.length ? out : [{ type: "text", text: "" }];
 }
