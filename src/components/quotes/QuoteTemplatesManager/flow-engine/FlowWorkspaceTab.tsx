@@ -156,6 +156,7 @@ export default function FlowWorkspaceTab({ template }: Props) {
               שמור עיצוב מקורי מהתבנית
             </Label>
           </div>
+          <PresetPicker selectedId={selectedPresetId} onSelect={handlePresetSelect} />
           <TabsList className="h-8">
             <TabsTrigger value="edit" className="h-7 gap-1 text-xs">
               <Pencil className="h-3.5 w-3.5" />
@@ -180,10 +181,10 @@ export default function FlowWorkspaceTab({ template }: Props) {
       </div>
 
       <TabsContent value="edit" className="m-0 flex-1 overflow-hidden">
-        <FlowEditor initialHtml={html} onChange={handleChange} />
+        <FlowEditor initialHtml={html} onChange={handleChange} preset={presetCfg} />
       </TabsContent>
       <TabsContent value="preview" className="m-0 flex-1 overflow-hidden">
-        <FlowPreviewTab template={template} editedHtml={html} />
+        <FlowPreviewTab template={template} editedHtml={html} preset={presetCfg} />
       </TabsContent>
     </Tabs>
   );
