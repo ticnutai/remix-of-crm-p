@@ -5,6 +5,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Pencil, Eye, RotateCcw, Sparkles } from "lucide-react";
 import type { QuoteTemplate } from "../types";
 import FlowEditor from "./editor/FlowEditor";
@@ -16,9 +18,22 @@ interface Props {
 }
 
 const storageKey = (id?: string) => `flow-edit:${id || "untitled"}`;
+const styleKey = (id?: string) => `flow-edit:${id || "untitled"}:preserveStyles`;
 
 export default function FlowWorkspaceTab({ template }: Props) {
-  const baseHtml = useMemo(() => templateToEditableHtml(template), [template]);
+  // toggle: שמירת עיצוב מקורי מהתבנית (off = הזרימה הקיימת, on = שכבה 1)
+  const [preserveStyles, setPreserveStyles] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(styleKey(template.id)) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const baseHtml = useMemo(
+    () => templateToEditableHtml(template, { preserveItemStyling: preserveStyles }),
+    [template, preserveStyles],
+  );
 
   const [html, setHtml] = useState<string>(() => {
     try {
@@ -59,13 +74,39 @@ export default function FlowWorkspaceTab({ template }: Props) {
     setHtml(baseHtml);
   };
 
+  const handleTogglePreserve = (value: boolean) => {
+    // החלפת מצב משכתבת את ה-base וגם את הטיוטה — לכן מאשרים אם יש שינויים
+    const hasDraft = (() => {
+      try {
+        return !!localStorage.getItem(storageKey(template.id));
+      } catch {
+        return false;
+      }
+    })();
+    if (
+      hasDraft &&
+      !window.confirm(
+        "שינוי המצב יטען מחדש את התוכן מהתבנית ויאבד את העריכה הנוכחית. להמשיך?",
+      )
+    ) {
+      return;
+    }
+    setPreserveStyles(value);
+    try {
+      localStorage.setItem(styleKey(template.id), value ? "1" : "0");
+      localStorage.removeItem(storageKey(template.id));
+    } catch {
+      /* ignore */
+    }
+  };
+
   return (
     <Tabs
       value={activeTab}
       onValueChange={(v) => setActiveTab(v as "edit" | "preview")}
       className="flex h-full flex-col"
     >
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-background px-3 py-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-background px-3 py-2">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">Flow V2 — עורך ועימוד נקי</span>
@@ -73,7 +114,22 @@ export default function FlowWorkspaceTab({ template }: Props) {
             מבודד מהמערכת הישנה
           </Badge>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* טוגל שמירת עיצוב מקורי */}
+          <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-2 py-1">
+            <Switch
+              id="preserve-styles"
+              checked={preserveStyles}
+              onCheckedChange={handleTogglePreserve}
+            />
+            <Label
+              htmlFor="preserve-styles"
+              className="cursor-pointer text-xs font-medium"
+              title="טוען צבעים, פונטים, גדלים והדגשות שהוגדרו בעורך התבניות המקורי"
+            >
+              שמור עיצוב מקורי מהתבנית
+            </Label>
+          </div>
           <TabsList className="h-8">
             <TabsTrigger value="edit" className="h-7 gap-1 text-xs">
               <Pencil className="h-3.5 w-3.5" />
