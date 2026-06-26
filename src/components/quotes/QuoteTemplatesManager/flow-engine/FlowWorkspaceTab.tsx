@@ -18,13 +18,14 @@ import { safeConfig, usePresets } from "./presets/usePresets";
 
 interface Props {
   template: QuoteTemplate;
+  projectDetails?: any;
 }
 
 const storageKey = (id?: string) => `flow-edit:${id || "untitled"}`;
 const styleKey = (id?: string) => `flow-edit:${id || "untitled"}:preserveStyles`;
 const presetKey = (id?: string) => `flow-edit:${id || "untitled"}:presetId`;
 
-export default function FlowWorkspaceTab({ template }: Props) {
+export default function FlowWorkspaceTab({ template, projectDetails }: Props) {
   // toggle: שמירת עיצוב מקורי מהתבנית (off = הזרימה הקיימת, on = שכבה 1)
   const [preserveStyles, setPreserveStyles] = useState<boolean>(() => {
     try {
@@ -60,8 +61,12 @@ export default function FlowWorkspaceTab({ template }: Props) {
   };
 
   const baseHtml = useMemo(
-    () => templateToEditableHtml(template, { preserveItemStyling: preserveStyles }),
-    [template, preserveStyles],
+    () =>
+      templateToEditableHtml(template, {
+        preserveItemStyling: preserveStyles,
+        projectDetails,
+      }),
+    [template, preserveStyles, projectDetails],
   );
 
   const [html, setHtml] = useState<string>(() => {
@@ -187,7 +192,12 @@ export default function FlowWorkspaceTab({ template }: Props) {
         <FlowEditor initialHtml={html} onChange={handleChange} preset={presetCfg} />
       </TabsContent>
       <TabsContent value="preview" className="m-0 flex-1 overflow-hidden">
-        <FlowPreviewTab template={template} editedHtml={html} preset={presetCfg} />
+        <FlowPreviewTab
+          template={template}
+          editedHtml={html}
+          preset={presetCfg}
+          projectDetails={projectDetails}
+        />
       </TabsContent>
     </Tabs>
   );

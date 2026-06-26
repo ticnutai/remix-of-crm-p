@@ -14,6 +14,11 @@ import type {
   FlowInline,
   FlowSection,
 } from "./types";
+import {
+  applyProjectTokens,
+  projectToMergeData,
+  type ProjectTokenData,
+} from "./projectTokens";
 
 export type MergeData = Record<string, string | number | undefined | null>;
 
@@ -21,6 +26,8 @@ export type MergeData = Record<string, string | number | undefined | null>;
 export interface SerializeOptions {
   /** שכבה 1: מיפוי סגנונות פר-פריט (צבע/פונט/גודל/Bold/Italic/Underline/יישור) מהתבנית לפלט הזורם. */
   preserveItemStyling?: boolean;
+  /** פרטי פרויקט להזרמה לטוקנים כמו [גוש], [לקוח], "משפחת ___" וכו'. */
+  projectDetails?: ProjectTokenData;
 }
 
 const esc = (s: string) =>
@@ -89,8 +96,11 @@ function sanitizeRaw(input: string | undefined | null): string {
   return s;
 }
 
+let CURRENT_PD: ProjectTokenData | undefined;
+
 function textToInlines(raw: string, data?: MergeData): FlowInline[] {
-  const clean = sanitizeRaw(raw);
+  let clean = sanitizeRaw(raw);
+  if (CURRENT_PD) clean = applyProjectTokens(clean, CURRENT_PD);
   if (!clean) return [{ type: "text", text: "" }];
   const out: FlowInline[] = [];
   const regex = /\{\{\s*([^}\s]+)\s*\}\}/g;
@@ -164,6 +174,10 @@ export function serializeTemplate(
   data?: MergeData,
   opts?: SerializeOptions,
 ): FlowDocument {
+  CURRENT_PD = opts?.projectDetails;
+  // מיזוג מפתחות {{customer.*}} / {{parcel.*}} מתוך פרטי הפרויקט.
+  const mergedData: MergeData = { ...projectToMergeData(opts?.projectDetails), ...(data || {}) };
+  data = mergedData;
   const ds = template.design_settings;
 
   const branding: FlowBranding = {
