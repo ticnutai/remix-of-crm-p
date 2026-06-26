@@ -58,7 +58,7 @@ export default function PresetPicker({ selectedId, onSelect }: Props) {
             </span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64" dir="rtl">
+        <DropdownMenuContent align="end" className="w-64 rtl">
           <DropdownMenuLabel className="text-xs">ערכות עיצוב</DropdownMenuLabel>
           <DropdownMenuItem onSelect={() => onSelect(null)}>
             <div className="flex w-full items-center justify-between">
