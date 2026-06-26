@@ -244,8 +244,14 @@ export function serializeTemplate(
     });
   }
 
-  // 4. לוח תשלומים
+  // 4. לוח תשלומים — כולל סכומי כסף ומע״מ פר שלב
   if (template.payment_schedule && template.payment_schedule.length) {
+    const basePrice = Number(template.base_price) || 0;
+    const defaultVat = Number(template.vat_rate) || 0;
+    const showVat = template.show_vat !== false;
+    const fmt = (n: number) =>
+      `₪${Math.round(n).toLocaleString("he-IL")}`;
+
     sections.push({
       id: "payments",
       keepTogether: true,
@@ -258,10 +264,26 @@ export function serializeTemplate(
         {
           type: "list",
           ordered: true,
-          items: template.payment_schedule.map((p) => [
-            { type: "text", text: `${p.percentage}% — `, bold: true },
-            ...textToInlines(p.description || "", data),
-          ]),
+          items: template.payment_schedule.map((p: any) => {
+            const amount = basePrice * (Number(p.percentage) || 0) / 100;
+            const vatRate =
+              p.useCustomVat && typeof p.vatRate === "number"
+                ? p.vatRate
+                : defaultVat;
+            const withVat = amount * (1 + vatRate / 100);
+
+            const inlines: FlowInline[] = [
+              { type: "text", text: `${p.percentage}% — `, bold: true },
+              ...textToInlines(p.description || "", data),
+            ];
+            if (basePrice > 0) {
+              const moneyText = showVat
+                ? ` — ${fmt(amount)} + מע״מ ${vatRate}% = ${fmt(withVat)}`
+                : ` — ${fmt(amount)}`;
+              inlines.push({ type: "text", text: moneyText });
+            }
+            return inlines;
+          }),
         },
       ],
     });
