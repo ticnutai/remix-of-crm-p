@@ -112,6 +112,7 @@ function textToInlines(raw: string, data?: MergeData): FlowInline[] {
 function buildStageBlocks(
   stage: TemplateStage,
   data?: MergeData,
+  opts?: SerializeOptions,
 ): FlowBlock[] {
   const blocks: FlowBlock[] = [];
   if (stage.name) {
@@ -129,6 +130,28 @@ function buildStageBlocks(
       items: items.map((it) => {
         const inlines = textToInlines(it.text || "", data);
         if (it.isBold) inlines.forEach((n) => (n.type === "text" ? (n.bold = true) : null));
+        // שכבה 1: עיטוף בסגנון פר-פריט שמרוצף עד ל-PDF
+        if (opts?.preserveItemStyling) {
+          const style = itemStyleString(it);
+          if (style) {
+            // ממירים את האינליינים למחרוזת HTML זמנית ועוטפים ב-span עם style
+            const inner = inlines
+              .map((n) => {
+                if (n.type === "raw") return n.html;
+                if (n.type === "field")
+                  return `<span data-field="${esc(n.key)}">{{${esc(n.key)}}}</span>`;
+                let t = esc(n.text);
+                if (n.bold) t = `<strong>${t}</strong>`;
+                if (n.italic) t = `<em>${t}</em>`;
+                if (n.color) t = `<span style="color:${esc(n.color)}">${t}</span>`;
+                return t;
+              })
+              .join("");
+            return [
+              { type: "raw", html: `<span style="${style}">${inner}</span>` } as FlowInline,
+            ];
+          }
+        }
         return inlines;
       }),
     });
@@ -139,6 +162,7 @@ function buildStageBlocks(
 export function serializeTemplate(
   template: QuoteTemplate,
   data?: MergeData,
+  opts?: SerializeOptions,
 ): FlowDocument {
   const ds = template.design_settings;
 
