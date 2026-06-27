@@ -4698,6 +4698,28 @@ export function HtmlTemplateEditor({
   const [logoSubTab, setLogoSubTab] = useState<"upper" | "lower">("upper");
   const [showEmbeddedVectorEditor, setShowEmbeddedVectorEditor] =
     useState(false);
+  const openVectorLogoStripEditor = useCallback(() => {
+    const editorUrl = new URL(
+      "/vector-logo-strip-editor.html?host=quote-editor&standalone=1",
+      window.location.origin,
+    ).toString();
+    const popup = window.open(
+      editorUrl,
+      "tenarch-vector-logo-strip-editor",
+      "popup=no,width=1280,height=860,left=80,top=60",
+    );
+
+    if (popup) {
+      popup.focus();
+      return;
+    }
+
+    setShowEmbeddedVectorEditor(true);
+    toast({
+      title: "העורך נפתח בתוך הטאב",
+      description: "הדפדפן חסם פתיחת עמוד נפרד, אז פתחתי את העורך המוטמע.",
+    });
+  }, [toast]);
   const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>(() => {
     const saved = template.payment_schedule;
     if (saved && Array.isArray(saved) && saved.length > 0) {
@@ -10381,16 +10403,10 @@ ${tbAt('footer')}
                       type="button"
                       size="sm"
                       variant="outline"
-                      asChild
+                      onClick={openVectorLogoStripEditor}
                     >
-                      <a
-                        href="/vector-logo-strip-editor.html"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <ExternalLink className="h-4 w-4 ml-2" />
-                        עורך בעמוד נפרד
-                      </a>
+                      <ExternalLink className="h-4 w-4 ml-2" />
+                      עורך בעמוד נפרד
                     </Button>
                   </div>
                 </div>
@@ -11596,16 +11612,10 @@ ${tbAt('footer')}
                       type="button"
                       size="sm"
                       variant="outline"
-                      asChild
+                      onClick={openVectorLogoStripEditor}
                     >
-                      <a
-                        href="/vector-logo-strip-editor.html"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <ExternalLink className="h-4 w-4 ml-2" />
-                        עורך בעמוד נפרד
-                      </a>
+                      <ExternalLink className="h-4 w-4 ml-2" />
+                      עורך בעמוד נפרד
                     </Button>
                   </div>
                 </div>
