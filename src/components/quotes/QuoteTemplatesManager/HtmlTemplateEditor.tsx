@@ -4665,7 +4665,7 @@ export function HtmlTemplateEditor({
     } catch {
       /* ignore */
     }
-    return DEFAULT_TAB_ORDER.map((value) => ({ value, visible: true }));
+    return DEFAULT_TAB_ORDER.map((value) => ({ value, visible: !HIDDEN_BY_DEFAULT.has(value) }));
   });
   useEffect(() => {
     try {
