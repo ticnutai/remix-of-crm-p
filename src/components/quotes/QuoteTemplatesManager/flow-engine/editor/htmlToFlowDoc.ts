@@ -111,8 +111,12 @@ function elementToBlock(el: HTMLElement): FlowBlock | FlowBlock[] | null {
   }
 }
 
-export function htmlToFlowDoc(html: string, template: QuoteTemplate): FlowDocument {
-  const shell = serializeTemplate(template);
+export function htmlToFlowDoc(
+  html: string,
+  template: QuoteTemplate,
+  opts?: { designSettings?: any },
+): FlowDocument {
+  const shell = serializeTemplate(template, undefined, { designSettings: opts?.designSettings });
   const parser = new DOMParser();
   const dom = parser.parseFromString(`<div id="root">${html}</div>`, "text/html");
   const root = dom.getElementById("root");
