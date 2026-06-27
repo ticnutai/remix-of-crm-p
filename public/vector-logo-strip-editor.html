@@ -6,13 +6,17 @@
     <title>עורך לוגו/סטריפ וקטורי</title>
     <style>
       :root {
-        --bg: #f3f4f8;
+        --bg: #eef2f7;
         --card: #ffffff;
-        --ink: #12203a;
-        --muted: #5a6c8f;
-        --line: #d7dce8;
+        --ink: #172033;
+        --muted: #64748b;
+        --line: #d9e1ec;
         --accent: #0f766e;
-        --accent-soft: #d4f4f1;
+        --accent-strong: #0b5f58;
+        --accent-soft: #d9f3ef;
+        --gold: #d4af37;
+        --shadow-soft: 0 14px 42px rgba(15, 23, 42, 0.1);
+        --shadow-tight: 0 8px 24px rgba(15, 23, 42, 0.08);
         --tools-panel-width: 320px;
         --layers-panel-width: 260px;
       }
@@ -23,17 +27,118 @@
 
       body {
         margin: 0;
-        font-family: Heebo, sans-serif;
-        background: radial-gradient(circle at 15% 0%, #eff2ff 0%, #f7f8fc 50%, #eef4f4 100%);
+        font-family: Heebo, Arial, sans-serif;
+        background:
+          linear-gradient(120deg, rgba(15, 118, 110, 0.09), rgba(212, 175, 55, 0.07) 38%, rgba(23, 32, 51, 0.05)),
+          var(--bg);
         color: var(--ink);
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 64px;
+        padding: 10px 16px;
+        border-bottom: 1px solid rgba(217, 225, 236, 0.86);
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(16px);
+        box-shadow: 0 8px 26px rgba(15, 23, 42, 0.07);
+      }
+
+      .brand-block {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .brand-mark {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+        color: #fff;
+        font-weight: 800;
+        box-shadow: 0 10px 22px rgba(15, 118, 110, 0.24);
+      }
+
+      .brand-title {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.25;
+      }
+
+      .brand-subtitle {
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .topbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .connection-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        min-height: 34px;
+        padding: 7px 11px;
+        border: 1px solid rgba(15, 118, 110, 0.2);
+        border-radius: 999px;
+        background: #f0fbf8;
+        color: #0b5f58;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .connection-pill::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: #16a34a;
+        box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.12);
+      }
+
+      .close-editor-btn {
+        display: inline-grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        border: 1px solid #e3e8f0;
+        border-radius: 10px;
+        background: #fff;
+        color: #172033;
+        cursor: pointer;
+        font-size: 28px;
+        line-height: 1;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+        transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      }
+
+      .close-editor-btn:hover {
+        transform: translateY(-1px);
+        border-color: #f2b6b6;
+        background: #fff5f5;
+        color: #b91c1c;
       }
 
       .app {
         display: grid;
         grid-template-columns: var(--tools-panel-width) 1fr var(--layers-panel-width);
-        min-height: 100vh;
+        min-height: calc(100vh - 64px);
         gap: 12px;
-        padding: 12px;
+        padding: 14px;
         transition: grid-template-columns 0.22s ease;
       }
 
@@ -119,17 +224,18 @@
       }
 
       .panel {
-        background: var(--card);
+        background: rgba(255, 255, 255, 0.96);
         border: 1px solid var(--line);
-        border-radius: 16px;
-        padding: 12px;
-        box-shadow: 0 6px 26px rgba(22, 29, 51, 0.08);
+        border-radius: 10px;
+        padding: 14px;
+        box-shadow: var(--shadow-tight);
         overflow: auto;
       }
 
       .panel h3 {
         margin: 0 0 10px;
         font-size: 15px;
+        letter-spacing: 0;
       }
 
       .toolbar {
@@ -141,9 +247,10 @@
 
       .group {
         border: 1px solid var(--line);
-        border-radius: 12px;
+        border-radius: 10px;
         padding: 10px;
         margin-bottom: 10px;
+        background: linear-gradient(180deg, #ffffff, #fbfcff);
       }
 
       label {
@@ -168,6 +275,18 @@
         border: 1px solid var(--line);
         border-radius: 8px;
         padding: 7px 8px;
+        background: #fff;
+        color: var(--ink);
+        outline: none;
+        transition: border-color 0.16s ease, box-shadow 0.16s ease;
+      }
+
+      input[type="text"]:focus,
+      input[type="number"]:focus,
+      textarea:focus,
+      select:focus {
+        border-color: rgba(15, 118, 110, 0.48);
+        box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
       }
 
       .row {
@@ -178,17 +297,18 @@
 
       .btn {
         border: 1px solid #cfd7ea;
-        background: #fff;
+        background: linear-gradient(180deg, #fff, #f8fafc);
         color: var(--ink);
-        border-radius: 9px;
+        border-radius: 8px;
         padding: 7px 10px;
         cursor: pointer;
-        transition: 0.18s ease;
+        transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
       }
 
       .btn:hover {
         border-color: #a7b6d6;
         transform: translateY(-1px);
+        box-shadow: 0 7px 16px rgba(15, 23, 42, 0.08);
       }
 
       .btn:disabled {
@@ -198,9 +318,10 @@
       }
 
       .btn.primary {
-        background: linear-gradient(135deg, #0f766e, #0d9488);
+        background: linear-gradient(135deg, var(--accent-strong), #0d9488);
         color: #fff;
         border: 0;
+        box-shadow: 0 9px 18px rgba(15, 118, 110, 0.2);
       }
 
       .btn.warn {
@@ -230,21 +351,23 @@
       }
 
       .canvas-wrap {
-        background: #fff;
+        background: rgba(255, 255, 255, 0.96);
         border: 1px solid var(--line);
-        border-radius: 16px;
-        box-shadow: 0 10px 28px rgba(22, 29, 51, 0.08);
+        border-radius: 10px;
+        box-shadow: var(--shadow-soft);
         display: grid;
         grid-template-rows: auto 1fr;
         min-width: 0;
+        overflow: hidden;
       }
 
       .canvas-head {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 10px 12px;
+        padding: 12px 14px;
         border-bottom: 1px solid var(--line);
+        background: linear-gradient(180deg, #ffffff, #f8fafc);
       }
 
       .canvas-meta {
@@ -255,7 +378,11 @@
       .canvas-stage {
         position: relative;
         min-height: 72vh;
-        background: linear-gradient(135deg, #f4f7fb 0%, #f1f3fa 100%);
+        background:
+          linear-gradient(rgba(100, 116, 139, 0.07) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(100, 116, 139, 0.07) 1px, transparent 1px),
+          linear-gradient(135deg, #f6f8fb 0%, #edf3f8 100%);
+        background-size: 28px 28px, 28px 28px, auto;
       }
 
       .compare-strip {
@@ -336,15 +463,16 @@
         position: fixed;
         bottom: 16px;
         left: 16px;
-        background: #0f172a;
+        background: #111827;
         color: #fff;
         border-radius: 10px;
-        padding: 9px 12px;
+        padding: 10px 13px;
         opacity: 0;
         transform: translateY(6px);
         transition: 0.25s ease;
         pointer-events: none;
         z-index: 999;
+        box-shadow: 0 16px 32px rgba(15, 23, 42, 0.18);
       }
 
       .toast.show {
@@ -408,9 +536,44 @@
           stroke-dashoffset: -32;
         }
       }
+
+      @media (max-width: 720px) {
+        .topbar {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .topbar-actions {
+          width: 100%;
+          justify-content: space-between;
+        }
+
+        .connection-pill {
+          white-space: normal;
+        }
+
+        .brand-title {
+          font-size: 16px;
+        }
+      }
     </style>
   </head>
   <body>
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="brand-mark">T</div>
+        <div>
+          <h1 class="brand-title">סטודיו לוגו וסטריפ וקטורי</h1>
+          <div class="brand-subtitle">עריכה נקייה, שכבות, ייצוא והחלה ישירות על עורך ההצעה</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div class="connection-pill" id="connectionStatus">מחובר לעורך ההצעה</div>
+        <button class="close-editor-btn" id="closeEditorBtn" type="button" aria-label="סגור וחזור לעורך ההצעה" title="סגור וחזור לעורך ההצעה">×</button>
+      </div>
+    </header>
+
     <div class="app">
       <aside class="panel" id="toolsPanel">
         <div class="panel-title-row">
@@ -619,6 +782,8 @@
       const compareStrip = document.getElementById("compareStrip");
       const uploadedPreview = document.getElementById("uploadedPreview");
       const appRoot = document.querySelector(".app");
+      const closeEditorBtn = document.getElementById("closeEditorBtn");
+      const connectionStatus = document.getElementById("connectionStatus");
       const toggleToolsPanelBtn = document.getElementById("toggleToolsPanelBtn");
       const toggleLayersPanelBtn = document.getElementById("toggleLayersPanelBtn");
       const mobileToolsToggleBtn = document.getElementById("mobileToolsToggleBtn");
@@ -782,6 +947,52 @@
         toastEl.classList.add("show");
         setTimeout(() => toastEl.classList.remove("show"), 1300);
       }
+
+      function hasHostWindow() {
+        return Boolean(
+          (window.opener && !window.opener.closed) ||
+          (window.parent && window.parent !== window),
+        );
+      }
+
+      function updateConnectionStatus() {
+        connectionStatus.textContent = hasHostWindow()
+          ? "מחובר לעורך ההצעה"
+          : "מצב עצמאי";
+      }
+
+      function closeAndReturnToHost() {
+        let focusedHost = false;
+
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.focus();
+            focusedHost = true;
+          }
+        } catch (err) {
+          console.warn("[CLOSE EDITOR] opener focus failed", err);
+        }
+
+        try {
+          window.close();
+        } catch (err) {
+          console.warn("[CLOSE EDITOR] window close failed", err);
+        }
+
+        setTimeout(() => {
+          if (document.visibilityState === "visible") {
+            if (history.length > 1 && !focusedHost) {
+              history.back();
+              return;
+            }
+
+            t("הדפדפן לא מאפשר לסגור טאב שלא נפתח מכאן");
+          }
+        }, 120);
+      }
+
+      closeEditorBtn.addEventListener("click", closeAndReturnToHost);
+      updateConnectionStatus();
 
       function setSourcePreview(src) {
         if (!src) {
