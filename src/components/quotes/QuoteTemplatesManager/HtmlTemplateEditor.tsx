@@ -4585,13 +4585,14 @@ export function HtmlTemplateEditor({
   const [editingStagesTitle, setEditingStagesTitle] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
-  const [activeTab, setActiveTab] = useState("project");
+  const [activeTab, setActiveTab] = useState("flow-v2");
   const isMobile = useIsMobile();
   const tabsContainerRef = useRef<HTMLDivElement>(null);
 
 
   // Top tabs configuration (order + visibility) — persisted
-  const TABS_CFG_LS_KEY = "lov-html-editor-tabs-cfg-v1";
+  // v2: Flow editor is now the primary tab; legacy visual tabs hidden by default
+  const TABS_CFG_LS_KEY = "lov-html-editor-tabs-cfg-v2";
   type EditorTabKey =
     | "project"
     | "content"
@@ -4605,36 +4606,45 @@ export function HtmlTemplateEditor({
     | "pages"
     | "paged-pro"
     | "flow-v2";
+  // Flow first; structured-data tabs (project/content/payments) next; legacy visual tabs last and hidden
   const DEFAULT_TAB_ORDER: EditorTabKey[] = [
+    "flow-v2",
     "project",
     "content",
     "payments",
     "design",
     "logo-strip",
-    "text-boxes",
     "tools",
     "preview",
-    "split",
     "pages",
     "paged-pro",
-    "flow-v2",
+    "text-boxes",
+    "split",
   ];
+  // Legacy visual / pagination tabs hidden by default — Flow handles all that now.
+  const HIDDEN_BY_DEFAULT = new Set<EditorTabKey>([
+    "text-boxes",
+    "split",
+    "preview",
+    "pages",
+    "paged-pro",
+  ]);
   const TAB_META: Record<
     EditorTabKey,
     { label: string; icon: any; activeClass: string }
   > = {
     project: { label: "פרטי פרויקט", icon: User, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
-    content: { label: "תוכן", icon: FileText, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
-    payments: { label: "תשלומים", icon: CreditCard, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
-    design: { label: "עיצוב", icon: Palette, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
-    "logo-strip": { label: "לוגו", icon: Crop, activeClass: "data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700" },
-    "text-boxes": { label: "טקסט", icon: Type, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    content: { label: "שלבים (נתונים)", icon: FileText, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    payments: { label: "תשלומים (נתונים)", icon: CreditCard, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    design: { label: "מיתוג / לוגו", icon: Palette, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    "logo-strip": { label: "סטריפ לוגו", icon: Crop, activeClass: "data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700" },
+    "text-boxes": { label: "טקסט (ישן)", icon: Type, activeClass: "data-[state=active]:bg-gray-100 data-[state=active]:text-gray-700" },
     tools: { label: "כלים", icon: Wrench, activeClass: "data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700" },
-    preview: { label: "תצוגה מקדימה", icon: Eye, activeClass: "data-[state=active]:bg-green-100 data-[state=active]:text-green-700" },
-    split: { label: "עריכה + תצוגה", icon: Columns, activeClass: "data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700" },
-    pages: { label: "בדיקת PDF / עימוד", icon: Layers, activeClass: "data-[state=active]:bg-[#162C58]/10 data-[state=active]:text-[#162C58]" },
-    "paged-pro": { label: "עימוד מתקדם", icon: Layers, activeClass: "data-[state=active]:bg-[#d8ac27]/15 data-[state=active]:text-[#162C58]" },
-    "flow-v2": { label: "Flow V2 (חדש)", icon: Sparkles, activeClass: "data-[state=active]:bg-emerald-100 data-[state=active]:text-emerald-700" },
+    preview: { label: "תצוגה (ישן)", icon: Eye, activeClass: "data-[state=active]:bg-gray-100 data-[state=active]:text-gray-700" },
+    split: { label: "עריכה + תצוגה (ישן)", icon: Columns, activeClass: "data-[state=active]:bg-gray-100 data-[state=active]:text-gray-700" },
+    pages: { label: "PDF (ישן)", icon: Layers, activeClass: "data-[state=active]:bg-gray-100 data-[state=active]:text-gray-700" },
+    "paged-pro": { label: "עימוד מתקדם (ישן)", icon: Layers, activeClass: "data-[state=active]:bg-gray-100 data-[state=active]:text-gray-700" },
+    "flow-v2": { label: "✨ עורך המסמך", icon: Sparkles, activeClass: "data-[state=active]:bg-emerald-100 data-[state=active]:text-emerald-700 font-bold" },
   };
   const [tabConfig, setTabConfig] = useState<
     Array<{ value: EditorTabKey; visible: boolean }>
@@ -4655,7 +4665,7 @@ export function HtmlTemplateEditor({
     } catch {
       /* ignore */
     }
-    return DEFAULT_TAB_ORDER.map((value) => ({ value, visible: true }));
+    return DEFAULT_TAB_ORDER.map((value) => ({ value, visible: !HIDDEN_BY_DEFAULT.has(value) }));
   });
   useEffect(() => {
     try {
