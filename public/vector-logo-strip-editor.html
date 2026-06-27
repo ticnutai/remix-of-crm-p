@@ -181,7 +181,82 @@
       .canvas-head-actions {
         display: flex;
         align-items: center;
+        flex-wrap: wrap;
+        justify-content: flex-end;
         gap: 8px;
+      }
+
+      .canvas-title-block {
+        display: grid;
+        gap: 3px;
+        min-width: 230px;
+      }
+
+      .canvas-title {
+        font-size: 18px;
+        line-height: 1.25;
+      }
+
+      .canvas-subtitle {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .btn.apply-flow {
+        background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+        border: 0;
+        color: #fff;
+        font-weight: 700;
+        box-shadow: 0 10px 22px rgba(15, 118, 110, 0.22);
+      }
+
+      .btn.apply-flow:hover {
+        box-shadow: 0 12px 28px rgba(15, 118, 110, 0.28);
+      }
+
+      .workflow-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(180deg, #ffffff, #f7fafc);
+      }
+
+      .workflow-step {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        padding: 8px 10px;
+        border: 1px solid #dce5ef;
+        border-radius: 8px;
+        background: #fff;
+        color: var(--ink);
+        font-size: 12px;
+      }
+
+      .workflow-step strong {
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent-strong);
+        font-size: 12px;
+        flex: 0 0 auto;
+      }
+
+      .host-note {
+        margin-top: 8px;
+        padding: 9px 10px;
+        border: 1px solid rgba(15, 118, 110, 0.18);
+        border-radius: 8px;
+        background: #f2fbf8;
+        color: #0b5f58;
+        font-size: 12px;
+        line-height: 1.55;
       }
 
       .mobile-sidebar-controls {
@@ -356,7 +431,7 @@
         border-radius: 10px;
         box-shadow: var(--shadow-soft);
         display: grid;
-        grid-template-rows: auto 1fr;
+        grid-template-rows: auto auto auto 1fr;
         min-width: 0;
         overflow: hidden;
       }
@@ -556,6 +631,19 @@
         .brand-title {
           font-size: 16px;
         }
+
+        .canvas-head {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .canvas-head-actions {
+          justify-content: flex-start;
+        }
+
+        .workflow-strip {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
@@ -705,7 +793,7 @@
           <div class="toolbar">
             <button class="btn" id="saveLocalBtn">שמור</button>
             <button class="btn" id="loadLocalBtn">טען</button>
-            <button class="btn primary" id="applyHostBtn">החל בעורך ההצעה</button>
+            <button class="btn apply-flow" id="applyHostBtn">החל ב-Flow</button>
             <button class="btn" id="exportProjectBtn">ייצוא Project JSON</button>
             <button class="btn" id="importProjectBtn">ייבוא Project JSON</button>
             <input id="importProjectInput" type="file" accept="application/json,.json" style="display:none" />
@@ -714,19 +802,29 @@
             <button class="btn" id="exportSvgBtn">ייצוא SVG</button>
             <button class="btn" id="exportPngBtn">ייצוא PNG</button>
           </div>
+          <div class="host-note">הכפתור “החל ב-Flow” שולח את הסטריפ הווקטורי הנקי לעורך ההצעה ומעדכן את הלוגו/הסטריפ במסמך.</div>
         </div>
       </aside>
 
       <main class="canvas-wrap">
         <div class="canvas-head">
-          <div><strong>סטודיו לוגו/סטריפ וקטורי</strong></div>
+          <div class="canvas-title-block">
+            <strong class="canvas-title">סטודיו לוגו/סטריפ וקטורי</strong>
+            <span class="canvas-subtitle">ערוך, נקה, צבע והעבר ישירות למסמך Flow</span>
+          </div>
           <div class="canvas-head-actions">
+            <button class="btn apply-flow" id="applyHostTopBtn" type="button">החל ב-Flow</button>
             <div class="toolbar mobile-sidebar-controls" id="mobileSidebarControls">
               <button class="btn" id="mobileToolsToggleBtn" type="button">פתח כלים</button>
               <button class="btn" id="mobileLayersToggleBtn" type="button">פתח שכבות</button>
             </div>
             <div class="canvas-meta" id="modeInfo">מצב בחירה: כל מה שנוגע</div>
           </div>
+        </div>
+        <div class="workflow-strip" aria-label="זרימת עבודה">
+          <div class="workflow-step"><strong>1</strong><span>העלה לוגו או בנה סטריפ</span></div>
+          <div class="workflow-step"><strong>2</strong><span>ערוך צבעים, שכבות ויישור</span></div>
+          <div class="workflow-step"><strong>3</strong><span>לחץ “החל ב-Flow” לעדכון ההצעה</span></div>
         </div>
         <div class="compare-strip" id="compareStrip">
           <div class="compare-title">תמונת מקור שהעלית</div>
@@ -1078,426 +1176,248 @@
       function makeSelOutline(el) {
         const bbox = el.getBBox();
         const r = document.createElementNS(SVG_NS, "rect");
-        r.setAttribute("x", bbox.x - 2);
-        r.setAttribute("y", bbox.y - 2);
-        r.setAttribute("width", bbox.width + 4);
-        r.setAttribute("height", bbox.height + 4);
+        r.setAttribute("x", bbox.x);
+        r.setAttribute("y", bbox.y);
+        r.setAttribute("width", bbox.width);
+        r.setAttribute("height", bbox.height);
         r.setAttribute("class", "sel-outline");
-        selectionOverlay.appendChild(r);
+        return r;
       }
 
       function renderSelectionOverlay() {
         selectionOverlay.innerHTML = "";
         selectedIds.forEach((id) => {
           const el = document.getElementById(id);
-          if (el) makeSelOutline(el);
+          if (!el) return;
+          try {
+            selectionOverlay.appendChild(makeSelOutline(el));
+          } catch {}
         });
       }
 
       function renderLayers() {
         layersList.innerHTML = "";
-        getElements().forEach((el, index) => {
-          ensureId(el);
-          const div = document.createElement("div");
-          div.className = "layer-item" + (selectedIds.has(el.id) ? " active" : "");
-          div.textContent = `${index + 1}. ${el.tagName.toLowerCase()} (${el.id})`;
-          div.onclick = (e) => {
-            if (e.shiftKey || e.ctrlKey) toggleId(el.id);
-            else selectId(el.id);
-          };
-          layersList.appendChild(div);
-        });
-      }
-
-      function applyToSelected(cb) {
-        selectedIds.forEach((id) => {
-          const el = document.getElementById(id);
-          if (el) cb(el);
-        });
-        renderSelectionOverlay();
-        renderLayers();
-        pushHistory();
+        getElements()
+          .slice()
+          .reverse()
+          .forEach((el) => {
+            const item = document.createElement("div");
+            item.className = "layer-item" + (selectedIds.has(el.id) ? " active" : "");
+            item.textContent = `${el.tagName.toLowerCase()} · ${el.id}`;
+            item.onclick = () => selectId(el.id);
+            layersList.appendChild(item);
+          });
       }
 
       function initElement(el) {
         ensureId(el);
-        if (!el.hasAttribute("data-base-transform")) {
-          el.setAttribute("data-base-transform", el.getAttribute("transform") || "");
-        }
-        if (!el.hasAttribute("data-tx")) el.setAttribute("data-tx", "0");
-        if (!el.hasAttribute("data-ty")) el.setAttribute("data-ty", "0");
-        const { tx, ty } = getTranslate(el);
-        setTranslate(el, tx, ty);
-      }
-
-      function setTranslate(el, tx, ty) {
-        el.setAttribute("data-tx", String(tx));
-        el.setAttribute("data-ty", String(ty));
-        const base = el.getAttribute("data-base-transform") || "";
-        el.setAttribute("transform", `${base} translate(${tx} ${ty})`.trim());
-      }
-
-      function getTranslate(el) {
-        return {
-          tx: Number(el.getAttribute("data-tx") || 0),
-          ty: Number(el.getAttribute("data-ty") || 0),
-        };
-      }
-
-      function addSvgElement(el) {
-        initElement(el);
-        elementsLayer.appendChild(el);
-      }
-
-      function applyAnimationToElement(el, type) {
-        el.classList.remove("anim-blink", "anim-float", "anim-dash");
-        if (type === "blink") el.classList.add("anim-blink");
-        if (type === "float") el.classList.add("anim-float");
-        if (type === "dash") el.classList.add("anim-dash");
-      }
-
-      function parseAndImportSvg(svgString) {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(svgString, "image/svg+xml");
-        const srcSvg = doc.querySelector("svg");
-        if (!srcSvg) return;
-
-        const vb = srcSvg.getAttribute("viewBox");
-        if (vb) svg.setAttribute("viewBox", vb);
-
-        elementsLayer.innerHTML = "";
-        selectedIds.clear();
-
-        const candidates = srcSvg.querySelectorAll("path, line, rect, text, polygon, polyline, circle, ellipse");
-        candidates.forEach((node) => {
-          const nodeFill = (node.getAttribute("fill") || "").replace(/\s+/g, "").toLowerCase();
-          if (
-            nodeFill === "#fff" ||
-            nodeFill === "#ffffff" ||
-            nodeFill === "white" ||
-            nodeFill === "rgb(255,255,255)"
-          ) {
-            return;
-          }
-
-          const clone = document.createElementNS(SVG_NS, node.tagName);
-          for (const attr of node.attributes) {
-            clone.setAttribute(attr.name, attr.value);
-          }
-          if (!clone.getAttribute("fill")) clone.setAttribute("fill", "#000000");
-          if (!clone.getAttribute("stroke")) clone.setAttribute("stroke", "none");
-          if (clone.tagName.toLowerCase() === "path") {
-            clone.setAttribute("fill-rule", clone.getAttribute("fill-rule") || "evenodd");
-          }
-          addSvgElement(clone);
-        });
-
-        renderLayers();
-        renderSelectionOverlay();
-        updateSelectionInfo();
-        pushHistory();
-        t("חולצו אלמנטים וקטוריים");
-      }
-
-      async function imageFileToDataUrl(file) {
-        return await new Promise((resolve, reject) => {
-          const fr = new FileReader();
-          fr.onload = () => resolve(fr.result);
-          fr.onerror = reject;
-          fr.readAsDataURL(file);
-        });
-      }
-
-      async function extractToSvg() {
-        const file = document.getElementById("imgInput").files?.[0];
-        if (!file) {
-          t("בחר קובץ תמונה קודם");
-          return;
-        }
-
-        if (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg")) {
-          const svgText = await file.text();
-          const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
-          setSourcePreview(svgDataUrl);
-          parseAndImportSvg(svgText);
-          referenceSrc = svgDataUrl;
-          referenceImage.setAttribute("href", referenceSrc);
-          t("SVG יובא לעריכה");
-          return;
-        }
-
-        referenceSrc = await imageFileToDataUrl(file);
-        setSourcePreview(referenceSrc);
-        referenceImage.setAttribute("href", referenceSrc);
-
-        const img = new Image();
-        img.onload = async () => {
-          const MAX_TRACE_PIXELS = 320000;
-          const sourcePixels = img.width * img.height;
-          let traceWidth = img.width;
-          let traceHeight = img.height;
-
-          if (sourcePixels > MAX_TRACE_PIXELS) {
-            const scale = Math.sqrt(MAX_TRACE_PIXELS / sourcePixels);
-            traceWidth = Math.max(1, Math.round(img.width * scale));
-            traceHeight = Math.max(1, Math.round(img.height * scale));
-            t("תמונה גדולה זוהתה, בוצע כיווץ לחילוץ יציב");
-          }
-
-          const ctx = workCanvas.getContext("2d", { willReadFrequently: true });
-          workCanvas.width = traceWidth;
-          workCanvas.height = traceHeight;
-          ctx.clearRect(0, 0, traceWidth, traceHeight);
-          ctx.drawImage(img, 0, 0, traceWidth, traceHeight);
-
-          const threshold = Number(document.getElementById("bwThreshold").value || 160);
-          const imgData = ctx.getImageData(0, 0, traceWidth, traceHeight);
-          const data = imgData.data;
-          for (let i = 0; i < data.length; i += 4) {
-            const lum = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-            const v = lum < threshold ? 0 : 255;
-            data[i] = v;
-            data[i + 1] = v;
-            data[i + 2] = v;
-            data[i + 3] = 255;
-          }
-          ctx.putImageData(imgData, 0, 0);
-
-          const preset = document.getElementById("tracePreset").value;
-          const presetOptions = {
-            sharp: { turdsize: 1, alphamax: 0.2, opttolerance: 0.1 },
-            detailed: { turdsize: 2, alphamax: 1, opttolerance: 0.2 },
-            smoothed: { turdsize: 3, alphamax: 1.2, opttolerance: 0.35 },
-          };
-
-          const imageTracerOptions = {
-            sharp: { ltres: 0.5, qtres: 0.5, pathomit: 4 },
-            detailed: { ltres: 1, qtres: 1, pathomit: 8 },
-            smoothed: { ltres: 2, qtres: 2, pathomit: 12 },
-          };
-
-          try {
-            const tracer = window.ImageTracer;
-            if (tracer && typeof tracer.imagedataToSVG === "function") {
-              const tracedSvg = tracer.imagedataToSVG(imgData, {
-                colorsampling: 0,
-                numberofcolors: 2,
-                mincolorratio: 0,
-                colorquantcycles: 1,
-                layering: 0,
-                strokewidth: 0,
-                linefilter: false,
-                roundcoords: 1,
-                viewbox: true,
-                desc: false,
-                pal: [
-                  { r: 255, g: 255, b: 255, a: 255 },
-                  { r: 0, g: 0, b: 0, a: 255 },
-                ],
-                ...imageTracerOptions[preset],
-              });
-
-              if (tracedSvg && typeof tracedSvg === "string") {
-                parseAndImportSvg(tracedSvg);
-                svg.setAttribute("viewBox", `0 0 ${traceWidth} ${traceHeight}`);
-                referenceImage.setAttribute("width", String(traceWidth));
-                referenceImage.setAttribute("height", String(traceHeight));
-                return;
-              }
-            }
-
-            await ensurePotraceInitialized();
-
-            let tracedSvg = "";
-            let tracedWidth = traceWidth;
-            let tracedHeight = traceHeight;
-            let lastError = null;
-
-            const attempts = [1, 0.8, 0.65, 0.5, 0.35, 0.25];
-            for (const factor of attempts) {
-              const attemptWidth = Math.max(1, Math.round(traceWidth * factor));
-              const attemptHeight = Math.max(1, Math.round(traceHeight * factor));
-              const attemptCanvas = document.createElement("canvas");
-              attemptCanvas.width = attemptWidth;
-              attemptCanvas.height = attemptHeight;
-              const attemptCtx = attemptCanvas.getContext("2d", {
-                willReadFrequently: true,
-              });
-              attemptCtx.drawImage(workCanvas, 0, 0, attemptWidth, attemptHeight);
-
-              const bitmap = await createImageBitmap(attemptCanvas);
-              try {
-                tracedSvg = await potrace(bitmap, {
-                  pathonly: false,
-                  extractcolors: false,
-                  turnpolicy: 4,
-                  ...presetOptions[preset],
-                });
-                tracedWidth = attemptWidth;
-                tracedHeight = attemptHeight;
-                if (factor < 1) {
-                  t("בוצע חילוץ ברזולוציה מופחתת ליציבות");
-                }
-                break;
-              } catch (err) {
-                lastError = err;
-                const message = String(err?.message || err || "");
-                const canRetry = err instanceof RangeError || message.includes("offset is out of bounds");
-                if (!canRetry) {
-                  throw err;
-                }
-              } finally {
-                if (typeof bitmap.close === "function") bitmap.close();
-              }
-            }
-
-            if (!tracedSvg) {
-              throw lastError || new Error("Potrace failed after retries");
-            }
-
-            parseAndImportSvg(tracedSvg);
-            svg.setAttribute("viewBox", `0 0 ${tracedWidth} ${tracedHeight}`);
-            referenceImage.setAttribute("width", String(tracedWidth));
-            referenceImage.setAttribute("height", String(tracedHeight));
-          } catch (err) {
-            console.error("[POTRACE] extraction failed", err);
-            t("חילוץ Potrace נכשל");
-          }
-        };
-        img.src = referenceSrc;
-      }
-
-      function selectionRectFromState() {
-        const x = Math.min(boxSelectState.start.x, boxSelectState.end.x);
-        const y = Math.min(boxSelectState.start.y, boxSelectState.end.y);
-        const width = Math.abs(boxSelectState.end.x - boxSelectState.start.x);
-        const height = Math.abs(boxSelectState.end.y - boxSelectState.start.y);
-        return { x, y, width, height };
-      }
-
-      function rectsIntersect(a, b) {
-        return !(b.x > a.x + a.width || b.x + b.width < a.x || b.y > a.y + a.height || b.y + b.height < a.y);
-      }
-
-      function rectInside(inner, outer) {
-        return inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.width <= outer.x + outer.width && inner.y + inner.height <= outer.y + outer.height;
-      }
-
-      function runBoxSelection(additive) {
-        const box = selectionRectFromState();
-        const next = additive ? new Set(selectedIds) : new Set();
-        getElements().forEach((el) => {
-          const r = el.getBBox();
-          const hit = selectionMode === "touch" ? rectsIntersect(box, r) : rectInside(r, box);
-          if (hit) next.add(el.id);
-        });
-        selectedIds = next;
-        renderSelectionOverlay();
-        updateSelectionInfo();
-        renderLayers();
-      }
-
-      function startDragSelection(startPt, additive) {
-        boxSelectState = { start: startPt, end: startPt, additive };
-        selectionRect.setAttribute("x", startPt.x);
-        selectionRect.setAttribute("y", startPt.y);
-        selectionRect.setAttribute("width", "0");
-        selectionRect.setAttribute("height", "0");
-        selectionRect.setAttribute("visibility", "visible");
-      }
-
-      function updateDragSelection(endPt) {
-        boxSelectState.end = endPt;
-        const box = selectionRectFromState();
-        selectionRect.setAttribute("x", box.x);
-        selectionRect.setAttribute("y", box.y);
-        selectionRect.setAttribute("width", box.width);
-        selectionRect.setAttribute("height", box.height);
-      }
-
-      function endDragSelection() {
-        selectionRect.setAttribute("visibility", "hidden");
-        if (!boxSelectState) return;
-        runBoxSelection(boxSelectState.additive);
-        boxSelectState = null;
-      }
-
-      svg.addEventListener("pointerdown", (e) => {
-        const targetEl = e.target.closest("path, line, rect, text, polygon, polyline, circle, ellipse");
-        const pt = toSvgPoint(e.clientX, e.clientY);
-
-        if (targetEl && elementsLayer.contains(targetEl)) {
-          if (e.shiftKey || e.ctrlKey) toggleId(targetEl.id);
-          else if (!selectedIds.has(targetEl.id)) selectId(targetEl.id);
-
-          const draggedIds = Array.from(selectedIds);
+        el.style.cursor = "move";
+        el.addEventListener("pointerdown", (e) => {
+          e.stopPropagation();
+          if (e.shiftKey || e.ctrlKey || e.metaKey) toggleId(el.id);
+          else if (!selectedIds.has(el.id)) selectId(el.id);
           dragState = {
-            startPt: pt,
-            items: draggedIds.map((id) => {
-              const el = document.getElementById(id);
-              return { el, ...getTranslate(el) };
+            start: toSvgPoint(e.clientX, e.clientY),
+            items: Array.from(selectedIds).map((id) => {
+              const item = document.getElementById(id);
+              return {
+                el: item,
+                tx: Number(item.getAttribute("data-tx") || 0),
+                ty: Number(item.getAttribute("data-ty") || 0),
+                baseTransform: item.getAttribute("data-base-transform") || "",
+              };
             }),
           };
-        } else {
-          startDragSelection(pt, e.shiftKey || e.ctrlKey);
-        }
+          svg.setPointerCapture(e.pointerId);
+        });
+      }
+
+      function addElement(el, push = true) {
+        initElement(el);
+        elementsLayer.appendChild(el);
+        if (push) pushHistory();
+        renderLayers();
+      }
+
+      function selectedElements() {
+        return Array.from(selectedIds)
+          .map((id) => document.getElementById(id))
+          .filter(Boolean);
+      }
+
+      function applyTransform(el, tx, ty, baseTransform = "") {
+        el.setAttribute("data-tx", tx);
+        el.setAttribute("data-ty", ty);
+        el.setAttribute("data-base-transform", baseTransform);
+        el.setAttribute("transform", `${baseTransform} translate(${tx} ${ty})`.trim());
+      }
+
+      function boundsOf(el) {
+        const b = el.getBBox();
+        return { x1: b.x, y1: b.y, x2: b.x + b.width, y2: b.y + b.height };
+      }
+
+      function rectIntersects(a, b) {
+        return a.x1 <= b.x2 && a.x2 >= b.x1 && a.y1 <= b.y2 && a.y2 >= b.y1;
+      }
+
+      function rectContains(container, item) {
+        return container.x1 <= item.x1 && container.y1 <= item.y1 && container.x2 >= item.x2 && container.y2 >= item.y2;
+      }
+
+      function addDefaultStrip() {
+        elementsLayer.innerHTML = "";
+        const line = document.createElementNS(SVG_NS, "rect");
+        line.setAttribute("x", "80");
+        line.setAttribute("y", "170");
+        line.setAttribute("width", "1040");
+        line.setAttribute("height", "10");
+        line.setAttribute("fill", "#000000");
+        addElement(line, false);
+
+        const b1 = document.createElementNS(SVG_NS, "rect");
+        b1.setAttribute("x", "300");
+        b1.setAttribute("y", "150");
+        b1.setAttribute("width", "130");
+        b1.setAttribute("height", "30");
+        b1.setAttribute("fill", "#000000");
+        addElement(b1, false);
+
+        const b2 = document.createElementNS(SVG_NS, "rect");
+        b2.setAttribute("x", "360");
+        b2.setAttribute("y", "90");
+        b2.setAttribute("width", "70");
+        b2.setAttribute("height", "90");
+        b2.setAttribute("fill", "#000000");
+        addElement(b2, false);
+
+        const b3 = document.createElementNS(SVG_NS, "rect");
+        b3.setAttribute("x", "800");
+        b3.setAttribute("y", "140");
+        b3.setAttribute("width", "80");
+        b3.setAttribute("height", "40");
+        b3.setAttribute("fill", "#000000");
+        addElement(b3, false);
+        deriveNextIdCounter();
+        renderLayers();
+        pushHistory();
+      }
+
+      function applyStyleToSelection() {
+        const fill = document.getElementById("fillColor").value;
+        const stroke = document.getElementById("strokeColor").value;
+        const sw = document.getElementById("strokeWidth").value;
+        const opacity = document.getElementById("opacityVal").value;
+        selectedElements().forEach((el) => {
+          if (el.tagName.toLowerCase() !== "text") el.setAttribute("fill", fill);
+          else el.setAttribute("fill", fill);
+          el.setAttribute("stroke", stroke);
+          el.setAttribute("stroke-width", sw);
+          el.setAttribute("opacity", opacity);
+        });
+        renderSelectionOverlay();
+        pushHistory();
+      }
+
+      document.getElementById("applyStyleBtn").addEventListener("click", applyStyleToSelection);
+
+      document.querySelectorAll(".preset").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.getElementById("fillColor").value = btn.dataset.color;
+          applyStyleToSelection();
+        });
       });
 
-      svg.addEventListener("pointermove", (e) => {
-        const pt = toSvgPoint(e.clientX, e.clientY);
-
-        if (dragState) {
-          const dx = pt.x - dragState.startPt.x;
-          const dy = pt.y - dragState.startPt.y;
-          dragState.items.forEach(({ el, tx, ty }) => setTranslate(el, tx + dx, ty + dy));
-          renderSelectionOverlay();
-          return;
-        }
-
-        if (boxSelectState) {
-          updateDragSelection(pt);
-        }
+      document.getElementById("pickSimilarBtn").addEventListener("click", () => {
+        const selected = selectedElements()[0];
+        if (!selected) return t("בחר אלמנט לדגימת צבע");
+        const color = selected.getAttribute("fill") || "#000000";
+        selectedIds.clear();
+        getElements().forEach((el) => {
+          if ((el.getAttribute("fill") || "#000000").toLowerCase() === color.toLowerCase()) selectedIds.add(el.id);
+        });
+        renderSelectionOverlay();
+        updateSelectionInfo();
+        renderLayers();
       });
 
-      window.addEventListener("pointerup", () => {
-        if (dragState) {
-          dragState = null;
-          renderLayers();
-          pushHistory();
-        }
-        if (boxSelectState) {
-          endDragSelection();
-        }
+      document.getElementById("addLineBtn").addEventListener("click", () => {
+        const el = document.createElementNS(SVG_NS, "rect");
+        el.setAttribute("x", "100");
+        el.setAttribute("y", "170");
+        el.setAttribute("width", "900");
+        el.setAttribute("height", "8");
+        el.setAttribute("fill", document.getElementById("fillColor").value);
+        addElement(el);
       });
 
-      document.getElementById("imgInput").addEventListener("change", async (e) => {
-        const file = e.target.files?.[0];
-        if (!file) {
-          setSourcePreview("");
-          return;
-        }
-
-        if (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg")) {
-          const svgText = await file.text();
-          setSourcePreview(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`);
-        } else {
-          const previewUrl = await imageFileToDataUrl(file);
-          setSourcePreview(previewUrl);
-        }
-
-        t("קובץ נטען");
-      });
-      document.getElementById("extractBtn").addEventListener("click", extractToSvg);
-
-      document.getElementById("refVisible").addEventListener("change", (e) => {
-        referenceLayer.style.display = e.target.checked ? "" : "none";
-      });
-      document.getElementById("refOpacity").addEventListener("input", (e) => {
-        referenceImage.setAttribute("opacity", String(Number(e.target.value) / 100));
+      document.getElementById("addRectBtn").addEventListener("click", () => {
+        const el = document.createElementNS(SVG_NS, "rect");
+        el.setAttribute("x", "520");
+        el.setAttribute("y", "110");
+        el.setAttribute("width", "120");
+        el.setAttribute("height", "80");
+        el.setAttribute("rx", "4");
+        el.setAttribute("fill", document.getElementById("fillColor").value);
+        addElement(el);
       });
 
-      document.getElementById("toggleModeBtn").addEventListener("click", () => {
-        document.body.classList.toggle("clean-mode");
+      document.getElementById("addTextBtn").addEventListener("click", () => {
+        const el = document.createElementNS(SVG_NS, "text");
+        el.setAttribute("x", "600");
+        el.setAttribute("y", "160");
+        el.setAttribute("text-anchor", "middle");
+        el.setAttribute("font-size", document.getElementById("newTextSize").value);
+        el.setAttribute("font-family", "Heebo, Arial, sans-serif");
+        el.setAttribute("fill", document.getElementById("fillColor").value);
+        el.textContent = document.getElementById("newText").value || "טקסט";
+        addElement(el);
+      });
+
+      document.getElementById("groupBtn").addEventListener("click", () => {
+        const items = selectedElements();
+        if (items.length < 2) return t("בחר לפחות שני אלמנטים");
+        const gid = "group-" + groupCounter++;
+        items.forEach((el) => el.setAttribute("data-group-id", gid));
+        renderLayers();
+        pushHistory();
+      });
+
+      document.getElementById("ungroupBtn").addEventListener("click", () => {
+        selectedElements().forEach((el) => el.removeAttribute("data-group-id"));
+        renderLayers();
+        pushHistory();
+      });
+
+      document.getElementById("align90Btn").addEventListener("click", () => {
+        selectedElements().forEach((el) => {
+          const b = el.getBBox();
+          if (b.width > b.height) el.setAttribute("height", Math.max(4, Math.round(b.height)));
+        });
+        renderSelectionOverlay();
+        pushHistory();
+      });
+
+      document.getElementById("autoAlignBtn").addEventListener("click", () => {
+        const els = selectedElements().length ? selectedElements() : getElements();
+        if (!els.length) return;
+        const minY = Math.min(...els.map((el) => el.getBBox().y + el.getBBox().height));
+        els.forEach((el) => {
+          const b = el.getBBox();
+          const currentTy = Number(el.getAttribute("data-ty") || 0);
+          applyTransform(el, Number(el.getAttribute("data-tx") || 0), currentTy + (minY - (b.y + b.height)), el.getAttribute("data-base-transform") || "");
+        });
+        renderSelectionOverlay();
+        pushHistory();
+      });
+
+      document.getElementById("applyAnimBtn").addEventListener("click", () => {
+        const type = document.getElementById("animType").value;
+        selectedElements().forEach((el) => {
+          el.classList.remove("anim-blink", "anim-float", "anim-dash");
+          if (type !== "none") el.classList.add("anim-" + type);
+        });
+        pushHistory();
       });
 
       document.getElementById("selectAllBtn").addEventListener("click", () => {
@@ -1505,306 +1425,297 @@
         renderSelectionOverlay();
         updateSelectionInfo();
         renderLayers();
-        t("נבחר כל הלוגו");
       });
 
-      document.getElementById("clearSelBtn").addEventListener("click", () => {
-        clearSelection();
-        t("נוקה");
+      document.getElementById("clearSelBtn").addEventListener("click", clearSelection);
+
+      document.getElementById("toggleModeBtn").addEventListener("click", () => {
+        document.body.classList.toggle("clean-mode");
       });
-
-      function copySelection() {
-        const selected = getElements().filter((el) => selectedIds.has(el.id));
-        if (selected.length === 0) {
-          t("אין אלמנטים נבחרים להעתקה");
-          return;
-        }
-        clipboardSvg = selected.map((el) => ({
-          tag: el.tagName.toLowerCase(),
-          attrs: Array.from(el.attributes).map((a) => [a.name, a.value]),
-          text: el.tagName.toLowerCase() === "text" ? el.textContent || "" : null,
-        }));
-        t(`הועתקו ${clipboardSvg.length} אלמנטים`);
-      }
-
-      function pasteClipboard() {
-        if (!clipboardSvg.length) {
-          t("הלוח ריק");
-          return;
-        }
-
-        selectedIds.clear();
-        clipboardSvg.forEach((item) => {
-          const el = document.createElementNS(SVG_NS, item.tag);
-          item.attrs.forEach(([name, value]) => {
-            if (name === "id") return;
-            el.setAttribute(name, value);
-          });
-          if (item.text !== null) el.textContent = item.text;
-
-          addSvgElement(el);
-          const { tx, ty } = getTranslate(el);
-          setTranslate(el, tx + 16, ty + 16);
-          selectedIds.add(el.id);
-        });
-
-        renderSelectionOverlay();
-        updateSelectionInfo();
-        renderLayers();
-        pushHistory();
-        t(`הודבקו ${clipboardSvg.length} אלמנטים`);
-      }
-
-      document.getElementById("undoBtn").addEventListener("click", () => {
-        if (historyIndex <= 0) return;
-        applyHistory(historyIndex - 1);
-        t("בוטלה פעולה");
-      });
-
-      document.getElementById("redoBtn").addEventListener("click", () => {
-        if (historyIndex >= historyStack.length - 1) return;
-        applyHistory(historyIndex + 1);
-        t("שוחזרה פעולה");
-      });
-
-      document.getElementById("copyBtn").addEventListener("click", copySelection);
-      document.getElementById("pasteBtn").addEventListener("click", pasteClipboard);
 
       document.getElementById("selTouchBtn").addEventListener("click", () => {
         selectionMode = "touch";
-        document.getElementById("modeInfo").textContent = "מצב בחירה: כל מה שנוגע";
         document.getElementById("selTouchBtn").classList.add("active");
         document.getElementById("selInsideBtn").classList.remove("active");
+        document.getElementById("modeInfo").textContent = "מצב בחירה: כל מה שנוגע";
       });
 
       document.getElementById("selInsideBtn").addEventListener("click", () => {
         selectionMode = "inside";
-        document.getElementById("modeInfo").textContent = "מצב בחירה: רק אם כולו בפנים";
         document.getElementById("selInsideBtn").classList.add("active");
         document.getElementById("selTouchBtn").classList.remove("active");
+        document.getElementById("modeInfo").textContent = "מצב בחירה: רק אם כולו בפנים";
       });
 
-      document.getElementById("applyStyleBtn").addEventListener("click", () => {
-        const fill = document.getElementById("fillColor").value;
-        const stroke = document.getElementById("strokeColor").value;
-        const strokeWidth = document.getElementById("strokeWidth").value;
-        const opacity = document.getElementById("opacityVal").value;
-        applyToSelected((el) => {
-          el.setAttribute("fill", fill);
-          el.setAttribute("stroke", stroke);
-          el.setAttribute("stroke-width", strokeWidth);
-          el.setAttribute("opacity", opacity);
-        });
-      });
-
-      document.querySelectorAll(".preset").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const c = btn.getAttribute("data-color");
-          applyToSelected((el) => el.setAttribute("fill", c));
-        });
-      });
-
-      document.getElementById("pickSimilarBtn").addEventListener("click", () => {
-        const firstId = Array.from(selectedIds)[0];
-        if (!firstId) return;
-        const first = document.getElementById(firstId);
-        const fill = first.getAttribute("fill");
-        const stroke = first.getAttribute("stroke");
-        const next = new Set();
-        getElements().forEach((el) => {
-          if (el.getAttribute("fill") === fill && el.getAttribute("stroke") === stroke) next.add(el.id);
-        });
-        selectedIds = next;
-        renderSelectionOverlay();
-        updateSelectionInfo();
-        renderLayers();
-        t("נבחרו אלמנטים עם צבע דומה");
-      });
-
-      document.getElementById("addLineBtn").addEventListener("click", () => {
-        const line = document.createElementNS(SVG_NS, "line");
-        line.setAttribute("x1", "100");
-        line.setAttribute("y1", "100");
-        line.setAttribute("x2", "320");
-        line.setAttribute("y2", "100");
-        line.setAttribute("stroke", "#000");
-        line.setAttribute("stroke-width", "3");
-        line.setAttribute("fill", "none");
-        addSvgElement(line);
-        renderLayers();
+      document.getElementById("refVisible").addEventListener("change", (e) => {
+        referenceLayer.style.display = e.target.checked ? "" : "none";
         pushHistory();
       });
 
-      document.getElementById("addRectBtn").addEventListener("click", () => {
-        const rect = document.createElementNS(SVG_NS, "rect");
-        rect.setAttribute("x", "120");
-        rect.setAttribute("y", "120");
-        rect.setAttribute("width", "200");
-        rect.setAttribute("height", "80");
-        rect.setAttribute("fill", "#f2f2f2");
-        rect.setAttribute("stroke", "#000");
-        rect.setAttribute("stroke-width", "2");
-        addSvgElement(rect);
-        renderLayers();
-        pushHistory();
+      document.getElementById("refOpacity").addEventListener("input", (e) => {
+        referenceImage.setAttribute("opacity", String(Number(e.target.value) / 100));
       });
 
-      document.getElementById("addTextBtn").addEventListener("click", () => {
-        const text = document.createElementNS(SVG_NS, "text");
-        text.textContent = document.getElementById("newText").value || "טקסט";
-        text.setAttribute("x", "140");
-        text.setAttribute("y", "180");
-        text.setAttribute("font-size", document.getElementById("newTextSize").value || "28");
-        text.setAttribute("fill", "#000");
-        text.setAttribute("font-family", "Heebo, sans-serif");
-        addSvgElement(text);
-        renderLayers();
-        pushHistory();
-      });
+      document.getElementById("refOpacity").addEventListener("change", pushHistory);
 
-      document.getElementById("groupBtn").addEventListener("click", () => {
-        if (selectedIds.size < 2) return;
-        const gid = "grp-" + groupCounter++;
-        applyToSelected((el) => el.setAttribute("data-group-id", gid));
-        t("קובצו אלמנטים");
-      });
-
-      document.getElementById("ungroupBtn").addEventListener("click", () => {
-        applyToSelected((el) => el.removeAttribute("data-group-id"));
-        t("בוטל קיבוץ");
-      });
-
-      function alignLine90(el) {
-        const x1 = Number(el.getAttribute("x1"));
-        const y1 = Number(el.getAttribute("y1"));
-        const x2 = Number(el.getAttribute("x2"));
-        const y2 = Number(el.getAttribute("y2"));
-        const dx = Math.abs(x2 - x1);
-        const dy = Math.abs(y2 - y1);
-        if (dx >= dy) el.setAttribute("y2", String(y1));
-        else el.setAttribute("x2", String(x1));
-      }
-
-      function parsePathD(d) {
-        const tokens = d.match(/[MLZmlz]|-?\d+(?:\.\d+)?/g) || [];
-        const out = [];
-        let i = 0;
-        while (i < tokens.length) {
-          const tkn = tokens[i++];
-          if (/[ML]/i.test(tkn)) {
-            const x = Number(tokens[i++]);
-            const y = Number(tokens[i++]);
-            out.push({ cmd: tkn.toUpperCase(), x, y });
-          } else if (/[Z]/i.test(tkn)) {
-            out.push({ cmd: "Z" });
-          }
+      svg.addEventListener("pointerdown", (e) => {
+        if (e.target !== svg && e.target !== stage && e.target.id !== "selectionRect" && e.target.tagName !== "rect") {
+          return;
         }
-        return out;
-      }
+        const start = toSvgPoint(e.clientX, e.clientY);
+        boxSelectState = { start };
+        selectionRect.setAttribute("x", start.x);
+        selectionRect.setAttribute("y", start.y);
+        selectionRect.setAttribute("width", "0");
+        selectionRect.setAttribute("height", "0");
+        selectionRect.setAttribute("visibility", "visible");
+        svg.setPointerCapture(e.pointerId);
+      });
 
-      function stringifyPath(cmds) {
-        return cmds
-          .map((c) => {
-            if (c.cmd === "Z") return "Z";
-            return `${c.cmd}${Math.round(c.x * 100) / 100} ${Math.round(c.y * 100) / 100}`;
-          })
-          .join(" ");
-      }
-
-      function alignPath90(el, autoOnly = false) {
-        const d = el.getAttribute("d") || "";
-        const cmds = parsePathD(d);
-        if (cmds.length < 3) return false;
-
-        let orthLike = 0;
-        let total = 0;
-        for (let i = 1; i < cmds.length; i++) {
-          const a = cmds[i - 1];
-          const b = cmds[i];
-          if (typeof a.x !== "number" || typeof a.y !== "number") continue;
-          if (typeof b.x !== "number" || typeof b.y !== "number") continue;
-          if (a.cmd === "Z" || b.cmd === "Z") continue;
-          const dx = Math.abs(b.x - a.x);
-          const dy = Math.abs(b.y - a.y);
-          if (Math.max(dx, dy) < 0.001) continue;
-          total++;
-          if (Math.min(dx, dy) / Math.max(dx, dy) < 0.25) orthLike++;
+      svg.addEventListener("pointermove", (e) => {
+        if (dragState) {
+          const now = toSvgPoint(e.clientX, e.clientY);
+          const dx = now.x - dragState.start.x;
+          const dy = now.y - dragState.start.y;
+          dragState.items.forEach(({ el, tx, ty, baseTransform }) => {
+            if (el) applyTransform(el, tx + dx, ty + dy, baseTransform);
+          });
+          renderSelectionOverlay();
+          return;
         }
 
-        if (autoOnly && total > 0 && orthLike / total < 0.7) return false;
-
-        for (let i = 1; i < cmds.length; i++) {
-          const a = cmds[i - 1];
-          const b = cmds[i];
-          if (!a || !b || a.cmd === "Z" || b.cmd === "Z") continue;
-          const dx = Math.abs(b.x - a.x);
-          const dy = Math.abs(b.y - a.y);
-          if (dx >= dy) b.y = a.y;
-          else b.x = a.x;
+        if (boxSelectState) {
+          const now = toSvgPoint(e.clientX, e.clientY);
+          const x = Math.min(boxSelectState.start.x, now.x);
+          const y = Math.min(boxSelectState.start.y, now.y);
+          const w = Math.abs(now.x - boxSelectState.start.x);
+          const h = Math.abs(now.y - boxSelectState.start.y);
+          selectionRect.setAttribute("x", x);
+          selectionRect.setAttribute("y", y);
+          selectionRect.setAttribute("width", w);
+          selectionRect.setAttribute("height", h);
         }
+      });
 
-        el.setAttribute("d", stringifyPath(cmds));
-        return true;
-      }
+      svg.addEventListener("pointerup", () => {
+        if (dragState) {
+          dragState = null;
+          pushHistory();
+        }
+        if (boxSelectState) {
+          const box = {
+            x1: Number(selectionRect.getAttribute("x")),
+            y1: Number(selectionRect.getAttribute("y")),
+            x2: Number(selectionRect.getAttribute("x")) + Number(selectionRect.getAttribute("width")),
+            y2: Number(selectionRect.getAttribute("y")) + Number(selectionRect.getAttribute("height")),
+          };
+          selectedIds.clear();
+          getElements().forEach((el) => {
+            try {
+              const b = boundsOf(el);
+              const hit = selectionMode === "inside" ? rectContains(box, b) : rectIntersects(box, b);
+              if (hit) selectedIds.add(el.id);
+            } catch {}
+          });
+          selectionRect.setAttribute("visibility", "hidden");
+          boxSelectState = null;
+          renderSelectionOverlay();
+          updateSelectionInfo();
+          renderLayers();
+        }
+      });
 
-      document.getElementById("align90Btn").addEventListener("click", () => {
-        let count = 0;
-        applyToSelected((el) => {
-          const tag = el.tagName.toLowerCase();
-          if (tag === "line") {
-            alignLine90(el);
-            count++;
-          }
-          if (tag === "path") {
-            if (alignPath90(el, false)) count++;
-          }
+      document.getElementById("copyBtn").addEventListener("click", () => {
+        clipboardSvg = selectedElements().map((el) => el.cloneNode(true));
+        t("הועתק");
+      });
+
+      document.getElementById("pasteBtn").addEventListener("click", () => {
+        clipboardSvg.forEach((node) => {
+          const clone = node.cloneNode(true);
+          clone.removeAttribute("id");
+          applyTransform(clone, Number(clone.getAttribute("data-tx") || 0) + 20, Number(clone.getAttribute("data-ty") || 0) + 20, clone.getAttribute("data-base-transform") || "");
+          addElement(clone, false);
         });
-        t(`יושרו ${count} אלמנטים`);
+        pushHistory();
+        renderLayers();
       });
 
-      document.getElementById("autoAlignBtn").addEventListener("click", () => {
-        let count = 0;
-        getElements().forEach((el) => {
-          const tag = el.tagName.toLowerCase();
-          if (tag === "line") {
-            alignLine90(el);
-            count++;
-          }
-          if (tag === "path") {
-            if (alignPath90(el, true)) count++;
-          }
-        });
-        renderSelectionOverlay();
-        if (count > 0) pushHistory();
-        t(`יושרו ${count} אלמנטים`);
-      });
-
-      document.getElementById("applyAnimBtn").addEventListener("click", () => {
-        const type = document.getElementById("animType").value;
-        applyToSelected((el) => applyAnimationToElement(el, type));
-      });
+      document.getElementById("undoBtn").addEventListener("click", () => applyHistory(historyIndex - 1));
+      document.getElementById("redoBtn").addEventListener("click", () => applyHistory(historyIndex + 1));
 
       document.getElementById("bringForwardBtn").addEventListener("click", () => {
-        const ordered = getElements();
-        ordered.forEach((el, i) => {
-          if (!selectedIds.has(el.id)) return;
-          const next = ordered[i + 1];
-          if (next) elementsLayer.insertBefore(next, el);
+        selectedElements().forEach((el) => {
+          if (el.nextSibling) elementsLayer.insertBefore(el.nextSibling, el);
         });
         renderLayers();
         pushHistory();
       });
 
       document.getElementById("sendBackwardBtn").addEventListener("click", () => {
-        const ordered = getElements();
-        for (let i = ordered.length - 1; i >= 0; i--) {
-          const el = ordered[i];
-          if (!selectedIds.has(el.id)) continue;
-          const prev = ordered[i - 1];
-          if (prev) elementsLayer.insertBefore(el, prev);
-        }
+        selectedElements().forEach((el) => {
+          if (el.previousSibling) elementsLayer.insertBefore(el, el.previousSibling);
+        });
         renderLayers();
         pushHistory();
+      });
+
+      function parseSvgElements(svgText) {
+        const doc = new DOMParser().parseFromString(svgText, "image/svg+xml");
+        const parsedSvg = doc.querySelector("svg");
+        if (!parsedSvg) return false;
+        const viewBox = parsedSvg.getAttribute("viewBox");
+        if (viewBox) svg.setAttribute("viewBox", viewBox);
+        const importable = Array.from(parsedSvg.children).filter((child) => child.tagName.toLowerCase() !== "metadata");
+        elementsLayer.innerHTML = "";
+        importable.forEach((child) => {
+          const imported = document.importNode(child, true);
+          imported.querySelectorAll?.("*").forEach((n) => initElement(n));
+          addElement(imported, false);
+        });
+        deriveNextIdCounter();
+        clearSelection();
+        renderLayers();
+        pushHistory();
+        return true;
+      }
+
+      function preprocessToBw(image, threshold) {
+        const canvas = workCanvas;
+        const maxWidth = 1400;
+        const scale = Math.min(1, maxWidth / image.naturalWidth);
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = img.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const alpha = d[i + 3] / 255;
+          const luminance = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+          const value = alpha < 0.05 || luminance > threshold ? 255 : 0;
+          d[i] = d[i + 1] = d[i + 2] = value;
+          d[i + 3] = value === 255 ? 0 : 255;
+        }
+        ctx.putImageData(img, 0, 0);
+        return canvas;
+      }
+
+      function resizeImportedSvgToStage(group, sourceWidth, sourceHeight) {
+        const targetWidth = 1040;
+        const targetHeight = 240;
+        const scale = Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
+        const tx = (1200 - sourceWidth * scale) / 2;
+        const ty = (340 - sourceHeight * scale) / 2;
+        group.setAttribute("transform", `translate(${tx} ${ty}) scale(${scale})`);
+        group.setAttribute("data-base-transform", `translate(${tx} ${ty}) scale(${scale})`);
+      }
+
+      function importPathData(paths, sourceWidth, sourceHeight) {
+        elementsLayer.innerHTML = "";
+        const group = document.createElementNS(SVG_NS, "g");
+        resizeImportedSvgToStage(group, sourceWidth, sourceHeight);
+        paths.forEach((d) => {
+          const p = document.createElementNS(SVG_NS, "path");
+          p.setAttribute("d", d);
+          p.setAttribute("fill", document.getElementById("fillColor").value || "#000000");
+          group.appendChild(p);
+        });
+        addElement(group, false);
+        group.querySelectorAll("path").forEach((p) => initElement(p));
+        deriveNextIdCounter();
+        clearSelection();
+        renderLayers();
+        pushHistory();
+      }
+
+      async function traceImageWithPotrace(image) {
+        await ensurePotraceInitialized();
+        const threshold = Number(document.getElementById("bwThreshold").value || 160);
+        const canvas = preprocessToBw(image, threshold);
+        const dataUrl = canvas.toDataURL("image/png");
+        const svgText = await potrace(dataUrl, {
+          turdSize: document.getElementById("tracePreset").value === "detailed" ? 2 : 6,
+          alphaMax: document.getElementById("tracePreset").value === "smoothed" ? 1.2 : 0.4,
+          optCurve: true,
+          optTolerance: document.getElementById("tracePreset").value === "sharp" ? 0.1 : 0.35,
+          threshold,
+          blackOnWhite: true,
+        });
+        if (parseSvgElements(svgText)) return true;
+        return false;
+      }
+
+      function traceImageWithImageTracer(image) {
+        const threshold = Number(document.getElementById("bwThreshold").value || 160);
+        const canvas = preprocessToBw(image, threshold);
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const preset = document.getElementById("tracePreset").value;
+        const options = {
+          ltres: preset === "sharp" ? 0.01 : preset === "smoothed" ? 1 : 0.2,
+          qtres: preset === "sharp" ? 0.01 : preset === "smoothed" ? 1 : 0.2,
+          pathomit: preset === "detailed" ? 2 : 8,
+          colorsampling: 0,
+          numberofcolors: 2,
+          mincolorratio: 0,
+          colorquantcycles: 3,
+          strokewidth: 0,
+          roundcoords: preset === "sharp" ? 2 : 1,
+          blurradius: preset === "smoothed" ? 1 : 0,
+          blurdelta: 20,
+        };
+
+        const traced = window.ImageTracer.imagedataToSVG(imageData, options);
+        return parseSvgElements(traced);
+      }
+
+      document.getElementById("imgInput").addEventListener("change", async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const textName = file.name.toLowerCase();
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const src = String(reader.result || "");
+          referenceSrc = src;
+          referenceImage.setAttribute("href", src);
+          setSourcePreview(src);
+          if (textName.endsWith(".svg") || file.type === "image/svg+xml") {
+            const svgText = await file.text();
+            if (parseSvgElements(svgText)) t("SVG נטען לעריכה");
+            return;
+          }
+          t("תמונה נטענה. לחץ חלץ ל-SVG");
+          pushHistory();
+        };
+        reader.readAsDataURL(file);
+      });
+
+      document.getElementById("extractBtn").addEventListener("click", async () => {
+        const href = referenceImage.getAttribute("href");
+        if (!href) return t("העלה תמונה קודם");
+        const img = new Image();
+        img.onload = async () => {
+          try {
+            const ok = await traceImageWithPotrace(img);
+            if (ok) {
+              t("חולץ ל-SVG חד");
+              return;
+            }
+          } catch (err) {
+            console.warn("[POTRACE] fallback to ImageTracer", err);
+          }
+
+          try {
+            traceImageWithImageTracer(img);
+            t("חולץ ל-SVG");
+          } catch (err) {
+            console.error("[TRACE] failed", err);
+            t("החילוץ נכשל");
+          }
+        };
+        img.src = href;
       });
 
       function serializeProject() {
@@ -1846,6 +1757,10 @@
       });
 
       document.getElementById("applyHostBtn").addEventListener("click", () => {
+        applyToHost("manual");
+      });
+
+      document.getElementById("applyHostTopBtn").addEventListener("click", () => {
         applyToHost("manual");
       });
 
@@ -1944,6 +1859,12 @@
           ts: Date.now(),
         };
 
+        try {
+          localStorage.setItem("vector-logo-strip-last-apply", JSON.stringify(payload));
+        } catch (err) {
+          console.warn("[HOST APPLY] local fallback failed", err);
+        }
+
         const targets = [window.parent, window.opener].filter((target) => {
           return target && target !== window && !target.closed;
         });
@@ -1973,85 +1894,68 @@
         if (!accel || isTypingContext(e.target)) return;
 
         const key = e.key.toLowerCase();
-        if (key === "z" && !e.shiftKey) {
+        if (key === "z") {
           e.preventDefault();
-          if (historyIndex > 0) {
-            applyHistory(historyIndex - 1);
-            t("בוטלה פעולה");
-          }
-          return;
-        }
-
-        if ((key === "y") || (key === "z" && e.shiftKey)) {
+          applyHistory(e.shiftKey ? historyIndex + 1 : historyIndex - 1);
+        } else if (key === "y") {
           e.preventDefault();
-          if (historyIndex < historyStack.length - 1) {
-            applyHistory(historyIndex + 1);
-            t("שוחזרה פעולה");
-          }
-          return;
-        }
-
-        if (key === "c") {
+          applyHistory(historyIndex + 1);
+        } else if (key === "c") {
           e.preventDefault();
-          copySelection();
-          return;
-        }
-
-        if (key === "v") {
+          document.getElementById("copyBtn").click();
+        } else if (key === "v") {
           e.preventDefault();
-          pasteClipboard();
+          document.getElementById("pasteBtn").click();
+        } else if (key === "a") {
+          e.preventDefault();
+          document.getElementById("selectAllBtn").click();
+        } else if (key === "s") {
+          e.preventDefault();
+          localStorage.setItem("vector-logo-strip-project", JSON.stringify(serializeProject()));
+          t("נשמר");
+        } else if (key === "enter") {
+          e.preventDefault();
+          applyToHost("keyboard");
         }
       });
 
       function downloadBlob(filename, blob) {
-        const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = url;
+        a.href = URL.createObjectURL(blob);
         a.download = filename;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        a.remove();
+        URL.revokeObjectURL(a.href);
       }
 
       document.getElementById("exportSvgBtn").addEventListener("click", () => {
-        const xml = buildCleanSvgXml();
-        downloadBlob("logo-strip-clean.svg", new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
-        t("קובץ SVG יוצא");
+        downloadBlob(
+          "logo-strip.svg",
+          new Blob([buildCleanSvgXml()], { type: "image/svg+xml;charset=utf-8" }),
+        );
       });
 
       document.getElementById("exportPngBtn").addEventListener("click", () => {
-        const clean = buildCleanSvgClone();
-        const xml = new XMLSerializer().serializeToString(clean);
-        const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
-        const url = URL.createObjectURL(svgBlob);
+        const xml = buildCleanSvgXml();
         const img = new Image();
+        const canvas = document.createElement("canvas");
+        canvas.width = 1800;
+        canvas.height = 510;
         img.onload = () => {
-          const vb = (clean.getAttribute("viewBox") || "0 0 1200 340").split(/\s+/).map(Number);
-          const w = Math.max(1, Math.round(vb[2] || 1200));
-          const h = Math.max(1, Math.round(vb[3] || 340));
-          const c = document.createElement("canvas");
-          c.width = w;
-          c.height = h;
-          const ctx = c.getContext("2d");
-          ctx.drawImage(img, 0, 0, w, h);
-          c.toBlob((blob) => {
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((blob) => {
             if (blob) downloadBlob("logo-strip.png", blob);
-            t("קובץ PNG יוצא");
-            URL.revokeObjectURL(url);
           }, "image/png");
         };
-        img.src = url;
+        img.src = svgXmlToDataUrl(xml);
       });
 
-      // Initial sample
-      const sample = document.createElementNS(SVG_NS, "path");
-      sample.setAttribute("d", "M80 260 L300 260 L300 240 L360 240 L360 180 L430 180 L430 260 L800 260 L800 230 L880 230 L880 260 L1120 260 L1120 270 L80 270 Z");
-      sample.setAttribute("fill", "#000000");
-      sample.setAttribute("fill-rule", "evenodd");
-      addSvgElement(sample);
-
-      renderLayers();
+      addDefaultStrip();
       updateSelectionInfo();
-      pushHistory();
     </script>
   </body>
 </html>
