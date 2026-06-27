@@ -28,6 +28,8 @@ export interface SerializeOptions {
   preserveItemStyling?: boolean;
   /** פרטי פרויקט להזרמה לטוקנים כמו [גוש], [לקוח], "משפחת ___" וכו'. */
   projectDetails?: ProjectTokenData;
+  /** הגדרות עיצוב חיות מהעורך, כולל לוגו/סטריפ שלא בהכרח נשמרו עדיין בתבנית. */
+  designSettings?: any;
 }
 
 const esc = (s: string) =>
@@ -36,6 +38,9 @@ const esc = (s: string) =>
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+
+const firstValue = (...values: any[]) =>
+  values.find((value) => value !== undefined && value !== null && value !== "");
 
 /** בונה מחרוזת style מ-formatting של פריט; מחזיר ריק אם אין מה לשמור. */
 function itemStyleString(it: {
@@ -178,17 +183,36 @@ export function serializeTemplate(
   // מיזוג מפתחות {{customer.*}} / {{parcel.*}} מתוך פרטי הפרויקט.
   const mergedData: MergeData = { ...projectToMergeData(opts?.projectDetails), ...(data || {}) };
   data = mergedData;
-  const ds = template.design_settings;
+  const ds: any = { ...(template.design_settings || {}), ...(opts?.designSettings || {}) };
+  const contact = ds.contact_info || ds.contactInfo || {};
+  const logoUrl = firstValue(ds.logoUrl, ds.logo_url, ds.logoURL, ds.originalLogoUrl, ds.original_logo_url);
+  const logoPosition = firstValue(ds.logoPosition, ds.logo_position);
+  const isStripLogo = logoPosition === "custom-strip" || logoPosition === "full-width";
+  const headerStripUrl = firstValue(
+    ds.headerStripUrl,
+    ds.header_strip_url,
+    ds.stripUrl,
+    ds.strip_url,
+    isStripLogo ? logoUrl : undefined,
+  );
+  const footerStripUrl = firstValue(
+    ds.footerStripUrl,
+    ds.footer_strip_url,
+    ds.footerLogoUrl,
+    ds.footer_logo_url,
+    isStripLogo ? logoUrl : undefined,
+  );
 
   const branding: FlowBranding = {
-    logoUrl: ds.logo_url,
-    companyName: ds.company_name || "",
-    companySubtitle: ds.company_subtitle || "",
-    contactLine: [ds.contact_info?.phone, ds.contact_info?.email, ds.contact_info?.address]
-      .filter(Boolean)
-      .join("  |  "),
-    primaryColor: ds.secondary_color || "#162C58",
-    accentColor: ds.primary_color || "#d8ac27",
+    logoUrl,
+    headerStripUrl,
+    footerStripUrl,
+    stripBgColor: firstValue(ds.stripBgColor, ds.strip_bg_color, "#ffffff"),
+    companyName: firstValue(ds.companyName, ds.company_name, ""),
+    companySubtitle: firstValue(ds.companySubtitle, ds.company_subtitle, ""),
+    contactLine: [contact.phone, contact.email, contact.address].filter(Boolean).join("  |  "),
+    primaryColor: firstValue(ds.secondaryColor, ds.secondary_color, "#162C58"),
+    accentColor: firstValue(ds.primaryColor, ds.primary_color, ds.accentColor, ds.accent_color, "#d8ac27"),
     fontFamily: "Heebo, Arial, sans-serif",
   };
 
@@ -372,7 +396,7 @@ export function serializeTemplate(
     branding,
     page: {
       size: "A4",
-      marginMm: { top: 32, right: 18, bottom: 28, left: 18 },
+      marginMm: { top: headerStripUrl ? 36 : 32, right: 18, bottom: footerStripUrl ? 30 : 28, left: 18 },
       showPageNumbers: true,
     },
     sections,
