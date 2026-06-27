@@ -19,9 +19,17 @@ interface FlowPreviewTabProps {
   editedHtml?: string;
   preset?: DesignPresetConfig;
   projectDetails?: any;
+  designSettings?: any;
 }
 
-export default function FlowPreviewTab({ template, mergeData, editedHtml, preset, projectDetails }: FlowPreviewTabProps) {
+export default function FlowPreviewTab({
+  template,
+  mergeData,
+  editedHtml,
+  preset,
+  projectDetails,
+  designSettings,
+}: FlowPreviewTabProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [rendering, setRendering] = useState(false);
   const [pageCount, setPageCount] = useState<number | null>(null);
@@ -30,10 +38,10 @@ export default function FlowPreviewTab({ template, mergeData, editedHtml, preset
 
   const flowDoc = useMemo(() => {
     if (editedHtml && editedHtml.trim()) {
-      return htmlToFlowDoc(editedHtml, template);
+      return htmlToFlowDoc(editedHtml, template, { designSettings });
     }
-    return serializeTemplate(template, mergeData, { projectDetails });
-  }, [template, mergeData, editedHtml, projectDetails]);
+    return serializeTemplate(template, mergeData, { projectDetails, designSettings });
+  }, [template, mergeData, editedHtml, projectDetails, designSettings]);
   const html = useMemo(() => renderFlowToHtml(flowDoc, preset), [flowDoc, preset]);
 
   useEffect(() => {
