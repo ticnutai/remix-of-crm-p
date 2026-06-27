@@ -70,6 +70,11 @@ function renderBlock(block: FlowBlock): string {
 export function renderFlowToHtml(doc: FlowDocument, preset?: DesignPresetConfig): string {
   const { branding, page, sections } = doc;
   const m = page.marginMm;
+  const hasHeaderStrip = Boolean(branding.headerStripUrl);
+  const hasFooterStrip = Boolean(branding.footerStripUrl);
+  const topMargin = Math.max(m.top, hasHeaderStrip ? 36 : m.top);
+  const bottomMargin = Math.max(m.bottom, hasFooterStrip ? 30 : m.bottom);
+  const stripBgColor = branding.stripBgColor || "#ffffff";
 
   const sectionsHtml = sections
     .map((sec) => {
@@ -79,17 +84,21 @@ export function renderFlowToHtml(doc: FlowDocument, preset?: DesignPresetConfig)
     .join("");
 
   const headerHtml = `
-    <div class="running-header">
-      ${branding.logoUrl ? `<img src="${esc(branding.logoUrl)}" alt="logo" />` : ""}
+    <div class="running-header ${hasHeaderStrip ? "strip" : ""}">
+      ${hasHeaderStrip
+        ? `<img class="strip-img" src="${esc(branding.headerStripUrl || "")}" alt="header strip" />`
+        : `${branding.logoUrl ? `<img src="${esc(branding.logoUrl)}" alt="logo" />` : ""}
       <div class="rh-text">
         <div class="rh-name">${esc(branding.companyName)}</div>
         ${branding.companySubtitle ? `<div class="rh-sub">${esc(branding.companySubtitle)}</div>` : ""}
-      </div>
+      </div>`}
     </div>`;
 
   const footerHtml = `
-    <div class="running-footer">
-      <div class="rf-line">${esc(branding.contactLine || "")}</div>
+    <div class="running-footer ${hasFooterStrip ? "strip" : ""}">
+      ${hasFooterStrip
+        ? `<img class="strip-img" src="${esc(branding.footerStripUrl || "")}" alt="footer strip" />`
+        : `<div class="rf-line">${esc(branding.contactLine || "")}</div>`}
     </div>`;
 
   return `<!doctype html>
@@ -101,7 +110,7 @@ export function renderFlowToHtml(doc: FlowDocument, preset?: DesignPresetConfig)
   /* ===== Paged Media setup ===== */
   @page {
     size: ${page.size};
-    margin: ${m.top}mm ${m.right}mm ${m.bottom}mm ${m.left}mm;
+    margin: ${topMargin}mm ${m.right}mm ${bottomMargin}mm ${m.left}mm;
     @top-center { content: element(runHeader); }
     @bottom-center { content: element(runFooter); }
     ${page.showPageNumbers ? `@bottom-left { content: counter(page) " / " counter(pages); font-family: ${branding.fontFamily}; font-size: 9pt; color: #888; }` : ""}
@@ -116,6 +125,22 @@ export function renderFlowToHtml(doc: FlowDocument, preset?: DesignPresetConfig)
     direction: rtl;
   }
   .running-header img { max-height: 16mm; width: auto; }
+  .running-header.strip {
+    display: block;
+    height: 24mm;
+    overflow: hidden;
+    padding: 0;
+    border-bottom: 0;
+    background: ${stripBgColor};
+  }
+  .running-header.strip .strip-img {
+    display: block;
+    width: 100%;
+    height: 24mm;
+    max-height: none;
+    object-fit: cover;
+    object-position: center;
+  }
   .rh-name { font-weight: 700; color: ${branding.primaryColor}; font-size: 12pt; }
   .rh-sub  { color: #555; font-size: 9pt; }
 
@@ -124,6 +149,20 @@ export function renderFlowToHtml(doc: FlowDocument, preset?: DesignPresetConfig)
     border-top: 1px solid ${branding.accentColor};
     padding: 3mm 0; text-align: center;
     color: #666; font-size: 9pt; direction: rtl;
+  }
+  .running-footer.strip {
+    height: 14mm;
+    overflow: hidden;
+    padding: 0;
+    border-top: 0;
+    background: ${stripBgColor};
+  }
+  .running-footer.strip .strip-img {
+    display: block;
+    width: 100%;
+    height: 14mm;
+    object-fit: cover;
+    object-position: center;
   }
 
   /* ===== Document body (זורם) ===== */
@@ -183,7 +222,6 @@ export function renderFlowToHtml(doc: FlowDocument, preset?: DesignPresetConfig)
   }
   ${preset ? `
   /* ===== Design Preset override ===== */
-  @page { margin: ${preset.page.margin}; }
   body { font-family: ${preset.fonts.body}; font-size: ${preset.fonts.size}; line-height: ${preset.spacing.lineHeight}; color: ${preset.colors.text}; }
   .flow-h { color: ${preset.colors.heading}; font-family: ${preset.fonts.heading}; }
   .flow-h1 { font-size: ${preset.headings.h1.size}; font-weight: ${preset.headings.h1.weight}; border-bottom-color: ${preset.colors.accent}; }
