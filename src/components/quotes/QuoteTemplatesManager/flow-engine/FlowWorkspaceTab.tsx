@@ -60,6 +60,20 @@ export default function FlowWorkspaceTab({ template, projectDetails }: Props) {
     }
   };
 
+  useEffect(() => {
+    try {
+      setPreserveStyles(localStorage.getItem(styleKey(template.id)) === "1");
+    } catch {
+      setPreserveStyles(false);
+    }
+
+    try {
+      setSelectedPresetId(localStorage.getItem(presetKey(template.id)));
+    } catch {
+      setSelectedPresetId(null);
+    }
+  }, [template.id]);
+
   const baseHtml = useMemo(
     () =>
       templateToEditableHtml(template, {
