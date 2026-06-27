@@ -4585,7 +4585,7 @@ export function HtmlTemplateEditor({
   const [editingStagesTitle, setEditingStagesTitle] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
-  const [activeTab, setActiveTab] = useState("project");
+  const [activeTab, setActiveTab] = useState("flow-v2");
   const isMobile = useIsMobile();
   const tabsContainerRef = useRef<HTMLDivElement>(null);
 
