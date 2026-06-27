@@ -32,6 +32,9 @@ export interface FlowSection {
 
 export interface FlowBranding {
   logoUrl?: string | null;
+  headerStripUrl?: string | null;
+  footerStripUrl?: string | null;
+  stripBgColor?: string;
   companyName: string;
   companySubtitle?: string;
   contactLine?: string; // טלפון | מייל | כתובת
