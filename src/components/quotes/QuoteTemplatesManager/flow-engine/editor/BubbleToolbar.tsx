@@ -70,12 +70,29 @@ const WORD_SPACINGS = [
 
 export default function BubbleToolbar({ editor }: Props) {
   const [copied, setCopied] = useState(false);
+  // re-render כשמשתנים ה-ranges (storage לא מפעיל רנדר אוטומטית)
+  const [, force] = useState(0);
+  React.useEffect(() => {
+    if (!editor) return;
+    const handler = () => force((n) => n + 1);
+    editor.on("transaction", handler);
+    editor.on("selectionUpdate", handler);
+    return () => {
+      editor.off("transaction", handler);
+      editor.off("selectionUpdate", handler);
+    };
+  }, [editor]);
+
   if (!editor) return null;
+
+  const extras = getExtraRanges(editor);
+  const extrasCount = extras.length;
 
   const btnBase =
     "inline-flex h-7 w-7 items-center justify-center rounded text-foreground hover:bg-muted transition-colors";
   const btnActive = "bg-primary text-primary-foreground hover:bg-primary/90";
 
+  const apply = (cb: (chain: any) => any) => applyAcrossRanges(editor, cb);
   const run = (fn: () => void) => () => fn();
 
   const copySelection = async () => {
@@ -97,7 +114,8 @@ export default function BubbleToolbar({ editor }: Props) {
       options={{ placement: "top" }}
       shouldShow={({ editor, from, to }) => {
         if (!editor.isEditable) return false;
-        if (from === to) return false;
+        const hasExtras = getExtraRanges(editor).length > 0;
+        if (from === to && !hasExtras) return false;
         return true;
       }}
       className="z-50 flex items-center gap-0.5 rounded-lg border border-border bg-popover px-1.5 py-1 shadow-lg"
