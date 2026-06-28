@@ -8711,7 +8711,7 @@ ${tbAt('footer')}
               <TabsList
                 className={cn(
                   "bg-transparent gap-2 flex-wrap",
-                  tabDisplayMode === "textCompact" ? "h-auto py-1" : "h-12"
+                  tabDisplayMode === "stacked" ? "h-auto py-1" : "h-12"
                 )}
               >
                 {tabConfig
@@ -8726,15 +8726,21 @@ ${tbAt('footer')}
                         className={
                           tabDisplayMode === "iconsOnly"
                             ? `${meta.activeClass} !w-9 !h-9 !p-0 justify-center`
-                            : tabDisplayMode === "textCompact"
-                              ? `${meta.activeClass} px-2 py-1 text-xs h-auto`
+                            : tabDisplayMode === "stacked"
+                              ? `${meta.activeClass} flex-col px-2 py-1 text-xs h-auto leading-tight`
                               : meta.activeClass
                         }
                         aria-label={meta.label}
                       >
-                        {tabDisplayMode !== "textCompact" && (
-                          <Icon className={tabDisplayMode === "iconsOnly" ? "h-4 w-4" : "h-4 w-4 ml-2"} />
-                        )}
+                        <Icon
+                          className={
+                            tabDisplayMode === "iconsOnly"
+                              ? "h-4 w-4"
+                              : tabDisplayMode === "stacked"
+                                ? "h-4 w-4 mb-0.5"
+                                : "h-4 w-4 ml-2"
+                          }
+                        />
                         {tabDisplayMode !== "iconsOnly" && meta.label}
                       </TabsTrigger>
                     );
@@ -8760,7 +8766,7 @@ ${tbAt('footer')}
                       onClick={() =>
                         setTabDisplayMode((mode) => {
                           if (mode === "full") return "iconsOnly";
-                          if (mode === "iconsOnly") return "textCompact";
+                          if (mode === "iconsOnly") return "stacked";
                           return "full";
                         })
                       }
@@ -8768,19 +8774,19 @@ ${tbAt('footer')}
                         tabDisplayMode === "full"
                           ? "תצוגת אייקונים בלבד"
                           : tabDisplayMode === "iconsOnly"
-                            ? "תצוגת טקסט בלבד בשתי שורות"
+                            ? "תצוגת אייקון + טקסט בשתי שורות"
                             : "תצוגה מלאה"
                       }
                     >
                       {tabDisplayMode === "full" && <PanelsTopLeft className="h-5 w-5" />}
                       {tabDisplayMode === "iconsOnly" && <LayoutList className="h-5 w-5" />}
-                      {tabDisplayMode === "textCompact" && <Type className="h-5 w-5" />}
+                      {tabDisplayMode === "stacked" && <Type className="h-5 w-5" />}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     {tabDisplayMode === "full" && "תצוגת אייקונים בלבד"}
-                    {tabDisplayMode === "iconsOnly" && "תצוגת טקסט בלבד בשתי שורות"}
-                    {tabDisplayMode === "textCompact" && "תצוגה מלאה"}
+                    {tabDisplayMode === "iconsOnly" && "תצוגת אייקון + טקסט בשתי שורות"}
+                    {tabDisplayMode === "stacked" && "תצוגה מלאה"}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
