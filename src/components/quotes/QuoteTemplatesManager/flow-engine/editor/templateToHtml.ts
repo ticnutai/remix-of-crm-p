@@ -12,9 +12,28 @@ const esc = (s: string) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
+// תוויות בעברית לקיצורי שדות נפוצים, כדי שהצ'יפ יציג טקסט קריא ולא את ה-key.
+const FIELD_LABELS: Record<string, string> = {
+  "customer.name": "שם לקוח",
+  "customer.address": "כתובת לקוח",
+  "customer.phone": "טלפון",
+  "customer.email": 'דוא"ל',
+  "parcel.block": "גוש",
+  "parcel.lot": "חלקה",
+  "parcel.plot": "מגרש",
+  "parcel.moshav": "מושב",
+  "parcel.taba": 'תב"ע',
+  "project.type": "סוג פרויקט",
+};
+
+function fieldSpan(key: string): string {
+  const label = FIELD_LABELS[key] || key;
+  return `<span data-field="${esc(key)}" data-label="${esc(label)}">{{${esc(label)}}}</span>`;
+}
+
 function inlineToHtml(node: FlowInline): string {
   if (node.type === "field") {
-    return `<span data-field="${esc(node.key)}">{{${esc(node.key)}}}</span>`;
+    return fieldSpan(node.key);
   }
   if (node.type === "raw") {
     return node.html;
@@ -26,7 +45,7 @@ function inlineToHtml(node: FlowInline): string {
   let m: RegExpExecArray | null;
   while ((m = regex.exec(node.text)) !== null) {
     if (m.index > last) parts.push(esc(node.text.slice(last, m.index)));
-    parts.push(`<span data-field="${esc(m[1])}">{{${esc(m[1])}}}</span>`);
+    parts.push(fieldSpan(m[1]));
     last = m.index + m[0].length;
   }
   if (last < node.text.length) parts.push(esc(node.text.slice(last)));

@@ -43,8 +43,17 @@ export const DynamicField = Node.create<DynamicFieldOptions>({
 
   addAttributes() {
     return {
-      key: { default: "" },
-      label: { default: null },
+      key: {
+        default: "",
+        parseHTML: (el: HTMLElement) => el.getAttribute("data-field") || "",
+        renderHTML: (attrs: Record<string, unknown>) => ({ "data-field": String(attrs.key || "") }),
+      },
+      label: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.getAttribute("data-label"),
+        renderHTML: (attrs: Record<string, unknown>) =>
+          attrs.label ? { "data-label": String(attrs.label) } : {},
+      },
       // snapshot של הערך שנפתר — נשמר ב-HTML כ-data-resolved-value
       // כדי שהמילוי יישרד רענון/החלפת טאב גם אם אין resolver פעיל.
       resolvedValue: {

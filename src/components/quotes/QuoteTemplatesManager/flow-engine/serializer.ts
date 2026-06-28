@@ -30,6 +30,33 @@ export interface SerializeOptions {
   projectDetails?: ProjectTokenData;
   /** הגדרות עיצוב חיות מהעורך, כולל לוגו/סטריפ שלא בהכרח נשמרו עדיין בתבנית. */
   designSettings?: any;
+  /**
+   * כשדלוק: לא לפתור טוקנים לטקסט סטטי — להשאיר אותם כשדות דינמיים
+   * (`{type:"field"}`) כדי שהעורך יחליף אותם בערך החי מ"פרטי פרויקט".
+   */
+  keepFieldsAsPlaceholders?: boolean;
+}
+
+// מיפוי טוקנים בעברית (מסוגריים מרובעים) למפתחות שדה דינמי.
+const HEBREW_TOKEN_TO_KEY: Record<string, string> = {
+  "לקוח": "customer.name",
+  "משפחה": "customer.name",
+  "משפחת": "customer.name",
+  "כתובת": "customer.address",
+  "טלפון": "customer.phone",
+  'דוא"ל': "customer.email",
+  "דואל": "customer.email",
+  "גוש": "parcel.block",
+  "חלקה": "parcel.lot",
+  "מגרש": "parcel.plot",
+  "מושב": "parcel.moshav",
+  'תב"ע': "parcel.taba",
+  "תבע": "parcel.taba",
+  "סוג פרויקט": "project.type",
+};
+function normalizeHebrewToken(raw: string): string | undefined {
+  const t = String(raw || "").trim().replace(/[״“”]/g, '"');
+  return HEBREW_TOKEN_TO_KEY[t];
 }
 
 const esc = (s: string) =>
@@ -102,10 +129,30 @@ function sanitizeRaw(input: string | undefined | null): string {
 }
 
 let CURRENT_PD: ProjectTokenData | undefined;
+let CURRENT_KEEP = false;
+
+function pushFieldOrText(out: FlowInline[], text: string) {
+  if (!CURRENT_KEEP) {
+    if (text) out.push({ type: "text", text });
+    return;
+  }
+  // במצב placeholder — סורקים גם טוקני [עברית] והופכים אותם לשדות דינמיים
+  const re = /\[([^\[\]\n]+)\]/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const key = normalizeHebrewToken(m[1]);
+    if (!key) continue;
+    if (m.index > last) out.push({ type: "text", text: text.slice(last, m.index) });
+    out.push({ type: "field", key });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push({ type: "text", text: text.slice(last) });
+}
 
 function textToInlines(raw: string, data?: MergeData): FlowInline[] {
   let clean = sanitizeRaw(raw);
-  if (CURRENT_PD) clean = applyProjectTokens(clean, CURRENT_PD);
+  if (CURRENT_PD && !CURRENT_KEEP) clean = applyProjectTokens(clean, CURRENT_PD);
   if (!clean) return [{ type: "text", text: "" }];
   const out: FlowInline[] = [];
   const regex = /\{\{\s*([^}\s]+)\s*\}\}/g;
@@ -113,13 +160,17 @@ function textToInlines(raw: string, data?: MergeData): FlowInline[] {
   let match: RegExpExecArray | null;
   while ((match = regex.exec(clean)) !== null) {
     if (match.index > lastIndex) {
-      out.push({ type: "text", text: clean.slice(lastIndex, match.index) });
+      pushFieldOrText(out, clean.slice(lastIndex, match.index));
     }
-    out.push({ type: "text", text: resolveField(match[1], data) });
+    if (CURRENT_KEEP) {
+      out.push({ type: "field", key: match[1] });
+    } else {
+      out.push({ type: "text", text: resolveField(match[1], data) });
+    }
     lastIndex = match.index + match[0].length;
   }
   if (lastIndex < clean.length) {
-    out.push({ type: "text", text: clean.slice(lastIndex) });
+    pushFieldOrText(out, clean.slice(lastIndex));
   }
   return out.length ? out : [{ type: "text", text: "" }];
 }
@@ -180,6 +231,7 @@ export function serializeTemplate(
   opts?: SerializeOptions,
 ): FlowDocument {
   CURRENT_PD = opts?.projectDetails;
+  CURRENT_KEEP = Boolean(opts?.keepFieldsAsPlaceholders);
   // מיזוג מפתחות {{customer.*}} / {{parcel.*}} מתוך פרטי הפרויקט.
   const mergedData: MergeData = { ...projectToMergeData(opts?.projectDetails), ...(data || {}) };
   data = mergedData;
