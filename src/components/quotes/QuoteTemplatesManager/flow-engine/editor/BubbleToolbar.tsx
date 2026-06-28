@@ -21,6 +21,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { applyAcrossRanges, getExtraRanges, clearExtraRanges } from "./MultiSelection";
 
 interface Props {
   editor: Editor | null;
