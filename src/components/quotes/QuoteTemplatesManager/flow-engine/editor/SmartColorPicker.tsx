@@ -71,11 +71,20 @@ function Swatch({ color, onPick, onSave, onRemove, saved }: SwatchProps) {
             e.stopPropagation();
             onSave();
           }}
-          className="absolute -left-1 -top-1 hidden h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow group-hover:flex"
+          className="absolute -left-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-amber-950 shadow-md ring-1 ring-amber-600/40 transition-transform hover:scale-125"
           title="שמור צבע"
+          aria-label="שמור צבע"
         >
-          <Star className="h-2 w-2" />
+          <Star className="h-2.5 w-2.5 fill-current" />
         </button>
+      )}
+      {saved && !onRemove && (
+        <span
+          className="absolute -left-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow"
+          title="שמור"
+        >
+          <Check className="h-2.5 w-2.5" />
+        </span>
       )}
       {onRemove && (
         <button
