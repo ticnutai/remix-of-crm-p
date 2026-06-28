@@ -8712,7 +8712,9 @@ ${tbAt('footer')}
               <TabsList
                 className={cn(
                   "bg-transparent gap-2 flex-wrap",
-                  tabDisplayMode === "stacked" ? "h-auto py-1" : "h-12"
+                  tabDisplayMode === "stacked" || tabDisplayMode === "twoRows"
+                    ? "h-auto py-1"
+                    : "h-12"
                 )}
               >
                 {tabConfig
@@ -8729,7 +8731,9 @@ ${tbAt('footer')}
                             ? `${meta.activeClass} !w-9 !h-9 !p-0 justify-center`
                             : tabDisplayMode === "stacked"
                               ? `${meta.activeClass} flex-col px-2 py-1 text-xs h-auto leading-tight`
-                              : meta.activeClass
+                              : tabDisplayMode === "twoRows"
+                                ? `${meta.activeClass} px-2 py-1 text-xs h-auto leading-tight inline-flex items-center`
+                                : meta.activeClass
                         }
                         aria-label={meta.label}
                       >
@@ -8739,7 +8743,9 @@ ${tbAt('footer')}
                               ? "h-4 w-4"
                               : tabDisplayMode === "stacked"
                                 ? "h-4 w-4 mb-0.5"
-                                : "h-4 w-4 ml-2"
+                                : tabDisplayMode === "twoRows"
+                                  ? "h-3.5 w-3.5 ml-1.5"
+                                  : "h-4 w-4 ml-2"
                           }
                         />
                         {tabDisplayMode !== "iconsOnly" && meta.label}
