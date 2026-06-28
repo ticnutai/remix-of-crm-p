@@ -57,6 +57,10 @@ function editorPageVars(pageSetup?: FlowPageSetup): React.CSSProperties {
     "--flow-editor-page-width": `${width}mm`,
     "--flow-editor-page-height": `${height}mm`,
     "--flow-editor-page-gap": "18mm",
+    "--flow-editor-page-padding-top": `${margin.top}mm`,
+    "--flow-editor-page-padding-right": `${margin.right}mm`,
+    "--flow-editor-page-padding-bottom": `${margin.bottom}mm`,
+    "--flow-editor-page-padding-left": `${margin.left}mm`,
     "--flow-editor-page-padding": `${margin.top}mm ${margin.right}mm ${margin.bottom}mm ${margin.left}mm`,
   } as React.CSSProperties;
 }
@@ -225,7 +229,16 @@ export default function FlowEditor({
         className={`flow-editor-scroll flex-1 overflow-auto ${
           pagedMode ? "bg-slate-200/70" : "bg-muted/30"
         }`}
-        style={editorPageVars(pageSetup)}
+        style={{
+          ...editorPageVars(pageSetup),
+          "--flow-editor-header-strip-height": showHeaderStrip
+            ? `${stripSettings.headerHeight}px`
+            : "0px",
+          "--flow-editor-footer-strip-height": showFooterStrip
+            ? `${stripSettings.footerHeight}px`
+            : "0px",
+          "--flow-editor-visual-page-count": visualPageCount,
+        } as React.CSSProperties}
       >
         <div
           className={`flow-editor-shell mx-auto my-4 ${
@@ -283,11 +296,31 @@ export default function FlowEditor({
       </div>
       <style>{`
         .flow-editor-content { padding: 1.5rem; font-family: ${preset?.fonts.body || "Heebo, Arial, sans-serif"}; font-size: ${preset?.fonts.size || "14px"}; line-height: ${preset?.spacing.lineHeight || "1.7"}; color: ${preset?.colors.text || "hsl(var(--foreground))"}; }
-        .flow-editor-shell-paged { position: relative; width: var(--flow-editor-page-width); max-width: none; }
+        .flow-editor-shell-paged {
+          position: relative;
+          width: var(--flow-editor-page-width);
+          max-width: none;
+          min-height: calc(var(--flow-editor-page-height) * var(--flow-editor-visual-page-count) + var(--flow-editor-page-gap) * (var(--flow-editor-visual-page-count) - 1));
+        }
+        .flow-editor-shell-paged::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: 6;
+          pointer-events: none;
+          background:
+            repeating-linear-gradient(
+              to bottom,
+              transparent 0,
+              transparent var(--flow-editor-page-height),
+              rgb(226, 232, 240) var(--flow-editor-page-height),
+              rgb(226, 232, 240) calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
+            );
+        }
         .flow-editor-strip-instance {
           position: absolute;
           inset-inline: 0;
-          z-index: 4;
+          z-index: 7;
           pointer-events: none;
           background-color: ${stripSettings.bgColor};
           background-repeat: no-repeat;
@@ -327,8 +360,12 @@ export default function FlowEditor({
         }
         .flow-editor-content[data-paged="true"] {
           width: var(--flow-editor-page-width);
-          min-height: calc(var(--flow-editor-page-height) * 3 + var(--flow-editor-page-gap) * 2);
-          padding: var(--flow-editor-page-padding);
+          min-height: calc(var(--flow-editor-page-height) * var(--flow-editor-visual-page-count) + var(--flow-editor-page-gap) * (var(--flow-editor-visual-page-count) - 1));
+          padding:
+            max(var(--flow-editor-page-padding-top), calc(var(--flow-editor-header-strip-height) + 18px))
+            var(--flow-editor-page-padding-right)
+            max(var(--flow-editor-page-padding-bottom), calc(var(--flow-editor-footer-strip-height) + 18px))
+            var(--flow-editor-page-padding-left);
           background:
             repeating-linear-gradient(
               to bottom,
@@ -341,8 +378,19 @@ export default function FlowEditor({
           box-shadow:
             0 3px 12px rgba(15, 23, 42, 0.16),
             0 calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap)) 12px rgba(15, 23, 42, 0.16),
-            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 2) 12px rgba(15, 23, 42, 0.16);
+            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 2) 12px rgba(15, 23, 42, 0.16),
+            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 3) 12px rgba(15, 23, 42, 0.16),
+            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 4) 12px rgba(15, 23, 42, 0.16),
+            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 5) 12px rgba(15, 23, 42, 0.16),
+            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 6) 12px rgba(15, 23, 42, 0.16),
+            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 7) 12px rgba(15, 23, 42, 0.16),
+            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 8) 12px rgba(15, 23, 42, 0.16),
+            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 9) 12px rgba(15, 23, 42, 0.16);
           overflow: visible;
+        }
+        .flow-editor-content[data-paged="true"] .ProseMirror {
+          position: relative;
+          z-index: 1;
         }
         .flow-editor-content[data-paged="true"] .ProseMirror {
           min-height: calc(var(--flow-editor-page-height) - 60mm);
