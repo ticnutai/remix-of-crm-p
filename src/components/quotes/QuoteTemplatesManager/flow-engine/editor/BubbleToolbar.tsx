@@ -232,46 +232,38 @@ export default function BubbleToolbar({ editor }: Props) {
         </PopoverContent>
       </Popover>
 
-      {/* Color */}
+      {/* Smart Color Picker — 3 קטגוריות + Eyedropper + צבעים שמורים בענן */}
       <Popover>
         <PopoverTrigger asChild>
-          <button type="button" className={btnBase} title="צבע טקסט">
+          <button type="button" className={btnBase} title="צבעים (טקסט / רקע / קו תחתון)">
             <Palette className="h-3.5 w-3.5" />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-56 p-2" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
-          <div className="mb-1 text-[11px] text-muted-foreground">צבע טקסט</div>
-          <div className="grid grid-cols-6 gap-1.5">
-            {COLOR_SWATCHES.map((c) => (
-              <button
-                key={c}
-                type="button"
-                className="h-6 w-6 rounded border border-border"
-                style={{ backgroundColor: c }}
-                onClick={() => apply((ch) => ch.setGradient(null).setColor(c))}
-                title={c}
-              />
-            ))}
-          </div>
-          <div className="mt-2 flex items-center gap-2">
-            <input
-              type="color"
-              className="h-7 w-7 cursor-pointer rounded border border-border"
-              onChange={(e) => {
-                const v = e.target.value;
-                apply((ch) => ch.setGradient(null).setColor(v));
-              }}
-            />
-            <button
-              type="button"
-              className="ml-auto rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
-              onClick={() => apply((ch) => ch.setGradient(null).unsetColor())}
-            >
-              אפס צבע
-            </button>
-          </div>
+        <PopoverContent className="w-auto p-2" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <SmartColorPicker
+            initialCategory="text"
+            onPick={(color, category) => {
+              if (category === "text") {
+                apply((ch) => ch.setGradient(null).setColor(color));
+              } else if (category === "highlight") {
+                apply((ch) => ch.setHighlight({ color }));
+              } else if (category === "underline") {
+                apply((ch) => ch.setUnderlineColor(color));
+              }
+            }}
+            onClear={(category) => {
+              if (category === "text") {
+                apply((ch) => ch.unsetColor());
+              } else if (category === "highlight") {
+                apply((ch) => ch.unsetHighlight());
+              } else if (category === "underline") {
+                apply((ch) => ch.setUnderlineColor(null));
+              }
+            }}
+          />
         </PopoverContent>
       </Popover>
+
 
       {/* Gradient */}
       <Popover>
