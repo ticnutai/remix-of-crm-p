@@ -25,7 +25,8 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import DynamicField from "./DynamicField";
+import DynamicField, { setFieldResolver } from "./DynamicField";
+import { projectToMergeData, type ProjectTokenData } from "../projectTokens";
 import MenuBar from "./MenuBar";
 import BubbleToolbar from "./BubbleToolbar";
 import AdvancedTextStyle from "./AdvancedTextStyle";
@@ -42,6 +43,7 @@ interface Props {
   templateDesignSettings?: any;
   designSettings?: any;
   onDesignSettingsChange?: (patch: Record<string, any>) => void;
+  projectDetails?: ProjectTokenData;
 }
 
 const PAGE_SIZES_MM: Record<string, { width: number; height: number }> = {
@@ -252,6 +254,7 @@ export default function FlowEditor({
   templateDesignSettings,
   designSettings,
   onDesignSettingsChange,
+  projectDetails,
 }: Props) {
   const debounceRef = useRef<number | null>(null);
   const dragRef = useRef<{
@@ -397,6 +400,26 @@ export default function FlowEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialHtml, editor]);
 
+  // עדכון resolver של שדות דינמיים — מציג את הערכים בפועל מתוך "פרטי פרויקט"
+  useEffect(() => {
+    const mergeData = projectToMergeData(projectDetails);
+    setFieldResolver((key) => {
+      const v = mergeData[key];
+      return v === undefined || v === "" ? null : v;
+    });
+    // טריגר לרינדור מחדש של node-views של DynamicField
+    if (editor) {
+      try {
+        editor.view.dispatch(editor.state.tr.setMeta("dynamicFieldResolverChanged", true));
+      } catch {
+        /* ignore */
+      }
+    }
+    return () => {
+      setFieldResolver(null);
+    };
+  }, [editor, projectDetails]);
+
   useEffect(() => {
     if (!editor) return;
 
@@ -525,7 +548,7 @@ export default function FlowEditor({
                 <EditorContent editor={editor} />
               </div>
             </ContextMenuTrigger>
-            <ContextMenuContent className="max-h-80 w-64 overflow-auto" dir="rtl">
+            <ContextMenuContent className="max-h-80 w-64 overflow-auto">
               <ContextMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Tag className="h-3.5 w-3.5" />
                 הוסף שדה במקום הסמן
@@ -538,7 +561,7 @@ export default function FlowEditor({
                     <ContextMenuSubTrigger className="justify-between">
                       {group}
                     </ContextMenuSubTrigger>
-                    <ContextMenuSubContent className="max-h-72 w-56 overflow-auto" dir="rtl">
+                    <ContextMenuSubContent className="max-h-72 w-56 overflow-auto">
                       {fields.map((field) => (
                         <ContextMenuItem
                           key={field.key}

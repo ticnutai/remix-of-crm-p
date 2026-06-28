@@ -575,6 +575,7 @@ export default function FlowWorkspaceTab({
           templateDesignSettings={template.design_settings}
           designSettings={designSettings}
           onDesignSettingsChange={updateDesignSettings}
+          projectDetails={projectDetails}
         />
       </TabsContent>
       <TabsContent value="preview" className="m-0 flex-1 overflow-hidden">

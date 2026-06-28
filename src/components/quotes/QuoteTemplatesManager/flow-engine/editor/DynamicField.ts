@@ -1,5 +1,7 @@
 // Inline atom node לשדות דינמיים {{customer.name}}
 // נשמר ל-HTML כ-<span data-field="key">{{key}}</span>, וה-renderer הקיים יודע להמיר.
+// בנוסף: אם הוגדר resolver (פרטי פרויקט) — נציג את הערך בפועל לעורך,
+// כדי שהמשתמש יראה את שם הלקוח / הגוש / החלקה במקום הצ׳יפ.
 
 import { Node, mergeAttributes } from "@tiptap/core";
 
@@ -13,6 +15,18 @@ declare module "@tiptap/core" {
       insertDynamicField: (key: string, label?: string) => ReturnType;
     };
   }
+}
+
+// ===== Global resolver — מאפשר ל-FlowEditor להזין את פרטי הפרויקט =====
+type FieldResolver = (key: string) => string | null | undefined;
+let activeResolver: FieldResolver | null = null;
+export function setFieldResolver(fn: FieldResolver | null) {
+  activeResolver = fn;
+}
+export function resolveField(key: string): string {
+  if (!activeResolver) return "";
+  const v = activeResolver(key);
+  return v == null ? "" : String(v);
 }
 
 export const DynamicField = Node.create<DynamicFieldOptions>({
@@ -39,20 +53,27 @@ export const DynamicField = Node.create<DynamicFieldOptions>({
   },
 
   renderHTML({ HTMLAttributes }) {
-    const key = HTMLAttributes.key || HTMLAttributes["data-field"] || "";
-    const label = HTMLAttributes.label || key;
+    const key = String(HTMLAttributes.key || HTMLAttributes["data-field"] || "");
+    const label = String(HTMLAttributes.label || key);
+    const value = resolveField(key);
+    const hasValue = value !== "";
+    const text = hasValue ? value : `{{${label}}}`;
+    const cls = hasValue
+      ? "inline-block px-1.5 py-0.5 mx-0.5 rounded text-sm font-medium bg-primary/10 text-primary border border-primary/30"
+      : "inline-block px-2 py-0.5 mx-0.5 rounded text-xs font-medium bg-accent/20 text-accent-foreground border border-accent/40";
     return [
       "span",
       mergeAttributes(
         {
           "data-field": key,
-          class:
-            "inline-block px-2 py-0.5 mx-0.5 rounded text-xs font-medium bg-accent/20 text-accent-foreground border border-accent/40",
+          "data-label": label,
+          title: hasValue ? `${label}: ${value}` : `שדה דינמי: {{${label}}}`,
+          class: cls,
           contenteditable: "false",
         },
         this.options.HTMLAttributes,
       ),
-      `{{${label}}}`,
+      text,
     ];
   },
 

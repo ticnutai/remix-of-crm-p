@@ -16,8 +16,23 @@ const esc = (s: string) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
+export type RendererMergeData = Record<string, string | number | undefined | null>;
+
+let CURRENT_MERGE: RendererMergeData | undefined;
+
+function resolveFieldKey(key: string): string | undefined {
+  if (!CURRENT_MERGE) return undefined;
+  const v = CURRENT_MERGE[key];
+  if (v === undefined || v === null || v === "") return undefined;
+  return String(v);
+}
+
 function renderInline(node: FlowInline): string {
   if (node.type === "field") {
+    const resolved = resolveFieldKey(node.key);
+    if (resolved !== undefined) {
+      return esc(resolved);
+    }
     return `<span class="fld">{{${esc(node.key)}}}</span>`;
   }
   if (node.type === "raw") {
@@ -79,7 +94,20 @@ function pageSizeCss(page: FlowDocument["page"]): string {
   return `${page.size}${page.orientation === "landscape" ? " landscape" : ""}`;
 }
 
-export function renderFlowToHtml(doc: FlowDocument, preset?: DesignPresetConfig): string {
+export function renderFlowToHtml(
+  doc: FlowDocument,
+  preset?: DesignPresetConfig,
+  mergeData?: RendererMergeData,
+): string {
+  CURRENT_MERGE = mergeData;
+  try {
+  return _renderFlowToHtmlInner(doc, preset);
+  } finally {
+    CURRENT_MERGE = undefined;
+  }
+}
+
+function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig): string {
   const { branding, page, sections } = doc;
   const m = page.marginMm;
   const hasHeaderStrip = Boolean(branding.headerStripUrl);
