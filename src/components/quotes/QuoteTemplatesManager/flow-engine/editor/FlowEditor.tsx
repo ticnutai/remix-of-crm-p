@@ -349,7 +349,7 @@ export default function FlowEditor({
       Color,
       FontFamily,
       Underline,
-      Highlight.configure({ multicolor: false }),
+      Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Table.configure({ resizable: false }),
       TableRow,
