@@ -1293,6 +1293,97 @@ function ProjectDetailsEditor({
         })}
       </div>
 
+      {/* שדות מותאמים אישית — מקור אמת אחד בכל המערכת */}
+      <div className="mt-5 pt-4 border-t">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-gray-700">שדות מותאמים אישית</h3>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1 text-xs"
+            onClick={() => setCreateFieldOpen(true)}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            שדה חדש
+          </Button>
+        </div>
+        {customDefinitions.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            אין שדות מותאמים אישית. צור שדה חדש — הוא יופיע גם בעורך וגם בכרטיס הלקוח.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            {customDefinitions.map((def) => {
+              const val = (details.customData || {})[def.field_key] || "";
+              if (def.field_type === "textarea") {
+                return (
+                  <div key={def.id} className="col-span-2 space-y-1">
+                    <Label className="text-sm text-gray-600">{def.label}</Label>
+                    <Textarea
+                      dir="rtl"
+                      rows={3}
+                      value={val}
+                      onChange={(e) => updateCustomValue(def.field_key, e.target.value)}
+                      placeholder={def.placeholder || `הזן ${def.label}...`}
+                    />
+                  </div>
+                );
+              }
+              if (def.field_type === "select") {
+                return (
+                  <div key={def.id} className="space-y-1">
+                    <Label className="text-sm text-gray-600">{def.label}</Label>
+                    <Select
+                      value={val || "__empty__"}
+                      onValueChange={(v) =>
+                        updateCustomValue(def.field_key, v === "__empty__" ? "" : v)
+                      }
+                    >
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder={def.placeholder || "בחר..."} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__empty__">— ללא —</SelectItem>
+                        {def.options.map((opt) => (
+                          <SelectItem key={opt} value={opt}>
+                            {opt}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+              }
+              const inputType =
+                def.field_type === "number"
+                  ? "number"
+                  : def.field_type === "date"
+                    ? "date"
+                    : def.field_type === "email"
+                      ? "email"
+                      : def.field_type === "phone"
+                        ? "tel"
+                        : "text";
+              return (
+                <div key={def.id} className="space-y-1">
+                  <Label className="text-sm text-gray-600">{def.label}</Label>
+                  <Input
+                    dir="rtl"
+                    type={inputType}
+                    value={val}
+                    onChange={(e) => updateCustomValue(def.field_key, e.target.value)}
+                    placeholder={def.placeholder || `הזן ${def.label}...`}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <CreateFieldDialog open={createFieldOpen} onOpenChange={setCreateFieldOpen} />
+      </div>
+
+
       <div className="mt-4 space-y-2">
         <Label className="text-sm text-gray-600 flex items-center gap-1">
           <Layers className="h-3.5 w-3.5" />
