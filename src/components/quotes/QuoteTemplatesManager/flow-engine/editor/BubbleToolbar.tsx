@@ -22,6 +22,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { applyAcrossRanges, getExtraRanges, clearExtraRanges } from "./MultiSelection";
+import SmartColorPicker from "./SmartColorPicker";
+import type { ColorCategory } from "./useSavedColors";
 
 interface Props {
   editor: Editor | null;
