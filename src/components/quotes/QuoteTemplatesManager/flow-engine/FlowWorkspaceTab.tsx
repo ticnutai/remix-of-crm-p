@@ -37,7 +37,7 @@ interface Props {
   onDesignSettingsChange?: React.Dispatch<React.SetStateAction<any>>;
 }
 
-const storageKey = (id?: string) => `flow-edit:${id || "untitled"}`;
+const storageKey = (id?: string) => `flow-edit:${id || "untitled"}:v2`;
 const styleKey = (id?: string) => `flow-edit:${id || "untitled"}:preserveStyles`;
 const presetKey = (id?: string) => `flow-edit:${id || "untitled"}:presetId`;
 const pageKey = (id?: string) => `flow-edit:${id || "untitled"}:pageSetup`;
