@@ -667,6 +667,22 @@ export default function FlowWorkspaceTab({
           </TabsList>
           <Button
             type="button"
+            variant="default"
+            size="sm"
+            onClick={handleCloudSave}
+            disabled={cloudSaving}
+            title="שמור את ההצעה הנוכחית כטיוטה חדשה בטיוטות הצעות מחיר"
+            className="gap-1"
+          >
+            {cloudSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Cloud className="h-3.5 w-3.5" />
+            )}
+            שמור בענן
+          </Button>
+          <Button
+            type="button"
             variant="ghost"
             size="sm"
             onClick={handleReset}
