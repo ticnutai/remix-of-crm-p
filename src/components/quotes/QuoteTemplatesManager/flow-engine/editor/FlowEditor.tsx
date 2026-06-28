@@ -356,6 +356,7 @@ export default function FlowEditor({
       TableHeader,
       TableCell,
       DynamicField,
+      MultiSelection,
       Placeholder.configure({ placeholder: "התחל לכתוב..." }),
       PaginationPlus.configure(paginationOptions),
     ],
