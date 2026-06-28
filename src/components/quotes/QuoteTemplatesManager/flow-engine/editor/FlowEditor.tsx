@@ -254,6 +254,7 @@ export default function FlowEditor({
   templateDesignSettings,
   designSettings,
   onDesignSettingsChange,
+  projectDetails,
 }: Props) {
   const debounceRef = useRef<number | null>(null);
   const dragRef = useRef<{
