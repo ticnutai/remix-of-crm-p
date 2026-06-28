@@ -1,13 +1,15 @@
-// SmartColorPicker — בורר צבעים משוכלל עם 3 קטגוריות, צבעים שמורים בענן ו-Eyedropper
+// SmartColorPicker — בורר צבעים משוכלל: 3 קטגוריות, שמירה בענן, Eyedropper
 import React, { useState } from "react";
-import { Pipette, Trash2, Plus, Type as TypeIcon, Highlighter, Underline as UnderlineIcon } from "lucide-react";
+import {
+  Pipette,
+  X,
+  Star,
+  Type as TypeIcon,
+  Highlighter,
+  Underline as UnderlineIcon,
+  Check,
+} from "lucide-react";
 import { useSavedColors, type ColorCategory } from "./useSavedColors";
-
-interface Props {
-  category: ColorCategory;
-  onPick: (color: string) => void;
-  onClear: () => void;
-}
 
 const PRESETS: Record<ColorCategory, string[]> = {
   text: [
@@ -29,9 +31,9 @@ const PRESETS: Record<ColorCategory, string[]> = {
 };
 
 const CATEGORY_LABEL: Record<ColorCategory, string> = {
-  text: "צבע טקסט",
-  highlight: "רקע מתחת לטקסט",
-  underline: "צבע קו תחתון",
+  text: "טקסט",
+  highlight: "רקע",
+  underline: "קו תחתון",
 };
 
 const CATEGORY_ICON: Record<ColorCategory, React.ComponentType<{ className?: string }>> = {
@@ -42,6 +44,54 @@ const CATEGORY_ICON: Record<ColorCategory, React.ComponentType<{ className?: str
 
 function isValidHex(v: string): boolean {
   return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v.trim());
+}
+
+interface SwatchProps {
+  color: string;
+  onPick: () => void;
+  onSave?: () => void;
+  onRemove?: () => void;
+  saved?: boolean;
+}
+
+function Swatch({ color, onPick, onSave, onRemove, saved }: SwatchProps) {
+  return (
+    <div className="group relative">
+      <button
+        type="button"
+        onClick={onPick}
+        className="block h-7 w-7 rounded-md border border-border shadow-sm transition-transform duration-150 hover:scale-110 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/40"
+        style={{ backgroundColor: color }}
+        title={color}
+      />
+      {onSave && !saved && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSave();
+          }}
+          className="absolute -left-1 -top-1 hidden h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow group-hover:flex"
+          title="שמור צבע"
+        >
+          <Star className="h-2 w-2" />
+        </button>
+      )}
+      {onRemove && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          className="absolute -left-1 -top-1 hidden h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow group-hover:flex"
+          title="הסר"
+        >
+          <X className="h-2 w-2" />
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default function SmartColorPicker({
@@ -55,10 +105,12 @@ export default function SmartColorPicker({
 }) {
   const [tab, setTab] = useState<ColorCategory>(initialCategory);
   const { colors: saved, save, remove } = useSavedColors(tab);
-  const [custom, setCustom] = useState("#000000");
+  const [custom, setCustom] = useState("#162C58");
 
-  const pick = (c: string) => {
+  const pick = (c: string) => onPick(c, tab);
+  const pickAndSave = (c: string) => {
     onPick(c, tab);
+    save(c);
   };
 
   const handleEyedropper = async () => {
@@ -71,8 +123,7 @@ export default function SmartColorPicker({
       const res = await new w.EyeDropper().open();
       if (res?.sRGBHex) {
         setCustom(res.sRGBHex);
-        pick(res.sRGBHex);
-        save(res.sRGBHex);
+        pickAndSave(res.sRGBHex);
       }
     } catch {
       /* user cancelled */
@@ -80,11 +131,13 @@ export default function SmartColorPicker({
   };
 
   const Icon = CATEGORY_ICON[tab];
+  const isSaved = (c: string) =>
+    saved.some((s) => s.color.toLowerCase() === c.toLowerCase());
 
   return (
-    <div className="w-72 select-none" dir="rtl">
+    <div className="w-[280px] select-none" dir="rtl">
       {/* Tabs */}
-      <div className="mb-2 grid grid-cols-3 gap-1 rounded-md bg-muted/50 p-1">
+      <div className="mb-2 grid grid-cols-3 gap-1 rounded-lg bg-muted/60 p-1">
         {(Object.keys(CATEGORY_LABEL) as ColorCategory[]).map((c) => {
           const TabIcon = CATEGORY_ICON[c];
           const active = tab === c;
@@ -93,79 +146,75 @@ export default function SmartColorPicker({
               key={c}
               type="button"
               onClick={() => setTab(c)}
-              className={`flex items-center justify-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors ${
+              className={`flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all duration-150 ${
                 active
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
-              title={CATEGORY_LABEL[c]}
             >
               <TabIcon className="h-3 w-3" />
-              <span>{CATEGORY_LABEL[c].split(" ")[0]}</span>
+              <span>{CATEGORY_LABEL[c]}</span>
             </button>
           );
         })}
       </div>
 
-      <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-        <Icon className="h-3 w-3" />
-        {CATEGORY_LABEL[tab]}
+      <div className="mb-1.5 flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <Icon className="h-3 w-3" />
+          פלטה
+        </span>
+        <span className="text-[10px] opacity-60">ריחוף = ⭐ לשמירה</span>
       </div>
 
       {/* Presets */}
       <div className="grid grid-cols-8 gap-1.5">
         {PRESETS[tab].map((c) => (
-          <button
+          <Swatch
             key={c}
-            type="button"
-            onClick={() => pick(c)}
-            className="h-6 w-6 rounded border border-border transition-transform hover:scale-110"
-            style={{ backgroundColor: c }}
-            title={c}
+            color={c}
+            onPick={() => pick(c)}
+            onSave={() => save(c)}
+            saved={isSaved(c)}
           />
         ))}
       </div>
 
-      {/* Saved colors */}
-      {saved.length > 0 && (
-        <>
-          <div className="mt-3 mb-1 text-[11px] font-medium text-muted-foreground">שמורים</div>
-          <div className="grid grid-cols-8 gap-1.5">
-            {saved.map((s) => (
-              <div key={s.id} className="group relative">
-                <button
-                  type="button"
-                  onClick={() => pick(s.color)}
-                  className="h-6 w-6 rounded border border-border transition-transform hover:scale-110"
-                  style={{ backgroundColor: s.color }}
-                  title={s.color}
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    remove(s.id);
-                  }}
-                  className="absolute -left-1 -top-1 hidden h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow group-hover:flex"
-                  title="הסר"
-                >
-                  <Trash2 className="h-2 w-2" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </>
+      {/* Saved — תמיד מוצג, עם מצב ריק ברור */}
+      <div className="mt-3 mb-1.5 flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <Star className="h-3 w-3" />
+          שמורים ({saved.length})
+        </span>
+      </div>
+      {saved.length > 0 ? (
+        <div className="grid grid-cols-8 gap-1.5">
+          {saved.map((s) => (
+            <Swatch
+              key={s.id}
+              color={s.color}
+              onPick={() => pick(s.color)}
+              onRemove={() => remove(s.id)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-md border border-dashed border-border px-2 py-2 text-center text-[10.5px] text-muted-foreground">
+          אין צבעים שמורים. לחץ ⭐ על צבע, או "החל ושמור" למטה
+        </div>
       )}
 
       {/* Custom input */}
-      <div className="mt-3 rounded-md border border-border p-2">
-        <div className="mb-1 text-[11px] font-medium text-muted-foreground">צבע מותאם</div>
+      <div className="mt-3 rounded-lg border border-border bg-muted/30 p-2">
+        <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">
+          צבע מותאם אישית
+        </div>
         <div className="flex items-center gap-1.5">
           <input
             type="color"
             value={isValidHex(custom) ? custom : "#000000"}
             onChange={(e) => setCustom(e.target.value)}
-            className="h-7 w-9 cursor-pointer rounded border border-border"
+            className="h-8 w-10 cursor-pointer rounded-md border border-border bg-background"
             title="בחר צבע"
           />
           <input
@@ -173,13 +222,13 @@ export default function SmartColorPicker({
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
             placeholder="#RRGGBB"
-            className="h-7 flex-1 rounded border border-border bg-background px-2 text-left text-xs font-mono"
+            className="h-8 flex-1 rounded-md border border-border bg-background px-2 text-left font-mono text-xs focus:outline-none focus:ring-2 focus:ring-primary/40"
             dir="ltr"
           />
           <button
             type="button"
             onClick={handleEyedropper}
-            className="inline-flex h-7 w-7 items-center justify-center rounded border border-border hover:bg-muted"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background transition-colors hover:bg-muted"
             title="Eyedropper — זיהוי צבע מהמסך"
           >
             <Pipette className="h-3.5 w-3.5" />
@@ -189,22 +238,20 @@ export default function SmartColorPicker({
           <button
             type="button"
             disabled={!isValidHex(custom)}
-            onClick={() => {
-              pick(custom);
-              save(custom);
-            }}
-            className="inline-flex flex-1 items-center justify-center gap-1 rounded bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            onClick={() => pickAndSave(custom)}
+            className="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-primary px-2 py-1.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
-            <Plus className="h-3 w-3" />
+            <Star className="h-3 w-3" />
             החל ושמור
           </button>
           <button
             type="button"
             disabled={!isValidHex(custom)}
             onClick={() => pick(custom)}
-            className="rounded border border-border px-2 py-1 text-[11px] hover:bg-muted disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-1 rounded-md border border-border bg-background px-2 py-1.5 text-[11px] transition-colors hover:bg-muted disabled:opacity-50"
           >
-            החל בלבד
+            <Check className="h-3 w-3" />
+            החל
           </button>
         </div>
       </div>
@@ -213,7 +260,7 @@ export default function SmartColorPicker({
       <button
         type="button"
         onClick={() => onClear(tab)}
-        className="mt-2 w-full rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"
+        className="mt-2 w-full rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
         איפוס {CATEGORY_LABEL[tab]}
       </button>
