@@ -589,6 +589,14 @@ export default function FlowEditor({
                 הוסף שדה במקום הסמן
               </ContextMenuLabel>
               <ContextMenuSeparator />
+              <ContextMenuItem
+                onSelect={() => setCreateFieldOpen(true)}
+                className="gap-2 text-primary"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span className="text-sm font-medium">צור שדה חדש...</span>
+              </ContextMenuItem>
+              <ContextMenuSeparator />
               {Object.entries(fieldGroups).map(([group, fields], index) => (
                 <React.Fragment key={group}>
                   {index > 0 && <ContextMenuSeparator />}
