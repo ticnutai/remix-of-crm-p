@@ -129,10 +129,30 @@ function sanitizeRaw(input: string | undefined | null): string {
 }
 
 let CURRENT_PD: ProjectTokenData | undefined;
+let CURRENT_KEEP = false;
+
+function pushFieldOrText(out: FlowInline[], text: string) {
+  if (!CURRENT_KEEP) {
+    if (text) out.push({ type: "text", text });
+    return;
+  }
+  // במצב placeholder — סורקים גם טוקני [עברית] והופכים אותם לשדות דינמיים
+  const re = /\[([^\[\]\n]+)\]/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const key = normalizeHebrewToken(m[1]);
+    if (!key) continue;
+    if (m.index > last) out.push({ type: "text", text: text.slice(last, m.index) });
+    out.push({ type: "field", key });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push({ type: "text", text: text.slice(last) });
+}
 
 function textToInlines(raw: string, data?: MergeData): FlowInline[] {
   let clean = sanitizeRaw(raw);
-  if (CURRENT_PD) clean = applyProjectTokens(clean, CURRENT_PD);
+  if (CURRENT_PD && !CURRENT_KEEP) clean = applyProjectTokens(clean, CURRENT_PD);
   if (!clean) return [{ type: "text", text: "" }];
   const out: FlowInline[] = [];
   const regex = /\{\{\s*([^}\s]+)\s*\}\}/g;
@@ -140,13 +160,17 @@ function textToInlines(raw: string, data?: MergeData): FlowInline[] {
   let match: RegExpExecArray | null;
   while ((match = regex.exec(clean)) !== null) {
     if (match.index > lastIndex) {
-      out.push({ type: "text", text: clean.slice(lastIndex, match.index) });
+      pushFieldOrText(out, clean.slice(lastIndex, match.index));
     }
-    out.push({ type: "text", text: resolveField(match[1], data) });
+    if (CURRENT_KEEP) {
+      out.push({ type: "field", key: match[1] });
+    } else {
+      out.push({ type: "text", text: resolveField(match[1], data) });
+    }
     lastIndex = match.index + match[0].length;
   }
   if (lastIndex < clean.length) {
-    out.push({ type: "text", text: clean.slice(lastIndex) });
+    pushFieldOrText(out, clean.slice(lastIndex));
   }
   return out.length ? out : [{ type: "text", text: "" }];
 }
