@@ -126,7 +126,15 @@ import {
   ListPlus,
   Heading2,
   Star,
+  PanelsTopLeft,
+  LayoutList,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -4578,6 +4586,21 @@ export function HtmlTemplateEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("flow-v2");
+  const ICONS_ONLY_LS_KEY = "qt-editor-icons-only";
+  const [iconsOnly, setIconsOnly] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(ICONS_ONLY_LS_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(ICONS_ONLY_LS_KEY, iconsOnly ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [iconsOnly]);
   const isMobile = useIsMobile();
   const tabsContainerRef = useRef<HTMLDivElement>(null);
 
@@ -8680,35 +8703,74 @@ ${tbAt('footer')}
 
           {/* Desktop: full tab list */}
           <div className="hidden md:flex border-b bg-white px-6 items-center justify-between gap-2">
-            <TabsList className="h-12 bg-transparent gap-2 flex-wrap">
-              {tabConfig
-                .filter((t) => t.visible)
-                .map((t) => {
-                  const meta = TAB_META[t.value];
-                  const Icon = meta.icon;
-                  return (
-                    <TabsTrigger
-                      key={t.value}
-                      value={t.value}
-                      className={meta.activeClass}
+            <TooltipProvider delayDuration={200}>
+              <TabsList className="h-12 bg-transparent gap-2 flex-wrap">
+                {tabConfig
+                  .filter((t) => t.visible)
+                  .map((t) => {
+                    const meta = TAB_META[t.value];
+                    const Icon = meta.icon;
+                    const trigger = (
+                      <TabsTrigger
+                        key={t.value}
+                        value={t.value}
+                        className={
+                          iconsOnly
+                            ? `${meta.activeClass} !w-9 !h-9 !p-0 justify-center`
+                            : meta.activeClass
+                        }
+                        aria-label={meta.label}
+                      >
+                        <Icon className={iconsOnly ? "h-4 w-4" : "h-4 w-4 ml-2"} />
+                        {!iconsOnly && meta.label}
+                      </TabsTrigger>
+                    );
+                    if (!iconsOnly) return trigger;
+                    return (
+                      <Tooltip key={t.value}>
+                        <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+                        <TooltipContent side="bottom">{meta.label}</TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+              </TabsList>
+            </TooltipProvider>
+            <div className="flex items-center gap-1 shrink-0">
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-gray-500 hover:text-[#B8860B]"
+                      onClick={() => setIconsOnly((v) => !v)}
+                      aria-label={iconsOnly ? "תצוגה מלאה" : "תצוגת אייקונים בלבד"}
                     >
-                      <Icon className="h-4 w-4 ml-2" />
-                      {meta.label}
-                    </TabsTrigger>
-                  );
-                })}
-            </TabsList>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 text-gray-500 hover:text-[#B8860B] shrink-0"
-              onClick={() => setShowTabsSettings(true)}
-              title="הגדרות טאבים — סדר ונראות"
-              aria-label="הגדרות טאבים"
-            >
-              <Settings className="h-5 w-5" />
-            </Button>
+                      {iconsOnly ? (
+                        <LayoutList className="h-5 w-5" />
+                      ) : (
+                        <PanelsTopLeft className="h-5 w-5" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {iconsOnly ? "תצוגה מלאה" : "תצוגת אייקונים בלבד"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 text-gray-500 hover:text-[#B8860B]"
+                onClick={() => setShowTabsSettings(true)}
+                title="הגדרות טאבים — סדר ונראות"
+                aria-label="הגדרות טאבים"
+              >
+                <Settings className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
 
           {/* Tabs settings dialog — non-blocking (modal={false}) */}
