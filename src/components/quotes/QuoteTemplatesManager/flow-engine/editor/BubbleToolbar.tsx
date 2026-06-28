@@ -120,11 +120,26 @@ export default function BubbleToolbar({ editor }: Props) {
       }}
       className="z-50 flex items-center gap-0.5 rounded-lg border border-border bg-popover px-1.5 py-1 shadow-lg"
     >
+      {/* Multi-selection indicator */}
+      {extrasCount > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => clearExtraRanges(editor)}
+            title={`${extrasCount + 1} טווחים נבחרו — לחץ לאיפוס (Esc)`}
+            className="inline-flex h-7 items-center gap-1 rounded bg-primary/10 px-1.5 text-[10px] font-bold text-primary hover:bg-primary/20"
+          >
+            ×{extrasCount + 1}
+          </button>
+          <div className="mx-1 h-5 w-px bg-border" />
+        </>
+      )}
+
       {/* Bold / Italic / Underline */}
       <button
         type="button"
         className={`${btnBase} ${editor.isActive("bold") ? btnActive : ""}`}
-        onClick={run(() => (editor.chain().focus() as any).toggleBold().run())}
+        onClick={run(() => apply((c) => c.toggleBold()))}
         title="מודגש"
       >
         <Bold className="h-3.5 w-3.5" />
@@ -132,7 +147,7 @@ export default function BubbleToolbar({ editor }: Props) {
       <button
         type="button"
         className={`${btnBase} ${editor.isActive("italic") ? btnActive : ""}`}
-        onClick={run(() => (editor.chain().focus() as any).toggleItalic().run())}
+        onClick={run(() => apply((c) => c.toggleItalic()))}
         title="נטוי"
       >
         <Italic className="h-3.5 w-3.5" />
@@ -140,7 +155,7 @@ export default function BubbleToolbar({ editor }: Props) {
       <button
         type="button"
         className={`${btnBase} ${editor.isActive("underline") ? btnActive : ""}`}
-        onClick={run(() => (editor.chain().focus() as any).toggleUnderline().run())}
+        onClick={run(() => apply((c) => c.toggleUnderline()))}
         title="קו תחתון"
       >
         <UnderlineIcon className="h-3.5 w-3.5" />
@@ -148,7 +163,7 @@ export default function BubbleToolbar({ editor }: Props) {
       <button
         type="button"
         className={`${btnBase} ${editor.isActive("highlight") ? btnActive : ""}`}
-        onClick={run(() => (editor.chain().focus() as any).toggleHighlight().run())}
+        onClick={run(() => apply((c) => c.toggleHighlight()))}
         title="הדגשה צהובה"
       >
         <Highlighter className="h-3.5 w-3.5" />
@@ -175,9 +190,7 @@ export default function BubbleToolbar({ editor }: Props) {
               type="button"
               className="w-full rounded px-2 py-1 text-right text-sm hover:bg-muted"
               style={{ fontFamily: f.value }}
-              onClick={() =>
-                (editor.chain().focus() as any).setFontFamily(f.value).run()
-              }
+              onClick={() => apply((c) => c.setFontFamily(f.value))}
             >
               {f.label}
             </button>
@@ -186,7 +199,7 @@ export default function BubbleToolbar({ editor }: Props) {
           <button
             type="button"
             className="w-full rounded px-2 py-1 text-right text-xs text-muted-foreground hover:bg-muted"
-            onClick={() => (editor.chain().focus() as any).unsetFontFamily().run()}
+            onClick={() => apply((c) => c.unsetFontFamily())}
           >
             אפס גופן
           </button>
@@ -208,7 +221,7 @@ export default function BubbleToolbar({ editor }: Props) {
                 key={s}
                 type="button"
                 className="rounded border border-border px-1 py-0.5 text-xs hover:bg-muted"
-                onClick={() => (editor.chain().focus() as any).setFontSize(s).run()}
+                onClick={() => apply((c) => c.setFontSize(s))}
               >
                 {parseInt(s)}
               </button>
@@ -217,7 +230,7 @@ export default function BubbleToolbar({ editor }: Props) {
           <button
             type="button"
             className="mt-1 w-full rounded px-2 py-1 text-right text-xs text-muted-foreground hover:bg-muted"
-            onClick={() => (editor.chain().focus() as any).setFontSize(null).run()}
+            onClick={() => apply((c) => c.setFontSize(null))}
           >
             אפס
           </button>
@@ -240,10 +253,7 @@ export default function BubbleToolbar({ editor }: Props) {
                 type="button"
                 className="h-6 w-6 rounded border border-border"
                 style={{ backgroundColor: c }}
-                onClick={() => {
-                  (editor.chain().focus() as any).setGradient(null).run();
-                  (editor.chain().focus() as any).setColor(c).run();
-                }}
+                onClick={() => apply((ch) => ch.setGradient(null).setColor(c))}
                 title={c}
               />
             ))}
@@ -253,17 +263,14 @@ export default function BubbleToolbar({ editor }: Props) {
               type="color"
               className="h-7 w-7 cursor-pointer rounded border border-border"
               onChange={(e) => {
-                (editor.chain().focus() as any).setGradient(null).run();
-                (editor.chain().focus() as any).setColor(e.target.value).run();
+                const v = e.target.value;
+                apply((ch) => ch.setGradient(null).setColor(v));
               }}
             />
             <button
               type="button"
               className="ml-auto rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
-              onClick={() => {
-                (editor.chain().focus() as any).setGradient(null).run();
-                (editor.chain().focus() as any).unsetColor().run();
-              }}
+              onClick={() => apply((ch) => ch.setGradient(null).unsetColor())}
             >
               אפס צבע
             </button>
@@ -293,7 +300,7 @@ export default function BubbleToolbar({ editor }: Props) {
                   color: "transparent",
                   WebkitTextFillColor: "transparent",
                 }}
-                onClick={() => (editor.chain().focus() as any).setGradient(g.value).run()}
+                onClick={() => apply((c) => c.setGradient(g.value))}
               >
                 {g.label}
               </button>
@@ -302,7 +309,7 @@ export default function BubbleToolbar({ editor }: Props) {
           <button
             type="button"
             className="mt-1 w-full rounded px-2 py-1 text-right text-xs text-muted-foreground hover:bg-muted"
-            onClick={() => (editor.chain().focus() as any).setGradient(null).run()}
+            onClick={() => apply((c) => c.setGradient(null))}
           >
             הסר גרדיאנט
           </button>
@@ -325,7 +332,7 @@ export default function BubbleToolbar({ editor }: Props) {
               key={s.value}
               type="button"
               className="w-full rounded px-2 py-1 text-right text-sm hover:bg-muted"
-              onClick={() => (editor.chain().focus() as any).setLetterSpacing(s.value).run()}
+              onClick={() => apply((c) => c.setLetterSpacing(s.value))}
             >
               {s.label}
             </button>
@@ -347,7 +354,7 @@ export default function BubbleToolbar({ editor }: Props) {
               key={s.value}
               type="button"
               className="w-full rounded px-2 py-1 text-right text-sm hover:bg-muted"
-              onClick={() => (editor.chain().focus() as any).setWordSpacing(s.value).run()}
+              onClick={() => apply((c) => c.setWordSpacing(s.value))}
             >
               {s.label}
             </button>
@@ -361,7 +368,7 @@ export default function BubbleToolbar({ editor }: Props) {
       <button
         type="button"
         className={`${btnBase} ${editor.isActive({ textAlign: "right" }) ? btnActive : ""}`}
-        onClick={() => (editor.chain().focus() as any).setTextAlign("right").run()}
+        onClick={() => apply((c) => c.setTextAlign("right"))}
         title="ימין"
       >
         <AlignRight className="h-3.5 w-3.5" />
@@ -369,7 +376,7 @@ export default function BubbleToolbar({ editor }: Props) {
       <button
         type="button"
         className={`${btnBase} ${editor.isActive({ textAlign: "center" }) ? btnActive : ""}`}
-        onClick={() => (editor.chain().focus() as any).setTextAlign("center").run()}
+        onClick={() => apply((c) => c.setTextAlign("center"))}
         title="מרכז"
       >
         <AlignCenter className="h-3.5 w-3.5" />
@@ -377,7 +384,7 @@ export default function BubbleToolbar({ editor }: Props) {
       <button
         type="button"
         className={`${btnBase} ${editor.isActive({ textAlign: "left" }) ? btnActive : ""}`}
-        onClick={() => (editor.chain().focus() as any).setTextAlign("left").run()}
+        onClick={() => apply((c) => c.setTextAlign("left"))}
         title="שמאל"
       >
         <AlignLeft className="h-3.5 w-3.5" />
@@ -385,7 +392,7 @@ export default function BubbleToolbar({ editor }: Props) {
       <button
         type="button"
         className={`${btnBase} ${editor.isActive({ textAlign: "justify" }) ? btnActive : ""}`}
-        onClick={() => (editor.chain().focus() as any).setTextAlign("justify").run()}
+        onClick={() => apply((c) => c.setTextAlign("justify"))}
         title="מיושר"
       >
         <AlignJustify className="h-3.5 w-3.5" />
