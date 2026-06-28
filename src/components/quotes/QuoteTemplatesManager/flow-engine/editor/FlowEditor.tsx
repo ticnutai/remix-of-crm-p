@@ -32,6 +32,7 @@ import BubbleToolbar from "./BubbleToolbar";
 import AdvancedTextStyle from "./AdvancedTextStyle";
 import { useDynamicFields, type DynamicFieldDefinition } from "./dynamicFields";
 import CreateFieldDialog from "./CreateFieldDialog";
+import { MultiSelection, addExtraRange, clearExtraRanges, getExtraRanges } from "./MultiSelection";
 
 import type { DesignPresetConfig } from "../presets/types";
 import type { FlowPageSetup } from "../types";
@@ -355,6 +356,7 @@ export default function FlowEditor({
       TableHeader,
       TableCell,
       DynamicField,
+      MultiSelection,
       Placeholder.configure({ placeholder: "התחל לכתוב..." }),
       PaginationPlus.configure(paginationOptions),
     ],
@@ -538,8 +540,37 @@ export default function FlowEditor({
     };
   }, [onDesignSettingsChange]);
 
+  // Multi-selection: Ctrl/Cmd + drag לסימון מספר טווחים, ESC/קליק רגיל לאיפוס
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom as HTMLElement;
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const sel = editor.state.selection;
+      if (!sel.empty) {
+        addExtraRange(editor, { from: sel.from, to: sel.to });
+      }
+    };
+    const onClick = (e: MouseEvent) => {
+      if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+      // איפוס רק אם לא לוחצים על תפריט הצף/פופאובר
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("[data-radix-popper-content-wrapper]")) return;
+      if (getExtraRanges(editor).length) clearExtraRanges(editor);
+    };
+
+    dom.addEventListener("mousedown", onMouseDown, true);
+    dom.addEventListener("click", onClick);
+    return () => {
+      dom.removeEventListener("mousedown", onMouseDown, true);
+      dom.removeEventListener("click", onClick);
+    };
+  }, [editor]);
+
   return (
     <div className="flex h-full flex-col bg-background">
+
       <MenuBar
         editor={editor}
         fields={dynamicFields}
@@ -776,6 +807,7 @@ export default function FlowEditor({
         .flow-editor-content hr { border: 0; border-top: 1px dashed hsl(var(--border)); margin: .8rem 0; }
         .flow-editor-content mark { background: ${preset?.colors.accent || "hsl(var(--accent))"}59; padding: 0 .15rem; border-radius: .15rem; }
         .flow-editor-content [data-field] { user-select: all; }
+        .flow-editor-content .flow-multi-sel { background: rgba(216, 172, 39, 0.32); box-shadow: inset 0 -2px 0 rgba(216, 172, 39, 0.85); border-radius: 2px; }
         .flow-editor-content .ProseMirror-focused { outline: none; }
       `}</style>
     </div>
