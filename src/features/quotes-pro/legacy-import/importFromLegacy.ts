@@ -5,6 +5,7 @@ import {
   DEFAULT_QP_PAGE,
   DEFAULT_QP_PRICING,
   DEFAULT_QP_THEME,
+  DEFAULT_QP_STRIPS,
 } from "../model/defaults";
 import type {
   QPBlock,
@@ -234,6 +235,7 @@ export function convertLegacyToDocument(
     blocks,
     theme,
     theme_id: null,
+    strips: DEFAULT_QP_STRIPS,
     page: { ...DEFAULT_QP_PAGE },
     pricing: {
       ...DEFAULT_QP_PRICING,

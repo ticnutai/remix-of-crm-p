@@ -26,6 +26,7 @@ import {
 } from "./frameStyles";
 import { useDebouncedValue } from "@/hooks/useDebounce";
 import { useDefaultVatRate, DEFAULT_VAT_RATE } from "@/lib/vat-utils";
+import { cn } from "@/lib/utils";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -128,6 +129,7 @@ import {
   Star,
   PanelsTopLeft,
   LayoutList,
+  Rows2,
 } from "lucide-react";
 import {
   Tooltip,
@@ -4587,11 +4589,11 @@ export function HtmlTemplateEditor({
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("flow-v2");
   const TAB_DISPLAY_MODE_LS_KEY = "qt-editor-tab-display-mode";
-  type TabDisplayMode = "full" | "iconsOnly" | "textCompact";
+  type TabDisplayMode = "full" | "iconsOnly" | "stacked" | "twoRows";
   const [tabDisplayMode, setTabDisplayMode] = useState<TabDisplayMode>(() => {
     try {
       const stored = localStorage.getItem(TAB_DISPLAY_MODE_LS_KEY);
-      if (stored === "iconsOnly" || stored === "textCompact") return stored;
+      if (stored === "iconsOnly" || stored === "stacked" || stored === "twoRows") return stored;
       return "full";
     } catch {
       return "full";
@@ -8710,7 +8712,9 @@ ${tbAt('footer')}
               <TabsList
                 className={cn(
                   "bg-transparent gap-2 flex-wrap",
-                  tabDisplayMode === "textCompact" ? "h-auto py-1" : "h-12"
+                  tabDisplayMode === "stacked" || tabDisplayMode === "twoRows"
+                    ? "h-auto py-1"
+                    : "h-12"
                 )}
               >
                 {tabConfig
@@ -8725,15 +8729,25 @@ ${tbAt('footer')}
                         className={
                           tabDisplayMode === "iconsOnly"
                             ? `${meta.activeClass} !w-9 !h-9 !p-0 justify-center`
-                            : tabDisplayMode === "textCompact"
-                              ? `${meta.activeClass} px-2 py-1 text-xs h-auto`
-                              : meta.activeClass
+                            : tabDisplayMode === "stacked"
+                              ? `${meta.activeClass} flex-col px-2 py-1 text-xs h-auto leading-tight`
+                              : tabDisplayMode === "twoRows"
+                                ? `${meta.activeClass} px-2 py-1 text-xs h-auto leading-tight inline-flex items-center`
+                                : meta.activeClass
                         }
                         aria-label={meta.label}
                       >
-                        {tabDisplayMode !== "textCompact" && (
-                          <Icon className={tabDisplayMode === "iconsOnly" ? "h-4 w-4" : "h-4 w-4 ml-2"} />
-                        )}
+                        <Icon
+                          className={
+                            tabDisplayMode === "iconsOnly"
+                              ? "h-4 w-4"
+                              : tabDisplayMode === "stacked"
+                                ? "h-4 w-4 mb-0.5"
+                                : tabDisplayMode === "twoRows"
+                                  ? "h-3.5 w-3.5 ml-1.5"
+                                  : "h-4 w-4 ml-2"
+                          }
+                        />
                         {tabDisplayMode !== "iconsOnly" && meta.label}
                       </TabsTrigger>
                     );
@@ -8756,31 +8770,36 @@ ${tbAt('footer')}
                       variant="ghost"
                       size="icon"
                       className="h-9 w-9 text-gray-500 hover:text-[#B8860B]"
-                      onClick={() =>
-                        setTabDisplayMode((mode) => {
-                          if (mode === "full") return "iconsOnly";
-                          if (mode === "iconsOnly") return "textCompact";
-                          return "full";
-                        })
-                      }
-                      aria-label={
-                        tabDisplayMode === "full"
-                          ? "תצוגת אייקונים בלבד"
-                          : tabDisplayMode === "iconsOnly"
-                            ? "תצוגת טקסט בלבד בשתי שורות"
+                    onClick={() =>
+                      setTabDisplayMode((mode) => {
+                        if (mode === "full") return "iconsOnly";
+                        if (mode === "iconsOnly") return "stacked";
+                        if (mode === "stacked") return "twoRows";
+                        return "full";
+                      })
+                    }
+                    aria-label={
+                      tabDisplayMode === "full"
+                        ? "תצוגת אייקונים בלבד"
+                        : tabDisplayMode === "iconsOnly"
+                          ? "תצוגת אייקון + טקסט בשתי שורות"
+                          : tabDisplayMode === "stacked"
+                            ? "תצוגת טאבים בשתי שורות (קומפקטי)"
                             : "תצוגה מלאה"
-                      }
-                    >
-                      {tabDisplayMode === "full" && <PanelsTopLeft className="h-5 w-5" />}
-                      {tabDisplayMode === "iconsOnly" && <LayoutList className="h-5 w-5" />}
-                      {tabDisplayMode === "textCompact" && <Type className="h-5 w-5" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    {tabDisplayMode === "full" && "תצוגת אייקונים בלבד"}
-                    {tabDisplayMode === "iconsOnly" && "תצוגת טקסט בלבד בשתי שורות"}
-                    {tabDisplayMode === "textCompact" && "תצוגה מלאה"}
-                  </TooltipContent>
+                    }
+                  >
+                    {tabDisplayMode === "full" && <PanelsTopLeft className="h-5 w-5" />}
+                    {tabDisplayMode === "iconsOnly" && <LayoutList className="h-5 w-5" />}
+                    {tabDisplayMode === "stacked" && <Type className="h-5 w-5" />}
+                    {tabDisplayMode === "twoRows" && <Rows2 className="h-5 w-5" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {tabDisplayMode === "full" && "תצוגת אייקונים בלבד"}
+                  {tabDisplayMode === "iconsOnly" && "תצוגת אייקון + טקסט בשתי שורות"}
+                  {tabDisplayMode === "stacked" && "תצוגת טאבים בשתי שורות (קומפקטי)"}
+                  {tabDisplayMode === "twoRows" && "תצוגה מלאה"}
+                </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
               <Button
