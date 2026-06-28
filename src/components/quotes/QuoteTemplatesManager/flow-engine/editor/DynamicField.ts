@@ -45,6 +45,17 @@ export const DynamicField = Node.create<DynamicFieldOptions>({
     return {
       key: { default: "" },
       label: { default: null },
+      // snapshot של הערך שנפתר — נשמר ב-HTML כ-data-resolved-value
+      // כדי שהמילוי יישרד רענון/החלפת טאב גם אם אין resolver פעיל.
+      resolvedValue: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.getAttribute("data-resolved-value"),
+        renderHTML: (attrs: Record<string, unknown>) => {
+          const v = attrs.resolvedValue;
+          if (v == null || v === "") return {};
+          return { "data-resolved-value": String(v) };
+        },
+      },
     };
   },
 
@@ -55,7 +66,12 @@ export const DynamicField = Node.create<DynamicFieldOptions>({
   renderHTML({ HTMLAttributes }) {
     const key = String(HTMLAttributes.key || HTMLAttributes["data-field"] || "");
     const label = String(HTMLAttributes.label || key);
-    const value = resolveField(key);
+    const live = resolveField(key);
+    const snapshot =
+      HTMLAttributes.resolvedValue != null
+        ? String(HTMLAttributes.resolvedValue)
+        : (HTMLAttributes["data-resolved-value"] as string | undefined) || "";
+    const value = live !== "" ? live : snapshot;
     const hasValue = value !== "";
     if (hasValue) {
       // נפתר → טקסט רגיל לחלוטין, ללא רקע/מסגרת/צ'יפ
@@ -66,6 +82,7 @@ export const DynamicField = Node.create<DynamicFieldOptions>({
             "data-field": key,
             "data-label": label,
             "data-resolved": "true",
+            "data-resolved-value": value,
             title: `${label}: ${value}`,
             class: "flow-field-resolved",
           },
