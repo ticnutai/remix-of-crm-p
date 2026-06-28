@@ -1,5 +1,5 @@
 // FlowEditor — TipTap rich text editor, RTL, עם autosave ושדות דינמיים
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Color } from "@tiptap/extension-color";
@@ -13,7 +13,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
 import { FontFamily } from "@tiptap/extension-font-family";
 import { PaginationPlus, type PaginationPlusOptions } from "tiptap-pagination-plus";
-import { Tag } from "lucide-react";
+import { Tag, Plus } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -30,7 +30,8 @@ import { projectToMergeData, type ProjectTokenData } from "../projectTokens";
 import MenuBar from "./MenuBar";
 import BubbleToolbar from "./BubbleToolbar";
 import AdvancedTextStyle from "./AdvancedTextStyle";
-import { groupDynamicFields, type DynamicFieldDefinition } from "./dynamicFields";
+import { useDynamicFields, type DynamicFieldDefinition } from "./dynamicFields";
+import CreateFieldDialog from "./CreateFieldDialog";
 
 import type { DesignPresetConfig } from "../presets/types";
 import type { FlowPageSetup } from "../types";
@@ -267,7 +268,8 @@ export default function FlowEditor({
   const showHeaderStrip = pagedMode && stripSettings.showHeader && Boolean(stripSettings.headerUrl);
   const showFooterStrip = pagedMode && stripSettings.showFooter && Boolean(stripSettings.footerUrl);
   const canResizeStrips = Boolean(onDesignSettingsChange);
-  const fieldGroups = useMemo(() => groupDynamicFields(), []);
+  const { fields: dynamicFields, groups: fieldGroups } = useDynamicFields();
+  const [createFieldOpen, setCreateFieldOpen] = useState(false);
   const paginationOptions = useMemo(
     () =>
       buildPaginationOptions({
@@ -538,8 +540,21 @@ export default function FlowEditor({
 
   return (
     <div className="flex h-full flex-col bg-background">
-      <MenuBar editor={editor} />
+      <MenuBar
+        editor={editor}
+        fields={dynamicFields}
+        onCreateField={() => setCreateFieldOpen(true)}
+      />
       <BubbleToolbar editor={editor} />
+      <CreateFieldDialog
+        open={createFieldOpen}
+        onOpenChange={setCreateFieldOpen}
+        onCreated={(field) => {
+          if (editor) {
+            (editor.chain().focus() as any).insertDynamicField(field.key, field.label).run();
+          }
+        }}
+      />
       <div
         className={`flow-editor-scroll flex-1 overflow-auto ${
           pagedMode ? "bg-slate-200/70" : "bg-muted/30"
