@@ -470,6 +470,42 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_assets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          design_state: Json | null
+          id: string
+          kind: string
+          logo_url: string | null
+          name: string
+          strip_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          design_state?: Json | null
+          id?: string
+          kind?: string
+          logo_url?: string | null
+          name: string
+          strip_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          design_state?: Json | null
+          id?: string
+          kind?: string
+          logo_url?: string | null
+          name?: string
+          strip_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       budgets: {
         Row: {
           category: string
