@@ -400,6 +400,26 @@ export default function FlowEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialHtml, editor]);
 
+  // עדכון resolver של שדות דינמיים — מציג את הערכים בפועל מתוך "פרטי פרויקט"
+  useEffect(() => {
+    const mergeData = projectToMergeData(projectDetails);
+    setFieldResolver((key) => {
+      const v = mergeData[key];
+      return v === undefined || v === "" ? null : v;
+    });
+    // טריגר לרינדור מחדש של node-views של DynamicField
+    if (editor) {
+      try {
+        editor.view.dispatch(editor.state.tr.setMeta("dynamicFieldResolverChanged", true));
+      } catch {
+        /* ignore */
+      }
+    }
+    return () => {
+      setFieldResolver(null);
+    };
+  }, [editor, projectDetails]);
+
   useEffect(() => {
     if (!editor) return;
 
