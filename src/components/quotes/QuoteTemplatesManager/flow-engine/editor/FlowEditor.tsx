@@ -540,7 +540,35 @@ export default function FlowEditor({
     };
   }, [onDesignSettingsChange]);
 
-  return (
+  // Multi-selection: Ctrl/Cmd + drag לסימון מספר טווחים, ESC/קליק רגיל לאיפוס
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom as HTMLElement;
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const sel = editor.state.selection;
+      if (!sel.empty) {
+        addExtraRange(editor, { from: sel.from, to: sel.to });
+      }
+    };
+    const onClick = (e: MouseEvent) => {
+      if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+      // איפוס רק אם לא לוחצים על תפריט הצף/פופאובר
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("[data-radix-popper-content-wrapper]")) return;
+      if (getExtraRanges(editor).length) clearExtraRanges(editor);
+    };
+
+    dom.addEventListener("mousedown", onMouseDown, true);
+    dom.addEventListener("click", onClick);
+    return () => {
+      dom.removeEventListener("mousedown", onMouseDown, true);
+      dom.removeEventListener("click", onClick);
+    };
+  }, [editor]);
+
+
     <div className="flex h-full flex-col bg-background">
       <MenuBar
         editor={editor}
