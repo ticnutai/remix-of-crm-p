@@ -568,8 +568,9 @@ export default function FlowEditor({
     };
   }, [editor]);
 
-
+  return (
     <div className="flex h-full flex-col bg-background">
+
       <MenuBar
         editor={editor}
         fields={dynamicFields}
