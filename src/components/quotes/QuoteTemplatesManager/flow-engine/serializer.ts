@@ -208,6 +208,8 @@ export function serializeTemplate(
     headerStripUrl,
     footerStripUrl,
     stripBgColor: firstValue(ds.stripBgColor, ds.strip_bg_color, "#ffffff"),
+    headerStripHeight: Math.max(24, Math.round(Number(ds.headerStripHeight) || 150)),
+    footerStripHeight: Math.max(24, Math.round(Number(ds.footerStripHeight) || 90)),
     companyName: firstValue(ds.companyName, ds.company_name, ""),
     companySubtitle: firstValue(ds.companySubtitle, ds.company_subtitle, ""),
     contactLine: [contact.phone, contact.email, contact.address].filter(Boolean).join("  |  "),

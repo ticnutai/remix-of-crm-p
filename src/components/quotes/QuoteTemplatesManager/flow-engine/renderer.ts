@@ -84,8 +84,10 @@ export function renderFlowToHtml(doc: FlowDocument, preset?: DesignPresetConfig)
   const m = page.marginMm;
   const hasHeaderStrip = Boolean(branding.headerStripUrl);
   const hasFooterStrip = Boolean(branding.footerStripUrl);
-  const topMargin = Math.max(m.top, hasHeaderStrip ? 36 : m.top);
-  const bottomMargin = Math.max(m.bottom, hasFooterStrip ? 30 : m.bottom);
+  const headerStripMm = Math.max(8, Math.round((Number(branding.headerStripHeight) || 150) * 0.264583));
+  const footerStripMm = Math.max(8, Math.round((Number(branding.footerStripHeight) || 90) * 0.264583));
+  const topMargin = Math.max(m.top, hasHeaderStrip ? headerStripMm + 6 : m.top);
+  const bottomMargin = Math.max(m.bottom, hasFooterStrip ? footerStripMm + 5 : m.bottom);
   const stripBgColor = branding.stripBgColor || "#ffffff";
 
   const sectionsHtml = sections
@@ -139,7 +141,7 @@ export function renderFlowToHtml(doc: FlowDocument, preset?: DesignPresetConfig)
   .running-header img { max-height: 16mm; width: auto; }
   .running-header.strip {
     display: block;
-    height: 24mm;
+    height: ${headerStripMm}mm;
     overflow: hidden;
     padding: 0;
     border-bottom: 0;
@@ -148,7 +150,7 @@ export function renderFlowToHtml(doc: FlowDocument, preset?: DesignPresetConfig)
   .running-header.strip .strip-img {
     display: block;
     width: 100%;
-    height: 24mm;
+    height: ${headerStripMm}mm;
     max-height: none;
     object-fit: cover;
     object-position: center;
@@ -163,7 +165,7 @@ export function renderFlowToHtml(doc: FlowDocument, preset?: DesignPresetConfig)
     color: #666; font-size: 9pt; direction: rtl;
   }
   .running-footer.strip {
-    height: 14mm;
+    height: ${footerStripMm}mm;
     overflow: hidden;
     padding: 0;
     border-top: 0;
@@ -172,7 +174,7 @@ export function renderFlowToHtml(doc: FlowDocument, preset?: DesignPresetConfig)
   .running-footer.strip .strip-img {
     display: block;
     width: 100%;
-    height: 14mm;
+    height: ${footerStripMm}mm;
     object-fit: cover;
     object-position: center;
   }

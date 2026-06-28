@@ -27,6 +27,7 @@ interface Props {
   pageSetup?: FlowPageSetup;
   templateDesignSettings?: any;
   designSettings?: any;
+  onDesignSettingsChange?: (patch: Record<string, any>) => void;
 }
 
 const PAGE_SIZES_MM: Record<string, { width: number; height: number }> = {
@@ -90,12 +91,34 @@ export default function FlowEditor({
   pageSetup,
   templateDesignSettings,
   designSettings,
+  onDesignSettingsChange,
 }: Props) {
   const debounceRef = useRef<number | null>(null);
+  const dragRef = useRef<{
+    position: "header" | "footer";
+    startY: number;
+    startHeight: number;
+  } | null>(null);
   const pagedMode = Boolean(pageSetup && pageSetup.size !== "none");
   const stripSettings = getStripSettings(templateDesignSettings, designSettings);
   const showHeaderStrip = pagedMode && stripSettings.showHeader && Boolean(stripSettings.headerUrl);
   const showFooterStrip = pagedMode && stripSettings.showFooter && Boolean(stripSettings.footerUrl);
+  const visualPageCount = 10;
+
+  const startStripResize = (
+    position: "header" | "footer",
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    dragRef.current = {
+      position,
+      startY: event.clientY,
+      startHeight: position === "header" ? stripSettings.headerHeight : stripSettings.footerHeight,
+    };
+    document.body.style.cursor = "ns-resize";
+    document.body.style.userSelect = "none";
+  };
 
   const editor = useEditor({
     extensions: [
@@ -160,6 +183,40 @@ export default function FlowEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialHtml, editor]);
 
+  useEffect(() => {
+    const handleMove = (event: MouseEvent) => {
+      const drag = dragRef.current;
+      if (!drag || !onDesignSettingsChange) return;
+      const delta = event.clientY - drag.startY;
+      const rawHeight =
+        drag.position === "header"
+          ? drag.startHeight + delta
+          : drag.startHeight - delta;
+      const nextHeight = Math.max(24, Math.min(420, Math.round(rawHeight)));
+      onDesignSettingsChange(
+        drag.position === "header"
+          ? { headerStripHeight: nextHeight }
+          : { footerStripHeight: nextHeight },
+      );
+    };
+
+    const handleUp = () => {
+      if (!dragRef.current) return;
+      dragRef.current = null;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [onDesignSettingsChange]);
+
   return (
     <div className="flex h-full flex-col bg-background">
       <MenuBar editor={editor} />
@@ -177,91 +234,96 @@ export default function FlowEditor({
               : "max-w-[860px] rounded-md border bg-background shadow-sm"
           }`}
         >
-          {showHeaderStrip && (
-            <div
-              className="flow-editor-repeat-strip flow-editor-repeat-strip-top"
-              aria-hidden="true"
-            />
-          )}
-          {showFooterStrip && (
-            <div
-              className="flow-editor-repeat-strip flow-editor-repeat-strip-bottom"
-              aria-hidden="true"
-            />
-          )}
+          {showHeaderStrip &&
+            Array.from({ length: visualPageCount }).map((_, index) => (
+              <div
+                key={`header-${index}`}
+                className="flow-editor-strip-instance flow-editor-strip-header"
+                style={{
+                  top: `calc(${index} * (var(--flow-editor-page-height) + var(--flow-editor-page-gap)))`,
+                  height: `${stripSettings.headerHeight}px`,
+                  backgroundImage: `url("${String(stripSettings.headerUrl || "").replace(/"/g, "%22")}")`,
+                }}
+              >
+                {onDesignSettingsChange && index === 0 && (
+                  <button
+                    type="button"
+                    className="flow-editor-strip-handle flow-editor-strip-handle-bottom"
+                    onMouseDown={(event) => startStripResize("header", event)}
+                    title="גרור לשינוי גובה הסטריפ העליון"
+                    aria-label="גרור לשינוי גובה הסטריפ העליון"
+                  />
+                )}
+              </div>
+            ))}
+          {showFooterStrip &&
+            Array.from({ length: visualPageCount }).map((_, index) => (
+              <div
+                key={`footer-${index}`}
+                className="flow-editor-strip-instance flow-editor-strip-footer"
+                style={{
+                  top: `calc(${index} * (var(--flow-editor-page-height) + var(--flow-editor-page-gap)) + var(--flow-editor-page-height) - ${stripSettings.footerHeight}px)`,
+                  height: `${stripSettings.footerHeight}px`,
+                  backgroundImage: `url("${String(stripSettings.footerUrl || "").replace(/"/g, "%22")}")`,
+                }}
+              >
+                {onDesignSettingsChange && index === 0 && (
+                  <button
+                    type="button"
+                    className="flow-editor-strip-handle flow-editor-strip-handle-top"
+                    onMouseDown={(event) => startStripResize("footer", event)}
+                    title="גרור לשינוי גובה הסטריפ התחתון"
+                    aria-label="גרור לשינוי גובה הסטריפ התחתון"
+                  />
+                )}
+              </div>
+            ))}
           <EditorContent editor={editor} />
         </div>
       </div>
       <style>{`
         .flow-editor-content { padding: 1.5rem; font-family: ${preset?.fonts.body || "Heebo, Arial, sans-serif"}; font-size: ${preset?.fonts.size || "14px"}; line-height: ${preset?.spacing.lineHeight || "1.7"}; color: ${preset?.colors.text || "hsl(var(--foreground))"}; }
         .flow-editor-shell-paged { position: relative; width: var(--flow-editor-page-width); max-width: none; }
-        .flow-editor-repeat-strip {
+        .flow-editor-strip-instance {
           position: absolute;
           inset-inline: 0;
-          z-index: 2;
+          z-index: 4;
           pointer-events: none;
           background-color: ${stripSettings.bgColor};
-          background-repeat: repeat-y;
-          background-size: var(--flow-editor-page-width) calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap));
+          background-repeat: no-repeat;
+          background-position: center;
+          background-size: 100% 100%;
+          border: 1px solid rgba(216, 172, 39, 0.38);
+          box-shadow: 0 1px 6px rgba(15, 23, 42, 0.08);
         }
-        .flow-editor-repeat-strip-top {
-          top: 0;
-          height: calc(var(--flow-editor-page-height) * 3 + var(--flow-editor-page-gap) * 2);
-          background-image:
-            repeating-linear-gradient(
-              to bottom,
-              transparent 0,
-              transparent ${stripSettings.headerHeight}px,
-              rgba(255, 255, 255, 0) ${stripSettings.headerHeight}px,
-              rgba(255, 255, 255, 0) calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
-            ),
-            url("${String(stripSettings.headerUrl || "").replace(/"/g, "%22")}");
-          background-position:
-            0 0,
-            0 0;
-          background-size:
-            var(--flow-editor-page-width) calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap)),
-            var(--flow-editor-page-width) calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap));
-          clip-path: inset(0 0 0 0);
-          -webkit-mask-image: repeating-linear-gradient(
-            to bottom,
-            #000 0,
-            #000 ${stripSettings.headerHeight}px,
-            transparent ${stripSettings.headerHeight}px,
-            transparent calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
-          );
-          mask-image: repeating-linear-gradient(
-            to bottom,
-            #000 0,
-            #000 ${stripSettings.headerHeight}px,
-            transparent ${stripSettings.headerHeight}px,
-            transparent calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
-          );
+        .flow-editor-strip-header { border-top: 0; }
+        .flow-editor-strip-footer { border-bottom: 0; }
+        .flow-editor-strip-handle {
+          position: absolute;
+          left: 50%;
+          z-index: 8;
+          width: 92px;
+          height: 13px;
+          transform: translateX(-50%);
+          border: 1px solid rgba(22, 44, 88, 0.35);
+          border-radius: 999px;
+          background: linear-gradient(180deg, #ffffff, #eef4fb);
+          box-shadow: 0 3px 10px rgba(15, 23, 42, 0.18);
+          cursor: ns-resize;
+          pointer-events: auto;
         }
-        .flow-editor-repeat-strip-bottom {
-          top: 0;
-          height: calc(var(--flow-editor-page-height) * 3 + var(--flow-editor-page-gap) * 2);
-          background-image: url("${String(stripSettings.footerUrl || "").replace(/"/g, "%22")}");
-          background-position: 0 calc(var(--flow-editor-page-height) - ${stripSettings.footerHeight}px);
-          background-size: var(--flow-editor-page-width) calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap));
-          -webkit-mask-image: repeating-linear-gradient(
-            to bottom,
-            transparent 0,
-            transparent calc(var(--flow-editor-page-height) - ${stripSettings.footerHeight}px),
-            #000 calc(var(--flow-editor-page-height) - ${stripSettings.footerHeight}px),
-            #000 var(--flow-editor-page-height),
-            transparent var(--flow-editor-page-height),
-            transparent calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
-          );
-          mask-image: repeating-linear-gradient(
-            to bottom,
-            transparent 0,
-            transparent calc(var(--flow-editor-page-height) - ${stripSettings.footerHeight}px),
-            #000 calc(var(--flow-editor-page-height) - ${stripSettings.footerHeight}px),
-            #000 var(--flow-editor-page-height),
-            transparent var(--flow-editor-page-height),
-            transparent calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
-          );
+        .flow-editor-strip-handle::before {
+          content: "";
+          position: absolute;
+          inset: 4px 20px;
+          border-top: 1px solid rgba(22, 44, 88, 0.5);
+          border-bottom: 1px solid rgba(22, 44, 88, 0.5);
+        }
+        .flow-editor-strip-handle-bottom {
+          bottom: -7px;
+        }
+        .flow-editor-strip-handle-top {
+          top: -7px;
         }
         .flow-editor-content[data-paged="true"] {
           width: var(--flow-editor-page-width);
