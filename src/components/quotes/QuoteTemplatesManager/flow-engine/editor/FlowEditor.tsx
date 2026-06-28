@@ -400,27 +400,40 @@ export default function FlowEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialHtml, editor]);
 
-  // עדכון resolver של שדות דינמיים — מציג את הערכים בפועל מתוך "פרטי פרויקט"
+  // עדכון resolver של שדות דינמיים + צריבת snapshot לתוך attrs של כל node
+  // כך שערכים שנפתרו יישרדו רענון/החלפת טאב גם בלי resolver פעיל.
   useEffect(() => {
+    if (!editor) return;
     const mergeData = projectToMergeData(projectDetails);
     setFieldResolver((key) => {
       const v = mergeData[key];
       return v === undefined || v === "" ? null : v;
     });
-    // טריגר רינדור מחדש של node-views של DynamicField (atom — לא מתעדכן לבד)
-    if (editor) {
-      try {
-        const html = editor.getHTML();
-        const { from, to } = editor.state.selection;
-        editor.commands.setContent(html, { emitUpdate: false } as any);
-        try {
-          editor.commands.setTextSelection({ from, to });
-        } catch {
-          /* ignore */
+    try {
+      const { state } = editor;
+      const tr = state.tr;
+      let changed = false;
+      state.doc.descendants((node, pos) => {
+        if (node.type.name !== "dynamicField") return;
+        const key = String(node.attrs.key || "");
+        const live = mergeData[key];
+        const next =
+          live === undefined || live === ""
+            ? node.attrs.resolvedValue ?? null
+            : String(live);
+        if (next !== (node.attrs.resolvedValue ?? null)) {
+          tr.setNodeMarkup(pos, undefined, { ...node.attrs, resolvedValue: next });
+          changed = true;
         }
-      } catch {
-        /* ignore */
+      });
+      if (changed) {
+        editor.view.dispatch(tr);
+      } else {
+        // טריגר רינדור גם כשאין שינוי attrs (למשל החלפת תבנית בלי ערכים)
+        editor.view.dispatch(state.tr.setMeta("dynamicFieldResolverChanged", true));
       }
+    } catch {
+      /* ignore */
     }
     return () => {
       setFieldResolver(null);
