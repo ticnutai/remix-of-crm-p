@@ -4586,21 +4586,24 @@ export function HtmlTemplateEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("flow-v2");
-  const ICONS_ONLY_LS_KEY = "qt-editor-icons-only";
-  const [iconsOnly, setIconsOnly] = useState<boolean>(() => {
+  const TAB_DISPLAY_MODE_LS_KEY = "qt-editor-tab-display-mode";
+  type TabDisplayMode = "full" | "iconsOnly" | "textCompact";
+  const [tabDisplayMode, setTabDisplayMode] = useState<TabDisplayMode>(() => {
     try {
-      return localStorage.getItem(ICONS_ONLY_LS_KEY) === "1";
+      const stored = localStorage.getItem(TAB_DISPLAY_MODE_LS_KEY);
+      if (stored === "iconsOnly" || stored === "textCompact") return stored;
+      return "full";
     } catch {
-      return false;
+      return "full";
     }
   });
   useEffect(() => {
     try {
-      localStorage.setItem(ICONS_ONLY_LS_KEY, iconsOnly ? "1" : "0");
+      localStorage.setItem(TAB_DISPLAY_MODE_LS_KEY, tabDisplayMode);
     } catch {
       /* ignore */
     }
-  }, [iconsOnly]);
+  }, [tabDisplayMode]);
   const isMobile = useIsMobile();
   const tabsContainerRef = useRef<HTMLDivElement>(null);
 
@@ -8704,7 +8707,12 @@ ${tbAt('footer')}
           {/* Desktop: full tab list */}
           <div className="hidden md:flex border-b bg-white px-6 items-center justify-between gap-2">
             <TooltipProvider delayDuration={200}>
-              <TabsList className="h-12 bg-transparent gap-2 flex-wrap">
+              <TabsList
+                className={cn(
+                  "bg-transparent gap-2 flex-wrap",
+                  tabDisplayMode === "textCompact" ? "h-auto py-1" : "h-12"
+                )}
+              >
                 {tabConfig
                   .filter((t) => t.visible)
                   .map((t) => {
@@ -8715,17 +8723,21 @@ ${tbAt('footer')}
                         key={t.value}
                         value={t.value}
                         className={
-                          iconsOnly
+                          tabDisplayMode === "iconsOnly"
                             ? `${meta.activeClass} !w-9 !h-9 !p-0 justify-center`
-                            : meta.activeClass
+                            : tabDisplayMode === "textCompact"
+                              ? `${meta.activeClass} px-2 py-1 text-xs h-auto`
+                              : meta.activeClass
                         }
                         aria-label={meta.label}
                       >
-                        <Icon className={iconsOnly ? "h-4 w-4" : "h-4 w-4 ml-2"} />
-                        {!iconsOnly && meta.label}
+                        {tabDisplayMode !== "textCompact" && (
+                          <Icon className={tabDisplayMode === "iconsOnly" ? "h-4 w-4" : "h-4 w-4 ml-2"} />
+                        )}
+                        {tabDisplayMode !== "iconsOnly" && meta.label}
                       </TabsTrigger>
                     );
-                    if (!iconsOnly) return trigger;
+                    if (tabDisplayMode === "full") return trigger;
                     return (
                       <Tooltip key={t.value}>
                         <TooltipTrigger asChild>{trigger}</TooltipTrigger>
@@ -8744,18 +8756,30 @@ ${tbAt('footer')}
                       variant="ghost"
                       size="icon"
                       className="h-9 w-9 text-gray-500 hover:text-[#B8860B]"
-                      onClick={() => setIconsOnly((v) => !v)}
-                      aria-label={iconsOnly ? "תצוגה מלאה" : "תצוגת אייקונים בלבד"}
+                      onClick={() =>
+                        setTabDisplayMode((mode) => {
+                          if (mode === "full") return "iconsOnly";
+                          if (mode === "iconsOnly") return "textCompact";
+                          return "full";
+                        })
+                      }
+                      aria-label={
+                        tabDisplayMode === "full"
+                          ? "תצוגת אייקונים בלבד"
+                          : tabDisplayMode === "iconsOnly"
+                            ? "תצוגת טקסט בלבד בשתי שורות"
+                            : "תצוגה מלאה"
+                      }
                     >
-                      {iconsOnly ? (
-                        <LayoutList className="h-5 w-5" />
-                      ) : (
-                        <PanelsTopLeft className="h-5 w-5" />
-                      )}
+                      {tabDisplayMode === "full" && <PanelsTopLeft className="h-5 w-5" />}
+                      {tabDisplayMode === "iconsOnly" && <LayoutList className="h-5 w-5" />}
+                      {tabDisplayMode === "textCompact" && <Type className="h-5 w-5" />}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
-                    {iconsOnly ? "תצוגה מלאה" : "תצוגת אייקונים בלבד"}
+                    {tabDisplayMode === "full" && "תצוגת אייקונים בלבד"}
+                    {tabDisplayMode === "iconsOnly" && "תצוגת טקסט בלבד בשתי שורות"}
+                    {tabDisplayMode === "textCompact" && "תצוגה מלאה"}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
