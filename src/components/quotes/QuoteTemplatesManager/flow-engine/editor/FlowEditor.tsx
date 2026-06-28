@@ -302,7 +302,7 @@ export default function FlowEditor({
           max-width: none;
           min-height: calc(var(--flow-editor-page-height) * var(--flow-editor-visual-page-count) + var(--flow-editor-page-gap) * (var(--flow-editor-visual-page-count) - 1));
         }
-        .flow-editor-shell-paged::before {
+        .flow-editor-shell-paged::after {
           content: "";
           position: absolute;
           inset: 0;
@@ -371,10 +371,9 @@ export default function FlowEditor({
               to bottom,
               #ffffff 0,
               #ffffff var(--flow-editor-page-height),
-              transparent var(--flow-editor-page-height),
-              transparent calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
+              rgb(226, 232, 240) var(--flow-editor-page-height),
+              rgb(226, 232, 240) calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
             );
-          background-clip: padding-box;
           box-shadow:
             0 3px 12px rgba(15, 23, 42, 0.16),
             0 calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap)) 12px rgba(15, 23, 42, 0.16),
