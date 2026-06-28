@@ -129,6 +129,7 @@ import {
   Star,
   PanelsTopLeft,
   LayoutList,
+  Rows2,
 } from "lucide-react";
 import {
   Tooltip,
