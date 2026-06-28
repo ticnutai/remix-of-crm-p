@@ -87,7 +87,7 @@ export const MultiSelection = Extension.create({
 });
 
 export function getExtraRanges(editor: Editor): ExtraRange[] {
-  return (editor.storage.multiSelection?.ranges as ExtraRange[]) || [];
+  return (((editor.storage as any).multiSelection?.ranges) as ExtraRange[]) || [];
 }
 
 export function getAllSelectionRanges(editor: Editor): ExtraRange[] {
