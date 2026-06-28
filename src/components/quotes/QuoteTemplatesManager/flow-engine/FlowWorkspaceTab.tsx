@@ -305,6 +305,113 @@ export default function FlowWorkspaceTab({
     >
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-background px-3 py-2">
         <div className="flex items-center gap-2">
+  // ===== שמירה בענן: יוצר הצעת מחיר חדשה, אופציה לנקות את התבנית =====
+  const [cloudSaving, setCloudSaving] = useState(false);
+  const [postSaveDialogOpen, setPostSaveDialogOpen] = useState(false);
+  const lastSavedQuoteIdRef = useRef<string | null>(null);
+
+  // הפיכת ה-HTML הנוכחי ל"תבנית נקייה": מוחק data-resolved-value
+  // ומחזיר את תוכן הצ'יפ ל-{{label}}, כך שתיטען בפעם הבאה כ-placeholder.
+  const stripResolvedFromHtml = (raw: string): string => {
+    try {
+      const doc = new DOMParser().parseFromString(`<div>${raw}</div>`, "text/html");
+      const root = doc.body.firstElementChild as HTMLElement | null;
+      if (!root) return raw;
+      root.querySelectorAll("span[data-field]").forEach((el) => {
+        el.removeAttribute("data-resolved-value");
+        el.removeAttribute("data-resolved");
+        const label = el.getAttribute("data-label") || el.getAttribute("data-field") || "";
+        if (label) el.textContent = `{{${label}}}`;
+      });
+      return root.innerHTML;
+    } catch {
+      return raw;
+    }
+  };
+
+  const handleCloudSave = async () => {
+    if (cloudSaving) return;
+    setCloudSaving(true);
+    try {
+      const { data: userRes } = await supabase.auth.getUser();
+      const userId = userRes?.user?.id;
+      if (!userId) {
+        toast.error("יש להתחבר כדי לשמור בענן");
+        return;
+      }
+      const mergeData = projectToMergeData(projectDetails);
+      const title =
+        (projectDetails as any)?.clientName ||
+        (projectDetails as any)?.family ||
+        template.name ||
+        "טיוטה ללא שם";
+      const payload: any = {
+        user_id: userId,
+        template_id: template.id || null,
+        title,
+        status: "draft",
+        template_data: {
+          flow_html: html,
+          resolved_values: mergeData,
+          preserve_styles: preserveStyles,
+          preset_id: selectedPresetId,
+          page_setup: pageSetup,
+          source: "flow-v2",
+        },
+        project_details: projectDetails || {},
+        design_settings: designSettings || {},
+      };
+      const { data, error } = await (supabase.from("saved_quotes") as any)
+        .insert(payload)
+        .select("id")
+        .single();
+      if (error) throw error;
+      lastSavedQuoteIdRef.current = data?.id || null;
+      toast.success("נשמרה הצעת מחיר חדשה בטיוטות");
+      setPostSaveDialogOpen(true);
+    } catch (err: any) {
+      console.error("[FlowWorkspace] cloud save failed", err);
+      toast.error(err?.message || "שמירה בענן נכשלה");
+    } finally {
+      setCloudSaving(false);
+    }
+  };
+
+  // אחרי השמירה: ניקוי הטיוטה המקומית כך שהתבנית תיטען נקייה בפעם הבאה
+  const clearLocalDraftToCleanTemplate = () => {
+    try {
+      localStorage.removeItem(storageKey(template.id));
+    } catch {
+      /* ignore */
+    }
+    setHtml(baseHtml);
+  };
+
+  const handleResetTemplateAfterSave = () => {
+    // מנקה את ה-HTML מערכים שנפתרו ושומר חזרה כטיוטה ריקה לחלוטין
+    const cleanedFromCurrent = stripResolvedFromHtml(html);
+    try {
+      localStorage.setItem(storageKey(template.id), cleanedFromCurrent);
+    } catch {
+      /* ignore */
+    }
+    setHtml(cleanedFromCurrent);
+    setPostSaveDialogOpen(false);
+    toast.success("התבנית רוקנה ומוכנה למילוי חדש");
+  };
+
+  const handleKeepCurrentAfterSave = () => {
+    setPostSaveDialogOpen(false);
+  };
+
+  return (
+    <Tabs
+      value={activeTab}
+      onValueChange={(v) => setActiveTab(v as "edit" | "preview")}
+      className="flex h-full flex-col"
+    >
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-background px-3 py-2">
+        <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">Flow V2 — עורך ועימוד נקי</span>
           <Badge variant="outline" className="h-5 text-[10px]">
