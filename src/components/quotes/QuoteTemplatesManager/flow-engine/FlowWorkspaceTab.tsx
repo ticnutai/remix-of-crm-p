@@ -1,13 +1,13 @@
 // FlowWorkspaceTab — מאחד עורך עשיר + תצוגה מקדימה בטאב אחד.
 // טאב הראשי החדש שמחליף את FlowPreviewTab הישיר ב-HtmlTemplateEditor.
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Pencil, Eye, RotateCcw, Sparkles } from "lucide-react";
+import { Eye, ImagePlus, Pencil, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import type { QuoteTemplate } from "../types";
 import FlowEditor from "./editor/FlowEditor";
 import FlowPreviewTab from "./FlowPreviewTab";
@@ -93,6 +93,8 @@ export default function FlowWorkspaceTab({
   );
   const presetCfg = selectedPreset ? safeConfig(selectedPreset) : undefined;
   const [pageSetup, setPageSetup] = useState<FlowPageSetup>(() => loadPageSetup(template.id));
+  const headerStripInputRef = useRef<HTMLInputElement | null>(null);
+  const footerStripInputRef = useRef<HTMLInputElement | null>(null);
 
   const updatePageSetup = (patch: Partial<FlowPageSetup>) => {
     setPageSetup((prev) => {
@@ -113,6 +115,49 @@ export default function FlowWorkspaceTab({
 
   const updateDesignSettings = (patch: Record<string, any>) => {
     onDesignSettingsChange?.((prev: any) => ({ ...(prev || {}), ...patch }));
+  };
+
+  const handleStripUpload = (position: "header" | "footer", file?: File | null) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : "";
+      if (!dataUrl) return;
+      if (position === "header") {
+        updateDesignSettings({
+          headerStripUrl: dataUrl,
+          header_strip_url: dataUrl,
+          repeatHeaderOnAllPages: true,
+          headerStripHeight: designSettings?.headerStripHeight || 150,
+          stripBgColor: designSettings?.stripBgColor || "#ffffff",
+        });
+      } else {
+        updateDesignSettings({
+          footerStripUrl: dataUrl,
+          footer_strip_url: dataUrl,
+          repeatFooterOnAllPages: true,
+          footerStripHeight: designSettings?.footerStripHeight || 90,
+          stripBgColor: designSettings?.stripBgColor || "#ffffff",
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearStrip = (position: "header" | "footer") => {
+    if (position === "header") {
+      updateDesignSettings({
+        headerStripUrl: null,
+        header_strip_url: null,
+        repeatHeaderOnAllPages: false,
+      });
+      return;
+    }
+    updateDesignSettings({
+      footerStripUrl: null,
+      footer_strip_url: null,
+      repeatFooterOnAllPages: false,
+    });
   };
 
   const handlePresetSelect = (p: DesignPreset | null) => {
@@ -247,24 +292,118 @@ export default function FlowWorkspaceTab({
           </div>
           <PresetPicker selectedId={selectedPresetId} onSelect={handlePresetSelect} />
           {onDesignSettingsChange && (
-            <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-2 py-1">
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 px-2 py-1">
               <Label className="whitespace-nowrap text-xs font-medium">סטריפים</Label>
+              <input
+                ref={headerStripInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  handleStripUpload("header", e.target.files?.[0]);
+                  e.currentTarget.value = "";
+                }}
+              />
+              <input
+                ref={footerStripInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  handleStripUpload("footer", e.target.files?.[0]);
+                  e.currentTarget.value = "";
+                }}
+              />
               <label className="flex items-center gap-1 text-xs">
                 <input
                   type="checkbox"
                   checked={designSettings?.repeatHeaderOnAllPages !== false}
                   onChange={(e) => updateDesignSettings({ repeatHeaderOnAllPages: e.target.checked })}
                 />
-                עליון בכל עמוד
+                עליון
               </label>
+              <Button
+                type="button"
+                variant={designSettings?.headerStripUrl || designSettings?.header_strip_url ? "secondary" : "outline"}
+                size="sm"
+                className="h-7 gap-1 px-2 text-xs"
+                onClick={() => headerStripInputRef.current?.click()}
+                title="העלה או החלף סטריפ עליון"
+              >
+                <ImagePlus className="h-3.5 w-3.5" />
+                העלה עליון
+              </Button>
+              {(designSettings?.headerStripUrl || designSettings?.header_strip_url) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => clearStrip("header")}
+                  title="נקה סטריפ עליון"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
+              <input
+                className="h-7 w-14 rounded border bg-background px-1 text-center text-xs"
+                type="number"
+                min={24}
+                max={400}
+                value={designSettings?.headerStripHeight || 150}
+                onChange={(e) => updateDesignSettings({ headerStripHeight: Number(e.target.value) || 150 })}
+                title="גובה סטריפ עליון בפיקסלים"
+              />
+              <span className="text-[10px] text-muted-foreground">px</span>
+              <span className="mx-1 h-5 w-px bg-border" />
               <label className="flex items-center gap-1 text-xs">
                 <input
                   type="checkbox"
                   checked={designSettings?.repeatFooterOnAllPages !== false}
                   onChange={(e) => updateDesignSettings({ repeatFooterOnAllPages: e.target.checked })}
                 />
-                תחתון בכל עמוד
+                תחתון
               </label>
+              <Button
+                type="button"
+                variant={designSettings?.footerStripUrl || designSettings?.footer_strip_url ? "secondary" : "outline"}
+                size="sm"
+                className="h-7 gap-1 px-2 text-xs"
+                onClick={() => footerStripInputRef.current?.click()}
+                title="העלה או החלף סטריפ תחתון"
+              >
+                <ImagePlus className="h-3.5 w-3.5" />
+                העלה תחתון
+              </Button>
+              {(designSettings?.footerStripUrl || designSettings?.footer_strip_url) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => clearStrip("footer")}
+                  title="נקה סטריפ תחתון"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
+              <input
+                className="h-7 w-14 rounded border bg-background px-1 text-center text-xs"
+                type="number"
+                min={24}
+                max={300}
+                value={designSettings?.footerStripHeight || 90}
+                onChange={(e) => updateDesignSettings({ footerStripHeight: Number(e.target.value) || 90 })}
+                title="גובה סטריפ תחתון בפיקסלים"
+              />
+              <span className="text-[10px] text-muted-foreground">px</span>
+              <input
+                className="h-7 w-8 cursor-pointer rounded border bg-background p-0.5"
+                type="color"
+                value={designSettings?.stripBgColor || "#ffffff"}
+                onChange={(e) => updateDesignSettings({ stripBgColor: e.target.value })}
+                title="צבע רקע מאחורי הסטריפים"
+              />
             </div>
           )}
           <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-2 py-1">
