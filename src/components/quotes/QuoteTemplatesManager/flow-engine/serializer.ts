@@ -231,6 +231,7 @@ export function serializeTemplate(
   opts?: SerializeOptions,
 ): FlowDocument {
   CURRENT_PD = opts?.projectDetails;
+  CURRENT_KEEP = Boolean(opts?.keepFieldsAsPlaceholders);
   // מיזוג מפתחות {{customer.*}} / {{parcel.*}} מתוך פרטי הפרויקט.
   const mergedData: MergeData = { ...projectToMergeData(opts?.projectDetails), ...(data || {}) };
   data = mergedData;
