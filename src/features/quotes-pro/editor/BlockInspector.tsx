@@ -639,7 +639,7 @@ export function BlockInspector({ block, onChange, availableStages = [], pricing,
     default:
       return (
         <div className="text-sm text-muted-foreground">
-          עורך מפורט לבלוק מסוג "{block.type}" יתווסף בקרוב. הבלוק כבר מוצג בתצוגה המקדימה.
+          עורך מפורט לבלוק מסוג "{(block as any).type}" יתווסף בקרוב. הבלוק כבר מוצג בתצוגה המקדימה.
         </div>
       );
   }
