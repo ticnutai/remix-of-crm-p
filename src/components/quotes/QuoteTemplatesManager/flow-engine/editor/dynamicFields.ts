@@ -1,7 +1,12 @@
+import { useMemo } from "react";
+import { useClientCustomFields } from "@/hooks/useClientCustomFields";
+
 export interface DynamicFieldDefinition {
   key: string;
   label: string;
   group: string;
+  /** מסומן true עבור שדות שהוגדרו ע"י המשתמש (custom_data של לקוח) */
+  custom?: boolean;
 }
 
 export const FLOW_DYNAMIC_FIELDS: DynamicFieldDefinition[] = [
@@ -24,4 +29,29 @@ export function groupDynamicFields(fields = FLOW_DYNAMIC_FIELDS) {
     groups[field.group].push(field);
     return groups;
   }, {});
+}
+
+/**
+ * Hook המאחד את השדות הסטטיים עם השדות המותאמים אישית
+ * שמוגדרים ב-client_custom_field_definitions.
+ * כך כל שדה שהמשתמש יוצר מופיע גם בעורך, גם בכרטיס הלקוח וגם בפרטי פרויקט.
+ */
+export function useDynamicFields() {
+  const { definitions, isLoading } = useClientCustomFields();
+
+  const customFields = useMemo<DynamicFieldDefinition[]>(
+    () =>
+      (definitions || []).map((d) => ({
+        key: `custom.${d.field_key}`,
+        label: d.label,
+        group: "מותאם אישית",
+        custom: true,
+      })),
+    [definitions],
+  );
+
+  const fields = useMemo(() => [...FLOW_DYNAMIC_FIELDS, ...customFields], [customFields]);
+  const groups = useMemo(() => groupDynamicFields(fields), [fields]);
+
+  return { fields, groups, customFields, isLoading };
 }

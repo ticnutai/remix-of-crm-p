@@ -15,6 +15,8 @@ export interface ProjectTokenData {
   projectType?: string;
   phone?: string;
   email?: string;
+  /** ערכים של שדות מותאמים אישית (client_custom_field_definitions) */
+  customData?: Record<string, string | number | null | undefined>;
 }
 
 const QUOTE_NORM_RE = /[״“”"]/g;
@@ -84,7 +86,7 @@ export function applyProjectTokens(content: string, pd?: ProjectTokenData): stri
 /** Build MergeData for {{customer.name}}-style tokens from project details. */
 export function projectToMergeData(pd?: ProjectTokenData): Record<string, string> {
   if (!pd) return {};
-  return {
+  const out: Record<string, string> = {
     "customer.name": pd.clientName || "",
     "customer.address": pd.address || "",
     "customer.phone": pd.phone || "",
@@ -96,4 +98,12 @@ export function projectToMergeData(pd?: ProjectTokenData): Record<string, string
     "parcel.moshav": pd.moshav || "",
     "project.type": pd.projectType || "",
   };
+  // שדות מותאמים אישית — נמופים ל-custom.<field_key>
+  if (pd.customData && typeof pd.customData === "object") {
+    for (const [k, v] of Object.entries(pd.customData)) {
+      if (v === undefined || v === null) continue;
+      out[`custom.${k}`] = String(v);
+    }
+  }
+  return out;
 }
