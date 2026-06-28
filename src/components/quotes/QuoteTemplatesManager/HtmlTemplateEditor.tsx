@@ -4586,21 +4586,24 @@ export function HtmlTemplateEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("flow-v2");
-  const ICONS_ONLY_LS_KEY = "qt-editor-icons-only";
-  const [iconsOnly, setIconsOnly] = useState<boolean>(() => {
+  const TAB_DISPLAY_MODE_LS_KEY = "qt-editor-tab-display-mode";
+  type TabDisplayMode = "full" | "iconsOnly" | "textCompact";
+  const [tabDisplayMode, setTabDisplayMode] = useState<TabDisplayMode>(() => {
     try {
-      return localStorage.getItem(ICONS_ONLY_LS_KEY) === "1";
+      const stored = localStorage.getItem(TAB_DISPLAY_MODE_LS_KEY);
+      if (stored === "iconsOnly" || stored === "textCompact") return stored;
+      return "full";
     } catch {
-      return false;
+      return "full";
     }
   });
   useEffect(() => {
     try {
-      localStorage.setItem(ICONS_ONLY_LS_KEY, iconsOnly ? "1" : "0");
+      localStorage.setItem(TAB_DISPLAY_MODE_LS_KEY, tabDisplayMode);
     } catch {
       /* ignore */
     }
-  }, [iconsOnly]);
+  }, [tabDisplayMode]);
   const isMobile = useIsMobile();
   const tabsContainerRef = useRef<HTMLDivElement>(null);
 
