@@ -239,7 +239,7 @@ export default function BubbleToolbar({ editor }: Props) {
             <Palette className="h-3.5 w-3.5" />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-2" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <PopoverContent className="w-auto p-0 overflow-hidden" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
           <SmartColorPicker
             initialCategory="text"
             onPick={(color, category) => {
