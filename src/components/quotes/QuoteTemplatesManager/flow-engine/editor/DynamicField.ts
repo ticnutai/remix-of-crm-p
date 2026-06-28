@@ -57,23 +57,38 @@ export const DynamicField = Node.create<DynamicFieldOptions>({
     const label = String(HTMLAttributes.label || key);
     const value = resolveField(key);
     const hasValue = value !== "";
-    const text = hasValue ? value : `{{${label}}}`;
-    const cls = hasValue
-      ? "inline-block px-1.5 py-0.5 mx-0.5 rounded text-sm font-medium bg-primary/10 text-primary border border-primary/30"
-      : "inline-block px-2 py-0.5 mx-0.5 rounded text-xs font-medium bg-accent/20 text-accent-foreground border border-accent/40";
+    if (hasValue) {
+      // נפתר → טקסט רגיל לחלוטין, ללא רקע/מסגרת/צ'יפ
+      return [
+        "span",
+        mergeAttributes(
+          {
+            "data-field": key,
+            "data-label": label,
+            "data-resolved": "true",
+            title: `${label}: ${value}`,
+            class: "flow-field-resolved",
+          },
+          this.options.HTMLAttributes,
+        ),
+        value,
+      ];
+    }
+    // אין ערך עדיין → צ'יפ דיסקרטי כדי לסמן שזה placeholder
     return [
       "span",
       mergeAttributes(
         {
           "data-field": key,
           "data-label": label,
-          title: hasValue ? `${label}: ${value}` : `שדה דינמי: {{${label}}}`,
-          class: cls,
+          title: `שדה דינמי: {{${label}}} — ימולא מ"פרטי פרויקט"`,
+          class:
+            "inline-block px-2 py-0.5 mx-0.5 rounded text-xs font-medium bg-accent/20 text-accent-foreground border border-accent/40 border-dashed",
           contenteditable: "false",
         },
         this.options.HTMLAttributes,
       ),
-      text,
+      `{{${label}}}`,
     ];
   },
 

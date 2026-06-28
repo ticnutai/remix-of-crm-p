@@ -407,10 +407,17 @@ export default function FlowEditor({
       const v = mergeData[key];
       return v === undefined || v === "" ? null : v;
     });
-    // טריגר לרינדור מחדש של node-views של DynamicField
+    // טריגר רינדור מחדש של node-views של DynamicField (atom — לא מתעדכן לבד)
     if (editor) {
       try {
-        editor.view.dispatch(editor.state.tr.setMeta("dynamicFieldResolverChanged", true));
+        const html = editor.getHTML();
+        const { from, to } = editor.state.selection;
+        editor.commands.setContent(html, { emitUpdate: false } as any);
+        try {
+          editor.commands.setTextSelection({ from, to });
+        } catch {
+          /* ignore */
+        }
       } catch {
         /* ignore */
       }
