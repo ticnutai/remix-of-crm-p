@@ -716,6 +716,28 @@ export default function FlowWorkspaceTab({
           pageSetup={pageSetup}
         />
       </TabsContent>
+
+      <AlertDialog open={postSaveDialogOpen} onOpenChange={setPostSaveDialogOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>הטיוטה נשמרה בענן</AlertDialogTitle>
+            <AlertDialogDescription>
+              ההצעה נשמרה בטיוטות הצעות המחיר עם כל הנתונים שמולאו.
+              <br />
+              האם לרוקן את התבנית הנוכחית כך שתהיה ריקה למילוי חדש (השדות
+              החכמים יישארו, אך הערכים שמולאו יוסרו)?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleKeepCurrentAfterSave}>
+              לא, השאר כפי שהיא
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetTemplateAfterSave}>
+              כן, רוקן את התבנית
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Tabs>
   );
 }
