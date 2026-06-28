@@ -47,6 +47,12 @@ const PAGE_OPTIONS: Array<{ value: FlowPageSizePreset; label: string }> = [
   { value: "custom", label: "מותאם" },
 ];
 
+function boundedNumber(value: unknown, fallback: number, min = 0, max = Number.POSITIVE_INFINITY) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.max(min, Math.min(max, Math.round(numeric)));
+}
+
 function loadPageSetup(templateId?: string): FlowPageSetup {
   try {
     const raw = localStorage.getItem(pageKey(templateId));
@@ -95,6 +101,24 @@ export default function FlowWorkspaceTab({
   const [pageSetup, setPageSetup] = useState<FlowPageSetup>(() => loadPageSetup(template.id));
   const headerStripInputRef = useRef<HTMLInputElement | null>(null);
   const footerStripInputRef = useRef<HTMLInputElement | null>(null);
+  const headerContentGapPx = boundedNumber(
+    designSettings?.headerStripContentGapPx ?? designSettings?.header_content_gap_px,
+    18,
+    0,
+    240,
+  );
+  const footerContentGapPx = boundedNumber(
+    designSettings?.footerStripContentGapPx ?? designSettings?.footer_content_gap_px,
+    18,
+    0,
+    240,
+  );
+  const flowPageGapPx = boundedNumber(
+    designSettings?.flowPageGapPx ?? designSettings?.flow_page_gap_px,
+    18,
+    0,
+    120,
+  );
 
   const updatePageSetup = (patch: Partial<FlowPageSetup>) => {
     setPageSetup((prev) => {
@@ -404,6 +428,56 @@ export default function FlowWorkspaceTab({
                 onChange={(e) => updateDesignSettings({ stripBgColor: e.target.value })}
                 title="צבע רקע מאחורי הסטריפים"
               />
+              <span className="mx-1 h-5 w-px bg-border" />
+              <Label className="whitespace-nowrap text-xs font-medium">גבולות כתיבה</Label>
+              <input
+                className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
+                type="number"
+                min={0}
+                max={240}
+                value={headerContentGapPx}
+                onChange={(e) => {
+                  const next = boundedNumber(e.target.value, 18, 0, 240);
+                  updateDesignSettings({
+                    headerStripContentGapPx: next,
+                    header_content_gap_px: next,
+                  });
+                }}
+                title="רווח כתיבה מתחת לסטריפ העליון בפיקסלים"
+              />
+              <span className="text-[10px] text-muted-foreground">מתחת לעליון</span>
+              <input
+                className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
+                type="number"
+                min={0}
+                max={240}
+                value={footerContentGapPx}
+                onChange={(e) => {
+                  const next = boundedNumber(e.target.value, 18, 0, 240);
+                  updateDesignSettings({
+                    footerStripContentGapPx: next,
+                    footer_content_gap_px: next,
+                  });
+                }}
+                title="רווח כתיבה מעל הסטריפ התחתון בפיקסלים"
+              />
+              <span className="text-[10px] text-muted-foreground">מעל תחתון</span>
+              <input
+                className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
+                type="number"
+                min={0}
+                max={120}
+                value={flowPageGapPx}
+                onChange={(e) => {
+                  const next = boundedNumber(e.target.value, 18, 0, 120);
+                  updateDesignSettings({
+                    flowPageGapPx: next,
+                    flow_page_gap_px: next,
+                  });
+                }}
+                title="רווח חזותי בין הדפים בפיקסלים"
+              />
+              <span className="text-[10px] text-muted-foreground">בין דפים</span>
             </div>
           )}
           <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-2 py-1">
