@@ -12,6 +12,7 @@ import { createPortal } from "react-dom";
 import { PreviewIframe, type InlineEditPayload } from "./PreviewIframe";
 import { FrameDesignPanel } from "./FrameDesignPanel";
 import PagesPreviewTab from "./PagesPreviewTab";
+import FlowWorkspaceTab from "./flow-engine/FlowWorkspaceTab";
 import {
   DEFAULT_FRAME_SETTINGS,
   borderToCss,
@@ -468,6 +469,7 @@ function buildAutoVersionLabel(
 }
 
 type PreviewDevice = "desktop" | "tablet" | "mobile";
+type PlainTextScope = "document" | "selection";
 interface ProjectDetails {
   clientId: string;
   clientName: string;
@@ -4575,7 +4577,7 @@ export function HtmlTemplateEditor({
   const [editingStagesTitle, setEditingStagesTitle] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
-  const [activeTab, setActiveTab] = useState("project");
+  const [activeTab, setActiveTab] = useState("flow-v2");
   const isMobile = useIsMobile();
   const tabsContainerRef = useRef<HTMLDivElement>(null);
 
@@ -4583,6 +4585,7 @@ export function HtmlTemplateEditor({
   // Top tabs configuration (order + visibility) — persisted
   const TABS_CFG_LS_KEY = "lov-html-editor-tabs-cfg-v1";
   type EditorTabKey =
+    | "flow-v2"
     | "project"
     | "content"
     | "payments"
@@ -4594,6 +4597,7 @@ export function HtmlTemplateEditor({
     | "split"
     | "pages";
   const DEFAULT_TAB_ORDER: EditorTabKey[] = [
+    "flow-v2",
     "project",
     "content",
     "payments",
@@ -4609,6 +4613,7 @@ export function HtmlTemplateEditor({
     EditorTabKey,
     { label: string; icon: any; activeClass: string }
   > = {
+    "flow-v2": { label: "עורך המסמך", icon: Sparkles, activeClass: "data-[state=active]:bg-emerald-100 data-[state=active]:text-emerald-700 font-bold" },
     project: { label: "פרטי פרויקט", icon: User, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
     content: { label: "תוכן", icon: FileText, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
     payments: { label: "תשלומים", icon: CreditCard, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
@@ -4859,6 +4864,9 @@ export function HtmlTemplateEditor({
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
   const [interactiveEditMode, setInteractiveEditMode] = useState(false);
+  const [plainTextMode, setPlainTextMode] = useState(false);
+  const [plainTextScope, setPlainTextScope] =
+    useState<PlainTextScope>("document");
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const cropCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -5919,10 +5927,10 @@ export function HtmlTemplateEditor({
             return sectionTitleHtml(resolvedStageName, fd.sectionTitle, "margin: 28px 0 10px;");
           }
           return `
-      <div class="stage-card" style="margin-bottom: 20px;">
+      <div class="stage-card">
         ${stageCornersHtml}
-        <h3 style="color: ${designSettings.primaryColor}; font-family: ${designSettings.fontFamily};">${stage.icon ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;margin-left:6px;${stage.iconColor ? `background:${stage.iconColor}20;border:1px solid ${stage.iconColor};` : ""}">${stage.icon}</span>` : ""} <span data-editable="stage.${stage.id}.name">${resolvedStageName}</span></h3>
-        <ul style="list-style: none; padding: 0;">
+        <h3 style="color: ${designSettings.primaryColor}; font-family: '${designSettings.fontFamily}', sans-serif;">${stage.icon ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:7px;margin-left:8px;flex-shrink:0;${stage.iconColor ? `background:${stage.iconColor}20;border:1px solid ${stage.iconColor};` : `background:${designSettings.primaryColor}15;`}">${stage.icon}</span>` : ""}<span data-editable="stage.${stage.id}.name">${resolvedStageName}</span></h3>
+        <ul style="list-style: none; padding: 0; margin: 0;">
           ${stage.items
             .map((item) => {
               if (item.isSpacer) {
@@ -5953,7 +5961,7 @@ export function HtmlTemplateEditor({
                 ? `<span style="color:${itemIconColor};margin-left:6px;">${itemIcon}</span>`
                 : "";
               const resolvedItemText = applyProjectDetailsTokens(item.text || "", projectDetails);
-              return `<li style="padding: 5px 0; color: ${itemColor}; font-family: '${itemFont}', sans-serif; font-size: ${itemSize}px; ${itemBold} ${itemItalic} ${itemUnderline} ${itemAlign}">${iconHtml}<span data-editable="stage.${stage.id}.item.${item.id}.text">${resolvedItemText}</span></li>`;
+              return `<li style="padding: 8px 0; color: ${itemColor}; font-family: '${itemFont}', sans-serif; font-size: ${itemSize}px; ${itemBold} ${itemItalic} ${itemUnderline} ${itemAlign}">${iconHtml}<span data-editable="stage.${stage.id}.item.${item.id}.text">${resolvedItemText}</span></li>`;
             })
             .join("")}
         </ul>
@@ -5978,18 +5986,18 @@ export function HtmlTemplateEditor({
           if (isVatBreakdown) {
             return `
       <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;"><span data-editable="paystep.${step.id}.name">${step.name}</span></td>
-        <td style="padding: 10px; text-align: center;">${step.percentage}%</td>
-        <td style="padding: 10px; text-align: left;">₪${stepAmount.toLocaleString()}</td>
-        <td style="padding: 10px; text-align: left; color: #666; font-size: 13px;">₪${stepVat.toLocaleString()}${vatLabel}</td>
-        <td style="padding: 10px; text-align: left; font-weight: 600;">₪${stepGross.toLocaleString()}</td>
+        <td style="padding: 11px 16px; font-weight: 500;"><span data-editable="paystep.${step.id}.name">${step.name}</span></td>
+        <td style="padding: 11px 16px; text-align: center; color: #64748b;">${step.percentage}%</td>
+        <td style="padding: 11px 16px; text-align: left; font-weight: 500;">₪${stepAmount.toLocaleString()}</td>
+        <td style="padding: 11px 16px; text-align: left; color: #64748b; font-size: 13px;">₪${stepVat.toLocaleString()}${vatLabel}</td>
+        <td style="padding: 11px 16px; text-align: left; font-weight: 700; color: #1e293b;">₪${stepGross.toLocaleString()}</td>
       </tr>`;
           } else {
             return `
       <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;"><span data-editable="paystep.${step.id}.name">${step.name}</span></td>
-        <td style="padding: 10px; text-align: center;">${step.percentage}%</td>
-        <td style="padding: 10px; text-align: left;">₪${stepAmount.toLocaleString()}</td>
+        <td style="padding: 11px 16px; font-weight: 500;"><span data-editable="paystep.${step.id}.name">${step.name}</span></td>
+        <td style="padding: 11px 16px; text-align: center; color: #64748b;">${step.percentage}%</td>
+        <td style="padding: 11px 16px; text-align: left; font-weight: 600;">₪${stepAmount.toLocaleString()}</td>
       </tr>`;
           }
         },
@@ -6013,11 +6021,16 @@ export function HtmlTemplateEditor({
       : "";
 
     // Page size
-    const { cssSize: pageCssSize } = getPageDimensions(fd.pageSize);
+    const { cssSize: pageCssSize, heightMm: pageHeightMm } = getPageDimensions(fd.pageSize);
+    // Physical page height in px @96dpi — drives the on-screen repeated-strip
+    // overlays so they land at the correct page boundaries for ANY page size.
+    const pageHeightPx = Math.round(pageHeightMm * 3.7795275591);
 
-    // Repeat header/footer on every page
-    const repeatHeader = designSettings.repeatHeaderOnAllPages === true;
-    const repeatFooter = designSettings.repeatFooterOnAllPages !== false; // default ON
+    // Repeat header/footer on every page — both default ON so the top & bottom
+    // strips appear on every page out of the box (the preview auto-reserves the
+    // space for them so they never overlap content).
+    const repeatHeader = designSettings.repeatHeaderOnAllPages !== false;
+    const repeatFooter = designSettings.repeatFooterOnAllPages !== false;
     const headerHeightPx = (designSettings.headerStripHeight || 150) + 10;
     const footerHeightPx = designSettings.footerStripHeight || 90;
 
@@ -6029,41 +6042,204 @@ export function HtmlTemplateEditor({
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&family=Assistant:wght@200;300;400;500;600;700;800&family=Rubik:wght@300;400;500;600;700&family=Alef:wght@400;700&family=David+Libre:wght@400;500;700&family=Frank+Ruhl+Libre:wght@300;400;500;700&family=Varela+Round&family=Noto+Sans+Hebrew:wght@300;400;500;600;700&family=Secular+One&family=Suez+One&family=Amatic+SC:wght@400;700&display=swap" rel="stylesheet">
   <title>${editedTemplate.name}</title>
   <style>
-    body { font-family: '${designSettings.fontFamily}', sans-serif; font-size: ${designSettings.fontSize}px; margin: 0; padding: 0; ${backgroundToBodyCss(fd.background)} }
-    .container { max-width: 800px; margin: 0 auto; background: white; position: relative; ${borderToCss(fd.documentBorder)} }
-    .header { background: ${designSettings.headerBackground}; color: white; padding: 40px; text-align: center; }
-    .content { padding: 40px; }
-    .project-details { background: #f9f9f9; padding: 20px; border-radius: ${designSettings.borderRadius}px; margin-bottom: 30px; }
-    .project-details h2 { color: ${designSettings.primaryColor}; margin-top: 0; }
-    .project-details table { width: 100%; }
-    .project-details td { padding: 8px 0; }
-    .project-details td:first-child { font-weight: 600; width: 120px; }
-    table.payments { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    table.payments th { background: ${designSettings.primaryColor}; color: white; padding: 12px; text-align: right; }
-    .footer { text-align: center; padding: 30px; background: #f9f9f9; color: #666; font-size: 14px; position: relative; min-height: ${footerHeightPx}px; box-sizing: border-box; }
+    /* ═══ RESET & BASE ═══ */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: '${designSettings.fontFamily}', 'Heebo', 'Segoe UI', sans-serif;
+      font-size: ${designSettings.fontSize}px;
+      line-height: 1.75;
+      color: #1e293b;
+      -webkit-font-smoothing: antialiased;
+      direction: rtl;
+      margin: 0;
+      padding: 0;
+      ${backgroundToBodyCss(fd.background)}
+    }
+    h1, h2, h3, h4, h5, h6 { line-height: 1.3; margin: 0; }
+
+    /* ═══ CONTAINER ═══ */
+    .container {
+      width: 100%;
+      background: white;
+      position: relative;
+      ${borderToCss(fd.documentBorder)}
+    }
+
+    /* ═══ HEADER ═══ */
+    .header {
+      background: ${designSettings.headerBackground};
+      color: white;
+      padding: 44px 40px 38px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.09) 0%, transparent 55%);
+      pointer-events: none;
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0 0 8px;
+      letter-spacing: -0.3px;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      position: relative;
+    }
+    .header p {
+      font-size: 15px;
+      opacity: 0.9;
+      margin: 0;
+      font-weight: 400;
+      position: relative;
+    }
+
+    /* ═══ CONTENT ═══ */
+    .content { padding: 36px 40px 28px; }
+
+    /* ═══ PROJECT DETAILS ═══ */
+    .project-details {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      padding: 20px 24px;
+      border-radius: ${designSettings.borderRadius}px;
+      margin-bottom: 28px;
+      border: 1px solid #e2e8f0;
+      border-right: 4px solid ${designSettings.primaryColor};
+    }
+    .project-details h2 {
+      color: ${designSettings.primaryColor};
+      margin: 0 0 14px;
+      font-size: 16px;
+      font-weight: 700;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .project-details table { width: 100%; border-collapse: collapse; }
+    .project-details tr { border-bottom: 1px solid #f1f5f9; }
+    .project-details tr:last-child { border-bottom: none; }
+    .project-details td { padding: 7px 6px; vertical-align: top; }
+    .project-details td:first-child {
+      font-weight: 600;
+      width: 130px;
+      color: #64748b;
+      font-size: 12.5px;
+      letter-spacing: 0.1px;
+    }
+    .project-details td:last-child { color: #1e293b; font-weight: 500; }
+
+    /* ═══ STAGE CARDS ═══ */
+    .stage-card {
+      margin-bottom: 16px;
+      position: relative;
+      ${borderToCss(fd.stageBorder)}
+    }
+    .stage-card h3 {
+      margin: 0 0 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .stage-card ul { list-style: none; padding: 0; margin: 0; }
+    .stage-card li {
+      line-height: 1.6;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .stage-card li:last-child { border-bottom: none; }
+
+    /* ═══ PAYMENT TABLE ═══ */
+    .summary-card {
+      position: relative;
+      margin-top: 24px;
+      ${borderToCss(fd.summaryBorder)}
+    }
+    table.payments {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0;
+      font-size: 14px;
+    }
+    table.payments th {
+      background: ${designSettings.primaryColor};
+      color: white;
+      padding: 13px 16px;
+      text-align: right;
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.2px;
+    }
+    table.payments th:not(:last-child) { border-left: 1px solid rgba(255,255,255,0.15); }
+    table.payments td {
+      padding: 11px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+    table.payments tbody tr:nth-child(odd) { background: #f8fafc; }
+    table.payments tbody tr:nth-child(even) { background: #ffffff; }
+    table.payments tfoot tr { background: #f1f5f9 !important; }
+    table.payments tfoot td {
+      padding: 13px 16px;
+      font-weight: 700;
+      font-size: 15px;
+      border-top: 2px solid #e2e8f0;
+      border-bottom: none;
+      color: ${designSettings.primaryColor};
+    }
+
+    /* ═══ FOOTER ═══ */
+    .footer {
+      text-align: center;
+      padding: 24px 40px;
+      background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+      border-top: 1px solid #e2e8f0;
+      color: #64748b;
+      font-size: 13px;
+      position: relative;
+      min-height: ${footerHeightPx}px;
+      box-sizing: border-box;
+    }
+    .footer .company-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: ${designSettings.primaryColor};
+      margin-bottom: 5px;
+      display: block;
+      letter-spacing: 0.3px;
+    }
+    .footer .contact-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 12.5px;
+    }
+    .footer .divider { color: #cbd5e0; }
+
+    /* ═══ MISC ═══ */
     .full-width-header { padding: 0 !important; overflow: hidden; background: transparent !important; margin: 0; }
     .full-width-header img { width: 100%; height: auto; display: block; object-fit: fill; object-position: center; margin: 0 auto; }
-    .stage-card { position: relative; ${borderToCss(fd.stageBorder)} }
-    .summary-card { position: relative; margin-top: 30px; ${borderToCss(fd.summaryBorder)} }
-    @page {
-      margin: 0;
-      margin-left: 0;
-      margin-right: 0;
-      size: ${pageCssSize};
-    }
+
+    /* ═══ PAGE STRUCTURE ═══ */
+    @page { margin: 0; margin-left: 0; margin-right: 0; size: ${pageCssSize}; }
     .print-page-shell { width: 100%; border-collapse: collapse; border-spacing: 0; }
     .print-page-shell > thead > tr > td,
     .print-page-shell > tbody > tr > td,
     .print-page-shell > tfoot > tr > td { padding: 0; vertical-align: top; }
+
+    /* ═══ PRINT ═══ */
     @media print {
-      html {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-      body {
-        margin: 0 !important;
-        padding: 0 !important;
-      }
+      html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { margin: 0 !important; padding: 0 !important; }
       .container {
         max-width: 100% !important;
         width: 100% !important;
@@ -6073,9 +6249,7 @@ export function HtmlTemplateEditor({
         border-radius: 0 !important;
         box-shadow: none !important;
       }
-      .content {
-        padding: 28px 40px !important;
-      }
+      .content { padding: 28px 40px !important; }
       .print-repeat-header { display: ${repeatHeader ? "table-header-group" : "table-row-group"} !important; }
       .print-repeat-footer { display: ${repeatFooter ? "table-footer-group" : "table-row-group"} !important; }
       .stage-card,
@@ -6088,18 +6262,16 @@ export function HtmlTemplateEditor({
       }
       .footer {
         margin: 0 !important;
-        background: #f9f9f9 !important;
+        background: linear-gradient(to bottom, #f8fafc, #f1f5f9) !important;
         min-height: ${footerHeightPx}px !important;
         box-sizing: border-box !important;
       }
       [data-drag-strip] { display: none !important; }
-      .header,
-      .header-strip {
+      .header, .header-strip {
         position: relative !important;
         margin: 0 !important;
         height: ${headerHeightPx}px !important;
       }
-
       .quote-fixed-header { position: fixed; top: 0; left: 0; right: 0; }
       .quote-fixed-footer { position: fixed; bottom: 0; left: 0; right: 0; }
       .print-frame-overlay {
@@ -6116,12 +6288,16 @@ export function HtmlTemplateEditor({
     }
   </style>
 </head>
-<body data-repeat-header="${repeatHeader ? "1" : "0"}" data-repeat-footer="${repeatFooter ? "1" : "0"}" data-page-height="1123">
+<body data-repeat-header="${repeatHeader ? "1" : "0"}" data-repeat-footer="${repeatFooter ? "1" : "0"}" data-page-height="${pageHeightPx}">
   <style>
     /* Per-page repeated overlays for the on-screen multi-page preview.
        Print uses thead/tfoot grouping and ignores these overlays. */
     body { position: relative; }
-    .lov-repeat-overlay { position: absolute; left: 0; right: 0; z-index: 50; pointer-events: none; }
+    /* The repeated strip overlay must be a HARD, OPAQUE mask: it sits on top of
+       the page content (z-index) with an opaque backdrop (#fff – the same white
+       the page-1 strip sits over inside .container) and clips its own content,
+       so NO document text is ever visible behind the top/bottom strips. */
+    .lov-repeat-overlay { position: absolute; left: 0; right: 0; z-index: 50; pointer-events: none; background: #ffffff; overflow: hidden; }
     @media print { .lov-repeat-overlay { display: none !important; } }
   </style>
   ${hasFrameOverlay ? `<div class="print-frame-overlay" style="display:none; border: ${frameOverlayBorderCss};"></div>` : ""}
@@ -6211,15 +6387,15 @@ export function HtmlTemplateEditor({
         projectDetails.clientName
           ? `
       <div class="project-details">
-        <h2>פרטי הפרויקט</h2>
+        <h2>📋 פרטי הפרויקט</h2>
         <table>
-          ${projectDetails.clientName ? `<tr><td>לקוח:</td><td>${projectDetails.clientName}</td></tr>` : ""}
-          ${projectDetails.address ? `<tr><td>כתובת:</td><td>${projectDetails.address}</td></tr>` : ""}
-          ${projectDetails.gush ? `<tr><td>גוש:</td><td>${projectDetails.gush}</td></tr>` : ""}
-          ${projectDetails.helka ? `<tr><td>חלקה:</td><td>${projectDetails.helka}</td></tr>` : ""}
-          ${projectDetails.migrash ? `<tr><td>מגרש:</td><td>${projectDetails.migrash}</td></tr>` : ""}
-          ${projectDetails.taba ? `<tr><td>תב"ע:</td><td>${projectDetails.taba}</td></tr>` : ""}
-          ${projectDetails.projectType ? `<tr><td>סוג פרויקט:</td><td>${projectDetails.projectType}</td></tr>` : ""}
+          ${projectDetails.clientName ? `<tr><td>לקוח</td><td>${projectDetails.clientName}</td></tr>` : ""}
+          ${projectDetails.address ? `<tr><td>כתובת</td><td>${projectDetails.address}</td></tr>` : ""}
+          ${projectDetails.gush ? `<tr><td>גוש</td><td>${projectDetails.gush}</td></tr>` : ""}
+          ${projectDetails.helka ? `<tr><td>חלקה</td><td>${projectDetails.helka}</td></tr>` : ""}
+          ${projectDetails.migrash ? `<tr><td>מגרש</td><td>${projectDetails.migrash}</td></tr>` : ""}
+          ${projectDetails.taba ? `<tr><td>תב"ע</td><td>${projectDetails.taba}</td></tr>` : ""}
+          ${projectDetails.projectType ? `<tr><td>סוג פרויקט</td><td>${projectDetails.projectType}</td></tr>` : ""}
         </table>
       </div>`
           : ""
@@ -6262,8 +6438,18 @@ export function HtmlTemplateEditor({
       <tfoot class="print-repeat-footer"><tr><td>
     <div data-drag-strip="footer" style="width:100%;height:10px;cursor:ns-resize;background:rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(0,0,0,0.25);pointer-events:none;"></div></div>
     <div id="__footer-drag-target" class="footer">
-      <strong>${designSettings.companyName}</strong><br>
-      ${designSettings.companyAddress} | ${designSettings.companyPhone} | ${designSettings.companyEmail}
+      <span class="company-name">${designSettings.companyName}</span>
+      <div class="contact-row">
+        ${[
+          designSettings.companyAddress,
+          designSettings.companyPhone,
+          designSettings.companyEmail,
+        ].filter(Boolean).map((item, i, arr) =>
+          i < arr.length - 1
+            ? `<span>${item}</span><span class="divider">·</span>`
+            : `<span>${item}</span>`
+        ).join("")}
+      </div>
     </div>
       </td></tr></tfoot>
     </table>
@@ -10196,7 +10382,7 @@ ${tbAt('footer')}
                       <p className="text-xs text-gray-500 mt-0.5">הסטריפ העליון יופיע בראש כל עמוד בהדפסה</p>
                     </div>
                     <Switch
-                      checked={designSettings.repeatHeaderOnAllPages === true}
+                      checked={designSettings.repeatHeaderOnAllPages !== false}
                       onCheckedChange={(v) =>
                         setDesignSettings((prev) => ({ ...prev, repeatHeaderOnAllPages: v }))
                       }
@@ -12495,14 +12681,45 @@ ${tbAt('footer')}
                     variant={interactiveEditMode ? "default" : "ghost"}
                     className={`h-8 text-xs ${interactiveEditMode ? "bg-purple-500 hover:bg-purple-600 text-white" : ""}`}
                     onClick={() => setInteractiveEditMode(!interactiveEditMode)}
+                    disabled={plainTextMode}
                   >
                     <Edit className="h-3.5 w-3.5 ml-1" />
                     עריכה ישירה
                   </Button>
+                  <Button
+                    size="sm"
+                    variant={plainTextMode ? "default" : "ghost"}
+                    className={`h-8 text-xs ${plainTextMode ? "bg-[#162C58] hover:bg-[#0f1f40] text-white" : ""}`}
+                    onClick={() => setPlainTextMode((v) => !v)}
+                    title="מצב טקסט רגיל משאיר את השדות מחוברים ומכבה בחירת תבניות"
+                  >
+                    <Type className="h-3.5 w-3.5 ml-1" />
+                    טקסט רגיל
+                  </Button>
                 </div>
 
+                {plainTextMode && (
+                  <div className="bg-white rounded-lg shadow-sm border p-1 flex items-center gap-2">
+                    <span className="text-xs text-gray-500 px-1">תחום:</span>
+                    <Select
+                      value={plainTextScope}
+                      onValueChange={(value) =>
+                        setPlainTextScope(value as PlainTextScope)
+                      }
+                    >
+                      <SelectTrigger className="h-8 w-[122px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="document">כל המסמך</SelectItem>
+                        <SelectItem value="selection">אזור מסומן</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 {/* Global Page Settings - only shown in edit mode */}
-                {interactiveEditMode && (
+                {interactiveEditMode && !plainTextMode && (
                   <div className="bg-white rounded-lg shadow-sm border p-1 flex gap-2 items-center">
                     <span className="text-xs text-gray-500 px-1">
                       עיצוב כללי:
@@ -12643,7 +12860,7 @@ ${tbAt('footer')}
                   )}
 
                   {/* Interactive Edit Preview */}
-                  {interactiveEditMode ? (
+                  {interactiveEditMode && !plainTextMode ? (
                     <ScrollArea
                       className="w-full h-full"
                       style={{
@@ -13664,6 +13881,9 @@ ${tbAt('footer')}
                       }}
                       autoHeight={previewDevice === "desktop"}
                       minAutoHeight={720}
+                      enableInlineEdit={!plainTextMode}
+                      plainTextMode={plainTextMode}
+                      plainTextScope={plainTextScope}
                       onInlineEdit={handleInlineEdit}
                     />
                   )}
@@ -14165,6 +14385,16 @@ ${tbAt('footer')}
               </ResizablePanel>
 
             </ResizablePanelGroup>
+          </TabsContent>
+
+          {/* Flow V2 - isolated document editor */}
+          <TabsContent value="flow-v2" className="flex-1 m-0 overflow-hidden">
+            <FlowWorkspaceTab
+              template={editedTemplate}
+              projectDetails={projectDetails}
+              designSettings={designSettings}
+              onDesignSettingsChange={setDesignSettings}
+            />
           </TabsContent>
 
           {/* Pages Preview Tab - paged A4 preview */}

@@ -74,6 +74,7 @@ const mainNavItems = [
   { title: "ניתוח זמנים",                 url: "/time-analytics",    icon: Clock,           moduleKey: "time-analytics" },
   { title: "משימות, פגישות ותזכורות", url: "/tasks-meetings",    icon: Calendar,        moduleKey: "tasks-meetings" },
   { title: "הצעות מחיר",                  url: "/quotes",            icon: FileSpreadsheet, moduleKey: "quotes" },
+  { title: "הצעות מחיר PRO",              url: "/quotes-pro",        icon: FileSpreadsheet, moduleKey: "quotes-pro" },
   { title: "כספים",                     url: "/finance",           icon: Wallet,          moduleKey: "finance",         adminOnly: true },
   { title: "תשלומים",                    url: "/payments",          icon: Wallet,          moduleKey: "payments" },
   { title: "דוחות",                      url: "/reports",           icon: FileSpreadsheet, moduleKey: "reports" },

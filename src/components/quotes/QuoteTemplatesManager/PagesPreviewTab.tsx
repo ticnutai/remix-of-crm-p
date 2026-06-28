@@ -26,6 +26,8 @@ import {
   ArrowRight,
   Move,
   Settings2,
+  Ruler,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
@@ -35,15 +37,32 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import {
+  getPageDimensions,
+  DEFAULT_PAGE_SIZE,
+  type PageSizeConfig,
+  type PageSizePreset,
+} from "./frameStyles";
 
-// A4 at 96dpi
-const A4_W = 794;
-const A4_H = 1123;
+// px per mm at 96dpi. The preview scales off the dynamic pageW/pageH derived
+// from the template's page-size config (see getPageDimensions).
+const PX_PER_MM = 3.7795275591;
+
+// Page-size presets exposed in the in-preview quick selector.
+const PAGE_PRESETS: { value: PageSizePreset; label: string; dim: string }[] = [
+  { value: "A4", label: "A4", dim: "210×297" },
+  { value: "A3", label: "A3", dim: "297×420" },
+  { value: "A5", label: "A5", dim: "148×210" },
+  { value: "letter", label: "Letter", dim: "216×279" },
+  { value: "legal", label: "Legal", dim: "216×356" },
+];
 
 // How many convergence passes the auto-fix runs before stopping
 const MAX_AUTOFIX_PASSES = 4;
 
-const LS_KEY = "lov-pages-preview-prefs-v1";
+// v2: default view mode switched to "continuous" (vertical page scrolling).
+const LS_KEY = "lov-pages-preview-prefs-v2";
 const FIX_LS_KEY = "lov-pages-fix-state-v1";
 
 type ViewMode = "single" | "continuous" | "spread" | "grid" | "compare";
@@ -104,18 +123,18 @@ const defaultFixState: FixState = {
 const loadPrefs = (): Prefs => {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return { mode: "single", zoom: 0.85, highlightIssues: false, showSafeZones: true };
+    if (!raw) return { mode: "continuous", zoom: 0.85, highlightIssues: false, showSafeZones: true };
     const p = JSON.parse(raw);
     return {
       mode: ["single", "continuous", "spread", "grid", "compare"].includes(p.mode)
         ? p.mode
-        : "single",
+        : "continuous",
       zoom: typeof p.zoom === "number" ? Math.min(2, Math.max(0.25, p.zoom)) : 0.85,
       highlightIssues: !!p.highlightIssues,
       showSafeZones: p.showSafeZones !== false,
     };
   } catch {
-    return { mode: "single", zoom: 0.85, highlightIssues: false, showSafeZones: true };
+    return { mode: "continuous", zoom: 0.85, highlightIssues: false, showSafeZones: true };
   }
 };
 
@@ -148,6 +167,10 @@ interface PagesPreviewTabProps {
   onJumpToEditor?: (editablePath: string) => void;
   templateName?: string;
   onPaginationCssChange?: (css: string) => void;
+  /** Template page-size config — drives the real preview dimensions. */
+  pageSize?: PageSizeConfig;
+  /** When provided, the in-preview page-size selector is shown and writes back. */
+  onPageSizeChange?: (cfg: PageSizeConfig) => void;
 }
 
 export default function PagesPreviewTab({
@@ -157,30 +180,33 @@ export default function PagesPreviewTab({
   onJumpToEditor,
   templateName = "הצעת מחיר",
   onPaginationCssChange,
+  pageSize,
+  onPageSizeChange,
 }: PagesPreviewTabProps) {
+  // Physical page dimensions (px @96dpi) from the template's page-size config.
+  // Viewport boxes, the measuring iframe, page-count math and PNG export all
+  // scale off these instead of hardcoded A4.
+  const pageCfg: PageSizeConfig = { ...DEFAULT_PAGE_SIZE, ...(pageSize || {}) };
+  const pageDims = getPageDimensions(pageCfg);
+  const pageW = Math.round(pageDims.widthMm * PX_PER_MM);
+  const pageH = Math.round(pageDims.heightMm * PX_PER_MM);
+
   const initial = useRef(loadPrefs());
   const [mode, setMode] = useState<ViewMode>(initial.current.mode);
   const [zoom, setZoom] = useState(initial.current.zoom);
   const [highlightIssues, setHighlightIssues] = useState(
     initial.current.highlightIssues,
   );
-  const [showSafeZones, setShowSafeZones] = useState<boolean>(
+  // Retained only for prefs back-compat; the strip boundary lines were removed.
+  const [showSafeZones] = useState<boolean>(
     initial.current.showSafeZones !== false,
   );
   const [page, setPage] = useState(0);
   const [comparePage, setComparePage] = useState(1);
   const [pageCount, setPageCount] = useState(1);
-  const [contentH, setContentH] = useState(A4_H);
+  const [contentH, setContentH] = useState(pageH);
   const [issues, setIssues] = useState<number>(0);
   const [exporting, setExporting] = useState(false);
-
-  // Ephemeral drag overrides for the safe-zone lines — used while the user
-  // is actively dragging, so we DON'T rebuild the iframe srcDoc on every
-  // mousemove (which is what caused the "jumpy" feel). Committed on mouseup.
-  const [dragTopMm, setDragTopMm] = useState<number | null>(null);
-  const [dragBottomMm, setDragBottomMm] = useState<number | null>(null);
-
-
 
   // Pagination fix state
   const templateKey = templateName || "default";
@@ -197,6 +223,10 @@ export default function PagesPreviewTab({
   const measureRef = useRef<HTMLIFrameElement | null>(null);
   const captureRef = useRef<HTMLDivElement | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  // Vertical scroll-sync bookkeeping (continuous/spread/grid modes).
+  const programmaticScrollRef = useRef(false);
+  const pageRef = useRef(0);
+  const scrollLockRef = useRef(0);
 
   // Iterative auto-fix bookkeeping
   const autoFixIterRef = useRef(0);
@@ -325,33 +355,17 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       ? fixState.protectedBlocks
       : DEFAULT_PROTECTED
     ).join(",");
-    // Hard enforcement: regular content gets pushed inside the safe zones via
-    // body padding, and the repeated header/footer overlays are clipped so
-    // they can NEVER bleed past the line the user set.
+    // The strips render at their natural height, flush to the page edges — the
+    // page-1 header (in-flow) sits at the very top with no blank band, and the
+    // repeated overlays show the full strip (no clipping).
     const enforceCss = `<style data-lov-safe-enforce>
       html, body { box-sizing: border-box; }
-      body {
-        padding-top: ${safeTopPx}px !important;
-        padding-bottom: ${safeBottomPx}px !important;
-      }
-      /* The repeated overlays live in their reserved strip and never escape. */
-      .lov-repeat-overlay-header {
-        max-height: ${safeTopPx}px !important;
-        overflow: hidden !important;
-      }
-      .lov-repeat-overlay-footer {
-        max-height: ${safeBottomPx}px !important;
-        overflow: hidden !important;
-      }
-      /* Repeating originals (page-1 header / last-page footer) clipped too. */
-      .print-repeat-header td { max-height: ${safeTopPx}px; overflow: hidden; }
-      .print-repeat-footer td { max-height: ${safeBottomPx}px; overflow: hidden; }
     </style>`;
 
     const script = `
 <script>
 (function(){
-  var H=${A4_H};
+  var H=${pageH};
   var MANUAL=${manualMode ? "true" : "false"};
   var HIGHLIGHT=${highlightIssues ? "true" : "false"};
   var AUTO_PATHS=${autoPathsJson};
@@ -606,7 +620,10 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       if(repH) headerH=headerSrc.getBoundingClientRect().height || 0;
       if(repF) footerH=footerSrc.getBoundingClientRect().height || 90;
 
-      var docH=document.documentElement.scrollHeight;
+      // Use the in-flow content height (offsetHeight), NOT scrollHeight: these
+      // overlays are position:absolute, so they inflate scrollHeight, which would
+      // feed back into the page count and manufacture phantom blank pages.
+      var docH=Math.max(document.documentElement.offsetHeight, document.body.offsetHeight);
       var pageCount=Math.max(1, Math.ceil(docH/PH));
 
       // Header clones for pages 2..N (page 1 already has the original header)
@@ -645,6 +662,29 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     setTimeout(detectIssues,300);
     // Re-run overlay setup after content settles (fonts/images)
     setTimeout(setupRepeatOverlays,600);
+    // Web fonts load asynchronously and can grow the document past a page
+    // boundary after the initial passes — recompute overlays once they're ready
+    // (plus a late fallback) so every page keeps its top/bottom strip.
+    try{
+      if(document.fonts && document.fonts.ready && document.fonts.ready.then){
+        document.fonts.ready.then(function(){ setupRepeatOverlays(); });
+      }
+    }catch(e){}
+    setTimeout(setupRepeatOverlays,1500);
+    // Late images (logos, strip art) load after fonts and grow the document.
+    // A debounced ResizeObserver re-runs the overlay setup whenever the document
+    // height changes, so the strip count always tracks the settled layout.
+    try{
+      if(window.ResizeObserver){
+        var _roT=null;
+        var ro=new ResizeObserver(function(){
+          if(_roT) clearTimeout(_roT);
+          _roT=setTimeout(setupRepeatOverlays,150);
+        });
+        ro.observe(document.documentElement);
+        ro.observe(document.body);
+      }
+    }catch(e){}
   }
   if(document.readyState==='complete') setTimeout(init,200);
   else window.addEventListener('load',function(){setTimeout(init,200);});
@@ -654,7 +694,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     return html.includes("</body>")
       ? html.replace("</body>", `${injection}</body>`)
       : `${html}${injection}`;
-  }, [html, highlightIssues, manualMode, paginationCss, fixState.autoPaths, fixState.manual, fixState.safeZoneTopMm, fixState.safeZoneBottomMm, fixState.protectedBlocks]);
+  }, [html, highlightIssues, manualMode, paginationCss, fixState.autoPaths, fixState.manual, fixState.safeZoneTopMm, fixState.safeZoneBottomMm, fixState.protectedBlocks, pageH]);
 
   // Measure
   const handleMeasureLoad = useCallback(() => {
@@ -665,22 +705,55 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       if (!doc) return;
       const measure = () => {
         const body = doc.body;
+        // Use offsetHeight (in-flow content), NOT scrollHeight: the repeating
+        // strip overlays are position:absolute and inflate scrollHeight, which
+        // would manufacture phantom blank pages. offsetHeight excludes them, so
+        // it matches the in-iframe overlay page-count formula.
         const h = Math.max(
-          doc.documentElement.scrollHeight || 0,
-          body?.scrollHeight || 0,
           doc.documentElement.offsetHeight || 0,
           body?.offsetHeight || 0,
-          A4_H,
+          pageH,
         );
         setContentH(h);
-        setPageCount(Math.max(1, Math.ceil(h / A4_H)));
+        setPageCount(Math.max(1, Math.ceil(h / pageH)));
       };
       setTimeout(measure, 350);
       setTimeout(measure, 900);
+      // Re-measure once web fonts finish loading (they can grow the document a
+      // little) plus a late fallback, so the page count matches the settled
+      // layout that the overlay script sees.
+      try {
+        const f = (doc as Document & { fonts?: FontFaceSet }).fonts;
+        if (f && f.ready && typeof f.ready.then === "function") {
+          f.ready.then(() => measure());
+        }
+      } catch {
+        // ignore
+      }
+      setTimeout(measure, 1600);
+      // Late images (logos, strip art) grow the document after fonts. A debounced
+      // ResizeObserver keeps the page count in sync with the settled layout — the
+      // same signal the in-iframe overlay script uses — so they never disagree.
+      try {
+        const prev = (iframe as HTMLIFrameElement & { __ro?: ResizeObserver }).__ro;
+        if (prev) prev.disconnect();
+        if (typeof ResizeObserver !== "undefined" && doc.body) {
+          let t: ReturnType<typeof setTimeout> | undefined;
+          const ro = new ResizeObserver(() => {
+            if (t) clearTimeout(t);
+            t = setTimeout(measure, 150);
+          });
+          ro.observe(doc.documentElement);
+          ro.observe(doc.body);
+          (iframe as HTMLIFrameElement & { __ro?: ResizeObserver }).__ro = ro;
+        }
+      } catch {
+        // ignore
+      }
     } catch {
       // ignore
     }
-  }, []);
+  }, [pageH]);
 
   // Listen
   useEffect(() => {
@@ -936,7 +1009,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     // a transformed/scaled container — that's why the previous version produced
     // blank PNGs.
     const iframe = document.createElement("iframe");
-    iframe.style.cssText = `position:fixed;left:-99999px;top:0;width:${A4_W}px;height:${Math.max(contentH, A4_H)}px;border:0;background:#ffffff;`;
+    iframe.style.cssText = `position:fixed;left:-99999px;top:0;width:${pageW}px;height:${Math.max(contentH, pageH)}px;border:0;background:#ffffff;`;
     document.body.appendChild(iframe);
     try {
       await new Promise<void>((resolve, reject) => {
@@ -964,14 +1037,14 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         backgroundColor: "#ffffff",
         useCORS: true,
         logging: false,
-        width: A4_W,
-        height: Math.max(contentH, A4_H),
-        windowWidth: A4_W,
-        windowHeight: Math.max(contentH, A4_H),
+        width: pageW,
+        height: Math.max(contentH, pageH),
+        windowWidth: pageW,
+        windowHeight: Math.max(contentH, pageH),
       });
       const out = document.createElement("canvas");
-      out.width = A4_W * 2;
-      out.height = A4_H * 2;
+      out.width = pageW * 2;
+      out.height = pageH * 2;
       const ctx = out.getContext("2d");
       if (ctx) {
         ctx.fillStyle = "#ffffff";
@@ -979,13 +1052,13 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         ctx.drawImage(
           fullCanvas,
           0,
-          page * A4_H * 2,
-          A4_W * 2,
-          A4_H * 2,
+          page * pageH * 2,
+          pageW * 2,
+          pageH * 2,
           0,
           0,
-          A4_W * 2,
-          A4_H * 2,
+          pageW * 2,
+          pageH * 2,
         );
       }
       const link = document.createElement("a");
@@ -1000,7 +1073,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       try { document.body.removeChild(iframe); } catch { /* */ }
       setExporting(false);
     }
-  }, [page, templateName, finalHtml, contentH]);
+  }, [page, templateName, finalHtml, contentH, pageW, pageH]);
 
   const fitZoom = useCallback(() => setZoom(0.7), []);
 
@@ -1054,15 +1127,17 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       data-page-index={pageIdx}
       className="relative bg-card shadow-md border border-border"
       style={{
-        width: A4_W * scale,
-        height: A4_H * scale,
+        width: pageW * scale,
+        height: pageH * scale,
         overflow: "hidden",
+        scrollSnapAlign: "start",
+        scrollMarginTop: 24,
       }}
     >
       <div
         style={{
-          width: A4_W * scale,
-          height: Math.max(contentH, A4_H) * scale,
+          width: pageW * scale,
+          height: Math.max(contentH, pageH) * scale,
           position: "relative",
           pointerEvents: interactive ? "auto" : "none",
         }}
@@ -1073,9 +1148,9 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           style={{
             position: "absolute",
             left: 0,
-            top: -pageIdx * A4_H * scale,
-            width: A4_W,
-            height: Math.max(contentH, A4_H),
+            top: -pageIdx * pageH * scale,
+            width: pageW,
+            height: Math.max(contentH, pageH),
             transform: `scale(${scale})`,
             transformOrigin: "top left",
             border: 0,
@@ -1084,120 +1159,6 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           }}
         />
       </div>
-      {showSafeZones && (() => {
-        // Live values (use drag ephemeral if active) to keep the line glued
-        // to the cursor without rebuilding the iframe on every mousemove.
-        const liveTopMm = dragTopMm ?? fixState.safeZoneTopMm;
-        const liveBottomMm = dragBottomMm ?? fixState.safeZoneBottomMm;
-        const PX_PER_MM = 3.7795;
-        const MAX_MM = Math.round((A4_H / PX_PER_MM) * 0.6); // up to 60% of page
-
-        const startDrag = (
-          startMmGetter: () => number,
-          setDraft: (n: number | null) => void,
-          commit: (n: number) => void,
-          invert: boolean,
-        ) => (e: React.MouseEvent) => {
-          if (!interactive) return;
-          e.preventDefault();
-          e.stopPropagation();
-          const startY = e.clientY;
-          const startMm = startMmGetter();
-          let lastMm = startMm;
-          document.body.style.cursor = "ns-resize";
-          document.body.style.userSelect = "none";
-          const onMove = (ev: MouseEvent) => {
-            const dy = ev.clientY - startY;
-            const dmm = (invert ? -dy : dy) / scale / PX_PER_MM;
-            // snap to 1mm grid
-            const snapped = Math.round(startMm + dmm);
-            const clamped = Math.max(0, Math.min(MAX_MM, snapped));
-            if (clamped !== lastMm) {
-              lastMm = clamped;
-              setDraft(clamped);
-            }
-          };
-          const onUp = () => {
-            window.removeEventListener("mousemove", onMove);
-            window.removeEventListener("mouseup", onUp);
-            document.body.style.cursor = "";
-            document.body.style.userSelect = "";
-            setDraft(null);
-            commit(lastMm);
-          };
-          window.addEventListener("mousemove", onMove);
-          window.addEventListener("mouseup", onUp);
-        };
-
-        return (
-          <>
-            {/* Top safe zone limit — draggable dashed gold line */}
-            <div
-              className="absolute left-0 right-0 group"
-              style={{
-                top: liveTopMm * PX_PER_MM * scale - 6,
-                height: 12,
-                cursor: interactive ? "ns-resize" : "default",
-                zIndex: 50,
-                pointerEvents: interactive ? "auto" : "none",
-                willChange: "top",
-              }}
-              title={interactive ? "גרור לשינוי גובה הסטריפ העליון (קפיצות של 1 מ\"מ)" : undefined}
-              onMouseDown={startDrag(
-                () => fixState.safeZoneTopMm,
-                setDragTopMm,
-                (n) => setFixState((s) => ({ ...s, safeZoneTopMm: n })),
-                false,
-              )}
-              aria-label="גרור לשינוי גובה סטריפ עליון"
-            >
-              <div
-                className="absolute left-0 right-0 top-1/2 -translate-y-1/2 group-hover:border-t-[2.5px] transition-all"
-                style={{ borderTop: "1.5px dashed #d8ac27" }}
-              />
-              <span
-                className="absolute right-1 -top-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-sm select-none pointer-events-none"
-                style={{ background: "#d8ac27", color: "#162C58", lineHeight: 1 }}
-              >
-                סטריפ עליון · {liveTopMm} מ"מ
-              </span>
-            </div>
-            {/* Bottom safe zone limit — draggable */}
-            <div
-              className="absolute left-0 right-0 group"
-              style={{
-                bottom: liveBottomMm * PX_PER_MM * scale - 6,
-                height: 12,
-                cursor: interactive ? "ns-resize" : "default",
-                zIndex: 50,
-                pointerEvents: interactive ? "auto" : "none",
-                willChange: "bottom",
-              }}
-              title={interactive ? "גרור לשינוי גובה הסטריפ התחתון (קפיצות של 1 מ\"מ)" : undefined}
-              onMouseDown={startDrag(
-                () => fixState.safeZoneBottomMm,
-                setDragBottomMm,
-                (n) => setFixState((s) => ({ ...s, safeZoneBottomMm: n })),
-                true,
-              )}
-              aria-label="גרור לשינוי גובה סטריפ תחתון"
-            >
-              <div
-                className="absolute left-0 right-0 top-1/2 -translate-y-1/2 group-hover:border-t-[2.5px] transition-all"
-                style={{ borderTop: "1.5px dashed #d8ac27" }}
-              />
-              <span
-                className="absolute right-1 bottom-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-sm select-none pointer-events-none"
-                style={{ background: "#d8ac27", color: "#162C58", lineHeight: 1 }}
-              >
-                סטריפ תחתון · {liveBottomMm} מ"מ
-              </span>
-            </div>
-          </>
-        );
-      })()}
-
-
       <div className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-foreground/70 text-background pointer-events-none">
         {label ? `${label} · ` : ""}
         {pageIdx + 1} / {pageCount}
@@ -1206,13 +1167,62 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   );
 
   useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+
+  // Scroll the active page into view when `page` changes via buttons/keyboard.
+  // Skipped when the change originated from scrolling (see scroll-sync below).
+  useEffect(() => {
     if (mode === "single" || mode === "compare") return;
+    if (programmaticScrollRef.current) {
+      programmaticScrollRef.current = false;
+      return;
+    }
     const scroller = scrollerRef.current;
     if (!scroller) return;
     const target = scroller.querySelector<HTMLElement>(`[data-page-index="${page}"]`);
     if (!target) return;
-    target.scrollIntoView({ block: "center", behavior: "smooth" });
+    scrollLockRef.current = performance.now() + 650;
+    target.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [mode, page]);
+
+  // Vertical scroll sync: keep the "page X of Y" counter aligned with whichever
+  // page is nearest the viewport centre while scrolling.
+  useEffect(() => {
+    if (mode === "single" || mode === "compare") return;
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        if (performance.now() < scrollLockRef.current) return;
+        const boxes = scroller.querySelectorAll<HTMLElement>("[data-page-index]");
+        if (!boxes.length) return;
+        const centre = scroller.scrollTop + scroller.clientHeight / 2;
+        let nearest = 0;
+        let best = Infinity;
+        boxes.forEach((box) => {
+          const mid = box.offsetTop + box.offsetHeight / 2;
+          const dist = Math.abs(mid - centre);
+          if (dist < best) {
+            best = dist;
+            nearest = Number(box.dataset.pageIndex) || 0;
+          }
+        });
+        if (nearest !== pageRef.current) {
+          programmaticScrollRef.current = true;
+          setPage(nearest);
+        }
+      });
+    };
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      scroller.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [mode, pageCount]);
 
   return (
     <div className="h-full flex flex-col bg-muted/30 relative">
@@ -1225,7 +1235,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           position: "absolute",
           left: -99999,
           top: -99999,
-          width: A4_W,
+          width: pageW,
           height: 200,
           border: 0,
           visibility: "hidden",
@@ -1391,16 +1401,9 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
               dir="rtl"
             >
               <div className="flex items-center justify-between pb-2 border-b">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="show-safe-zones"
-                    checked={showSafeZones}
-                    onCheckedChange={(v) => setShowSafeZones(!!v)}
-                  />
-                  <Label htmlFor="show-safe-zones" className="text-xs font-semibold cursor-pointer">
-                    הצג קווי גבול סטריפים
-                  </Label>
-                </div>
+                <Label className="text-xs font-semibold">
+                  אזורי בטיחות (לתיקון עימוד)
+                </Label>
                 <Button
                   size="sm"
                   variant="outline"
@@ -1662,7 +1665,16 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       </div>
 
       {/* Viewport */}
-      <div ref={scrollerRef} className="pages-preview-scroll flex-1 overflow-auto p-6" dir="ltr">
+      <div
+        ref={scrollerRef}
+        className="pages-preview-scroll flex-1 overflow-auto p-6"
+        dir="ltr"
+        style={{
+          scrollSnapType:
+            mode === "continuous" || mode === "spread" ? "y proximity" : undefined,
+          scrollBehavior: "smooth",
+        }}
+      >
         {mode === "single" && (
           <div className="flex justify-center">
             <div ref={captureRef}>{renderPageViewport(page, zoom, true)}</div>
@@ -1690,7 +1702,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
                   ) : (
                     <div
                       className="border border-dashed border-border/70 bg-muted/40"
-                      style={{ width: A4_W * zoom * 0.78, height: A4_H * zoom * 0.78 }}
+                      style={{ width: pageW * zoom * 0.78, height: pageH * zoom * 0.78 }}
                     />
                   )}
                 </div>

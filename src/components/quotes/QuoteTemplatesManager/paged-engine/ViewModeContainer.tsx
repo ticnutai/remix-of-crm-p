@@ -27,9 +27,12 @@ interface ViewModeContainerProps {
   onPageChange: (p: number) => void;
   /** Forwarded to outer scroll element so keyboard nav can scroll it. */
   scrollRef?: React.MutableRefObject<HTMLDivElement | null>;
+  /** Page dimensions in px at 96dpi (defaults to A4). */
+  pageWidth?: number;
+  pageHeight?: number;
 }
 
-// A4 at 96dpi for layout calculations (paged.js uses the same).
+// A4 at 96dpi — used as fallback defaults.
 const A4_W = 794;
 const A4_H = 1123;
 
@@ -42,7 +45,11 @@ export default function ViewModeContainer({
   currentPage,
   onPageChange,
   scrollRef,
+  pageWidth,
+  pageHeight,
 }: ViewModeContainerProps) {
+  const PAGE_W = pageWidth ?? A4_W;
+  const PAGE_H = pageHeight ?? A4_H;
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const internalScrollRef = useRef<HTMLDivElement | null>(null);
   const targetScrollRef = scrollRef ?? internalScrollRef;
@@ -68,8 +75,8 @@ export default function ViewModeContainer({
       const wrap = document.createElement("div");
       wrap.className = "paged-page-wrap";
       wrap.dataset.pageIdx = String(idx);
-      wrap.style.width = `${A4_W}px`;
-      wrap.style.height = `${A4_H}px`;
+      wrap.style.width = `${PAGE_W}px`;
+      wrap.style.height = `${PAGE_H}px`;
       wrap.style.background = "#ffffff";
       wrap.style.boxShadow = "0 2px 14px rgba(0,0,0,0.12)";
       wrap.style.overflow = "hidden";
@@ -94,7 +101,7 @@ export default function ViewModeContainer({
 
       viewport.appendChild(wrap);
     });
-  }, [sourceRef, mode, onPageChange]);
+  }, [sourceRef, mode, onPageChange, PAGE_W, PAGE_H]);
 
   useLayoutEffect(() => {
     renderPages();

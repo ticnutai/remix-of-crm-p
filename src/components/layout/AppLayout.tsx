@@ -52,6 +52,7 @@ const mainNavItems = [
   { title: 'ניתוח זמנים', url: '/time-analytics', icon: Clock },
   { title: 'משימות, פגישות ותזכורות', url: '/tasks-meetings', icon: Calendar },
   { title: 'הצעות מחיר', url: '/quotes', icon: FileSpreadsheet },
+  { title: 'הצעות מחיר PRO', url: '/quotes-pro', icon: FileSpreadsheet },
   { title: 'כספים', url: '/finance', icon: Wallet },
   { title: 'תשלומים', url: '/payments', icon: Wallet },
   { title: 'דוחות', url: '/reports', icon: FileSpreadsheet },

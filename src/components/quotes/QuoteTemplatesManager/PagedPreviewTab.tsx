@@ -25,6 +25,8 @@ import {
   ScrollText,
   BookOpen,
   Keyboard,
+  Ruler,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +40,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 import { usePagedLayout } from "./paged-engine/usePagedLayout";
 import { useKeyboardNav } from "./paged-engine/useKeyboardNav";
@@ -47,15 +50,35 @@ import ViewModeContainer, {
 
 const LS_KEY = "lov-paged-preview-prefs-v1";
 
+// ─── Page size definitions (96 dpi, portrait) ────────────────────────────────
+interface PageSizeOption {
+  id: string;
+  label: string;
+  dims: string;
+  cssSize: string;
+  widthPx: number;
+  heightPx: number;
+}
+
+const PAGE_SIZES: PageSizeOption[] = [
+  { id: "A4",     label: "A4",     dims: '210×297 מ"מ', cssSize: "A4",     widthPx: 794,  heightPx: 1123 },
+  { id: "A3",     label: "A3",     dims: '297×420 מ"מ', cssSize: "A3",     widthPx: 1123, heightPx: 1587 },
+  { id: "A5",     label: "A5",     dims: '148×210 מ"מ', cssSize: "A5",     widthPx: 560,  heightPx: 794  },
+  { id: "Letter", label: "Letter", dims: '216×279 מ"מ', cssSize: "letter", widthPx: 816,  heightPx: 1056 },
+  { id: "Legal",  label: "Legal",  dims: '216×356 מ"מ', cssSize: "legal",  widthPx: 816,  heightPx: 1344 },
+];
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface Prefs {
   mode: PagedViewMode;
   zoom: number;
+  pageSizeId: string;
 }
 
 function loadPrefs(): Prefs {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return { mode: "single", zoom: 0.85 };
+    if (!raw) return { mode: "single", zoom: 0.85, pageSizeId: "A4" };
     const p = JSON.parse(raw);
     const validModes: PagedViewMode[] = [
       "single",
@@ -63,15 +86,17 @@ function loadPrefs(): Prefs {
       "spread",
       "grid",
     ];
+    const validSizeId = PAGE_SIZES.find((s) => s.id === p.pageSizeId)?.id ?? "A4";
     return {
       mode: validModes.includes(p.mode) ? p.mode : "single",
       zoom:
         typeof p.zoom === "number"
           ? Math.max(0.25, Math.min(2, p.zoom))
           : 0.85,
+      pageSizeId: validSizeId,
     };
   } catch {
-    return { mode: "single", zoom: 0.85 };
+    return { mode: "single", zoom: 0.85, pageSizeId: "A4" };
   }
 }
 
@@ -121,6 +146,11 @@ export default function PagedPreviewTab({
   const [mode, setMode] = useState<PagedViewMode>(initial.current.mode);
   const [zoom, setZoom] = useState(initial.current.zoom);
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSizeId, setPageSizeId] = useState(initial.current.pageSizeId);
+  const [pageSizeOpen, setPageSizeOpen] = useState(false);
+
+  const pageSize = PAGE_SIZES.find((s) => s.id === pageSizeId) ?? PAGE_SIZES[0];
+  const pageSizeOverrideCss = `@page { size: ${pageSize.cssSize}; margin: 18mm 14mm 16mm 14mm; }`;
 
   // Off-screen render container - paged.js writes the fragmented DOM here.
   // ViewModeContainer clones the resulting .pagedjs_page nodes into the
@@ -128,7 +158,7 @@ export default function PagedPreviewTab({
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const { containerRef, pageCount, rendering, error, rerender } =
-    usePagedLayout(html);
+    usePagedLayout(html, pageSizeOverrideCss);
 
   // Clamp current page when count changes
   useEffect(() => {
@@ -140,12 +170,12 @@ export default function PagedPreviewTab({
     try {
       localStorage.setItem(
         LS_KEY,
-        JSON.stringify({ mode, zoom } as Prefs),
+        JSON.stringify({ mode, zoom, pageSizeId } as Prefs),
       );
     } catch {
       // ignore
     }
-  }, [mode, zoom]);
+  }, [mode, zoom, pageSizeId]);
 
   // Keyboard navigation
   useKeyboardNav({
@@ -161,10 +191,10 @@ export default function PagedPreviewTab({
     const availableW = el.clientWidth - 64;
     const newZoom = Math.max(
       0.3,
-      Math.min(1.5, +(availableW / 794).toFixed(2)),
+      Math.min(1.5, +(availableW / pageSize.widthPx).toFixed(2)),
     );
     setZoom(newZoom);
-  }, []);
+  }, [pageSize.widthPx]);
 
   const totalLabel = useMemo(
     () =>
@@ -185,7 +215,7 @@ export default function PagedPreviewTab({
             position: "absolute",
             left: -100000,
             top: 0,
-            width: 794,
+            width: pageSize.widthPx,
             visibility: "hidden",
             pointerEvents: "none",
           }}
@@ -312,6 +342,70 @@ export default function PagedPreviewTab({
             </PopoverContent>
           </Popover>
 
+          {/* Page size selector */}
+          <Popover open={pageSizeOpen} onOpenChange={setPageSizeOpen}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs gap-1.5 min-w-[68px] font-medium"
+                    aria-label="גודל עמוד"
+                  >
+                    <Ruler className="h-3.5 w-3.5 shrink-0" />
+                    {pageSize.label}
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>גודל עמוד</TooltipContent>
+            </Tooltip>
+            <PopoverContent align="start" side="bottom" className="w-56 p-2" dir="rtl">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-2">
+                גודל עמוד
+              </p>
+              <div className="space-y-0.5">
+                {PAGE_SIZES.map((s) => {
+                  const THUMB_H = 42;
+                  const ratio = s.widthPx / s.heightPx;
+                  const thumbW = Math.round(THUMB_H * ratio);
+                  const selected = s.id === pageSizeId;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => { setPageSizeId(s.id); setPageSizeOpen(false); }}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-2 py-1.5 rounded-md text-right transition-colors",
+                        selected
+                          ? "bg-primary/10 text-primary"
+                          : "hover:bg-muted text-foreground",
+                      )}
+                    >
+                      {/* Mini page thumbnail */}
+                      <div
+                        className="shrink-0 rounded-[2px] border flex items-center justify-center text-[8px] font-bold"
+                        style={{
+                          width: thumbW,
+                          height: THUMB_H,
+                          background: selected ? "hsl(var(--primary)/0.08)" : "#f8fafc",
+                          borderColor: selected ? "hsl(var(--primary)/0.4)" : "#cbd5e0",
+                          color: selected ? "hsl(var(--primary))" : "#94a3b8",
+                        }}
+                      >
+                        {s.label}
+                      </div>
+                      <div className="flex flex-col items-start min-w-0 flex-1">
+                        <span className="text-xs font-semibold leading-tight">{s.label}</span>
+                        <span className="text-[10px] text-muted-foreground leading-tight mt-0.5">{s.dims}</span>
+                      </div>
+                      {selected && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
+
           <div className="flex-1" />
 
           {/* Export */}
@@ -359,6 +453,8 @@ export default function PagedPreviewTab({
           currentPage={currentPage}
           onPageChange={setCurrentPage}
           scrollRef={scrollRef}
+          pageWidth={pageSize.widthPx}
+          pageHeight={pageSize.heightPx}
         />
 
         {/* Status bar */}

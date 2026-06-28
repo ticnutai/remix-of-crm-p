@@ -442,32 +442,92 @@
     }
     
     @media (max-width: 600px) {
-      body {
-        padding: 20px 10px;
-      }
-      
-      .header {
-        padding: 30px 25px;
-      }
-      
-      .header h1 {
-        font-size: 28px;
-      }
-      
-      .header .price {
-        font-size: 36px;
-      }
-      
-      .content {
-        padding: 25px;
-      }
-      
-      .pricing-tiers {
-        grid-template-columns: 1fr;
-      }
-      
-      .payments {
-        flex-direction: column;
+      body { padding: 16px 10px; }
+      .header { padding: 28px 22px 24px; }
+      .header h1 { font-size: 26px; }
+      .header .price { font-size: 36px; }
+      .content { padding: 22px; }
+      .pricing-tiers { grid-template-columns: 1fr; }
+      .tier.recommended { transform: none; }
+      .payments { flex-direction: column; }
+      .upgrades { grid-template-columns: 1fr; }
+    }
+
+    /* ═══ PROFESSIONAL ENHANCEMENTS ═══ */
+
+    body { background: #edf0f3; color: #1e293b; -webkit-font-smoothing: antialiased; line-height: 1.75; }
+    .container { border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.04), 0 20px 60px rgba(0,0,0,0.10); }
+
+    /* Section title: clean with gold bottom accent */
+    .section-title {
+      background: transparent;
+      border-radius: 0;
+      border-right: none;
+      border-bottom: 2px solid #eef0f3;
+      padding: 0 0 10px;
+      margin-bottom: 20px;
+      color: #162C58;
+      box-shadow: none;
+      font-size: 18px;
+      position: relative;
+    }
+    .section-title::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      right: 0;
+      width: 52px;
+      height: 2px;
+      background: linear-gradient(to left, #d8ac27, #B8860B);
+    }
+
+    /* Payment cards: navy percentage + gold top bar */
+    .payment { position: relative; overflow: hidden; border: 2px solid #eef0f3; }
+    .payment::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(to left, #d8ac27, #B8860B);
+    }
+    .payment .percentage { color: #162C58; font-size: 34px; }
+
+    /* Timeline: vertical connector between steps */
+    .timeline { position: relative; padding-right: 22px; }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      right: 16px;
+      top: 26px;
+      bottom: 26px;
+      width: 2px;
+      background: linear-gradient(to bottom, #d8ac27, #e8ecf0);
+    }
+    .timeline-item { position: relative; }
+
+    /* Item separator lines */
+    .item { border-bottom: 1px solid #f8fafc; }
+    .item:last-child { border-bottom: none; }
+    .item .text { font-size: 14.5px; line-height: 1.65; }
+
+    /* Upgrade cards */
+    .upgrade { border-right: 4px solid #d8ac27; }
+    .upgrade h4 { color: #162C58; }
+
+    /* Notes */
+    .note { border-right: 3px solid #d8ac27; background: linear-gradient(to left, rgba(216,172,39,0.07), rgba(216,172,39,0.03)); }
+
+    /* Footer improvements */
+    .footer { background: linear-gradient(to bottom, #f8fafc, #f1f5f9); border-top: 1px solid #e2e8f0; }
+
+    /* Print: proper A4 setup */
+    @page { size: A4; margin: 8mm 10mm; }
+    @media print {
+      body { background: white !important; padding: 0 !important; }
+      .container { border-radius: 0 !important; box-shadow: none !important; max-width: 100% !important; }
+      .header, .payment::before, .section-title::after, .timeline::before {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
     }
   </style>

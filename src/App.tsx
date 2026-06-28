@@ -72,6 +72,9 @@ const Analytics = lazy(() => import("./pages/Analytics"));
 const AuditLogPage = lazy(() => import("./pages/AuditLog"));
 const QuoteTemplates = lazy(() => import("./pages/QuoteTemplates"));
 const QuoteTemplateEditorPage = lazy(() => import("./pages/QuoteTemplateEditorPage"));
+const QuotesPro = lazy(() => import("./pages/QuotesPro"));
+const QuotesProEditorPage = lazy(() => import("./pages/QuotesProEditorPage"));
+const QuotesProPublicView = lazy(() => import("./pages/QuotesProPublicView"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // V2 Features - Advanced Pages
@@ -359,6 +362,18 @@ const App = () => {
                               <Route
                                 path="/quote-templates/editor/:id"
                                 element={withErrorBoundary(QuoteTemplateEditorPage)}
+                              />
+                              <Route
+                                path="/quotes-pro"
+                                element={withErrorBoundary(QuotesPro)}
+                              />
+                              <Route
+                                path="/quotes-pro/editor/:id"
+                                element={withErrorBoundary(QuotesProEditorPage)}
+                              />
+                              <Route
+                                path="/quotes-pro/view/:id"
+                                element={withErrorBoundary(QuotesProPublicView)}
                               />
 
                               {/* V2 Advanced Features */}
