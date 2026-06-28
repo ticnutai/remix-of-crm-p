@@ -16,6 +16,7 @@ import {
   Undo2,
   Redo2,
   Tag,
+  Plus,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -25,13 +26,17 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { groupDynamicFields } from "./dynamicFields";
+import { groupDynamicFields, type DynamicFieldDefinition } from "./dynamicFields";
 
 interface Props {
   editor: Editor | null;
+  /** רשימת שדות מותאמת מחוץ לרכיב (כולל שדות שהמשתמש יצר) */
+  fields?: DynamicFieldDefinition[];
+  /** קריאה לפתיחת חלון יצירת שדה חדש */
+  onCreateField?: () => void;
 }
 
-export default function MenuBar({ editor }: Props) {
+export default function MenuBar({ editor, fields, onCreateField }: Props) {
   const [open, setOpen] = useState(false);
   if (!editor) return null;
 
@@ -40,7 +45,7 @@ export default function MenuBar({ editor }: Props) {
       ? "bg-primary text-primary-foreground hover:bg-primary/90"
       : "bg-transparent hover:bg-muted";
 
-  const groups = groupDynamicFields();
+  const groups = groupDynamicFields(fields);
 
   return (
     <div className="flex flex-wrap items-center gap-1 border-b bg-background px-2 py-1.5">
