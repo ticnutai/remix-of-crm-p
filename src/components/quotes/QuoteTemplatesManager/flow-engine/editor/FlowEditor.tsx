@@ -25,7 +25,8 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import DynamicField from "./DynamicField";
+import DynamicField, { setFieldResolver } from "./DynamicField";
+import { projectToMergeData, type ProjectTokenData } from "../projectTokens";
 import MenuBar from "./MenuBar";
 import BubbleToolbar from "./BubbleToolbar";
 import AdvancedTextStyle from "./AdvancedTextStyle";
@@ -42,6 +43,7 @@ interface Props {
   templateDesignSettings?: any;
   designSettings?: any;
   onDesignSettingsChange?: (patch: Record<string, any>) => void;
+  projectDetails?: ProjectTokenData;
 }
 
 const PAGE_SIZES_MM: Record<string, { width: number; height: number }> = {
