@@ -162,16 +162,9 @@ export default function BubbleToolbar({ editor }: Props) {
       >
         <UnderlineIcon className="h-3.5 w-3.5" />
       </button>
-      <button
-        type="button"
-        className={`${btnBase} ${editor.isActive("highlight") ? btnActive : ""}`}
-        onClick={run(() => apply((c) => c.toggleHighlight()))}
-        title="הדגשה צהובה"
-      >
-        <Highlighter className="h-3.5 w-3.5" />
-      </button>
 
       <div className="mx-1 h-5 w-px bg-border" />
+
 
       {/* Font family */}
       <Popover>
