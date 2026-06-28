@@ -177,6 +177,18 @@ export default function MenuBar({ editor, fields, onCreateField }: Props) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="max-h-80 w-56 overflow-auto">
+          {onCreateField && (
+            <>
+              <DropdownMenuItem
+                onSelect={() => onCreateField()}
+                className="gap-2 text-primary"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span className="text-sm font-medium">צור שדה חדש...</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           {Object.entries(groups).map(([group, fields], i) => (
             <React.Fragment key={group}>
               {i > 0 && <DropdownMenuSeparator />}
