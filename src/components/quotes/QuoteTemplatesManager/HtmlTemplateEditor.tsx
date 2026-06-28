@@ -62,6 +62,7 @@ import {
   FileCode,
   Mail,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Pencil,
   Plus,
@@ -8708,6 +8709,24 @@ ${tbAt('footer')}
 
           {/* Desktop: full tab list */}
           <div className="hidden md:flex border-b bg-white px-6 items-center justify-between gap-2">
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary"
+                    onClick={onClose}
+                    aria-label="חזרה לתבניות הצעות מחיר"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">חזרה לתבניות הצעות מחיר</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
             <TooltipProvider delayDuration={200}>
               <TabsList
                 className={cn(
