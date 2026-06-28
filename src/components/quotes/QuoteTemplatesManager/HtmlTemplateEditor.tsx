@@ -8770,31 +8770,36 @@ ${tbAt('footer')}
                       variant="ghost"
                       size="icon"
                       className="h-9 w-9 text-gray-500 hover:text-[#B8860B]"
-                      onClick={() =>
-                        setTabDisplayMode((mode) => {
-                          if (mode === "full") return "iconsOnly";
-                          if (mode === "iconsOnly") return "stacked";
-                          return "full";
-                        })
-                      }
-                      aria-label={
-                        tabDisplayMode === "full"
-                          ? "תצוגת אייקונים בלבד"
-                          : tabDisplayMode === "iconsOnly"
-                            ? "תצוגת אייקון + טקסט בשתי שורות"
+                    onClick={() =>
+                      setTabDisplayMode((mode) => {
+                        if (mode === "full") return "iconsOnly";
+                        if (mode === "iconsOnly") return "stacked";
+                        if (mode === "stacked") return "twoRows";
+                        return "full";
+                      })
+                    }
+                    aria-label={
+                      tabDisplayMode === "full"
+                        ? "תצוגת אייקונים בלבד"
+                        : tabDisplayMode === "iconsOnly"
+                          ? "תצוגת אייקון + טקסט בשתי שורות"
+                          : tabDisplayMode === "stacked"
+                            ? "תצוגת טאבים בשתי שורות (קומפקטי)"
                             : "תצוגה מלאה"
-                      }
-                    >
-                      {tabDisplayMode === "full" && <PanelsTopLeft className="h-5 w-5" />}
-                      {tabDisplayMode === "iconsOnly" && <LayoutList className="h-5 w-5" />}
-                      {tabDisplayMode === "stacked" && <Type className="h-5 w-5" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    {tabDisplayMode === "full" && "תצוגת אייקונים בלבד"}
-                    {tabDisplayMode === "iconsOnly" && "תצוגת אייקון + טקסט בשתי שורות"}
-                    {tabDisplayMode === "stacked" && "תצוגה מלאה"}
-                  </TooltipContent>
+                    }
+                  >
+                    {tabDisplayMode === "full" && <PanelsTopLeft className="h-5 w-5" />}
+                    {tabDisplayMode === "iconsOnly" && <LayoutList className="h-5 w-5" />}
+                    {tabDisplayMode === "stacked" && <Type className="h-5 w-5" />}
+                    {tabDisplayMode === "twoRows" && <Rows2 className="h-5 w-5" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {tabDisplayMode === "full" && "תצוגת אייקונים בלבד"}
+                  {tabDisplayMode === "iconsOnly" && "תצוגת אייקון + טקסט בשתי שורות"}
+                  {tabDisplayMode === "stacked" && "תצוגת טאבים בשתי שורות (קומפקטי)"}
+                  {tabDisplayMode === "twoRows" && "תצוגה מלאה"}
+                </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
               <Button
