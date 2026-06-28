@@ -4589,11 +4589,11 @@ export function HtmlTemplateEditor({
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("flow-v2");
   const TAB_DISPLAY_MODE_LS_KEY = "qt-editor-tab-display-mode";
-  type TabDisplayMode = "full" | "iconsOnly" | "stacked";
+  type TabDisplayMode = "full" | "iconsOnly" | "stacked" | "twoRows";
   const [tabDisplayMode, setTabDisplayMode] = useState<TabDisplayMode>(() => {
     try {
       const stored = localStorage.getItem(TAB_DISPLAY_MODE_LS_KEY);
-      if (stored === "iconsOnly" || stored === "stacked") return stored;
+      if (stored === "iconsOnly" || stored === "stacked" || stored === "twoRows") return stored;
       return "full";
     } catch {
       return "full";
