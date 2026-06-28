@@ -228,6 +228,7 @@ export default function FlowWorkspaceTab({
       templateToEditableHtml(template, {
         preserveItemStyling: preserveStyles,
         projectDetails,
+        keepFieldsAsPlaceholders: true,
       }),
     [template, preserveStyles, projectDetails],
   );
