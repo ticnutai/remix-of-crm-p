@@ -62,6 +62,7 @@ import {
   FileCode,
   Mail,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Pencil,
   Plus,
