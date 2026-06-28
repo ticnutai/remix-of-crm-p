@@ -1,5 +1,5 @@
 // FlowEditor — TipTap rich text editor, RTL, עם autosave ושדות דינמיים
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Color } from "@tiptap/extension-color";
@@ -12,10 +12,24 @@ import TableHeader from "@tiptap/extension-table-header";
 import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
 import { FontFamily } from "@tiptap/extension-font-family";
+import { PaginationPlus, type PaginationPlusOptions } from "tiptap-pagination-plus";
+import { Tag } from "lucide-react";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import DynamicField from "./DynamicField";
 import MenuBar from "./MenuBar";
 import BubbleToolbar from "./BubbleToolbar";
 import AdvancedTextStyle from "./AdvancedTextStyle";
+import { groupDynamicFields, type DynamicFieldDefinition } from "./dynamicFields";
 
 import type { DesignPresetConfig } from "../presets/types";
 import type { FlowPageSetup } from "../types";
@@ -38,35 +52,67 @@ const PAGE_SIZES_MM: Record<string, { width: number; height: number }> = {
   Legal: { width: 216, height: 356 },
 };
 
-function editorPageVars(pageSetup?: FlowPageSetup): React.CSSProperties {
-  if (!pageSetup || pageSetup.size === "none") return {};
+const MM_TO_PX = 96 / 25.4;
+const DEFAULT_PAGE_GAP_PX = 18;
+const DEFAULT_STRIP_CONTENT_GAP_PX = 18;
+const DEFAULT_MARGIN_MM = { top: 32, right: 18, bottom: 28, left: 18 };
 
+function mmToPx(mm: number) {
+  return Math.round(mm * MM_TO_PX);
+}
+
+function resolvePageMetrics(pageSetup?: FlowPageSetup) {
   const base =
-    pageSetup.size === "custom"
+    pageSetup?.size === "custom"
       ? {
           width: Math.max(50, pageSetup.customSizeMm?.width || 210),
           height: Math.max(50, pageSetup.customSizeMm?.height || 297),
         }
-      : PAGE_SIZES_MM[pageSetup.size] || PAGE_SIZES_MM.A4;
-  const landscape = pageSetup.size !== "custom" && pageSetup.orientation === "landscape";
+      : PAGE_SIZES_MM[pageSetup?.size || "A4"] || PAGE_SIZES_MM.A4;
+  const landscape = pageSetup?.size !== "custom" && pageSetup?.orientation === "landscape";
   const width = landscape ? base.height : base.width;
   const height = landscape ? base.width : base.height;
-  const margin = pageSetup.marginMm || { top: 32, right: 18, bottom: 28, left: 18 };
+  const margin = pageSetup?.marginMm || DEFAULT_MARGIN_MM;
 
   return {
-    "--flow-editor-page-width": `${width}mm`,
-    "--flow-editor-page-height": `${height}mm`,
-    "--flow-editor-page-gap": "2px",
-    "--flow-editor-page-padding-top": `${margin.top}mm`,
-    "--flow-editor-page-padding-right": `${margin.right}mm`,
-    "--flow-editor-page-padding-bottom": `${margin.bottom}mm`,
-    "--flow-editor-page-padding-left": `${margin.left}mm`,
-    "--flow-editor-page-padding": `${margin.top}mm ${margin.right}mm ${margin.bottom}mm ${margin.left}mm`,
+    widthMm: width,
+    heightMm: height,
+    marginMm: margin,
+    widthPx: mmToPx(width),
+    heightPx: mmToPx(height),
+    marginPx: {
+      top: mmToPx(margin.top),
+      right: mmToPx(margin.right),
+      bottom: mmToPx(margin.bottom),
+      left: mmToPx(margin.left),
+    },
+  };
+}
+
+function editorPageVars(pageSetup?: FlowPageSetup): React.CSSProperties {
+  if (!pageSetup || pageSetup.size === "none") return {};
+
+  const { widthMm, heightMm, marginMm } = resolvePageMetrics(pageSetup);
+
+  return {
+    "--flow-editor-page-width": `${widthMm}mm`,
+    "--flow-editor-page-height": `${heightMm}mm`,
+    "--flow-editor-page-padding-top": `${marginMm.top}mm`,
+    "--flow-editor-page-padding-right": `${marginMm.right}mm`,
+    "--flow-editor-page-padding-bottom": `${marginMm.bottom}mm`,
+    "--flow-editor-page-padding-left": `${marginMm.left}mm`,
+    "--flow-editor-page-padding": `${marginMm.top}mm ${marginMm.right}mm ${marginMm.bottom}mm ${marginMm.left}mm`,
   } as React.CSSProperties;
 }
 
 function firstValue<T>(...values: Array<T | null | undefined | "">): T | undefined {
   return values.find((value) => value !== undefined && value !== null && value !== "") as T | undefined;
+}
+
+function numberValue(value: unknown, fallback: number, min = 0, max = Number.POSITIVE_INFINITY) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.max(min, Math.min(max, Math.round(numeric)));
 }
 
 function getStripSettings(templateDesignSettings?: any, designSettings?: any) {
@@ -83,8 +129,118 @@ function getStripSettings(templateDesignSettings?: any, designSettings?: any) {
     bgColor: firstValue(ds.stripBgColor, ds.strip_bg_color, "#ffffff") || "#ffffff",
     headerHeight: Math.max(24, Math.round(Number(ds.headerStripHeight) || 150)),
     footerHeight: Math.max(24, Math.round(Number(ds.footerStripHeight) || 90)),
+    headerContentGap: numberValue(
+      firstValue(ds.headerStripContentGapPx, ds.header_content_gap_px),
+      DEFAULT_STRIP_CONTENT_GAP_PX,
+      0,
+      240,
+    ),
+    footerContentGap: numberValue(
+      firstValue(ds.footerStripContentGapPx, ds.footer_content_gap_px),
+      DEFAULT_STRIP_CONTENT_GAP_PX,
+      0,
+      240,
+    ),
+    pageGap: numberValue(
+      firstValue(ds.flowPageGapPx, ds.flow_page_gap_px),
+      DEFAULT_PAGE_GAP_PX,
+      0,
+      120,
+    ),
     showHeader: ds.repeatHeaderOnAllPages !== false,
     showFooter: ds.repeatFooterOnAllPages !== false,
+  };
+}
+
+function escapeAttr(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function makeStripHtml(
+  position: "header" | "footer",
+  url: unknown,
+  height: number,
+  bgColor: string,
+  canResize: boolean,
+) {
+  if (!url) return "";
+
+  const handleClass =
+    position === "header" ? "flow-editor-strip-handle-bottom" : "flow-editor-strip-handle-top";
+  const handleTitle =
+    position === "header" ? "גרור לשינוי גובה הסטריפ העליון" : "גרור לשינוי גובה הסטריפ התחתון";
+  const resizeHandle = canResize
+    ? `<button type="button" class="flow-editor-strip-handle ${handleClass}" data-flow-strip-handle="${position}" title="${handleTitle}" aria-label="${handleTitle}"></button>`
+    : "";
+
+  return `
+    <div class="flow-page-strip-frame flow-page-strip-${position}" contenteditable="false" style="height:${Math.max(
+      24,
+      Math.round(height),
+    )}px;background-color:${escapeAttr(bgColor)};">
+      <img class="flow-page-strip-img" src="${escapeAttr(url)}" alt="" draggable="false" />
+      ${resizeHandle}
+    </div>
+  `;
+}
+
+function buildPaginationOptions({
+  pageSetup,
+  pagedMode,
+  stripSettings,
+  showHeaderStrip,
+  showFooterStrip,
+  canResizeStrips,
+}: {
+  pageSetup?: FlowPageSetup;
+  pagedMode: boolean;
+  stripSettings: ReturnType<typeof getStripSettings>;
+  showHeaderStrip: boolean;
+  showFooterStrip: boolean;
+  canResizeStrips: boolean;
+}): PaginationPlusOptions {
+  const metrics = resolvePageMetrics(pageSetup);
+
+  return {
+    enabled: pagedMode,
+    pageBreakBackground: "transparent",
+    pageHeight: metrics.heightPx,
+    pageWidth: metrics.widthPx,
+    marginTop: showHeaderStrip ? 0 : metrics.marginPx.top,
+    marginBottom: showFooterStrip ? 0 : metrics.marginPx.bottom,
+    marginLeft: metrics.marginPx.left,
+    marginRight: metrics.marginPx.right,
+    pageGap: stripSettings.pageGap,
+    pageGapBorderSize: 0,
+    pageGapBorderColor: "transparent",
+    contentMarginTop: showHeaderStrip ? stripSettings.headerContentGap : 0,
+    contentMarginBottom: showFooterStrip ? stripSettings.footerContentGap : 0,
+    headerLeft: showHeaderStrip
+      ? makeStripHtml(
+          "header",
+          stripSettings.headerUrl,
+          stripSettings.headerHeight,
+          stripSettings.bgColor,
+          canResizeStrips,
+        )
+      : "",
+    headerRight: "",
+    footerLeft: showFooterStrip
+      ? makeStripHtml(
+          "footer",
+          stripSettings.footerUrl,
+          stripSettings.footerHeight,
+          stripSettings.bgColor,
+          canResizeStrips,
+        )
+      : "",
+    footerRight: pageSetup?.showPageNumbers ? '<span class="flow-page-number-label">עמוד {page}</span>' : "",
+    customHeader: {},
+    customFooter: {},
   };
 }
 
@@ -107,21 +263,74 @@ export default function FlowEditor({
   const stripSettings = getStripSettings(templateDesignSettings, designSettings);
   const showHeaderStrip = pagedMode && stripSettings.showHeader && Boolean(stripSettings.headerUrl);
   const showFooterStrip = pagedMode && stripSettings.showFooter && Boolean(stripSettings.footerUrl);
-  const visualPageCount = 10;
+  const canResizeStrips = Boolean(onDesignSettingsChange);
+  const fieldGroups = useMemo(() => groupDynamicFields(), []);
+  const paginationOptions = useMemo(
+    () =>
+      buildPaginationOptions({
+        pageSetup,
+        pagedMode,
+        stripSettings,
+        showHeaderStrip,
+        showFooterStrip,
+        canResizeStrips,
+      }),
+    [
+      pageSetup?.size,
+      pageSetup?.orientation,
+      pageSetup?.customSizeMm?.width,
+      pageSetup?.customSizeMm?.height,
+      pageSetup?.marginMm?.top,
+      pageSetup?.marginMm?.right,
+      pageSetup?.marginMm?.bottom,
+      pageSetup?.marginMm?.left,
+      pageSetup?.showPageNumbers,
+      pagedMode,
+      stripSettings.headerUrl,
+      stripSettings.footerUrl,
+      stripSettings.bgColor,
+      stripSettings.headerHeight,
+      stripSettings.footerHeight,
+      stripSettings.headerContentGap,
+      stripSettings.footerContentGap,
+      stripSettings.pageGap,
+      showHeaderStrip,
+      showFooterStrip,
+      canResizeStrips,
+    ],
+  );
 
-  const startStripResize = (
-    position: "header" | "footer",
-    event: React.MouseEvent<HTMLButtonElement>,
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
+  const beginStripResize = (position: "header" | "footer", clientY: number) => {
     dragRef.current = {
       position,
-      startY: event.clientY,
+      startY: clientY,
       startHeight: position === "header" ? stripSettings.headerHeight : stripSettings.footerHeight,
     };
     document.body.style.cursor = "ns-resize";
     document.body.style.userSelect = "none";
+  };
+
+  const setContextMenuCursor = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!editor) return;
+    const target = event.target as HTMLElement | null;
+    if (!target || !editor.view.dom.contains(target)) return;
+    if (target.closest(".rm-page-header, .rm-page-footer, .rm-pages-wrapper")) {
+      event.preventDefault();
+      return;
+    }
+
+    const resolved = editor.view.posAtCoords({
+      left: event.clientX,
+      top: event.clientY,
+    });
+    if (!resolved) return;
+
+    editor.chain().setTextSelection(resolved.pos).run();
+  };
+
+  const insertField = (field: DynamicFieldDefinition) => {
+    if (!editor) return;
+    (editor.chain().focus() as any).insertDynamicField(field.key, field.label).run();
   };
 
   const editor = useEditor({
@@ -142,6 +351,7 @@ export default function FlowEditor({
       TableCell,
       DynamicField,
       Placeholder.configure({ placeholder: "התחל לכתוב..." }),
+      PaginationPlus.configure(paginationOptions),
     ],
     content: initialHtml || "<p></p>",
     editorProps: {
@@ -186,6 +396,68 @@ export default function FlowEditor({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialHtml, editor]);
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const dom = editor.view.dom as HTMLElement;
+    dom.dataset.paged = pagedMode ? "true" : "false";
+
+    const commands = editor.commands as any;
+    if (pagedMode) {
+      commands.enablePagination?.();
+      commands.updatePageBreakBackground?.(paginationOptions.pageBreakBackground);
+      commands.updatePageWidth?.(paginationOptions.pageWidth);
+      commands.updatePageHeight?.(paginationOptions.pageHeight);
+      commands.updatePageGap?.(paginationOptions.pageGap);
+      commands.updateMargins?.({
+        top: paginationOptions.marginTop,
+        right: paginationOptions.marginRight,
+        bottom: paginationOptions.marginBottom,
+        left: paginationOptions.marginLeft,
+      });
+      commands.updateContentMargins?.({
+        top: paginationOptions.contentMarginTop,
+        bottom: paginationOptions.contentMarginBottom,
+      });
+      commands.updateHeaderContent?.(paginationOptions.headerLeft, paginationOptions.headerRight);
+      commands.updateFooterContent?.(paginationOptions.footerLeft, paginationOptions.footerRight);
+    } else {
+      commands.disablePagination?.();
+    }
+
+    editor.view.dispatch(
+      editor.state.tr.setMeta("flow-pagination-settings", {
+        enabled: pagedMode,
+        pageWidth: paginationOptions.pageWidth,
+        pageHeight: paginationOptions.pageHeight,
+      }),
+    );
+  }, [editor, pagedMode, paginationOptions]);
+
+  useEffect(() => {
+    if (!editor || !onDesignSettingsChange) return;
+
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target as Element | null;
+      const handle = target?.closest("[data-flow-strip-handle]");
+      if (!handle || !editor.view.dom.contains(handle)) return;
+
+      const position = handle.getAttribute("data-flow-strip-handle") === "footer" ? "footer" : "header";
+      event.preventDefault();
+      event.stopPropagation();
+      beginStripResize(position, event.clientY);
+    };
+
+    const dom = editor.view.dom;
+    dom.addEventListener("mousedown", handleMouseDown, true);
+    return () => dom.removeEventListener("mousedown", handleMouseDown, true);
+  }, [
+    editor,
+    onDesignSettingsChange,
+    stripSettings.headerHeight,
+    stripSettings.footerHeight,
+  ]);
 
   useEffect(() => {
     const handleMove = (event: MouseEvent) => {
@@ -237,61 +509,54 @@ export default function FlowEditor({
           "--flow-editor-footer-strip-height": showFooterStrip
             ? `${stripSettings.footerHeight}px`
             : "0px",
-          "--flow-editor-visual-page-count": visualPageCount,
+          "--flow-editor-page-gap": `${stripSettings.pageGap}px`,
         } as React.CSSProperties}
       >
         <div
           className={`flow-editor-shell mx-auto my-4 ${
             pagedMode
-              ? "flow-editor-shell-paged"
+              ? "flow-editor-shell-paged flow-editor-shell-pagination-plus"
               : "max-w-[860px] rounded-md border bg-background shadow-sm"
           }`}
         >
-          {showHeaderStrip &&
-            Array.from({ length: visualPageCount }).map((_, index) => (
-              <div
-                key={`header-${index}`}
-                className="flow-editor-strip-instance flow-editor-strip-header"
-                style={{
-                  top: `calc(${index} * (var(--flow-editor-page-height) + var(--flow-editor-page-gap)))`,
-                  height: `${stripSettings.headerHeight}px`,
-                  backgroundImage: `url("${String(stripSettings.headerUrl || "").replace(/"/g, "%22")}")`,
-                }}
-              >
-                {onDesignSettingsChange && index === 0 && (
-                  <button
-                    type="button"
-                    className="flow-editor-strip-handle flow-editor-strip-handle-bottom"
-                    onMouseDown={(event) => startStripResize("header", event)}
-                    title="גרור לשינוי גובה הסטריפ העליון"
-                    aria-label="גרור לשינוי גובה הסטריפ העליון"
-                  />
-                )}
+          <ContextMenu>
+            <ContextMenuTrigger asChild>
+              <div className="flow-editor-context-trigger" onContextMenu={setContextMenuCursor}>
+                <EditorContent editor={editor} />
               </div>
-            ))}
-          {showFooterStrip &&
-            Array.from({ length: visualPageCount }).map((_, index) => (
-              <div
-                key={`footer-${index}`}
-                className="flow-editor-strip-instance flow-editor-strip-footer"
-                style={{
-                  top: `calc(${index} * (var(--flow-editor-page-height) + var(--flow-editor-page-gap)) + var(--flow-editor-page-height) - ${stripSettings.footerHeight}px)`,
-                  height: `${stripSettings.footerHeight}px`,
-                  backgroundImage: `url("${String(stripSettings.footerUrl || "").replace(/"/g, "%22")}")`,
-                }}
-              >
-                {onDesignSettingsChange && index === 0 && (
-                  <button
-                    type="button"
-                    className="flow-editor-strip-handle flow-editor-strip-handle-top"
-                    onMouseDown={(event) => startStripResize("footer", event)}
-                    title="גרור לשינוי גובה הסטריפ התחתון"
-                    aria-label="גרור לשינוי גובה הסטריפ התחתון"
-                  />
-                )}
-              </div>
-            ))}
-          <EditorContent editor={editor} />
+            </ContextMenuTrigger>
+            <ContextMenuContent className="max-h-80 w-64 overflow-auto" dir="rtl">
+              <ContextMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Tag className="h-3.5 w-3.5" />
+                הוסף שדה במקום הסמן
+              </ContextMenuLabel>
+              <ContextMenuSeparator />
+              {Object.entries(fieldGroups).map(([group, fields], index) => (
+                <React.Fragment key={group}>
+                  {index > 0 && <ContextMenuSeparator />}
+                  <ContextMenuSub>
+                    <ContextMenuSubTrigger className="justify-between">
+                      {group}
+                    </ContextMenuSubTrigger>
+                    <ContextMenuSubContent className="max-h-72 w-56 overflow-auto" dir="rtl">
+                      {fields.map((field) => (
+                        <ContextMenuItem
+                          key={field.key}
+                          onSelect={() => insertField(field)}
+                          className="gap-2"
+                        >
+                          <span className="text-sm">{field.label}</span>
+                          <span className="mr-auto text-[10px] text-muted-foreground">
+                            {field.key}
+                          </span>
+                        </ContextMenuItem>
+                      ))}
+                    </ContextMenuSubContent>
+                  </ContextMenuSub>
+                </React.Fragment>
+              ))}
+            </ContextMenuContent>
+          </ContextMenu>
         </div>
       </div>
       <style>{`
@@ -300,41 +565,111 @@ export default function FlowEditor({
           position: relative;
           width: var(--flow-editor-page-width);
           max-width: none;
-          min-height: calc(var(--flow-editor-page-height) * var(--flow-editor-visual-page-count) + var(--flow-editor-page-gap) * (var(--flow-editor-visual-page-count) - 1));
+          min-height: auto;
         }
-        .flow-editor-shell-paged::after {
+        .flow-editor-content.rm-with-pagination[data-paged="true"] {
+          box-sizing: border-box;
+          width: var(--flow-editor-page-width) !important;
+          max-width: none;
+          min-height: var(--flow-editor-page-height);
+          padding-top: 0 !important;
+          padding-bottom: 0 !important;
+          background: #ffffff;
+          border: 1px solid rgba(22, 44, 88, 0.18) !important;
+          box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+          overflow: visible;
+        }
+        .flow-editor-content.rm-with-pagination[data-paged="false"],
+        .flow-editor-content.rm-with-pagination[rm-pagination-disabled] {
+          width: auto !important;
+          border: 0 !important;
+          padding: 1.5rem !important;
+          background: transparent;
+          box-shadow: none;
+          min-height: 60vh !important;
+        }
+        .flow-editor-content.rm-with-pagination .rm-page-header,
+        .flow-editor-content.rm-with-pagination .rm-page-footer {
+          direction: rtl;
+          cursor: default !important;
+          overflow: visible !important;
+        }
+        .flow-editor-content.rm-with-pagination .rm-page-header-content,
+        .flow-editor-content.rm-with-pagination .rm-page-footer-content {
+          position: relative;
+          overflow: visible !important;
+        }
+        .flow-editor-content.rm-with-pagination .rm-first-page-header .rm-page-header-content {
+          width: calc(100% + var(--rm-margin-left) + var(--rm-margin-right)) !important;
+          margin-left: calc(-1 * var(--rm-margin-left));
+          margin-right: calc(-1 * var(--rm-margin-right));
+        }
+        .flow-editor-content.rm-with-pagination .rm-page-header-left,
+        .flow-editor-content.rm-with-pagination .rm-page-footer-left {
+          display: block !important;
+          float: none !important;
+          width: 100%;
+          margin: 0 !important;
+        }
+        .flow-editor-content.rm-with-pagination .rm-page-header-right {
+          display: none !important;
+        }
+        .flow-editor-content.rm-with-pagination .rm-page-footer-right {
+          position: absolute;
+          left: 50%;
+          bottom: 6px;
+          z-index: 4;
+          display: block !important;
+          float: none !important;
+          margin: 0 !important;
+          transform: translateX(-50%);
+        }
+        .flow-page-strip-frame {
+          position: relative;
+          width: 100%;
+          overflow: hidden;
+          border-top: 1px solid rgba(216, 172, 39, 0.34);
+          border-bottom: 1px solid rgba(216, 172, 39, 0.34);
+          background: ${stripSettings.bgColor};
+        }
+        .flow-page-strip-img {
+          display: block;
+          width: 100%;
+          height: 100%;
+          object-fit: fill;
+          user-select: none;
+          pointer-events: none;
+        }
+        .flow-page-number-label {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 38px;
+          height: 20px;
+          padding: 0 8px;
+          border: 1px solid rgba(22, 44, 88, 0.16);
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.84);
+          color: #162c58;
+          font-size: 11px;
+          line-height: 1;
+          white-space: nowrap;
+        }
+        .flow-editor-content.rm-with-pagination .rm-pagination-gap {
+          border: 0 !important;
+          background: transparent !important;
+          position: relative;
+        }
+        .flow-editor-content.rm-with-pagination .rm-pagination-gap::before {
           content: "";
           position: absolute;
-          top: 0;
-          bottom: 0;
-          inset-inline: 8%;
-          z-index: 6;
-          pointer-events: none;
-          background:
-            repeating-linear-gradient(
-              to bottom,
-              transparent 0,
-              transparent var(--flow-editor-page-height),
-              rgba(216, 172, 39, 0.9) var(--flow-editor-page-height),
-              rgba(216, 172, 39, 0.9) calc(var(--flow-editor-page-height) + 1px),
-              transparent calc(var(--flow-editor-page-height) + 1px),
-              transparent calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
-            );
+          top: 50%;
+          left: 12%;
+          right: 12%;
+          height: 1px;
+          transform: translateY(-50%);
+          background: rgba(216, 172, 39, 0.95);
         }
-        .flow-editor-strip-instance {
-          position: absolute;
-          inset-inline: 0;
-          z-index: 7;
-          pointer-events: none;
-          background-color: ${stripSettings.bgColor};
-          background-repeat: no-repeat;
-          background-position: center;
-          background-size: 100% 100%;
-          border: 1px solid rgba(216, 172, 39, 0.38);
-          box-shadow: 0 1px 6px rgba(15, 23, 42, 0.08);
-        }
-        .flow-editor-strip-header { border-top: 0; }
-        .flow-editor-strip-footer { border-bottom: 0; }
         .flow-editor-strip-handle {
           position: absolute;
           left: 50%;
@@ -348,6 +683,7 @@ export default function FlowEditor({
           box-shadow: 0 3px 10px rgba(15, 23, 42, 0.18);
           cursor: ns-resize;
           pointer-events: auto;
+          padding: 0;
         }
         .flow-editor-strip-handle::before {
           content: "";
@@ -361,42 +697,6 @@ export default function FlowEditor({
         }
         .flow-editor-strip-handle-top {
           top: -7px;
-        }
-        .flow-editor-content[data-paged="true"] {
-          width: var(--flow-editor-page-width);
-          min-height: calc(var(--flow-editor-page-height) * var(--flow-editor-visual-page-count) + var(--flow-editor-page-gap) * (var(--flow-editor-visual-page-count) - 1));
-          padding:
-            max(var(--flow-editor-page-padding-top), calc(var(--flow-editor-header-strip-height) + 18px))
-            var(--flow-editor-page-padding-right)
-            max(var(--flow-editor-page-padding-bottom), calc(var(--flow-editor-footer-strip-height) + 18px))
-            var(--flow-editor-page-padding-left);
-          background:
-            repeating-linear-gradient(
-              to bottom,
-              #ffffff 0,
-              #ffffff var(--flow-editor-page-height),
-              transparent var(--flow-editor-page-height),
-              transparent calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
-            );
-          box-shadow:
-            0 3px 12px rgba(15, 23, 42, 0.16),
-            0 calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap)) 12px rgba(15, 23, 42, 0.16),
-            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 2) 12px rgba(15, 23, 42, 0.16),
-            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 3) 12px rgba(15, 23, 42, 0.16),
-            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 4) 12px rgba(15, 23, 42, 0.16),
-            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 5) 12px rgba(15, 23, 42, 0.16),
-            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 6) 12px rgba(15, 23, 42, 0.16),
-            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 7) 12px rgba(15, 23, 42, 0.16),
-            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 8) 12px rgba(15, 23, 42, 0.16),
-            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 9) 12px rgba(15, 23, 42, 0.16);
-          overflow: visible;
-        }
-        .flow-editor-content[data-paged="true"] .ProseMirror {
-          position: relative;
-          z-index: 1;
-        }
-        .flow-editor-content[data-paged="true"] .ProseMirror {
-          min-height: calc(var(--flow-editor-page-height) - 60mm);
         }
         .flow-editor-content h1 { font-size: ${preset?.headings.h1.size || "1.6rem"}; font-weight: ${preset?.headings.h1.weight || "700"}; margin: 1rem 0 0.5rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; border-bottom: 2px solid ${preset?.colors.accent || "hsl(var(--accent))"}; padding-bottom: .3rem; font-family: ${preset?.fonts.heading || "inherit"}; }
         .flow-editor-content h2 { font-size: ${preset?.headings.h2.size || "1.3rem"}; font-weight: ${preset?.headings.h2.weight || "700"}; margin: .9rem 0 .4rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; font-family: ${preset?.fonts.heading || "inherit"}; }

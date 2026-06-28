@@ -25,20 +25,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-
-const DEFAULT_FIELDS: { key: string; label: string; group: string }[] = [
-  { key: "customer.name", label: "שם לקוח", group: "לקוח" },
-  { key: "customer.address", label: "כתובת לקוח", group: "לקוח" },
-  { key: "customer.phone", label: "טלפון", group: "לקוח" },
-  { key: "customer.email", label: 'דוא"ל', group: "לקוח" },
-  { key: "parcel.block", label: "גוש", group: "נכס" },
-  { key: "parcel.lot", label: "חלקה", group: "נכס" },
-  { key: "parcel.plot", label: "מגרש", group: "נכס" },
-  { key: "quote.number", label: "מספר הצעה", group: "הצעה" },
-  { key: "quote.date", label: "תאריך הצעה", group: "הצעה" },
-  { key: "quote.validity", label: "תוקף", group: "הצעה" },
-  { key: "quote.total", label: 'סה"כ', group: "הצעה" },
-];
+import { groupDynamicFields } from "./dynamicFields";
 
 interface Props {
   editor: Editor | null;
@@ -53,11 +40,7 @@ export default function MenuBar({ editor }: Props) {
       ? "bg-primary text-primary-foreground hover:bg-primary/90"
       : "bg-transparent hover:bg-muted";
 
-  const groups: Record<string, typeof DEFAULT_FIELDS> = {};
-  DEFAULT_FIELDS.forEach((f) => {
-    groups[f.group] = groups[f.group] || [];
-    groups[f.group].push(f);
-  });
+  const groups = groupDynamicFields();
 
   return (
     <div className="flex flex-wrap items-center gap-1 border-b bg-background px-2 py-1.5">
