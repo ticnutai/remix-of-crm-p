@@ -126,7 +126,15 @@ import {
   ListPlus,
   Heading2,
   Star,
+  PanelsTopLeft,
+  LayoutList,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   ResizablePanelGroup,
   ResizablePanel,
