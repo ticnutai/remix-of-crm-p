@@ -30,6 +30,33 @@ export interface SerializeOptions {
   projectDetails?: ProjectTokenData;
   /** הגדרות עיצוב חיות מהעורך, כולל לוגו/סטריפ שלא בהכרח נשמרו עדיין בתבנית. */
   designSettings?: any;
+  /**
+   * כשדלוק: לא לפתור טוקנים לטקסט סטטי — להשאיר אותם כשדות דינמיים
+   * (`{type:"field"}`) כדי שהעורך יחליף אותם בערך החי מ"פרטי פרויקט".
+   */
+  keepFieldsAsPlaceholders?: boolean;
+}
+
+// מיפוי טוקנים בעברית (מסוגריים מרובעים) למפתחות שדה דינמי.
+const HEBREW_TOKEN_TO_KEY: Record<string, string> = {
+  "לקוח": "customer.name",
+  "משפחה": "customer.name",
+  "משפחת": "customer.name",
+  "כתובת": "customer.address",
+  "טלפון": "customer.phone",
+  'דוא"ל': "customer.email",
+  "דואל": "customer.email",
+  "גוש": "parcel.block",
+  "חלקה": "parcel.lot",
+  "מגרש": "parcel.plot",
+  "מושב": "parcel.moshav",
+  'תב"ע': "parcel.taba",
+  "תבע": "parcel.taba",
+  "סוג פרויקט": "project.type",
+};
+function normalizeHebrewToken(raw: string): string | undefined {
+  const t = String(raw || "").trim().replace(/[״“”]/g, '"');
+  return HEBREW_TOKEN_TO_KEY[t];
 }
 
 const esc = (s: string) =>
