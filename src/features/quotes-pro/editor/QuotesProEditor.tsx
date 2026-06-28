@@ -23,6 +23,7 @@ import {
   Palette,
   Layers,
   User,
+  Pencil,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getDocument, createDocument, updateDocument } from "../data/api";
