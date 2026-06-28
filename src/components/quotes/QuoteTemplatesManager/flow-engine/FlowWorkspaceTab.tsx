@@ -369,15 +369,6 @@ export default function FlowWorkspaceTab({
     }
   };
 
-  // אחרי השמירה: ניקוי הטיוטה המקומית כך שהתבנית תיטען נקייה בפעם הבאה
-  const clearLocalDraftToCleanTemplate = () => {
-    try {
-      localStorage.removeItem(storageKey(template.id));
-    } catch {
-      /* ignore */
-    }
-    setHtml(baseHtml);
-  };
 
   const handleResetTemplateAfterSave = () => {
     // מנקה את ה-HTML מערכים שנפתרו ושומר חזרה כטיוטה ריקה לחלוטין
