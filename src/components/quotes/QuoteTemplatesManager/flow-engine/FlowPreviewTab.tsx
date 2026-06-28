@@ -10,6 +10,7 @@ import type { QuoteTemplate } from "../types";
 import { serializeTemplate, type MergeData } from "./serializer";
 import { renderFlowToHtml } from "./renderer";
 import { htmlToFlowDoc } from "./editor/htmlToFlowDoc";
+import { projectToMergeData } from "./projectTokens";
 import type { DesignPresetConfig } from "./presets/types";
 import type { FlowPageSetup } from "./types";
 
@@ -46,7 +47,14 @@ export default function FlowPreviewTab({
         : serializeTemplate(template, mergeData, { projectDetails, designSettings });
     return pageSetup ? { ...doc, page: { ...doc.page, ...pageSetup } } : doc;
   }, [template, mergeData, editedHtml, projectDetails, designSettings, pageSetup]);
-  const html = useMemo(() => renderFlowToHtml(flowDoc, preset), [flowDoc, preset]);
+  const effectiveMerge = useMemo<MergeData>(
+    () => ({ ...projectToMergeData(projectDetails), ...(mergeData || {}) }),
+    [projectDetails, mergeData],
+  );
+  const html = useMemo(
+    () => renderFlowToHtml(flowDoc, preset, effectiveMerge),
+    [flowDoc, preset, effectiveMerge],
+  );
 
   useEffect(() => {
     let cancelled = false;
