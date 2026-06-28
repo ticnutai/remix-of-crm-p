@@ -175,6 +175,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useClients } from "@/hooks/useClients";
+import { useClientCustomFields } from "@/hooks/useClientCustomFields";
+import CreateFieldDialog from "./flow-engine/editor/CreateFieldDialog";
 import { useCloudPreferences } from "@/hooks/useCloudPreferences";
 import { useQuoteDraftAutosave } from "@/hooks/useQuoteDraftAutosave";
 import { supabase } from "@/integrations/supabase/client";
@@ -495,6 +497,8 @@ interface ProjectDetails {
   family?: string;
   stageTemplateId?: string;
   stageTemplateName?: string;
+  /** ערכים של שדות מותאמים אישית (custom_data של לקוח) */
+  customData?: Record<string, string>;
 }
 
 /**
@@ -1122,11 +1126,27 @@ function ProjectDetailsEditor({
         projectType: details.projectType || "",
         phone: client.phone || details.phone,
         ...(client.email ? ({ email: client.email } as any) : {}),
+        customData: {
+          ...(details.customData || {}),
+          ...((client.custom_data && typeof client.custom_data === "object")
+            ? (client.custom_data as Record<string, string>)
+            : {}),
+        },
       } as any);
       setShowClientDropdown(false);
     },
     [details, onUpdate],
   );
+
+  // שדות מותאמים אישית — מגיעים מ-client_custom_field_definitions
+  const { definitions: customDefinitions } = useClientCustomFields();
+  const [createFieldOpen, setCreateFieldOpen] = useState(false);
+  const updateCustomValue = (fieldKey: string, value: string) => {
+    onUpdate({
+      ...details,
+      customData: { ...(details.customData || {}), [fieldKey]: value },
+    } as any);
+  };
 
   const fields = [
     { key: "clientName", label: "שם הלקוח", icon: User },
