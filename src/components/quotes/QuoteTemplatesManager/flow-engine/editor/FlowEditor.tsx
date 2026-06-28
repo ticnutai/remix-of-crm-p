@@ -807,6 +807,7 @@ export default function FlowEditor({
         .flow-editor-content hr { border: 0; border-top: 1px dashed hsl(var(--border)); margin: .8rem 0; }
         .flow-editor-content mark { background: ${preset?.colors.accent || "hsl(var(--accent))"}59; padding: 0 .15rem; border-radius: .15rem; }
         .flow-editor-content [data-field] { user-select: all; }
+        .flow-editor-content .flow-multi-sel { background: rgba(216, 172, 39, 0.32); box-shadow: inset 0 -2px 0 rgba(216, 172, 39, 0.85); border-radius: 2px; }
         .flow-editor-content .ProseMirror-focused { outline: none; }
       `}</style>
     </div>
