@@ -8,6 +8,7 @@ declare module "@tiptap/core" {
       setLetterSpacing: (val: string | null) => ReturnType;
       setWordSpacing: (val: string | null) => ReturnType;
       setGradient: (css: string | null) => ReturnType;
+      setUnderlineColor: (color: string | null) => ReturnType;
     };
   }
 }
@@ -49,6 +50,17 @@ const AdvancedTextStyle = TextStyle.extend({
               }
             : {},
       },
+      underlineColor: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.getAttribute("data-underline-color"),
+        renderHTML: (attrs: any) =>
+          attrs.underlineColor
+            ? {
+                "data-underline-color": attrs.underlineColor,
+                style: `text-decoration-line:underline;text-decoration-color:${attrs.underlineColor};text-decoration-thickness:2px;text-underline-offset:3px`,
+              }
+            : {},
+      },
     };
   },
   addCommands() {
@@ -71,6 +83,10 @@ const AdvancedTextStyle = TextStyle.extend({
         (css: string | null) =>
         ({ chain }: any) =>
           chain().setMark("textStyle", { gradient: css }).run(),
+      setUnderlineColor:
+        (color: string | null) =>
+        ({ chain }: any) =>
+          chain().setMark("textStyle", { underlineColor: color }).run(),
     };
   },
 });
