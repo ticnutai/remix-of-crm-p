@@ -56,7 +56,7 @@ function editorPageVars(pageSetup?: FlowPageSetup): React.CSSProperties {
   return {
     "--flow-editor-page-width": `${width}mm`,
     "--flow-editor-page-height": `${height}mm`,
-    "--flow-editor-page-gap": "18mm",
+    "--flow-editor-page-gap": "2px",
     "--flow-editor-page-padding-top": `${margin.top}mm`,
     "--flow-editor-page-padding-right": `${margin.right}mm`,
     "--flow-editor-page-padding-bottom": `${margin.bottom}mm`,
