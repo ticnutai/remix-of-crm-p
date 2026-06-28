@@ -305,7 +305,9 @@ export default function FlowEditor({
         .flow-editor-shell-paged::after {
           content: "";
           position: absolute;
-          inset: 0;
+          top: 0;
+          bottom: 0;
+          inset-inline: 8%;
           z-index: 6;
           pointer-events: none;
           background:
@@ -313,8 +315,10 @@ export default function FlowEditor({
               to bottom,
               transparent 0,
               transparent var(--flow-editor-page-height),
-              rgb(226, 232, 240) var(--flow-editor-page-height),
-              rgb(226, 232, 240) calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
+              rgba(216, 172, 39, 0.9) var(--flow-editor-page-height),
+              rgba(216, 172, 39, 0.9) calc(var(--flow-editor-page-height) + 1px),
+              transparent calc(var(--flow-editor-page-height) + 1px),
+              transparent calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
             );
         }
         .flow-editor-strip-instance {
@@ -371,8 +375,8 @@ export default function FlowEditor({
               to bottom,
               #ffffff 0,
               #ffffff var(--flow-editor-page-height),
-              rgb(226, 232, 240) var(--flow-editor-page-height),
-              rgb(226, 232, 240) calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
+              transparent var(--flow-editor-page-height),
+              transparent calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
             );
           box-shadow:
             0 3px 12px rgba(15, 23, 42, 0.16),
