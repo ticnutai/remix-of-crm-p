@@ -9,14 +9,9 @@ import React, {
   useContext,
 } from "react";
 import { createPortal } from "react-dom";
-import {
-  PreviewIframe,
-  type FreeTextEditPayload,
-  type InlineEditPayload,
-} from "./PreviewIframe";
+import { PreviewIframe, type InlineEditPayload } from "./PreviewIframe";
 import { FrameDesignPanel } from "./FrameDesignPanel";
 import PagesPreviewTab from "./PagesPreviewTab";
-import PagedPreviewTab from "./PagedPreviewTab";
 import FlowWorkspaceTab from "./flow-engine/FlowWorkspaceTab";
 import {
   DEFAULT_FRAME_SETTINGS,
@@ -131,8 +126,6 @@ import {
   ListPlus,
   Heading2,
   Star,
-  PanelLeftClose,
-  PanelLeftOpen,
 } from "lucide-react";
 import {
   ResizablePanelGroup,
@@ -4577,7 +4570,6 @@ export function HtmlTemplateEditor({
   savedQuoteId,
 }: HtmlTemplateEditorProps) {
   const { toast } = useToast();
-  const [splitEditorCollapsed, setSplitEditorCollapsed] = useState(false);
   const { clients } = useClients();
   const { saveToCloud } = useCloudPreferences();
   const globalDefaultVat = useDefaultVatRate();
@@ -4591,9 +4583,9 @@ export function HtmlTemplateEditor({
 
 
   // Top tabs configuration (order + visibility) — persisted
-  // v2: Flow editor is now the primary tab; legacy visual tabs hidden by default
-  const TABS_CFG_LS_KEY = "lov-html-editor-tabs-cfg-v2";
+  const TABS_CFG_LS_KEY = "lov-html-editor-tabs-cfg-v1";
   type EditorTabKey =
+    | "flow-v2"
     | "project"
     | "content"
     | "payments"
@@ -4603,10 +4595,7 @@ export function HtmlTemplateEditor({
     | "tools"
     | "preview"
     | "split"
-    | "pages"
-    | "paged-pro"
-    | "flow-v2";
-  // Flow first; structured-data tabs (project/content/payments) next; legacy visual tabs last and hidden
+    | "pages";
   const DEFAULT_TAB_ORDER: EditorTabKey[] = [
     "flow-v2",
     "project",
@@ -4614,37 +4603,27 @@ export function HtmlTemplateEditor({
     "payments",
     "design",
     "logo-strip",
+    "text-boxes",
     "tools",
     "preview",
-    "pages",
-    "paged-pro",
-    "text-boxes",
     "split",
+    "pages",
   ];
-  // Legacy visual / pagination tabs hidden by default — Flow handles all that now.
-  const HIDDEN_BY_DEFAULT = new Set<EditorTabKey>([
-    "text-boxes",
-    "split",
-    "preview",
-    "pages",
-    "paged-pro",
-  ]);
   const TAB_META: Record<
     EditorTabKey,
     { label: string; icon: any; activeClass: string }
   > = {
+    "flow-v2": { label: "עורך המסמך", icon: Sparkles, activeClass: "data-[state=active]:bg-emerald-100 data-[state=active]:text-emerald-700 font-bold" },
     project: { label: "פרטי פרויקט", icon: User, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
-    content: { label: "שלבים (נתונים)", icon: FileText, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
-    payments: { label: "תשלומים (נתונים)", icon: CreditCard, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
-    design: { label: "מיתוג / לוגו", icon: Palette, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
-    "logo-strip": { label: "סטריפ לוגו", icon: Crop, activeClass: "data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700" },
-    "text-boxes": { label: "טקסט (ישן)", icon: Type, activeClass: "data-[state=active]:bg-gray-100 data-[state=active]:text-gray-700" },
+    content: { label: "תוכן", icon: FileText, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    payments: { label: "תשלומים", icon: CreditCard, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    design: { label: "עיצוב", icon: Palette, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    "logo-strip": { label: "לוגו", icon: Crop, activeClass: "data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700" },
+    "text-boxes": { label: "טקסט", icon: Type, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
     tools: { label: "כלים", icon: Wrench, activeClass: "data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700" },
-    preview: { label: "תצוגה (ישן)", icon: Eye, activeClass: "data-[state=active]:bg-gray-100 data-[state=active]:text-gray-700" },
-    split: { label: "עריכה + תצוגה (ישן)", icon: Columns, activeClass: "data-[state=active]:bg-gray-100 data-[state=active]:text-gray-700" },
-    pages: { label: "PDF (ישן)", icon: Layers, activeClass: "data-[state=active]:bg-gray-100 data-[state=active]:text-gray-700" },
-    "paged-pro": { label: "עימוד מתקדם (ישן)", icon: Layers, activeClass: "data-[state=active]:bg-gray-100 data-[state=active]:text-gray-700" },
-    "flow-v2": { label: "✨ עורך המסמך", icon: Sparkles, activeClass: "data-[state=active]:bg-emerald-100 data-[state=active]:text-emerald-700 font-bold" },
+    preview: { label: "תצוגה מקדימה", icon: Eye, activeClass: "data-[state=active]:bg-green-100 data-[state=active]:text-green-700" },
+    split: { label: "עריכה + תצוגה", icon: Columns, activeClass: "data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700" },
+    pages: { label: "תצוגת דפים", icon: Layers, activeClass: "data-[state=active]:bg-[#162C58]/10 data-[state=active]:text-[#162C58]" },
   };
   const [tabConfig, setTabConfig] = useState<
     Array<{ value: EditorTabKey; visible: boolean }>
@@ -4665,7 +4644,7 @@ export function HtmlTemplateEditor({
     } catch {
       /* ignore */
     }
-    return DEFAULT_TAB_ORDER.map((value) => ({ value, visible: !HIDDEN_BY_DEFAULT.has(value) }));
+    return DEFAULT_TAB_ORDER.map((value) => ({ value, visible: true }));
   });
   useEffect(() => {
     try {
@@ -4698,28 +4677,6 @@ export function HtmlTemplateEditor({
   const [logoSubTab, setLogoSubTab] = useState<"upper" | "lower">("upper");
   const [showEmbeddedVectorEditor, setShowEmbeddedVectorEditor] =
     useState(false);
-  const openVectorLogoStripEditor = useCallback(() => {
-    const editorUrl = new URL(
-      "/vector-logo-strip-editor.html?host=quote-editor&standalone=1",
-      window.location.origin,
-    ).toString();
-    const popup = window.open(
-      editorUrl,
-      "tenarch-vector-logo-strip-editor",
-      "popup=no,width=1280,height=860,left=80,top=60",
-    );
-
-    if (popup) {
-      popup.focus();
-      return;
-    }
-
-    setShowEmbeddedVectorEditor(true);
-    toast({
-      title: "העורך נפתח בתוך הטאב",
-      description: "הדפדפן חסם פתיחת עמוד נפרד, אז פתחתי את העורך המוטמע.",
-    });
-  }, [toast]);
   const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>(() => {
     const saved = template.payment_schedule;
     if (saved && Array.isArray(saved) && saved.length > 0) {
@@ -4756,18 +4713,9 @@ export function HtmlTemplateEditor({
     if (ds && ds.primaryColor) {
       const settings = ds as DesignSettings;
       if (settings.logoPosition === "custom-strip" && !settings.logoUrl) {
-        return {
-          ...settings,
-          logoUrl: companyHeaderImg,
-          repeatHeaderOnAllPages: true,
-          repeatFooterOnAllPages: true,
-        };
+        return { ...settings, logoUrl: companyHeaderImg };
       }
-      return {
-        ...settings,
-        repeatHeaderOnAllPages: true,
-        repeatFooterOnAllPages: true,
-      };
+      return settings;
     }
     return {
       primaryColor: "#B8860B",
@@ -4788,8 +4736,6 @@ export function HtmlTemplateEditor({
       logoPosition: "inside-header",
       showHeaderStrip: true,
       headerStripHeight: 150,
-      repeatHeaderOnAllPages: true,
-      repeatFooterOnAllPages: true,
     };
   });
   const [textBoxes, setTextBoxes] = useState<TextBox[]>(() => {
@@ -4921,10 +4867,6 @@ export function HtmlTemplateEditor({
   const [plainTextMode, setPlainTextMode] = useState(false);
   const [plainTextScope, setPlainTextScope] =
     useState<PlainTextScope>("document");
-  const [freeTextEditMode, setFreeTextEditMode] = useState(false);
-  const [freeTextHtmlOverride, setFreeTextHtmlOverride] = useState<string | null>(
-    null,
-  );
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const cropCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -4954,7 +4896,6 @@ export function HtmlTemplateEditor({
       projectDetails,
       selectedTier,
       activeTab,
-      freeTextHtmlOverride,
     }),
     [
       editedTemplate,
@@ -4966,147 +4907,8 @@ export function HtmlTemplateEditor({
       projectDetails,
       selectedTier,
       activeTab,
-      freeTextHtmlOverride,
     ],
   );
-  const editorUndoSnapshot = useMemo(
-    () => ({
-      editedTemplate,
-      paymentSteps,
-      designSettings,
-      textBoxes,
-      upgrades,
-      pricingTiers,
-      projectDetails,
-      selectedTier,
-      freeTextHtmlOverride,
-    }),
-    [
-      editedTemplate,
-      paymentSteps,
-      designSettings,
-      textBoxes,
-      upgrades,
-      pricingTiers,
-      projectDetails,
-      selectedTier,
-      freeTextHtmlOverride,
-    ],
-  );
-  type EditorUndoSnapshot = typeof editorUndoSnapshot;
-  const undoStackRef = useRef<EditorUndoSnapshot[]>([]);
-  const redoStackRef = useRef<EditorUndoSnapshot[]>([]);
-  const lastUndoJsonRef = useRef<string>("");
-  const isRestoringUndoRef = useRef(false);
-  const [, forceUndoRedoRender] = useState(0);
-  const refreshUndoRedoControls = useCallback(
-    () => forceUndoRedoRender((v) => v + 1),
-    [],
-  );
-  const cloneUndoSnapshot = useCallback(
-    (snapshot: EditorUndoSnapshot): EditorUndoSnapshot =>
-      JSON.parse(JSON.stringify(snapshot)) as EditorUndoSnapshot,
-    [],
-  );
-  const applyUndoSnapshot = useCallback((snapshot: EditorUndoSnapshot) => {
-    setEditedTemplate(snapshot.editedTemplate);
-    setPaymentSteps(snapshot.paymentSteps);
-    setDesignSettings(snapshot.designSettings);
-    setTextBoxes(snapshot.textBoxes);
-    setUpgrades(snapshot.upgrades);
-    setPricingTiers(snapshot.pricingTiers);
-    setProjectDetails(snapshot.projectDetails);
-    setSelectedTier(snapshot.selectedTier);
-    setFreeTextHtmlOverride(snapshot.freeTextHtmlOverride);
-  }, []);
-  const undoCount = undoStackRef.current.length;
-  const redoCount = redoStackRef.current.length;
-  const canUndo = undoCount > 0;
-  const canRedo = redoCount > 0;
-  const handleUndo = useCallback(() => {
-    const previous = undoStackRef.current.pop();
-    if (!previous) return;
-    redoStackRef.current.push(cloneUndoSnapshot(editorUndoSnapshot));
-    redoStackRef.current = redoStackRef.current.slice(-80);
-    isRestoringUndoRef.current = true;
-    applyUndoSnapshot(previous);
-    refreshUndoRedoControls();
-    toast({
-      title: "השינוי בוטל",
-      description: "הוחזר המצב הקודם של ההצעה",
-    });
-  }, [applyUndoSnapshot, cloneUndoSnapshot, editorUndoSnapshot, refreshUndoRedoControls, toast]);
-  const handleRedo = useCallback(() => {
-    const next = redoStackRef.current.pop();
-    if (!next) return;
-    undoStackRef.current.push(cloneUndoSnapshot(editorUndoSnapshot));
-    undoStackRef.current = undoStackRef.current.slice(-80);
-    isRestoringUndoRef.current = true;
-    applyUndoSnapshot(next);
-    refreshUndoRedoControls();
-    toast({
-      title: "השינוי הוחזר",
-      description: "בוצע Redo למצב הבא",
-    });
-  }, [applyUndoSnapshot, cloneUndoSnapshot, editorUndoSnapshot, refreshUndoRedoControls, toast]);
-  useEffect(() => {
-    let json = "";
-    try {
-      json = JSON.stringify(editorUndoSnapshot);
-    } catch {
-      return;
-    }
-
-    if (!lastUndoJsonRef.current) {
-      lastUndoJsonRef.current = json;
-      return;
-    }
-
-    if (json === lastUndoJsonRef.current) return;
-
-    if (isRestoringUndoRef.current) {
-      isRestoringUndoRef.current = false;
-      lastUndoJsonRef.current = json;
-      return;
-    }
-
-    try {
-      const previous = JSON.parse(lastUndoJsonRef.current) as EditorUndoSnapshot;
-      undoStackRef.current.push(previous);
-      undoStackRef.current = undoStackRef.current.slice(-80);
-      redoStackRef.current = [];
-      lastUndoJsonRef.current = json;
-      refreshUndoRedoControls();
-    } catch {
-      lastUndoJsonRef.current = json;
-    }
-  }, [editorUndoSnapshot, refreshUndoRedoControls]);
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const tagName = target?.tagName?.toLowerCase();
-      const isTypingField =
-        target?.isContentEditable ||
-        tagName === "input" ||
-        tagName === "textarea" ||
-        tagName === "select";
-      if (isTypingField) return;
-      const mod = event.ctrlKey || event.metaKey;
-      if (!mod) return;
-      const key = event.key.toLowerCase();
-      if (key === "z") {
-        event.preventDefault();
-        if (event.shiftKey) handleRedo();
-        else handleUndo();
-      } else if (key === "y") {
-        event.preventDefault();
-        handleRedo();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleRedo, handleUndo, open]);
   const {
     status: autosaveStatus,
     lastSavedAt: autosaveLastSavedAt,
@@ -5205,7 +5007,6 @@ export function HtmlTemplateEditor({
     const applyDraft = (data: any, source: "local" | "cloud") => {
       if (!data || typeof data !== "object") return;
       try {
-        isRestoringUndoRef.current = true;
         if (data.editedTemplate) setEditedTemplate(data.editedTemplate);
         if (Array.isArray(data.paymentSteps)) setPaymentSteps(data.paymentSteps);
         if (data.designSettings) setDesignSettings(data.designSettings);
@@ -5215,11 +5016,6 @@ export function HtmlTemplateEditor({
         if (data.projectDetails) setProjectDetails(data.projectDetails);
         if (typeof data.selectedTier === "string") setSelectedTier(data.selectedTier);
         if (typeof data.activeTab === "string") setActiveTab(data.activeTab);
-        if (typeof data.freeTextHtmlOverride === "string") {
-          setFreeTextHtmlOverride(data.freeTextHtmlOverride);
-        } else if (data.freeTextHtmlOverride === null) {
-          setFreeTextHtmlOverride(null);
-        }
         toast({
           title: source === "cloud" ? "טיוטה שוחזרה מהענן" : "טיוטה שוחזרה",
           description: "הצעת המחיר שוחזרה למצב שבו עזבת אותה",
@@ -6131,10 +5927,10 @@ export function HtmlTemplateEditor({
             return sectionTitleHtml(resolvedStageName, fd.sectionTitle, "margin: 28px 0 10px;");
           }
           return `
-      <div class="stage-card" style="margin-bottom: 20px;">
+      <div class="stage-card">
         ${stageCornersHtml}
-        <h3 style="color: ${designSettings.primaryColor}; font-family: ${designSettings.fontFamily};">${stage.icon ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;margin-left:6px;${stage.iconColor ? `background:${stage.iconColor}20;border:1px solid ${stage.iconColor};` : ""}">${stage.icon}</span>` : ""} <span data-editable="stage.${stage.id}.name">${resolvedStageName}</span></h3>
-        <ul style="list-style: none; padding: 0;">
+        <h3 style="color: ${designSettings.primaryColor}; font-family: '${designSettings.fontFamily}', sans-serif;">${stage.icon ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:7px;margin-left:8px;flex-shrink:0;${stage.iconColor ? `background:${stage.iconColor}20;border:1px solid ${stage.iconColor};` : `background:${designSettings.primaryColor}15;`}">${stage.icon}</span>` : ""}<span data-editable="stage.${stage.id}.name">${resolvedStageName}</span></h3>
+        <ul style="list-style: none; padding: 0; margin: 0;">
           ${stage.items
             .map((item) => {
               if (item.isSpacer) {
@@ -6165,7 +5961,7 @@ export function HtmlTemplateEditor({
                 ? `<span style="color:${itemIconColor};margin-left:6px;">${itemIcon}</span>`
                 : "";
               const resolvedItemText = applyProjectDetailsTokens(item.text || "", projectDetails);
-              return `<li style="padding: 5px 0; color: ${itemColor}; font-family: '${itemFont}', sans-serif; font-size: ${itemSize}px; ${itemBold} ${itemItalic} ${itemUnderline} ${itemAlign}">${iconHtml}<span data-editable="stage.${stage.id}.item.${item.id}.text">${resolvedItemText}</span></li>`;
+              return `<li style="padding: 8px 0; color: ${itemColor}; font-family: '${itemFont}', sans-serif; font-size: ${itemSize}px; ${itemBold} ${itemItalic} ${itemUnderline} ${itemAlign}">${iconHtml}<span data-editable="stage.${stage.id}.item.${item.id}.text">${resolvedItemText}</span></li>`;
             })
             .join("")}
         </ul>
@@ -6190,18 +5986,18 @@ export function HtmlTemplateEditor({
           if (isVatBreakdown) {
             return `
       <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;"><span data-editable="paystep.${step.id}.name">${step.name}</span></td>
-        <td style="padding: 10px; text-align: center;">${step.percentage}%</td>
-        <td style="padding: 10px; text-align: left;">₪${stepAmount.toLocaleString()}</td>
-        <td style="padding: 10px; text-align: left; color: #666; font-size: 13px;">₪${stepVat.toLocaleString()}${vatLabel}</td>
-        <td style="padding: 10px; text-align: left; font-weight: 600;">₪${stepGross.toLocaleString()}</td>
+        <td style="padding: 11px 16px; font-weight: 500;"><span data-editable="paystep.${step.id}.name">${step.name}</span></td>
+        <td style="padding: 11px 16px; text-align: center; color: #64748b;">${step.percentage}%</td>
+        <td style="padding: 11px 16px; text-align: left; font-weight: 500;">₪${stepAmount.toLocaleString()}</td>
+        <td style="padding: 11px 16px; text-align: left; color: #64748b; font-size: 13px;">₪${stepVat.toLocaleString()}${vatLabel}</td>
+        <td style="padding: 11px 16px; text-align: left; font-weight: 700; color: #1e293b;">₪${stepGross.toLocaleString()}</td>
       </tr>`;
           } else {
             return `
       <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;"><span data-editable="paystep.${step.id}.name">${step.name}</span></td>
-        <td style="padding: 10px; text-align: center;">${step.percentage}%</td>
-        <td style="padding: 10px; text-align: left;">₪${stepAmount.toLocaleString()}</td>
+        <td style="padding: 11px 16px; font-weight: 500;"><span data-editable="paystep.${step.id}.name">${step.name}</span></td>
+        <td style="padding: 11px 16px; text-align: center; color: #64748b;">${step.percentage}%</td>
+        <td style="padding: 11px 16px; text-align: left; font-weight: 600;">₪${stepAmount.toLocaleString()}</td>
       </tr>`;
           }
         },
@@ -6225,11 +6021,16 @@ export function HtmlTemplateEditor({
       : "";
 
     // Page size
-    const { cssSize: pageCssSize } = getPageDimensions(fd.pageSize);
+    const { cssSize: pageCssSize, heightMm: pageHeightMm } = getPageDimensions(fd.pageSize);
+    // Physical page height in px @96dpi — drives the on-screen repeated-strip
+    // overlays so they land at the correct page boundaries for ANY page size.
+    const pageHeightPx = Math.round(pageHeightMm * 3.7795275591);
 
-    // Repeat header/footer on every page
-    const repeatHeader = designSettings.repeatHeaderOnAllPages === true;
-    const repeatFooter = designSettings.repeatFooterOnAllPages !== false; // default ON
+    // Repeat header/footer on every page — both default ON so the top & bottom
+    // strips appear on every page out of the box (the preview auto-reserves the
+    // space for them so they never overlap content).
+    const repeatHeader = designSettings.repeatHeaderOnAllPages !== false;
+    const repeatFooter = designSettings.repeatFooterOnAllPages !== false;
     const headerHeightPx = (designSettings.headerStripHeight || 150) + 10;
     const footerHeightPx = designSettings.footerStripHeight || 90;
 
@@ -6241,71 +6042,204 @@ export function HtmlTemplateEditor({
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&family=Assistant:wght@200;300;400;500;600;700;800&family=Rubik:wght@300;400;500;600;700&family=Alef:wght@400;700&family=David+Libre:wght@400;500;700&family=Frank+Ruhl+Libre:wght@300;400;500;700&family=Varela+Round&family=Noto+Sans+Hebrew:wght@300;400;500;600;700&family=Secular+One&family=Suez+One&family=Amatic+SC:wght@400;700&display=swap" rel="stylesheet">
   <title>${editedTemplate.name}</title>
   <style>
-    body { font-family: '${designSettings.fontFamily}', sans-serif; font-size: ${designSettings.fontSize}px; margin: 0; padding: 0; ${backgroundToBodyCss(fd.background)} }
-    .container { max-width: 800px; margin: 0 auto; background: white; position: relative; ${borderToCss(fd.documentBorder)} }
-    .header { background: ${designSettings.headerBackground}; color: white; padding: 40px; text-align: center; }
-    .content { padding: 40px; }
-    .project-details { background: #f9f9f9; padding: 20px; border-radius: ${designSettings.borderRadius}px; margin-bottom: 30px; }
-    .project-details h2 { color: ${designSettings.primaryColor}; margin-top: 0; }
-    .project-details table { width: 100%; }
-    .project-details td { padding: 8px 0; }
-    .project-details td:first-child { font-weight: 600; width: 120px; }
-    table.payments { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    table.payments th { background: ${designSettings.primaryColor}; color: white; padding: 12px; text-align: right; }
+    /* ═══ RESET & BASE ═══ */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: '${designSettings.fontFamily}', 'Heebo', 'Segoe UI', sans-serif;
+      font-size: ${designSettings.fontSize}px;
+      line-height: 1.75;
+      color: #1e293b;
+      -webkit-font-smoothing: antialiased;
+      direction: rtl;
+      margin: 0;
+      padding: 0;
+      ${backgroundToBodyCss(fd.background)}
+    }
+    h1, h2, h3, h4, h5, h6 { line-height: 1.3; margin: 0; }
+
+    /* ═══ CONTAINER ═══ */
+    .container {
+      width: 100%;
+      background: white;
+      position: relative;
+      ${borderToCss(fd.documentBorder)}
+    }
+
+    /* ═══ HEADER ═══ */
+    .header {
+      background: ${designSettings.headerBackground};
+      color: white;
+      padding: 44px 40px 38px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.09) 0%, transparent 55%);
+      pointer-events: none;
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0 0 8px;
+      letter-spacing: -0.3px;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      position: relative;
+    }
+    .header p {
+      font-size: 15px;
+      opacity: 0.9;
+      margin: 0;
+      font-weight: 400;
+      position: relative;
+    }
+
+    /* ═══ CONTENT ═══ */
+    .content { padding: 36px 40px 28px; }
+
+    /* ═══ PROJECT DETAILS ═══ */
+    .project-details {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      padding: 20px 24px;
+      border-radius: ${designSettings.borderRadius}px;
+      margin-bottom: 28px;
+      border: 1px solid #e2e8f0;
+      border-right: 4px solid ${designSettings.primaryColor};
+    }
+    .project-details h2 {
+      color: ${designSettings.primaryColor};
+      margin: 0 0 14px;
+      font-size: 16px;
+      font-weight: 700;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .project-details table { width: 100%; border-collapse: collapse; }
+    .project-details tr { border-bottom: 1px solid #f1f5f9; }
+    .project-details tr:last-child { border-bottom: none; }
+    .project-details td { padding: 7px 6px; vertical-align: top; }
+    .project-details td:first-child {
+      font-weight: 600;
+      width: 130px;
+      color: #64748b;
+      font-size: 12.5px;
+      letter-spacing: 0.1px;
+    }
+    .project-details td:last-child { color: #1e293b; font-weight: 500; }
+
+    /* ═══ STAGE CARDS ═══ */
+    .stage-card {
+      margin-bottom: 16px;
+      position: relative;
+      ${borderToCss(fd.stageBorder)}
+    }
+    .stage-card h3 {
+      margin: 0 0 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .stage-card ul { list-style: none; padding: 0; margin: 0; }
+    .stage-card li {
+      line-height: 1.6;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .stage-card li:last-child { border-bottom: none; }
+
+    /* ═══ PAYMENT TABLE ═══ */
+    .summary-card {
+      position: relative;
+      margin-top: 24px;
+      ${borderToCss(fd.summaryBorder)}
+    }
+    table.payments {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0;
+      font-size: 14px;
+    }
+    table.payments th {
+      background: ${designSettings.primaryColor};
+      color: white;
+      padding: 13px 16px;
+      text-align: right;
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.2px;
+    }
+    table.payments th:not(:last-child) { border-left: 1px solid rgba(255,255,255,0.15); }
+    table.payments td {
+      padding: 11px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+    table.payments tbody tr:nth-child(odd) { background: #f8fafc; }
+    table.payments tbody tr:nth-child(even) { background: #ffffff; }
+    table.payments tfoot tr { background: #f1f5f9 !important; }
+    table.payments tfoot td {
+      padding: 13px 16px;
+      font-weight: 700;
+      font-size: 15px;
+      border-top: 2px solid #e2e8f0;
+      border-bottom: none;
+      color: ${designSettings.primaryColor};
+    }
+
+    /* ═══ FOOTER ═══ */
     .footer {
       text-align: center;
-      padding: 18px 40px;
-      background: ${designSettings.primaryColor};
-      color: #ffffff;
-      font-size: 14px;
+      padding: 24px 40px;
+      background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+      border-top: 1px solid #e2e8f0;
+      color: #64748b;
+      font-size: 13px;
       position: relative;
       min-height: ${footerHeightPx}px;
       box-sizing: border-box;
+    }
+    .footer .company-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: ${designSettings.primaryColor};
+      margin-bottom: 5px;
+      display: block;
+      letter-spacing: 0.3px;
+    }
+    .footer .contact-row {
       display: flex;
       align-items: center;
       justify-content: center;
-      overflow: hidden;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 12.5px;
     }
-    .footer::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(90deg, rgba(255,255,255,0.12), transparent 26%, rgba(255,255,255,0.08));
-      pointer-events: none;
-    }
-    .footer-content {
-      position: relative;
-      z-index: 1;
-      line-height: 1.55;
-    }
-    .footer-content strong {
-      display: block;
-      font-size: 15px;
-      margin-bottom: 2px;
-    }
+    .footer .divider { color: #cbd5e0; }
+
+    /* ═══ MISC ═══ */
     .full-width-header { padding: 0 !important; overflow: hidden; background: transparent !important; margin: 0; }
     .full-width-header img { width: 100%; height: auto; display: block; object-fit: fill; object-position: center; margin: 0 auto; }
-    .stage-card { position: relative; ${borderToCss(fd.stageBorder)} }
-    .summary-card { position: relative; margin-top: 30px; ${borderToCss(fd.summaryBorder)} }
-    @page {
-      margin: 0;
-      margin-left: 0;
-      margin-right: 0;
-      size: ${pageCssSize};
-    }
+
+    /* ═══ PAGE STRUCTURE ═══ */
+    @page { margin: 0; margin-left: 0; margin-right: 0; size: ${pageCssSize}; }
     .print-page-shell { width: 100%; border-collapse: collapse; border-spacing: 0; }
     .print-page-shell > thead > tr > td,
     .print-page-shell > tbody > tr > td,
     .print-page-shell > tfoot > tr > td { padding: 0; vertical-align: top; }
+
+    /* ═══ PRINT ═══ */
     @media print {
-      html {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-      body {
-        margin: 0 !important;
-        padding: 0 !important;
-      }
+      html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { margin: 0 !important; padding: 0 !important; }
       .container {
         max-width: 100% !important;
         width: 100% !important;
@@ -6315,9 +6249,7 @@ export function HtmlTemplateEditor({
         border-radius: 0 !important;
         box-shadow: none !important;
       }
-      .content {
-        padding: 28px 40px !important;
-      }
+      .content { padding: 28px 40px !important; }
       .print-repeat-header { display: ${repeatHeader ? "table-header-group" : "table-row-group"} !important; }
       .print-repeat-footer { display: ${repeatFooter ? "table-footer-group" : "table-row-group"} !important; }
       .stage-card,
@@ -6330,19 +6262,16 @@ export function HtmlTemplateEditor({
       }
       .footer {
         margin: 0 !important;
-        background: ${designSettings.primaryColor} !important;
-        color: #ffffff !important;
+        background: linear-gradient(to bottom, #f8fafc, #f1f5f9) !important;
         min-height: ${footerHeightPx}px !important;
         box-sizing: border-box !important;
       }
       [data-drag-strip] { display: none !important; }
-      .header,
-      .header-strip {
+      .header, .header-strip {
         position: relative !important;
         margin: 0 !important;
         height: ${headerHeightPx}px !important;
       }
-
       .quote-fixed-header { position: fixed; top: 0; left: 0; right: 0; }
       .quote-fixed-footer { position: fixed; bottom: 0; left: 0; right: 0; }
       .print-frame-overlay {
@@ -6359,12 +6288,16 @@ export function HtmlTemplateEditor({
     }
   </style>
 </head>
-<body data-repeat-header="${repeatHeader ? "1" : "0"}" data-repeat-footer="${repeatFooter ? "1" : "0"}" data-page-height="1123">
+<body data-repeat-header="${repeatHeader ? "1" : "0"}" data-repeat-footer="${repeatFooter ? "1" : "0"}" data-page-height="${pageHeightPx}">
   <style>
     /* Per-page repeated overlays for the on-screen multi-page preview.
        Print uses thead/tfoot grouping and ignores these overlays. */
     body { position: relative; }
-    .lov-repeat-overlay { position: absolute; left: 0; right: 0; z-index: 50; pointer-events: none; }
+    /* The repeated strip overlay must be a HARD, OPAQUE mask: it sits on top of
+       the page content (z-index) with an opaque backdrop (#fff – the same white
+       the page-1 strip sits over inside .container) and clips its own content,
+       so NO document text is ever visible behind the top/bottom strips. */
+    .lov-repeat-overlay { position: absolute; left: 0; right: 0; z-index: 50; pointer-events: none; background: #ffffff; overflow: hidden; }
     @media print { .lov-repeat-overlay { display: none !important; } }
   </style>
   ${hasFrameOverlay ? `<div class="print-frame-overlay" style="display:none; border: ${frameOverlayBorderCss};"></div>` : ""}
@@ -6405,25 +6338,25 @@ export function HtmlTemplateEditor({
                 layersHtml += `<img src="${layers.text.url}" alt="Text" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:${(layers.text.opacity ?? 100) / 100};">`;
               }
               return `
-    <div class="header-strip" style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
+    <div id="__header-drag-target" class="header-strip" style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
       ${layersHtml}
-      <div data-drag-strip="header" style="position:absolute;bottom:0;left:0;right:0;height:10px;cursor:ns-resize;z-index:20;display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(255,255,255,0.7);pointer-events:none;"></div></div>
-    </div>`;
+    </div>
+    <div data-drag-strip="header" style="width:100%;height:10px;cursor:ns-resize;background:rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(255,255,255,0.6);pointer-events:none;"></div></div>`;
             } else {
               const stripOpacity = (designSettings.stripLineOpacity ?? 100) / 100;
-              const logoSrc = designSettings.logoUrl || companyHeaderImg;
-              const stripImgTag = `<img src="${logoSrc}" alt="Header Strip" onerror="this.onerror=null;this.src='${companyHeaderImg}'" style="width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: ${stripOpacity}; mix-blend-mode: multiply;">`;
+              const logoSrc = designSettings.logoUrl || "";
+              const stripImgTag = logoSrc ? `<img src="${logoSrc}" alt="Header Strip" style="width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: ${stripOpacity}; mix-blend-mode: multiply;">` : "";
               return `
-    <div class="header-strip" style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
+    <div id="__header-drag-target" class="header-strip" style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
       ${stripImgTag}
-      <div data-drag-strip="header" style="position:absolute;bottom:0;left:0;right:0;height:10px;cursor:ns-resize;z-index:20;display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(255,255,255,0.7);pointer-events:none;"></div></div>
-    </div>`;
+    </div>
+    <div data-drag-strip="header" style="width:100%;height:10px;cursor:ns-resize;background:rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(255,255,255,0.6);pointer-events:none;"></div></div>`;
 
             }
           })()
         : designSettings.showHeaderStrip !== false
         ? `
-    <div class="header${designSettings.logoPosition === "full-width" ? " full-width-header" : ""}" style="position:relative;">
+    <div id="__header-drag-target" class="header${designSettings.logoPosition === "full-width" ? " full-width-header" : ""}" style="position:relative;">
       ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === "full-width" ? `<img src="${designSettings.logoUrl}" alt="Logo">` : ""}
       ${designSettings.showLogo && designSettings.logoUrl && (!designSettings.logoPosition || designSettings.logoPosition === "inside-header") ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoWidth || designSettings.logoSize || 120}px; ${designSettings.logoHeight ? `height: ${designSettings.logoHeight}px; object-fit: contain;` : "height: auto;"} margin-bottom: 15px;">` : ""}
       ${
@@ -6432,8 +6365,8 @@ export function HtmlTemplateEditor({
       <p data-editable="template.description" style="opacity: 0.9; margin: 10px 0 0;">${editedTemplate.description || ""}</p>`
           : ""
       }
-      <div data-drag-strip="header" style="position:absolute;bottom:0;left:0;right:0;height:10px;cursor:ns-resize;z-index:20;display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(255,255,255,0.7);pointer-events:none;"></div></div>
-    </div>`
+    </div>
+    <div data-drag-strip="header" style="width:100%;height:10px;cursor:ns-resize;background:rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(255,255,255,0.6);pointer-events:none;"></div></div>`
         : `
     <div style="padding: 40px; text-align: center; border-bottom: 2px solid ${designSettings.primaryColor};">
       ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition !== "full-width" ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoWidth || designSettings.logoSize || 120}px; ${designSettings.logoHeight ? `height: ${designSettings.logoHeight}px; object-fit: contain;` : "height: auto;"} margin-bottom: 15px;">` : ""}
@@ -6454,15 +6387,15 @@ export function HtmlTemplateEditor({
         projectDetails.clientName
           ? `
       <div class="project-details">
-        <h2>פרטי הפרויקט</h2>
+        <h2>📋 פרטי הפרויקט</h2>
         <table>
-          ${projectDetails.clientName ? `<tr><td>לקוח:</td><td>${projectDetails.clientName}</td></tr>` : ""}
-          ${projectDetails.address ? `<tr><td>כתובת:</td><td>${projectDetails.address}</td></tr>` : ""}
-          ${projectDetails.gush ? `<tr><td>גוש:</td><td>${projectDetails.gush}</td></tr>` : ""}
-          ${projectDetails.helka ? `<tr><td>חלקה:</td><td>${projectDetails.helka}</td></tr>` : ""}
-          ${projectDetails.migrash ? `<tr><td>מגרש:</td><td>${projectDetails.migrash}</td></tr>` : ""}
-          ${projectDetails.taba ? `<tr><td>תב"ע:</td><td>${projectDetails.taba}</td></tr>` : ""}
-          ${projectDetails.projectType ? `<tr><td>סוג פרויקט:</td><td>${projectDetails.projectType}</td></tr>` : ""}
+          ${projectDetails.clientName ? `<tr><td>לקוח</td><td>${projectDetails.clientName}</td></tr>` : ""}
+          ${projectDetails.address ? `<tr><td>כתובת</td><td>${projectDetails.address}</td></tr>` : ""}
+          ${projectDetails.gush ? `<tr><td>גוש</td><td>${projectDetails.gush}</td></tr>` : ""}
+          ${projectDetails.helka ? `<tr><td>חלקה</td><td>${projectDetails.helka}</td></tr>` : ""}
+          ${projectDetails.migrash ? `<tr><td>מגרש</td><td>${projectDetails.migrash}</td></tr>` : ""}
+          ${projectDetails.taba ? `<tr><td>תב"ע</td><td>${projectDetails.taba}</td></tr>` : ""}
+          ${projectDetails.projectType ? `<tr><td>סוג פרויקט</td><td>${projectDetails.projectType}</td></tr>` : ""}
         </table>
       </div>`
           : ""
@@ -6503,11 +6436,19 @@ export function HtmlTemplateEditor({
     </div>
       </td></tr></tbody>
       <tfoot class="print-repeat-footer"><tr><td>
-    <div class="footer">
-      <div data-drag-strip="footer" style="position:absolute;top:0;left:0;right:0;height:10px;cursor:ns-resize;z-index:20;display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(0,0,0,0.25);pointer-events:none;"></div></div>
-      <div class="footer-content">
-        <strong>${designSettings.companyName || ""}</strong>
-        <span>${[designSettings.companyAddress, designSettings.companyPhone, designSettings.companyEmail].filter(Boolean).join(" | ")}</span>
+    <div data-drag-strip="footer" style="width:100%;height:10px;cursor:ns-resize;background:rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;"><div style="width:50px;height:3px;border-radius:2px;background:rgba(0,0,0,0.25);pointer-events:none;"></div></div>
+    <div id="__footer-drag-target" class="footer">
+      <span class="company-name">${designSettings.companyName}</span>
+      <div class="contact-row">
+        ${[
+          designSettings.companyAddress,
+          designSettings.companyPhone,
+          designSettings.companyEmail,
+        ].filter(Boolean).map((item, i, arr) =>
+          i < arr.length - 1
+            ? `<span>${item}</span><span class="divider">·</span>`
+            : `<span>${item}</span>`
+        ).join("")}
       </div>
     </div>
       </td></tr></tfoot>
@@ -6524,8 +6465,9 @@ export function HtmlTemplateEditor({
     if (!handle) return;
     e.preventDefault(); e.stopPropagation();
     var type = handle.getAttribute('data-drag-strip');
-    var container = handle.parentElement;
-    dragging = { type: type, container: container, startY: e.clientY, startH: container.offsetHeight };
+    var container = document.getElementById('__' + type + '-drag-target');
+    if (!container) return;
+    dragging = { type: type, container: container, startY: e.clientY, startH: container.offsetHeight, currentH: null };
     document.body.style.cursor = 'ns-resize';
     document.body.style.userSelect = 'none';
   }, true);
@@ -6535,10 +6477,13 @@ export function HtmlTemplateEditor({
     var newH = Math.max(40, dragging.type === 'footer' ? dragging.startH - delta : dragging.startH + delta);
     dragging.container.style.height = newH + 'px';
     dragging.container.style.minHeight = newH + 'px';
-    try { window.parent.postMessage({ __lovableInlineEdit: true, path: 'strip-height:' + dragging.type, value: String(Math.round(newH)) }, '*'); } catch(_){}
+    dragging.currentH = newH;
   });
   document.addEventListener('mouseup', function(){
     if (!dragging) return;
+    if (dragging.currentH != null) {
+      try { window.parent.postMessage({ __lovableInlineEdit: true, path: 'strip-height:' + dragging.type, value: String(Math.round(dragging.currentH)) }, '*'); } catch(_){}
+    }
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
     dragging = null;
@@ -6553,7 +6498,6 @@ export function HtmlTemplateEditor({
   const liveHtml = useMemo(() => generateHtmlContent(), [generateHtmlContent]);
   // Debounce the HTML fed into the preview iframe to prevent flicker while typing
   const debouncedPreviewHtml = useDebouncedValue(liveHtml, 300);
-  const activePreviewHtml = freeTextHtmlOverride || debouncedPreviewHtml;
 
   // Paged view: opens a separate browser window with the rendered HTML and
   // triggers the native print preview, which uses the existing print CSS to
@@ -6563,7 +6507,7 @@ export function HtmlTemplateEditor({
   const [pagedRendering, setPagedRendering] = useState(false);
 
   const openPrintPreview = useCallback(() => {
-    if (!activePreviewHtml) return;
+    if (!debouncedPreviewHtml) return;
     setPagedRendering(true);
     setPagedPageCount(null);
     const win = window.open("", "_blank", "width=900,height=1200");
@@ -6594,14 +6538,14 @@ export function HtmlTemplateEditor({
         else window.addEventListener('load', function(){ setTimeout(reportPages, 400); });
       })();
     <\/script>`;
-    const html = activePreviewHtml.replace(
+    const html = debouncedPreviewHtml.replace(
       "</body>",
       `${measureScript}</body>`
     );
     win.document.open();
     win.document.write(html);
     win.document.close();
-  }, [activePreviewHtml]);
+  }, [debouncedPreviewHtml]);
 
   // Listen for page-count report from the print preview window.
   useEffect(() => {
@@ -6692,22 +6636,6 @@ export function HtmlTemplateEditor({
     }
   }, []);
 
-  const handleFreeTextSave = useCallback(({ html }: FreeTextEditPayload) => {
-    setFreeTextHtmlOverride(html);
-    toast({
-      title: "עריכת הטקסט נשמרה",
-      description: "המסמך נשמר כגרסת טקסט חופשית. אפשר לאפס ולחזור לתבנית בכל רגע.",
-    });
-  }, [toast]);
-
-  const resetFreeTextOverride = useCallback(() => {
-    setFreeTextHtmlOverride(null);
-    toast({
-      title: "חזרת לתבנית המקורית",
-      description: "המסמך שוב נבנה מהשדות והתבניות המחוברים.",
-    });
-  }, [toast]);
-
 
   // Helper: convert image URL to base64 data URL for standalone exports
   const convertImageToBase64 = (url: string): Promise<string> => {
@@ -6737,7 +6665,7 @@ export function HtmlTemplateEditor({
 
   // Generate HTML with embedded base64 images for standalone export
   const generateExportHtml = async (): Promise<string> => {
-    let html = freeTextHtmlOverride || generateHtmlContent();
+    let html = generateHtmlContent();
     // Find all image src attributes and convert to base64
     const logoUrl = designSettings.logoUrl;
     if (logoUrl && !logoUrl.startsWith('data:')) {
@@ -10403,10 +10331,16 @@ ${tbAt('footer')}
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={openVectorLogoStripEditor}
+                      asChild
                     >
-                      <ExternalLink className="h-4 w-4 ml-2" />
-                      עורך בעמוד נפרד
+                      <a
+                        href="/vector-logo-strip-editor.html"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="h-4 w-4 ml-2" />
+                        עורך בעמוד נפרד
+                      </a>
                     </Button>
                   </div>
                 </div>
@@ -10448,7 +10382,7 @@ ${tbAt('footer')}
                       <p className="text-xs text-gray-500 mt-0.5">הסטריפ העליון יופיע בראש כל עמוד בהדפסה</p>
                     </div>
                     <Switch
-                      checked={designSettings.repeatHeaderOnAllPages === true}
+                      checked={designSettings.repeatHeaderOnAllPages !== false}
                       onCheckedChange={(v) =>
                         setDesignSettings((prev) => ({ ...prev, repeatHeaderOnAllPages: v }))
                       }
@@ -10469,7 +10403,7 @@ ${tbAt('footer')}
 
                   {/* Inline company details — edit here, persisted as part of designSettings */}
                   {designSettings.repeatFooterOnAllPages !== false && (
-                    <div className="border-t pt-3 space-y-3 bg-gray-50 -mx-4 px-4 pb-4">
+                    <div className="border-t pt-3 space-y-3 bg-gray-50 -mx-4 -mb-4 px-4 pb-4 rounded-b-xl">
                       <p className="text-xs font-semibold text-gray-700">פרטי החברה (יוצגו בתחתית)</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
@@ -10519,60 +10453,6 @@ ${tbAt('footer')}
                       </div>
                     </div>
                   )}
-
-                  <div className="border-t pt-3 space-y-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <Label className="text-sm font-medium">גובה סטריפ עליון</Label>
-                        <p className="text-xs text-gray-500 mt-0.5">קובע את אזור הלוגו שיופיע בכל דף</p>
-                      </div>
-                      <span className="text-xs font-semibold tabular-nums text-[#162C58]">
-                        {designSettings.headerStripHeight || 150}px
-                      </span>
-                    </div>
-                    <Slider
-                      value={[designSettings.headerStripHeight || 150]}
-                      min={90}
-                      max={260}
-                      step={5}
-                      onValueChange={([v]) =>
-                        setDesignSettings((prev) => ({ ...prev, headerStripHeight: v }))
-                      }
-                    />
-
-                    <div className="flex items-center justify-between gap-3 pt-1">
-                      <div>
-                        <Label className="text-sm font-medium">גובה סטריפ תחתון</Label>
-                        <p className="text-xs text-gray-500 mt-0.5">קובע כמה מקום נשמר לפרטי החברה בתחתית</p>
-                      </div>
-                      <span className="text-xs font-semibold tabular-nums text-[#162C58]">
-                        {designSettings.footerStripHeight || 90}px
-                      </span>
-                    </div>
-                    <Slider
-                      value={[designSettings.footerStripHeight || 90]}
-                      min={55}
-                      max={160}
-                      step={5}
-                      onValueChange={([v]) =>
-                        setDesignSettings((prev) => ({ ...prev, footerStripHeight: v }))
-                      }
-                    />
-
-                    <div className="flex justify-end pt-1">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-8 text-xs border-[#162C58]/30 text-[#162C58] hover:bg-[#162C58]/10"
-                        onClick={() => setActiveTab("pages")}
-                        title="פתח תצוגת A4 עם הסטריפים בכל דף"
-                      >
-                        <Layers className="h-3.5 w-3.5 ml-1.5" />
-                        פתח בדיקת PDF / עימוד
-                      </Button>
-                    </div>
-                  </div>
 
                   {(designSettings.repeatHeaderOnAllPages || designSettings.repeatFooterOnAllPages !== false) && (
                     <p className="text-xs text-[#B8860B] bg-[#FFF8E1] rounded p-2">
@@ -11612,10 +11492,16 @@ ${tbAt('footer')}
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={openVectorLogoStripEditor}
+                      asChild
                     >
-                      <ExternalLink className="h-4 w-4 ml-2" />
-                      עורך בעמוד נפרד
+                      <a
+                        href="/vector-logo-strip-editor.html"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="h-4 w-4 ml-2" />
+                        עורך בעמוד נפרד
+                      </a>
                     </Button>
                   </div>
                 </div>
@@ -12531,13 +12417,11 @@ ${tbAt('footer')}
                   </div>
                   <div className="h-[calc(100%-24px)] bg-white rounded-lg shadow-lg overflow-hidden">
                     <PreviewIframe
-                      html={activePreviewHtml}
+                      html={debouncedPreviewHtml}
                       title="תצוגה מקדימה"
                       className="w-full h-full border-0"
                       style={{ minHeight: "100%" }}
                       onInlineEdit={handleInlineEdit}
-                      freeTextEditMode={freeTextEditMode}
-                      onFreeTextSave={handleFreeTextSave}
                     />
                   </div>
                 </div>
@@ -12794,25 +12678,10 @@ ${tbAt('footer')}
                 <div className="bg-white rounded-lg shadow-sm border p-1 flex gap-1">
                   <Button
                     size="sm"
-                    variant="ghost"
-                    className="h-8 text-xs text-[#162C58] hover:bg-[#162C58]/10"
-                    onClick={() => {
-                      setActiveTab("pages");
-                      setInteractiveEditMode(false);
-                      setPlainTextMode(false);
-                      setFreeTextEditMode(false);
-                    }}
-                    title="פתח תצוגת A4 שמראה סטריפ עליון ותחתון בכל דף לפני PDF או הדפסה"
-                  >
-                    <Layers className="h-3.5 w-3.5 ml-1" />
-                    בדיקת PDF / עימוד
-                  </Button>
-                  <Button
-                    size="sm"
                     variant={interactiveEditMode ? "default" : "ghost"}
                     className={`h-8 text-xs ${interactiveEditMode ? "bg-purple-500 hover:bg-purple-600 text-white" : ""}`}
                     onClick={() => setInteractiveEditMode(!interactiveEditMode)}
-                    disabled={plainTextMode || freeTextEditMode}
+                    disabled={plainTextMode}
                   >
                     <Edit className="h-3.5 w-3.5 ml-1" />
                     עריכה ישירה
@@ -12821,45 +12690,15 @@ ${tbAt('footer')}
                     size="sm"
                     variant={plainTextMode ? "default" : "ghost"}
                     className={`h-8 text-xs ${plainTextMode ? "bg-[#162C58] hover:bg-[#0f1f40] text-white" : ""}`}
-                    onClick={() => {
-                      setPlainTextMode((v) => !v);
-                      setFreeTextEditMode(false);
-                    }}
-                    disabled={freeTextEditMode}
+                    onClick={() => setPlainTextMode((v) => !v)}
                     title="מצב טקסט רגיל משאיר את השדות מחוברים ומכבה בחירת תבניות"
                   >
                     <Type className="h-3.5 w-3.5 ml-1" />
                     טקסט רגיל
                   </Button>
-                  <Button
-                    size="sm"
-                    variant={freeTextEditMode ? "default" : "ghost"}
-                    className={`h-8 text-xs ${freeTextEditMode ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}`}
-                    onClick={() => {
-                      setFreeTextEditMode((v) => !v);
-                      setPlainTextMode(false);
-                      setInteractiveEditMode(false);
-                    }}
-                    title="עריכה חופשית של הטקסט בתוך המסמך עם סרגל עיצוב צף"
-                  >
-                    <Pencil className="h-3.5 w-3.5 ml-1" />
-                    עריכת טקסט
-                  </Button>
-                  {freeTextHtmlOverride && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 text-xs"
-                      onClick={resetFreeTextOverride}
-                      title="איפוס העריכה החופשית וחזרה לתבנית המחוברת"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5 ml-1" />
-                      אפס עריכה
-                    </Button>
-                  )}
                 </div>
 
-                {plainTextMode && !freeTextEditMode && (
+                {plainTextMode && (
                   <div className="bg-white rounded-lg shadow-sm border p-1 flex items-center gap-2">
                     <span className="text-xs text-gray-500 px-1">תחום:</span>
                     <Select
@@ -12880,7 +12719,7 @@ ${tbAt('footer')}
                 )}
 
                 {/* Global Page Settings - only shown in edit mode */}
-                {interactiveEditMode && !plainTextMode && !freeTextEditMode && (
+                {interactiveEditMode && !plainTextMode && (
                   <div className="bg-white rounded-lg shadow-sm border p-1 flex gap-2 items-center">
                     <span className="text-xs text-gray-500 px-1">
                       עיצוב כללי:
@@ -12973,40 +12812,6 @@ ${tbAt('footer')}
                   </div>
                 )}
                 {/* Version save button */}
-                <div className="bg-white rounded-lg shadow-sm border p-1 flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 text-xs"
-                    onClick={handleUndo}
-                    disabled={!canUndo}
-                    title="בטל שינוי אחרון (Ctrl/Cmd+Z)"
-                  >
-                    <Undo2 className="h-3.5 w-3.5 ml-1" />
-                    בטל
-                    {undoCount > 0 && (
-                      <span className="mr-1 text-[10px] text-muted-foreground">
-                        {undoCount}
-                      </span>
-                    )}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 text-xs"
-                    onClick={handleRedo}
-                    disabled={!canRedo}
-                    title="החזר שינוי שבוטל (Ctrl/Cmd+Shift+Z או Ctrl/Cmd+Y)"
-                  >
-                    <Redo2 className="h-3.5 w-3.5 ml-1" />
-                    החזר
-                    {redoCount > 0 && (
-                      <span className="mr-1 text-[10px] text-muted-foreground">
-                        {redoCount}
-                      </span>
-                    )}
-                  </Button>
-                </div>
                 <Button
                   size="sm"
                   variant="outline"
@@ -13055,7 +12860,7 @@ ${tbAt('footer')}
                   )}
 
                   {/* Interactive Edit Preview */}
-                  {interactiveEditMode && !plainTextMode && !freeTextEditMode ? (
+                  {interactiveEditMode && !plainTextMode ? (
                     <ScrollArea
                       className="w-full h-full"
                       style={{
@@ -14063,7 +13868,7 @@ ${tbAt('footer')}
                     </ScrollArea>
                   ) : (
                     <PreviewIframe
-                      html={activePreviewHtml}
+                      html={debouncedPreviewHtml}
                       title="תצוגה מקדימה"
                       className="w-full border-0"
                       style={{
@@ -14076,12 +13881,10 @@ ${tbAt('footer')}
                       }}
                       autoHeight={previewDevice === "desktop"}
                       minAutoHeight={720}
-                      enableInlineEdit={!plainTextMode && !freeTextEditMode}
+                      enableInlineEdit={!plainTextMode}
                       plainTextMode={plainTextMode}
                       plainTextScope={plainTextScope}
                       onInlineEdit={handleInlineEdit}
-                      freeTextEditMode={freeTextEditMode}
-                      onFreeTextSave={handleFreeTextSave}
                     />
                   )}
 
@@ -14098,89 +13901,25 @@ ${tbAt('footer')}
 
           {/* Split View Tab - Block Editor + Live Preview */}
           <TabsContent value="split" className="flex-1 m-0 overflow-hidden">
-            {splitEditorCollapsed ? (
-              <div className="h-full flex">
-                {/* Collapsed mini sidebar */}
-                <div className="w-10 shrink-0 bg-gray-50 border-l flex flex-col items-center py-2 gap-2">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8"
-                    onClick={() => setSplitEditorCollapsed(false)}
-                    title="פתח פאנל עריכה"
-                  >
-                    <PanelLeftOpen className="h-4 w-4" />
-                  </Button>
-                </div>
-                {/* Full-width preview */}
-                <div className="flex-1 bg-gray-100 p-2 flex flex-col min-w-0">
-                  <div className="shrink-0 flex items-center justify-between gap-2 px-2 pb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        תצוגה חיה - לחיצה לעריכה מהירה
-                      </span>
-                      {(pagedRendering || pagedPageCount != null) && (
-                        <Badge variant="secondary" className="text-[10px] h-5">
-                          {pagedRendering
-                            ? "סופר עמודים..."
-                            : `${pagedPageCount} עמודים בהדפסה`}
-                        </Badge>
-                      )}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={openPrintPreview}
-                    >
-                      <FileText className="h-3.5 w-3.5 ml-1" />
-                      תצוגת עמודים / הדפסה
-                    </Button>
-                  </div>
-                  <div className="flex-1 bg-white rounded-lg shadow-lg overflow-hidden">
-                    <PreviewIframe
-                      html={activePreviewHtml}
-                      title="תצוגה מקדימה חיה"
-                      className="w-full h-full border-0"
-                      style={{ minHeight: "100%" }}
-                      onInlineEdit={handleInlineEdit}
-                      freeTextEditMode={freeTextEditMode}
-                      onFreeTextSave={handleFreeTextSave}
-                    />
-                  </div>
-                </div>
-              </div>
-            ) : (
             <ResizablePanelGroup direction="horizontal" className="h-full">
               {/* Editor Panel - Draggable blocks */}
               <ResizablePanel defaultSize={50} minSize={30}>
                 <ScrollArea className="h-full bg-gray-50">
                   <div className="p-6 space-y-4">
-                    <div className="flex items-center justify-between mb-2 gap-2">
+                    <div className="flex items-center justify-between mb-2">
                       <span className="text-xs text-gray-400 flex items-center gap-1">
                         <GripVertical className="h-3 w-3" />
                         גרור סקשנים לשינוי סדר
                       </span>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
-                          onClick={() => saveVersion()}
-                        >
-                          <GitBranch className="h-3 w-3 ml-1" />
-                          שמור גרסה
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7"
-                          onClick={() => setSplitEditorCollapsed(true)}
-                          title="מזער פאנל עריכה"
-                        >
-                          <PanelLeftClose className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={() => saveVersion()}
+                      >
+                        <GitBranch className="h-3 w-3 ml-1" />
+                        שמור גרסה
+                      </Button>
                     </div>
 
                     {/* Logo Strip Quick Control */}
@@ -14635,26 +14374,33 @@ ${tbAt('footer')}
                   </div>
                   <div className="flex-1 bg-white rounded-lg shadow-lg overflow-hidden">
                     <PreviewIframe
-                      html={activePreviewHtml}
+                      html={debouncedPreviewHtml}
                       title="תצוגה מקדימה חיה"
                       className="w-full h-full border-0"
                       style={{ minHeight: "100%" }}
                       onInlineEdit={handleInlineEdit}
-                      freeTextEditMode={freeTextEditMode}
-                      onFreeTextSave={handleFreeTextSave}
                     />
                   </div>
                 </div>
               </ResizablePanel>
 
             </ResizablePanelGroup>
-            )}
+          </TabsContent>
+
+          {/* Flow V2 - isolated document editor */}
+          <TabsContent value="flow-v2" className="flex-1 m-0 overflow-hidden">
+            <FlowWorkspaceTab
+              template={editedTemplate}
+              projectDetails={projectDetails}
+              designSettings={designSettings}
+              onDesignSettingsChange={setDesignSettings}
+            />
           </TabsContent>
 
           {/* Pages Preview Tab - paged A4 preview */}
           <TabsContent value="pages" className="flex-1 m-0 overflow-hidden">
             <PagesPreviewTab
-              html={activePreviewHtml}
+              html={debouncedPreviewHtml}
               onExportPdf={handleExportPdf}
               onExportWord={handleExportWord}
               onJumpToEditor={(path) => {
@@ -14668,33 +14414,6 @@ ${tbAt('footer')}
               }}
               templateName={editedTemplate.name}
             />
-          </TabsContent>
-
-          {/* Paged.js Pro - real CSS Paged Media engine (client-side) */}
-          <TabsContent value="paged-pro" className="flex-1 m-0 overflow-hidden">
-            <PagedPreviewTab
-              html={activePreviewHtml}
-              onExportPdf={handleExportPdf}
-              onExportWord={handleExportWord}
-              templateName={editedTemplate.name}
-              fallbackFooterHtml={`
-                <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:0 12mm;font-family:${(designSettings as any).fontFamily || 'Heebo'},sans-serif;color:${(designSettings as any).primaryColor || '#162C58'};text-align:center;direction:rtl;">
-                  <div style="line-height:1.4;">
-                    <div style="font-weight:700;font-size:11pt;">${(designSettings as any).companyName || ''}</div>
-                    <div style="font-size:9pt;opacity:.85;">
-                      ${[(designSettings as any).companyAddress, (designSettings as any).companyPhone, (designSettings as any).companyEmail]
-                        .filter(Boolean).join(' &nbsp;|&nbsp; ')}
-                    </div>
-                  </div>
-                </div>
-              `}
-            />
-
-          </TabsContent>
-
-          {/* Flow V2 — Clean isolated pagination pipeline (flow-engine/) */}
-          <TabsContent value="flow-v2" className="flex-1 m-0 overflow-hidden">
-            <FlowWorkspaceTab template={editedTemplate} projectDetails={projectDetails} />
           </TabsContent>
         </Tabs>
         </div>

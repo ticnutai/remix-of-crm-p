@@ -67,6 +67,18 @@ function renderBlock(block: FlowBlock): string {
   }
 }
 
+function pageSizeCss(page: FlowDocument["page"]): string {
+  if (page.size === "none") {
+    return "auto";
+  }
+  if (page.size === "custom") {
+    const width = Math.max(50, page.customSizeMm?.width || 210);
+    const height = Math.max(50, page.customSizeMm?.height || 297);
+    return `${width}mm ${height}mm`;
+  }
+  return `${page.size}${page.orientation === "landscape" ? " landscape" : ""}`;
+}
+
 export function renderFlowToHtml(doc: FlowDocument, preset?: DesignPresetConfig): string {
   const { branding, page, sections } = doc;
   const m = page.marginMm;
@@ -109,7 +121,7 @@ export function renderFlowToHtml(doc: FlowDocument, preset?: DesignPresetConfig)
 <style>
   /* ===== Paged Media setup ===== */
   @page {
-    size: ${page.size};
+    size: ${pageSizeCss(page)};
     margin: ${topMargin}mm ${m.right}mm ${bottomMargin}mm ${m.left}mm;
     @top-center { content: element(runHeader); }
     @bottom-center { content: element(runFooter); }

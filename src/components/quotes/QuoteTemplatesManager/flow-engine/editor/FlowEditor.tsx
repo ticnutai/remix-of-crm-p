@@ -18,15 +18,84 @@ import BubbleToolbar from "./BubbleToolbar";
 import AdvancedTextStyle from "./AdvancedTextStyle";
 
 import type { DesignPresetConfig } from "../presets/types";
+import type { FlowPageSetup } from "../types";
 
 interface Props {
   initialHtml: string;
   onChange: (html: string) => void;
   preset?: DesignPresetConfig;
+  pageSetup?: FlowPageSetup;
+  templateDesignSettings?: any;
+  designSettings?: any;
 }
 
-export default function FlowEditor({ initialHtml, onChange, preset }: Props) {
+const PAGE_SIZES_MM: Record<string, { width: number; height: number }> = {
+  A5: { width: 148, height: 210 },
+  A4: { width: 210, height: 297 },
+  A3: { width: 297, height: 420 },
+  Letter: { width: 216, height: 279 },
+  Legal: { width: 216, height: 356 },
+};
+
+function editorPageVars(pageSetup?: FlowPageSetup): React.CSSProperties {
+  if (!pageSetup || pageSetup.size === "none") return {};
+
+  const base =
+    pageSetup.size === "custom"
+      ? {
+          width: Math.max(50, pageSetup.customSizeMm?.width || 210),
+          height: Math.max(50, pageSetup.customSizeMm?.height || 297),
+        }
+      : PAGE_SIZES_MM[pageSetup.size] || PAGE_SIZES_MM.A4;
+  const landscape = pageSetup.size !== "custom" && pageSetup.orientation === "landscape";
+  const width = landscape ? base.height : base.width;
+  const height = landscape ? base.width : base.height;
+  const margin = pageSetup.marginMm || { top: 32, right: 18, bottom: 28, left: 18 };
+
+  return {
+    "--flow-editor-page-width": `${width}mm`,
+    "--flow-editor-page-height": `${height}mm`,
+    "--flow-editor-page-gap": "18mm",
+    "--flow-editor-page-padding": `${margin.top}mm ${margin.right}mm ${margin.bottom}mm ${margin.left}mm`,
+  } as React.CSSProperties;
+}
+
+function firstValue<T>(...values: Array<T | null | undefined | "">): T | undefined {
+  return values.find((value) => value !== undefined && value !== null && value !== "") as T | undefined;
+}
+
+function getStripSettings(templateDesignSettings?: any, designSettings?: any) {
+  const ds = { ...(templateDesignSettings || {}), ...(designSettings || {}) };
+  const logoUrl = firstValue(ds.logoUrl, ds.logo_url, ds.logoURL, ds.originalLogoUrl, ds.original_logo_url);
+  const logoPosition = firstValue(ds.logoPosition, ds.logo_position);
+  const isStripLogo = logoPosition === "custom-strip" || logoPosition === "full-width";
+  const headerUrl = firstValue(ds.headerStripUrl, ds.header_strip_url, ds.stripUrl, ds.strip_url, isStripLogo ? logoUrl : undefined);
+  const footerUrl = firstValue(ds.footerStripUrl, ds.footer_strip_url, ds.footerLogoUrl, ds.footer_logo_url, isStripLogo ? logoUrl : undefined);
+
+  return {
+    headerUrl,
+    footerUrl,
+    bgColor: firstValue(ds.stripBgColor, ds.strip_bg_color, "#ffffff") || "#ffffff",
+    headerHeight: Math.max(24, Math.round(Number(ds.headerStripHeight) || 150)),
+    footerHeight: Math.max(24, Math.round(Number(ds.footerStripHeight) || 90)),
+    showHeader: ds.repeatHeaderOnAllPages !== false,
+    showFooter: ds.repeatFooterOnAllPages !== false,
+  };
+}
+
+export default function FlowEditor({
+  initialHtml,
+  onChange,
+  preset,
+  pageSetup,
+  templateDesignSettings,
+  designSettings,
+}: Props) {
   const debounceRef = useRef<number | null>(null);
+  const pagedMode = Boolean(pageSetup && pageSetup.size !== "none");
+  const stripSettings = getStripSettings(templateDesignSettings, designSettings);
+  const showHeaderStrip = pagedMode && stripSettings.showHeader && Boolean(stripSettings.headerUrl);
+  const showFooterStrip = pagedMode && stripSettings.showFooter && Boolean(stripSettings.footerUrl);
 
   const editor = useEditor({
     extensions: [
@@ -52,7 +121,8 @@ export default function FlowEditor({ initialHtml, onChange, preset }: Props) {
       attributes: {
         dir: "rtl",
         class:
-          "flow-editor-content min-h-[60vh] max-w-none px-6 py-6 focus:outline-none",
+          "flow-editor-content min-h-[60vh] max-w-none focus:outline-none",
+        "data-paged": pagedMode ? "true" : "false",
       },
       handleKeyDown(view, event) {
         const mod = event.ctrlKey || event.metaKey;
@@ -94,13 +164,127 @@ export default function FlowEditor({ initialHtml, onChange, preset }: Props) {
     <div className="flex h-full flex-col bg-background">
       <MenuBar editor={editor} />
       <BubbleToolbar editor={editor} />
-      <div className="flex-1 overflow-auto bg-muted/30">
-        <div className="mx-auto my-4 max-w-[860px] rounded-md border bg-background shadow-sm">
+      <div
+        className={`flow-editor-scroll flex-1 overflow-auto ${
+          pagedMode ? "bg-slate-200/70" : "bg-muted/30"
+        }`}
+        style={editorPageVars(pageSetup)}
+      >
+        <div
+          className={`flow-editor-shell mx-auto my-4 ${
+            pagedMode
+              ? "flow-editor-shell-paged"
+              : "max-w-[860px] rounded-md border bg-background shadow-sm"
+          }`}
+        >
+          {showHeaderStrip && (
+            <div
+              className="flow-editor-repeat-strip flow-editor-repeat-strip-top"
+              aria-hidden="true"
+            />
+          )}
+          {showFooterStrip && (
+            <div
+              className="flow-editor-repeat-strip flow-editor-repeat-strip-bottom"
+              aria-hidden="true"
+            />
+          )}
           <EditorContent editor={editor} />
         </div>
       </div>
       <style>{`
-        .flow-editor-content { font-family: ${preset?.fonts.body || "Heebo, Arial, sans-serif"}; font-size: ${preset?.fonts.size || "14px"}; line-height: ${preset?.spacing.lineHeight || "1.7"}; color: ${preset?.colors.text || "hsl(var(--foreground))"}; }
+        .flow-editor-content { padding: 1.5rem; font-family: ${preset?.fonts.body || "Heebo, Arial, sans-serif"}; font-size: ${preset?.fonts.size || "14px"}; line-height: ${preset?.spacing.lineHeight || "1.7"}; color: ${preset?.colors.text || "hsl(var(--foreground))"}; }
+        .flow-editor-shell-paged { position: relative; width: var(--flow-editor-page-width); max-width: none; }
+        .flow-editor-repeat-strip {
+          position: absolute;
+          inset-inline: 0;
+          z-index: 2;
+          pointer-events: none;
+          background-color: ${stripSettings.bgColor};
+          background-repeat: repeat-y;
+          background-size: var(--flow-editor-page-width) calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap));
+        }
+        .flow-editor-repeat-strip-top {
+          top: 0;
+          height: calc(var(--flow-editor-page-height) * 3 + var(--flow-editor-page-gap) * 2);
+          background-image:
+            repeating-linear-gradient(
+              to bottom,
+              transparent 0,
+              transparent ${stripSettings.headerHeight}px,
+              rgba(255, 255, 255, 0) ${stripSettings.headerHeight}px,
+              rgba(255, 255, 255, 0) calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
+            ),
+            url("${String(stripSettings.headerUrl || "").replace(/"/g, "%22")}");
+          background-position:
+            0 0,
+            0 0;
+          background-size:
+            var(--flow-editor-page-width) calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap)),
+            var(--flow-editor-page-width) calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap));
+          clip-path: inset(0 0 0 0);
+          -webkit-mask-image: repeating-linear-gradient(
+            to bottom,
+            #000 0,
+            #000 ${stripSettings.headerHeight}px,
+            transparent ${stripSettings.headerHeight}px,
+            transparent calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
+          );
+          mask-image: repeating-linear-gradient(
+            to bottom,
+            #000 0,
+            #000 ${stripSettings.headerHeight}px,
+            transparent ${stripSettings.headerHeight}px,
+            transparent calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
+          );
+        }
+        .flow-editor-repeat-strip-bottom {
+          top: 0;
+          height: calc(var(--flow-editor-page-height) * 3 + var(--flow-editor-page-gap) * 2);
+          background-image: url("${String(stripSettings.footerUrl || "").replace(/"/g, "%22")}");
+          background-position: 0 calc(var(--flow-editor-page-height) - ${stripSettings.footerHeight}px);
+          background-size: var(--flow-editor-page-width) calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap));
+          -webkit-mask-image: repeating-linear-gradient(
+            to bottom,
+            transparent 0,
+            transparent calc(var(--flow-editor-page-height) - ${stripSettings.footerHeight}px),
+            #000 calc(var(--flow-editor-page-height) - ${stripSettings.footerHeight}px),
+            #000 var(--flow-editor-page-height),
+            transparent var(--flow-editor-page-height),
+            transparent calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
+          );
+          mask-image: repeating-linear-gradient(
+            to bottom,
+            transparent 0,
+            transparent calc(var(--flow-editor-page-height) - ${stripSettings.footerHeight}px),
+            #000 calc(var(--flow-editor-page-height) - ${stripSettings.footerHeight}px),
+            #000 var(--flow-editor-page-height),
+            transparent var(--flow-editor-page-height),
+            transparent calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
+          );
+        }
+        .flow-editor-content[data-paged="true"] {
+          width: var(--flow-editor-page-width);
+          min-height: calc(var(--flow-editor-page-height) * 3 + var(--flow-editor-page-gap) * 2);
+          padding: var(--flow-editor-page-padding);
+          background:
+            repeating-linear-gradient(
+              to bottom,
+              #ffffff 0,
+              #ffffff var(--flow-editor-page-height),
+              transparent var(--flow-editor-page-height),
+              transparent calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap))
+            );
+          background-clip: padding-box;
+          box-shadow:
+            0 3px 12px rgba(15, 23, 42, 0.16),
+            0 calc(var(--flow-editor-page-height) + var(--flow-editor-page-gap)) 12px rgba(15, 23, 42, 0.16),
+            0 calc((var(--flow-editor-page-height) + var(--flow-editor-page-gap)) * 2) 12px rgba(15, 23, 42, 0.16);
+          overflow: visible;
+        }
+        .flow-editor-content[data-paged="true"] .ProseMirror {
+          min-height: calc(var(--flow-editor-page-height) - 60mm);
+        }
         .flow-editor-content h1 { font-size: ${preset?.headings.h1.size || "1.6rem"}; font-weight: ${preset?.headings.h1.weight || "700"}; margin: 1rem 0 0.5rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; border-bottom: 2px solid ${preset?.colors.accent || "hsl(var(--accent))"}; padding-bottom: .3rem; font-family: ${preset?.fonts.heading || "inherit"}; }
         .flow-editor-content h2 { font-size: ${preset?.headings.h2.size || "1.3rem"}; font-weight: ${preset?.headings.h2.weight || "700"}; margin: .9rem 0 .4rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; font-family: ${preset?.fonts.heading || "inherit"}; }
         .flow-editor-content h3 { font-size: 1.1rem; font-weight: 600; margin: .7rem 0 .3rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; }

@@ -11,6 +11,7 @@ import { serializeTemplate, type MergeData } from "./serializer";
 import { renderFlowToHtml } from "./renderer";
 import { htmlToFlowDoc } from "./editor/htmlToFlowDoc";
 import type { DesignPresetConfig } from "./presets/types";
+import type { FlowPageSetup } from "./types";
 
 interface FlowPreviewTabProps {
   template: QuoteTemplate;
@@ -20,6 +21,7 @@ interface FlowPreviewTabProps {
   preset?: DesignPresetConfig;
   projectDetails?: any;
   designSettings?: any;
+  pageSetup?: FlowPageSetup;
 }
 
 export default function FlowPreviewTab({
@@ -29,6 +31,7 @@ export default function FlowPreviewTab({
   preset,
   projectDetails,
   designSettings,
+  pageSetup,
 }: FlowPreviewTabProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [rendering, setRendering] = useState(false);
@@ -37,11 +40,12 @@ export default function FlowPreviewTab({
   const [renderToken, setRenderToken] = useState(0);
 
   const flowDoc = useMemo(() => {
-    if (editedHtml && editedHtml.trim()) {
-      return htmlToFlowDoc(editedHtml, template, { designSettings });
-    }
-    return serializeTemplate(template, mergeData, { projectDetails, designSettings });
-  }, [template, mergeData, editedHtml, projectDetails, designSettings]);
+    const doc =
+      editedHtml && editedHtml.trim()
+        ? htmlToFlowDoc(editedHtml, template, { designSettings })
+        : serializeTemplate(template, mergeData, { projectDetails, designSettings });
+    return pageSetup ? { ...doc, page: { ...doc.page, ...pageSetup } } : doc;
+  }, [template, mergeData, editedHtml, projectDetails, designSettings, pageSetup]);
   const html = useMemo(() => renderFlowToHtml(flowDoc, preset), [flowDoc, preset]);
 
   useEffect(() => {
@@ -87,14 +91,20 @@ export default function FlowPreviewTab({
     }
     const w = window.open("", "_blank", "width=900,height=1200");
     if (!w) return;
-    const m = flowDoc.page.marginMm;
+    const printPageSize =
+      flowDoc.page.size === "custom"
+        ? `${Math.max(50, flowDoc.page.customSizeMm?.width || 210)}mm ${Math.max(
+            50,
+            flowDoc.page.customSizeMm?.height || 297,
+          )}mm`
+        : `${flowDoc.page.size}${flowDoc.page.orientation === "landscape" ? " landscape" : ""}`;
     const printDoc = `<!doctype html>
 <html dir="rtl" lang="he">
 <head>
 <meta charset="utf-8" />
 <title>${flowDoc.title.replace(/</g, "&lt;")}</title>
 <style>
-  @page { size: ${flowDoc.page.size}; margin: 0; }
+  @page { size: ${printPageSize}; margin: 0; }
   html, body { margin: 0; padding: 0; background: #fff;
     -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   *, *::before, *::after { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -131,8 +141,6 @@ export default function FlowPreviewTab({
       }
     };
     window.setTimeout(tryPrint, 400);
-    // suppress unused
-    void m;
   };
 
   return (

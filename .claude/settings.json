@@ -20,7 +20,21 @@
       "Bash(git add *)",
       "Bash(git push *)",
       "Bash(./node_modules/.bin/tsc --noEmit)",
-      "Bash(./node_modules/.bin/vite build *)"
+      "Bash(./node_modules/.bin/vite build *)",
+      "Bash(awk 'NR>=8198 && NR<=8322 { if \\(/^        <div/ || /^      <div/ || /^    <div/ || /editorBody/ || /^        <Tabs/ \\) print NR\": \"$0 }' src/components/quotes/QuoteTemplatesManager/HtmlTemplateEditor.tsx)",
+      "Read(//c/Users/jj121/**)",
+      "Bash(npx --version)",
+      "Bash(claude --version)",
+      "Bash(node -e 'try{const c=require\\('\\\\''C:\\\\Users\\\\jj121/.claude.json'\\\\''.replace\\(/\\\\\\\\/g,'\\\\''/'\\\\''\\)\\);const top=Object.keys\\(c.mcpServers||{}\\);console.log\\('\\\\''global:'\\\\'',top\\);const projs=c.projects||{};for\\(const p of Object.keys\\(projs\\)\\){const m=projs[p].mcpServers;if\\(m&&Object.keys\\(m\\).length\\)console.log\\('\\\\''project'\\\\'',p,'\\\\''=>'\\\\'',Object.keys\\(m\\)\\)}}catch\\(e\\){console.log\\('\\\\''err'\\\\'',e.message\\)}')",
+      "Bash(claude mcp *)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('scripts:', JSON.stringify\\(p.scripts,null,1\\)\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(break)",
+      "Bash(node drive.mjs \"C:/Users/jj121/AppData/Local/Temp/claude/c--Users-jj121-remix-of-crm-p/b559fa6b-2e87-4901-be2b-061debed0ac2/scratchpad\")",
+      "Bash(cp \"C:\\\\Users\\\\jj121\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-jj121-remix-of-crm-p\\\\b559fa6b-2e87-4901-be2b-061debed0ac2\\\\scratchpad\\\\drive.mjs\" \"c:\\\\Users\\\\jj121\\\\remix-of-crm-p\\\\__verify_drive.mjs\")",
+      "Bash(node __verify_drive.mjs \"C:/Users/jj121/AppData/Local/Temp/claude/c--Users-jj121-remix-of-crm-p/b559fa6b-2e87-4901-be2b-061debed0ac2/scratchpad\")",
+      "Bash(node __verify_diag.mjs \"C:/Users/jj121/AppData/Local/Temp/claude/c--Users-jj121-remix-of-crm-p/b559fa6b-2e87-4901-be2b-061debed0ac2/scratchpad\")",
+      "Bash(node __verify_inner.mjs \"C:/Users/jj121/AppData/Local/Temp/claude/c--Users-jj121-remix-of-crm-p/b559fa6b-2e87-4901-be2b-061debed0ac2/scratchpad\")"
     ]
   }
 }

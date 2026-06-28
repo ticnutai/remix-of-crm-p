@@ -43,8 +43,13 @@ export interface FlowBranding {
   fontFamily: string;
 }
 
+export type FlowPageSizePreset = "none" | "A4" | "A3" | "A5" | "Letter" | "Legal" | "custom";
+export type FlowPageOrientation = "portrait" | "landscape";
+
 export interface FlowPageSetup {
-  size: "A4" | "Letter";
+  size: FlowPageSizePreset;
+  orientation?: FlowPageOrientation;
+  customSizeMm?: { width: number; height: number };
   marginMm: { top: number; right: number; bottom: number; left: number };
   showPageNumbers: boolean;
 }

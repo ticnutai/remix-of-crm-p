@@ -26,6 +26,8 @@ import {
   ArrowRight,
   Move,
   Settings2,
+  Ruler,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
@@ -35,19 +37,32 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import {
+  getPageDimensions,
+  DEFAULT_PAGE_SIZE,
+  type PageSizeConfig,
+  type PageSizePreset,
+} from "./frameStyles";
 
-// A4 at 96dpi
-const A4_W = 794;
-const A4_H = 1123;
-const PX_PER_MM = 3.7795;
-const MIN_SAFE_TOP_MM = 30;
-const MIN_SAFE_BOTTOM_MM = 26;
-const SAFE_SIDE_MM = 20;
+// px per mm at 96dpi. The preview scales off the dynamic pageW/pageH derived
+// from the template's page-size config (see getPageDimensions).
+const PX_PER_MM = 3.7795275591;
+
+// Page-size presets exposed in the in-preview quick selector.
+const PAGE_PRESETS: { value: PageSizePreset; label: string; dim: string }[] = [
+  { value: "A4", label: "A4", dim: "210×297" },
+  { value: "A3", label: "A3", dim: "297×420" },
+  { value: "A5", label: "A5", dim: "148×210" },
+  { value: "letter", label: "Letter", dim: "216×279" },
+  { value: "legal", label: "Legal", dim: "216×356" },
+];
 
 // How many convergence passes the auto-fix runs before stopping
 const MAX_AUTOFIX_PASSES = 4;
 
-const LS_KEY = "lov-pages-preview-prefs-v1";
+// v2: default view mode switched to "continuous" (vertical page scrolling).
+const LS_KEY = "lov-pages-preview-prefs-v2";
 const FIX_LS_KEY = "lov-pages-fix-state-v1";
 
 type ViewMode = "single" | "continuous" | "spread" | "grid" | "compare";
@@ -57,10 +72,6 @@ interface Prefs {
   zoom: number;
   highlightIssues: boolean;
   showSafeZones?: boolean;
-  showGrid?: boolean;
-  showRulers?: boolean;
-  cleanPages?: boolean;
-  showPageMap?: boolean;
 }
 
 interface ManualRule {
@@ -80,8 +91,6 @@ interface FixState {
   safeZoneTopMm: number; // safe top margin (in mm) reserved for repeating header
   safeZoneBottomMm: number; // safe bottom margin (in mm) reserved for repeating footer
   protectedBlocks: string[]; // CSS selectors of blocks to keep intact / push from safe zones
-  autoEnforceStrips: boolean; // automatically push content out of strip zones on every render
-  deletedPages: number[]; // 0-indexed page numbers to remove from the document
 }
 
 const DEFAULT_PROTECTED = [
@@ -106,32 +115,26 @@ const defaultFixState: FixState = {
   globalEnabled: false,
   autoPaths: [],
   manual: [],
-  safeZoneTopMm: MIN_SAFE_TOP_MM,
-  safeZoneBottomMm: MIN_SAFE_BOTTOM_MM,
+  safeZoneTopMm: 20,
+  safeZoneBottomMm: 15,
   protectedBlocks: [...DEFAULT_PROTECTED],
-  autoEnforceStrips: true,
-  deletedPages: [],
 };
 
 const loadPrefs = (): Prefs => {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return { mode: "single", zoom: 0.85, highlightIssues: false, showSafeZones: true, showGrid: false, showRulers: true, cleanPages: true, showPageMap: true };
+    if (!raw) return { mode: "continuous", zoom: 0.85, highlightIssues: false, showSafeZones: true };
     const p = JSON.parse(raw);
     return {
       mode: ["single", "continuous", "spread", "grid", "compare"].includes(p.mode)
         ? p.mode
-        : "single",
+        : "continuous",
       zoom: typeof p.zoom === "number" ? Math.min(2, Math.max(0.25, p.zoom)) : 0.85,
       highlightIssues: !!p.highlightIssues,
       showSafeZones: p.showSafeZones !== false,
-      showGrid: !!p.showGrid,
-      showRulers: p.showRulers !== false,
-      cleanPages: p.cleanPages !== false,
-      showPageMap: p.showPageMap !== false,
     };
   } catch {
-    return { mode: "single", zoom: 0.85, highlightIssues: false, showSafeZones: true, showGrid: false, showRulers: true, cleanPages: true, showPageMap: true };
+    return { mode: "continuous", zoom: 0.85, highlightIssues: false, showSafeZones: true };
   }
 };
 
@@ -145,14 +148,12 @@ const loadFixState = (templateKey: string): FixState => {
       autoPaths: Array.isArray(p.autoPaths) ? p.autoPaths : [],
       manual: Array.isArray(p.manual) ? p.manual : [],
       safeZoneTopMm:
-        Math.max(MIN_SAFE_TOP_MM, typeof p.safeZoneTopMm === "number" ? p.safeZoneTopMm : MIN_SAFE_TOP_MM),
+        typeof p.safeZoneTopMm === "number" ? p.safeZoneTopMm : 20,
       safeZoneBottomMm:
-        Math.max(MIN_SAFE_BOTTOM_MM, typeof p.safeZoneBottomMm === "number" ? p.safeZoneBottomMm : MIN_SAFE_BOTTOM_MM),
+        typeof p.safeZoneBottomMm === "number" ? p.safeZoneBottomMm : 15,
       protectedBlocks: Array.isArray(p.protectedBlocks)
         ? p.protectedBlocks
         : [...DEFAULT_PROTECTED],
-      autoEnforceStrips: p.autoEnforceStrips !== false,
-      deletedPages: Array.isArray(p.deletedPages) ? p.deletedPages.filter((n: unknown) => typeof n === "number") : [],
     };
   } catch {
     return { ...defaultFixState };
@@ -166,6 +167,10 @@ interface PagesPreviewTabProps {
   onJumpToEditor?: (editablePath: string) => void;
   templateName?: string;
   onPaginationCssChange?: (css: string) => void;
+  /** Template page-size config — drives the real preview dimensions. */
+  pageSize?: PageSizeConfig;
+  /** When provided, the in-preview page-size selector is shown and writes back. */
+  onPageSizeChange?: (cfg: PageSizeConfig) => void;
 }
 
 export default function PagesPreviewTab({
@@ -175,47 +180,33 @@ export default function PagesPreviewTab({
   onJumpToEditor,
   templateName = "הצעת מחיר",
   onPaginationCssChange,
+  pageSize,
+  onPageSizeChange,
 }: PagesPreviewTabProps) {
+  // Physical page dimensions (px @96dpi) from the template's page-size config.
+  // Viewport boxes, the measuring iframe, page-count math and PNG export all
+  // scale off these instead of hardcoded A4.
+  const pageCfg: PageSizeConfig = { ...DEFAULT_PAGE_SIZE, ...(pageSize || {}) };
+  const pageDims = getPageDimensions(pageCfg);
+  const pageW = Math.round(pageDims.widthMm * PX_PER_MM);
+  const pageH = Math.round(pageDims.heightMm * PX_PER_MM);
+
   const initial = useRef(loadPrefs());
   const [mode, setMode] = useState<ViewMode>(initial.current.mode);
   const [zoom, setZoom] = useState(initial.current.zoom);
   const [highlightIssues, setHighlightIssues] = useState(
     initial.current.highlightIssues,
   );
-  const [showSafeZones, setShowSafeZones] = useState<boolean>(
+  // Retained only for prefs back-compat; the strip boundary lines were removed.
+  const [showSafeZones] = useState<boolean>(
     initial.current.showSafeZones !== false,
-  );
-  const [showGrid, setShowGrid] = useState<boolean>(!!initial.current.showGrid);
-  const [showRulers, setShowRulers] = useState<boolean>(
-    initial.current.showRulers !== false,
-  );
-  const [cleanPages, setCleanPages] = useState<boolean>(
-    initial.current.cleanPages !== false,
-  );
-  const [showPageMap, setShowPageMap] = useState<boolean>(
-    initial.current.showPageMap !== false,
   );
   const [page, setPage] = useState(0);
   const [comparePage, setComparePage] = useState(1);
   const [pageCount, setPageCount] = useState(1);
-  const [contentH, setContentH] = useState(A4_H);
+  const [contentH, setContentH] = useState(pageH);
   const [issues, setIssues] = useState<number>(0);
   const [exporting, setExporting] = useState(false);
-
-  // Drag state for safe-zone lines — kept in refs so the entire preview
-  // does NOT re-render on every mousemove. Only the line DOM is updated.
-  const dragRef = useRef<{
-    active: boolean;
-    line: "top" | "bottom";
-    startY: number;
-    startMm: number;
-    lastMm: number;
-    scale: number;
-  }>({ active: false, line: "top", startY: 0, startMm: 0, lastMm: 0, scale: 1 });
-
-  // Keep a registry of all rendered page-viewport containers so we can update
-  // every visible strip line/background in sync during drag.
-  const pageContainersRef = useRef<Map<number, HTMLDivElement>>(new Map());
 
   // Pagination fix state
   const templateKey = templateName || "default";
@@ -232,159 +223,26 @@ export default function PagesPreviewTab({
   const measureRef = useRef<HTMLIFrameElement | null>(null);
   const captureRef = useRef<HTMLDivElement | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  // Vertical scroll-sync bookkeeping (continuous/spread/grid modes).
+  const programmaticScrollRef = useRef(false);
+  const pageRef = useRef(0);
+  const scrollLockRef = useRef(0);
 
   // Iterative auto-fix bookkeeping
   const autoFixIterRef = useRef(0);
   const autoFixCumulativeRef = useRef(0);
-
-  // Update the visual position of all strip lines/bgs/labels without React render.
-  const updateSafeZoneVisuals = useCallback(
-    (topMm: number, bottomMm: number, scale: number) => {
-      const topPx = topMm * PX_PER_MM * scale;
-      const bottomPx = bottomMm * PX_PER_MM * scale;
-      pageContainersRef.current.forEach((container) => {
-        const topLine = container.querySelector<HTMLElement>(
-          '[data-safe-line="top"]',
-        );
-        const bottomLine = container.querySelector<HTMLElement>(
-          '[data-safe-line="bottom"]',
-        );
-        const topBg = container.querySelector<HTMLElement>(
-          '[data-safe-bg="top"]',
-        );
-        const bottomBg = container.querySelector<HTMLElement>(
-          '[data-safe-bg="bottom"]',
-        );
-        const topLabel = container.querySelector<HTMLElement>(
-          '[data-safe-label="top"]',
-        );
-        const bottomLabel = container.querySelector<HTMLElement>(
-          '[data-safe-label="bottom"]',
-        );
-        if (topLine) topLine.style.top = `${topPx}px`;
-        if (topBg) topBg.style.height = `${topPx}px`;
-        if (topLabel)
-          topLabel.textContent = `סטריפ עליון · ${topMm} מ"מ`;
-        if (bottomLine) bottomLine.style.bottom = `${bottomPx}px`;
-        if (bottomBg) bottomBg.style.height = `${bottomPx}px`;
-        if (bottomLabel)
-          bottomLabel.textContent = `סטריפ תחתון · ${bottomMm} מ"מ`;
-      });
-    },
-    [],
-  );
-
-  // Start dragging a safe-zone boundary line.
-  const startSafeZoneDrag = useCallback(
-    (line: "top" | "bottom", scale: number) =>
-      (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const startMm =
-          line === "top" ? fixState.safeZoneTopMm : fixState.safeZoneBottomMm;
-        dragRef.current = {
-          active: true,
-          line,
-          startY: e.clientY,
-          startMm,
-          lastMm: startMm,
-          scale,
-        };
-        document.body.style.cursor = "ns-resize";
-        document.body.style.userSelect = "none";
-        // Disable pointer-events on all page iframes while dragging so the
-        // parent window keeps receiving mousemove/mouseup events even when the
-        // cursor leaves the thin drag handle and enters the preview iframe.
-        const disabledIframes: HTMLIFrameElement[] = [];
-        document.querySelectorAll("iframe").forEach((ifr) => {
-          if ((ifr.title || "").startsWith("page-")) {
-            ifr.style.pointerEvents = "none";
-            disabledIframes.push(ifr);
-          }
-        });
-
-        const onMove = (ev: MouseEvent) => {
-          const d = dragRef.current;
-          if (!d.active) return;
-          const dy = ev.clientY - d.startY;
-          // For the bottom line the CSS distance is from the bottom edge:
-          // dragging the mouse UP moves the line UP and INCREASES the strip.
-          const invert = d.line === "bottom";
-          const dmm = (invert ? -dy : dy) / d.scale / PX_PER_MM;
-          const snapped = Math.round(d.startMm + dmm);
-          const other =
-            d.line === "top"
-              ? fixState.safeZoneBottomMm
-              : fixState.safeZoneTopMm;
-          // Leave at least 60mm of content between the two strips.
-          const maxMm = Math.max(
-            0,
-            Math.round(A4_H / PX_PER_MM - other - 60),
-          );
-          const clamped = Math.max(0, Math.min(maxMm, snapped));
-          if (clamped !== d.lastMm) {
-            d.lastMm = clamped;
-            if (d.line === "top") {
-              updateSafeZoneVisuals(clamped, fixState.safeZoneBottomMm, d.scale);
-            } else {
-              updateSafeZoneVisuals(fixState.safeZoneTopMm, clamped, d.scale);
-            }
-          }
-        };
-
-        const onUp = () => {
-          disabledIframes.forEach((ifr) => {
-            ifr.style.pointerEvents = "";
-          });
-          const { line: dragLine } = dragRef.current;
-          dragRef.current.active = false;
-          document.body.style.cursor = "";
-          document.body.style.userSelect = "";
-          window.removeEventListener("mousemove", onMove);
-          window.removeEventListener("mouseup", onUp);
-          const finalMm = dragRef.current.lastMm;
-          if (dragLine === "top") {
-            setFixState((s) => ({ ...s, safeZoneTopMm: finalMm }));
-          } else {
-            setFixState((s) => ({ ...s, safeZoneBottomMm: finalMm }));
-          }
-        };
-
-        window.addEventListener("mousemove", onMove);
-        window.addEventListener("mouseup", onUp);
-      },
-    [fixState.safeZoneTopMm, fixState.safeZoneBottomMm, updateSafeZoneVisuals],
-  );
 
   // Persist prefs
   useEffect(() => {
     try {
       localStorage.setItem(
         LS_KEY,
-        JSON.stringify({
-          mode,
-          zoom,
-          highlightIssues,
-          showSafeZones,
-          showGrid,
-          showRulers,
-          cleanPages,
-          showPageMap,
-        } as Prefs),
+        JSON.stringify({ mode, zoom, highlightIssues, showSafeZones } as Prefs),
       );
     } catch {
       // ignore
     }
-  }, [
-    mode,
-    zoom,
-    highlightIssues,
-    showSafeZones,
-    showGrid,
-    showRulers,
-    cleanPages,
-    showPageMap,
-  ]);
+  }, [mode, zoom, highlightIssues, showSafeZones]);
 
   // Persist fix state
   useEffect(() => {
@@ -493,169 +351,21 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     );
     const safeTopPx = Math.round(fixState.safeZoneTopMm * 3.7795);
     const safeBottomPx = Math.round(fixState.safeZoneBottomMm * 3.7795);
-    const safeSidePx = Math.round(SAFE_SIDE_MM * 3.7795);
     const protectSel = (fixState.protectedBlocks.length
       ? fixState.protectedBlocks
       : DEFAULT_PROTECTED
     ).join(",");
-    // Hard enforcement: regular content gets pushed inside the safe zones via
-    // body padding, and @page margins are set so the print path uses the same
-    // strip reservations. Visual masks cover the strips so any text that still
-    // overflows is hidden; the repeating header/footer overlays are promoted
-    // above the masks so they remain visible in their reserved zones.
+    // The strips render at their natural height, flush to the page edges — the
+    // page-1 header (in-flow) sits at the very top with no blank band, and the
+    // repeated overlays show the full strip (no clipping).
     const enforceCss = `<style data-lov-safe-enforce>
       html, body { box-sizing: border-box; }
-      @page {
-        margin-top: ${safeTopPx}px;
-        margin-bottom: ${safeBottomPx}px;
-      }
-      body {
-        padding-top: ${safeTopPx}px !important;
-        padding-bottom: ${safeBottomPx}px !important;
-        padding-left: ${safeSidePx}px !important;
-        padding-right: ${safeSidePx}px !important;
-        width: ${A4_W}px !important;
-        max-width: ${A4_W}px !important;
-        overflow-x: hidden !important;
-      }
-      *, *::before, *::after { box-sizing: border-box !important; }
-      .container,
-      .content,
-      .project-details,
-      .stage-card,
-      .summary-card,
-      .card,
-      .payments,
-      .pricing-tiers,
-      .upgrades,
-      table,
-      tbody,
-      thead,
-      tfoot,
-      tr,
-      td,
-      th,
-      p,
-      div,
-      section,
-      article,
-      ul,
-      ol,
-      li {
-        max-width: 100% !important;
-      }
-      .container {
-        width: 100% !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        overflow: visible !important;
-      }
-      .content {
-        width: 100% !important;
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-      }
-      table {
-        width: 100% !important;
-        table-layout: fixed !important;
-      }
-      td, th, p, li, [data-editable] {
-        overflow-wrap: anywhere !important;
-        word-break: break-word !important;
-      }
-      img, svg, canvas, video {
-        max-width: 100% !important;
-      }
-      .pricing-tiers,
-      .upgrades,
-      .payments {
-        display: block !important;
-      }
-      .pricing-tiers > *,
-      .upgrades > *,
-      .payments > * {
-        width: 100% !important;
-        min-width: 0 !important;
-        max-width: 100% !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-      }
-      /* ===== Strip / mask layering system =====
-         Layer order (highest wins):
-           --lov-z-strip   = 2147483600  (logo + footer strips — ALWAYS on top)
-           --lov-z-mask    = 2147482000  (white masks that hide content bleed)
-           --lov-z-content =          1  (regular quote content)
-         Using near-max int values guarantees we beat any user CSS, and the
-         body gets 'isolation: isolate' so an ancestor stacking context can't
-         trap our layers underneath theirs. */
-      :root {
-        --lov-z-content: 1;
-        --lov-z-mask: 2147482000;
-        --lov-z-strip: 2147483600;
-      }
-      body {
-        isolation: isolate;
-        position: relative;
-      }
-      /* Per-page masks (injected absolutely by the runtime script below) hide
-         any regular content that bleeds into the strips on EVERY page. */
-      .lov-safe-mask {
-        position: absolute !important;
-        left: 0 !important;
-        right: 0 !important;
-        background: #ffffff !important;
-        z-index: var(--lov-z-mask) !important;
-        pointer-events: none !important;
-        transform: none !important;
-        filter: none !important;
-        opacity: 1 !important;
-      }
-      /* Strip elements must render above the masks in EVERY scenario.
-         We promote both the wrapper AND its inner cell so table-based
-         repeating headers/footers (<thead>/<tfoot>) layer correctly. */
-      .lov-repeat-overlay-header,
-      .lov-repeat-overlay-footer,
-      .header-strip,
-      .quote-fixed-header,
-      .quote-fixed-footer,
-      .footer,
-      .header {
-        position: relative !important;
-        z-index: var(--lov-z-strip) !important;
-        isolation: isolate;
-      }
-      /* thead/tfoot themselves don't honour z-index reliably — promote the
-         td/div children that actually paint. */
-      .print-repeat-header,
-      .print-repeat-footer {
-        position: relative;
-        z-index: var(--lov-z-strip);
-      }
-      .print-repeat-header td,
-      .print-repeat-footer td,
-      .print-repeat-header > tr > td > *,
-      .print-repeat-footer > tr > td > * {
-        position: relative;
-        z-index: var(--lov-z-strip) !important;
-      }
-      /* The repeated overlays live in their reserved strip and never escape. */
-      .lov-repeat-overlay-header {
-        max-height: ${safeTopPx}px !important;
-        overflow: hidden !important;
-      }
-      .lov-repeat-overlay-footer {
-        max-height: ${safeBottomPx}px !important;
-        overflow: hidden !important;
-      }
-      /* Repeating originals (page-1 header / last-page footer) clipped too. */
-      .print-repeat-header td { max-height: ${safeTopPx}px; overflow: hidden; }
-      .print-repeat-footer td { max-height: ${safeBottomPx}px; overflow: hidden; }
     </style>`;
 
     const script = `
 <script>
 (function(){
-  var H=${A4_H};
+  var H=${pageH};
   var MANUAL=${manualMode ? "true" : "false"};
   var HIGHLIGHT=${highlightIssues ? "true" : "false"};
   var AUTO_PATHS=${autoPathsJson};
@@ -663,8 +373,6 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
   var SAFE_TOP_PX=${safeTopPx};
   var SAFE_BOTTOM_PX=${safeBottomPx};
   var PROTECT_SEL=${JSON.stringify(protectSel)};
-  var AUTO_ENFORCE=${fixState.autoEnforceStrips ? "true" : "false"};
-  var DELETED_PAGES=${JSON.stringify(fixState.deletedPages || [])};
 
   function pathFor(el){
     if(!el || el===document.body) return 'body';
@@ -889,62 +597,6 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     }
   });
 
-  function setupSafeMasks(){
-    try{
-      var body=document.body;
-      if(!body) return;
-      // Remove previous masks
-      document.querySelectorAll('.lov-safe-mask').forEach(function(n){ n.parentNode && n.parentNode.removeChild(n); });
-      var PH=parseInt(body.getAttribute('data-page-height')||'1123',10) || 1123;
-      var range=pageRangeForPreview(body, PH);
-      // Ensure body is positioned so absolute masks anchor to it
-      var bs=getComputedStyle(body);
-      if(bs.position==='static') body.style.position='relative';
-      for(var i=range.first;i<=range.last;i++){
-        if(SAFE_TOP_PX>0){
-          var mt=document.createElement('div');
-          mt.className='lov-safe-mask lov-safe-mask-top';
-          mt.style.top=(i*PH)+'px';
-          mt.style.height=SAFE_TOP_PX+'px';
-          body.appendChild(mt);
-        }
-        if(SAFE_BOTTOM_PX>0){
-          var mb=document.createElement('div');
-          mb.className='lov-safe-mask lov-safe-mask-bottom';
-          mb.style.top=((i+1)*PH - SAFE_BOTTOM_PX)+'px';
-          mb.style.height=SAFE_BOTTOM_PX+'px';
-          body.appendChild(mb);
-        }
-      }
-    }catch(e){ /* noop */ }
-  }
-
-  function cleanPageCount(body, PH){
-    var attrTotal=parseInt(body.getAttribute('data-lov-preview-total-pages')||'',10);
-    if(attrTotal>0) return attrTotal;
-    var docH=Math.max(
-      document.documentElement.offsetHeight || 0,
-      body.offsetHeight || 0,
-      PH
-    );
-    return Math.max(1, Math.ceil(docH/PH));
-  }
-
-  function previewPageIndex(body){
-    var raw=body.getAttribute('data-lov-preview-page-index');
-    if(raw===null || raw==='') return null;
-    var n=parseInt(raw,10);
-    return isNaN(n) ? null : Math.max(0,n);
-  }
-
-  function pageRangeForPreview(body, PH){
-    var total=cleanPageCount(body, PH);
-    var idx=previewPageIndex(body);
-    if(idx===null) return {first:0,last:total-1,total:total,single:false};
-    var page=Math.min(idx,total-1);
-    return {first:page,last:page,total:total,single:true};
-  }
-
   function setupRepeatOverlays(){
     try{
       // Cleanup previous overlays (in case of re-init)
@@ -968,12 +620,15 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       if(repH) headerH=headerSrc.getBoundingClientRect().height || 0;
       if(repF) footerH=footerSrc.getBoundingClientRect().height || 90;
 
-      var range=pageRangeForPreview(body, PH);
-      var pageCount=range.total;
+      // Use the in-flow content height (offsetHeight), NOT scrollHeight: these
+      // overlays are position:absolute, so they inflate scrollHeight, which would
+      // feed back into the page count and manufacture phantom blank pages.
+      var docH=Math.max(document.documentElement.offsetHeight, document.body.offsetHeight);
+      var pageCount=Math.max(1, Math.ceil(docH/PH));
 
       // Header clones for pages 2..N (page 1 already has the original header)
       if(repH){
-        for(var i=Math.max(1,range.first);i<=range.last;i++){
+        for(var i=1;i<pageCount;i++){
           var el=document.createElement('div');
           el.className='lov-repeat-overlay lov-repeat-overlay-header';
           el.style.top=(i*PH)+'px';
@@ -984,112 +639,13 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       }
       // Footer clones for pages 1..N-1 (last page already has the original footer)
       if(repF){
-        for(var j=range.first;j<=Math.min(range.last,pageCount-2);j++){
+        for(var j=0;j<pageCount-1;j++){
           var ef=document.createElement('div');
           ef.className='lov-repeat-overlay lov-repeat-overlay-footer';
           ef.style.top=((j+1)*PH-footerH)+'px';
           ef.style.height=footerH+'px';
           ef.innerHTML=footerSrc.innerHTML;
           body.appendChild(ef);
-        }
-      }
-    }catch(e){ /* noop */ }
-  }
-
-  // Defensive runtime pass: walk every strip element and re-assert that its
-  // z-index is strictly above any mask, regardless of inline styles or
-  // user CSS authored inside the quote HTML. Idempotent — safe to re-run.
-  function enforceLayerOrder(){
-    try{
-      var STRIP_SEL='.lov-repeat-overlay-header,.lov-repeat-overlay-footer,.print-repeat-header,.print-repeat-footer,.header-strip,.quote-fixed-header,.quote-fixed-footer,.footer,.header';
-      var STRIP_Z='2147483600';
-      var MASK_Z='2147482000';
-      document.querySelectorAll('.lov-safe-mask').forEach(function(n){
-        n.style.setProperty('z-index', MASK_Z, 'important');
-        n.style.setProperty('position', 'absolute', 'important');
-      });
-      document.querySelectorAll(STRIP_SEL).forEach(function(n){
-        var cs=getComputedStyle(n);
-        if(cs.position==='static') n.style.setProperty('position','relative','important');
-        n.style.setProperty('z-index', STRIP_Z, 'important');
-        // Promote inner painters too (td/div children of thead/tfoot etc.)
-        n.querySelectorAll('td,th,div,img,svg').forEach(function(c){
-          var ccs=getComputedStyle(c);
-          if(ccs.position==='static') c.style.position='relative';
-          c.style.zIndex=STRIP_Z;
-        });
-      });
-      // Body must form a stacking context so our layers can't be trapped.
-      document.body.style.isolation='isolate';
-      if(getComputedStyle(document.body).position==='static'){
-        document.body.style.position='relative';
-      }
-    }catch(e){ /* noop */ }
-  }
-
-  // Auto-cut: push content out of strip zones onto the next page.
-  // Walks elements that can absorb a margin push and adds a top margin large
-  // enough to escape the strip. Runs iteratively because each push may shift
-  // siblings. Idempotent via data-lov-cut marker.
-  function autoCutStrips(){
-    if(!AUTO_ENFORCE) return;
-    try{
-      var SEL=PROTECT_SEL || 'h1,h2,h3,h4,h5,p,li,tr,table,figure,blockquote,.stage-card,.summary-card,.card';
-      var maxIter=4;
-      for(var iter=0;iter<maxIter;iter++){
-        var changed=false;
-        document.querySelectorAll(SEL).forEach(function(el){
-          if(!el || !el.getBoundingClientRect) return;
-          if(el.closest && (el.closest('.lov-repeat-overlay')||el.closest('.print-repeat-header')||el.closest('.print-repeat-footer')||el.closest('.lov-safe-mask'))) return;
-          var r=el.getBoundingClientRect();
-          if(r.height<=0||r.height>=H*0.92) return;
-          var top=r.top+window.scrollY;
-          var bottom=top+r.height;
-          var startPage=Math.floor(top/H);
-          var endPage=Math.floor((bottom-1)/H);
-          var topInPage=top - startPage*H;
-          var bottomInPage=bottom - endPage*H;
-          var hitsHeader=topInPage < SAFE_TOP_PX;
-          var hitsFooter=bottomInPage > (H - SAFE_BOTTOM_PX);
-          var crosses=endPage>startPage;
-          var delta=0;
-          if(hitsHeader){
-            // push down past the top strip on the same page
-            delta=Math.ceil(SAFE_TOP_PX - topInPage + 4);
-          } else if(hitsFooter || crosses){
-            // push to the next page below the strip
-            delta=Math.ceil((H - topInPage) + SAFE_TOP_PX + 4);
-          }
-          if(delta>0 && delta<H*1.5){
-            var cur=parseInt(el.style.marginTop||'0',10)||0;
-            el.style.marginTop=(cur+delta)+'px';
-            el.setAttribute('data-lov-cut','1');
-            changed=true;
-          }
-        });
-        if(!changed) break;
-      }
-    }catch(e){ /* noop */ }
-  }
-
-  // Delete pages: hide any top-level body child whose vertical midpoint
-  // falls inside a deleted page range; remaining content reflows up.
-  function applyDeletedPages(){
-    if(!DELETED_PAGES || !DELETED_PAGES.length) return;
-    try{
-      var ranges=DELETED_PAGES.map(function(i){ return [i*H, (i+1)*H]; });
-      var children=document.body.children;
-      for(var i=0;i<children.length;i++){
-        var c=children[i];
-        if(c.classList && (c.classList.contains('lov-safe-mask')||c.classList.contains('lov-repeat-overlay'))) continue;
-        var r=c.getBoundingClientRect();
-        if(r.height<=0) continue;
-        var mid=r.top+window.scrollY+r.height/2;
-        for(var k=0;k<ranges.length;k++){
-          if(mid>=ranges[k][0] && mid<=ranges[k][1]){
-            c.style.display='none';
-            break;
-          }
         }
       }
     }catch(e){ /* noop */ }
@@ -1102,22 +658,33 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       document.body.setAttribute('data-protect-sel', PROTECT_SEL);
     }catch(e){}
     tagAutoPaths();
-    applyDeletedPages();
-    autoCutStrips();
     setupRepeatOverlays();
-    setupSafeMasks();
-    enforceLayerOrder();
     setTimeout(detectIssues,300);
-    // Re-run setup after content settles (fonts/images)
-    setTimeout(function(){
-      applyDeletedPages();
-      autoCutStrips();
-      setupRepeatOverlays();
-      setupSafeMasks();
-      enforceLayerOrder();
-      try{window.parent.postMessage({__lovPageCountUpdate:true, h:document.documentElement.scrollHeight},'*');}catch(e){}
-    },600);
-    setTimeout(function(){ enforceLayerOrder(); },1500);
+    // Re-run overlay setup after content settles (fonts/images)
+    setTimeout(setupRepeatOverlays,600);
+    // Web fonts load asynchronously and can grow the document past a page
+    // boundary after the initial passes — recompute overlays once they're ready
+    // (plus a late fallback) so every page keeps its top/bottom strip.
+    try{
+      if(document.fonts && document.fonts.ready && document.fonts.ready.then){
+        document.fonts.ready.then(function(){ setupRepeatOverlays(); });
+      }
+    }catch(e){}
+    setTimeout(setupRepeatOverlays,1500);
+    // Late images (logos, strip art) load after fonts and grow the document.
+    // A debounced ResizeObserver re-runs the overlay setup whenever the document
+    // height changes, so the strip count always tracks the settled layout.
+    try{
+      if(window.ResizeObserver){
+        var _roT=null;
+        var ro=new ResizeObserver(function(){
+          if(_roT) clearTimeout(_roT);
+          _roT=setTimeout(setupRepeatOverlays,150);
+        });
+        ro.observe(document.documentElement);
+        ro.observe(document.body);
+      }
+    }catch(e){}
   }
   if(document.readyState==='complete') setTimeout(init,200);
   else window.addEventListener('load',function(){setTimeout(init,200);});
@@ -1127,7 +694,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     return html.includes("</body>")
       ? html.replace("</body>", `${injection}</body>`)
       : `${html}${injection}`;
-  }, [html, highlightIssues, manualMode, paginationCss, fixState.autoPaths, fixState.manual, fixState.safeZoneTopMm, fixState.safeZoneBottomMm, fixState.protectedBlocks, fixState.autoEnforceStrips, fixState.deletedPages]);
+  }, [html, highlightIssues, manualMode, paginationCss, fixState.autoPaths, fixState.manual, fixState.safeZoneTopMm, fixState.safeZoneBottomMm, fixState.protectedBlocks, pageH]);
 
   // Measure
   const handleMeasureLoad = useCallback(() => {
@@ -1138,22 +705,55 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       if (!doc) return;
       const measure = () => {
         const body = doc.body;
+        // Use offsetHeight (in-flow content), NOT scrollHeight: the repeating
+        // strip overlays are position:absolute and inflate scrollHeight, which
+        // would manufacture phantom blank pages. offsetHeight excludes them, so
+        // it matches the in-iframe overlay page-count formula.
         const h = Math.max(
-          doc.documentElement.scrollHeight || 0,
-          body?.scrollHeight || 0,
           doc.documentElement.offsetHeight || 0,
           body?.offsetHeight || 0,
-          A4_H,
+          pageH,
         );
         setContentH(h);
-        setPageCount(Math.max(1, Math.ceil(h / A4_H)));
+        setPageCount(Math.max(1, Math.ceil(h / pageH)));
       };
       setTimeout(measure, 350);
       setTimeout(measure, 900);
+      // Re-measure once web fonts finish loading (they can grow the document a
+      // little) plus a late fallback, so the page count matches the settled
+      // layout that the overlay script sees.
+      try {
+        const f = (doc as Document & { fonts?: FontFaceSet }).fonts;
+        if (f && f.ready && typeof f.ready.then === "function") {
+          f.ready.then(() => measure());
+        }
+      } catch {
+        // ignore
+      }
+      setTimeout(measure, 1600);
+      // Late images (logos, strip art) grow the document after fonts. A debounced
+      // ResizeObserver keeps the page count in sync with the settled layout — the
+      // same signal the in-iframe overlay script uses — so they never disagree.
+      try {
+        const prev = (iframe as HTMLIFrameElement & { __ro?: ResizeObserver }).__ro;
+        if (prev) prev.disconnect();
+        if (typeof ResizeObserver !== "undefined" && doc.body) {
+          let t: ReturnType<typeof setTimeout> | undefined;
+          const ro = new ResizeObserver(() => {
+            if (t) clearTimeout(t);
+            t = setTimeout(measure, 150);
+          });
+          ro.observe(doc.documentElement);
+          ro.observe(doc.body);
+          (iframe as HTMLIFrameElement & { __ro?: ResizeObserver }).__ro = ro;
+        }
+      } catch {
+        // ignore
+      }
     } catch {
       // ignore
     }
-  }, []);
+  }, [pageH]);
 
   // Listen
   useEffect(() => {
@@ -1409,7 +1009,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     // a transformed/scaled container — that's why the previous version produced
     // blank PNGs.
     const iframe = document.createElement("iframe");
-    iframe.style.cssText = `position:fixed;left:-99999px;top:0;width:${A4_W}px;height:${Math.max(contentH, A4_H)}px;border:0;background:#ffffff;`;
+    iframe.style.cssText = `position:fixed;left:-99999px;top:0;width:${pageW}px;height:${Math.max(contentH, pageH)}px;border:0;background:#ffffff;`;
     document.body.appendChild(iframe);
     try {
       await new Promise<void>((resolve, reject) => {
@@ -1437,14 +1037,14 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         backgroundColor: "#ffffff",
         useCORS: true,
         logging: false,
-        width: A4_W,
-        height: Math.max(contentH, A4_H),
-        windowWidth: A4_W,
-        windowHeight: Math.max(contentH, A4_H),
+        width: pageW,
+        height: Math.max(contentH, pageH),
+        windowWidth: pageW,
+        windowHeight: Math.max(contentH, pageH),
       });
       const out = document.createElement("canvas");
-      out.width = A4_W * 2;
-      out.height = A4_H * 2;
+      out.width = pageW * 2;
+      out.height = pageH * 2;
       const ctx = out.getContext("2d");
       if (ctx) {
         ctx.fillStyle = "#ffffff";
@@ -1452,13 +1052,13 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         ctx.drawImage(
           fullCanvas,
           0,
-          page * A4_H * 2,
-          A4_W * 2,
-          A4_H * 2,
+          page * pageH * 2,
+          pageW * 2,
+          pageH * 2,
           0,
           0,
-          A4_W * 2,
-          A4_H * 2,
+          pageW * 2,
+          pageH * 2,
         );
       }
       const link = document.createElement("a");
@@ -1473,7 +1073,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
       try { document.body.removeChild(iframe); } catch { /* */ }
       setExporting(false);
     }
-  }, [page, templateName, finalHtml, contentH]);
+  }, [page, templateName, finalHtml, contentH, pageW, pageH]);
 
   const fitZoom = useCallback(() => setZoom(0.7), []);
 
@@ -1517,124 +1117,40 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
     ).length +
     (fixState.globalEnabled ? 1 : 0);
 
-  const printReadiness = useMemo(() => {
-    const usableHeightMm = Math.max(
-      0,
-      Math.round(297 - fixState.safeZoneTopMm - fixState.safeZoneBottomMm),
-    );
-    const hasTightContent = usableHeightMm < 210;
-    const hasIssues = issues > 0;
-    const ready = !hasIssues && !hasTightContent && fixState.autoEnforceStrips;
-
-    return {
-      ready,
-      hasIssues,
-      hasTightContent,
-      usableHeightMm,
-      label: ready
-        ? "מוכן ל-PDF"
-        : hasIssues
-          ? "דורש תיקון"
-          : hasTightContent
-            ? "אזור תוכן צפוף"
-            : "בדיקה מומלצת",
-      detail: hasIssues
-        ? `${issues} אזורים חשודים בחיתוך`
-        : hasTightContent
-          ? "הסטריפים משאירים מעט מקום לתוכן בכל דף"
-          : fixState.autoEnforceStrips
-            ? "הסטריפים נשמרים בכל דף והחיתוך האוטומטי פעיל"
-            : "מומלץ להפעיל חיתוך אוטומטי לפני יצוא",
-    };
-  }, [
-    fixState.autoEnforceStrips,
-    fixState.safeZoneBottomMm,
-    fixState.safeZoneTopMm,
-    issues,
-  ]);
-
-  // Marker for the per-page strip-scoping fix (PR #11 / commit b0f208bc).
-  // Ensures the built bundle contains the literal "data-lov-preview-page-index".
-  const PAGE_PREVIEW_STRIP_FIX_VERSION = "b0f208bc"; // data-lov-preview-page-index
-  void PAGE_PREVIEW_STRIP_FIX_VERSION;
-
-  const htmlForPreviewPage = useCallback(
-    (pageIdx: number) => {
-      // Page preview iframes render one A4 slice at a time, so strip overlays
-      // must be scoped to that slice instead of cloning the whole document.
-      const attrs = `data-lov-preview-page-index="${pageIdx}" data-lov-preview-total-pages="${pageCount}"`;
-      if (finalHtml.includes("<body ")) {
-        return finalHtml.replace("<body ", `<body ${attrs} `);
-      }
-      if (finalHtml.includes("<body>")) {
-        return finalHtml.replace("<body>", `<body ${attrs}>`);
-      }
-      return finalHtml;
-    },
-    [finalHtml, pageCount],
-  );
-
   const renderPageViewport = (
     pageIdx: number,
     scale: number,
     interactive = false,
     label?: string,
-  ) => {
-    const safeTopPx = fixState.safeZoneTopMm * PX_PER_MM * scale;
-    const safeBottomPx = fixState.safeZoneBottomMm * PX_PER_MM * scale;
-    const grid5 = 5 * PX_PER_MM * scale;
-    const grid10 = 10 * PX_PER_MM * scale;
-    const rulerTop = 22 * scale;
-    const rulerSide = 26 * scale;
-    const rulerLabelsX = [0, 50, 100, 150, 200];
-    const rulerLabelsY = [0, 50, 100, 150, 200, 250];
-    return (
-      <div
-        data-page-index={pageIdx}
-        ref={(el) => {
-          if (el) {
-            pageContainersRef.current.set(pageIdx, el);
-            // Make sure the initial strip visuals are in sync with fixState
-            // (especially after zoom / mode switches that recreate containers).
-            requestAnimationFrame(() => {
-              updateSafeZoneVisuals(
-                fixState.safeZoneTopMm,
-                fixState.safeZoneBottomMm,
-                scale,
-              );
-            });
-          } else {
-            pageContainersRef.current.delete(pageIdx);
-          }
-        }}
-        className={`relative bg-white border transition-shadow ${
-          cleanPages
-            ? "shadow-[0_12px_35px_rgba(15,23,42,0.18)] border-slate-300"
-            : "shadow-md border-border"
-        }`}
-        style={{
-          width: A4_W * scale,
-          height: A4_H * scale,
-          overflow: "hidden",
-        }}
-      >
+  ) => (
+    <div
+      data-page-index={pageIdx}
+      className="relative bg-card shadow-md border border-border"
+      style={{
+        width: pageW * scale,
+        height: pageH * scale,
+        overflow: "hidden",
+        scrollSnapAlign: "start",
+        scrollMarginTop: 24,
+      }}
+    >
       <div
         style={{
-          width: A4_W * scale,
-          height: Math.max(contentH, A4_H) * scale,
+          width: pageW * scale,
+          height: Math.max(contentH, pageH) * scale,
           position: "relative",
           pointerEvents: interactive ? "auto" : "none",
         }}
       >
         <iframe
           title={`page-${pageIdx + 1}${label ? "-" + label : ""}`}
-          srcDoc={htmlForPreviewPage(pageIdx)}
+          srcDoc={finalHtml}
           style={{
             position: "absolute",
             left: 0,
-            top: -pageIdx * A4_H * scale,
-            width: A4_W,
-            height: Math.max(contentH, A4_H),
+            top: -pageIdx * pageH * scale,
+            width: pageW,
+            height: Math.max(contentH, pageH),
             transform: `scale(${scale})`,
             transformOrigin: "top left",
             border: 0,
@@ -1643,210 +1159,70 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           }}
         />
       </div>
-
-      {showGrid && (
-        <>
-          <div
-            className="absolute inset-0 pointer-events-none z-20"
-            style={{
-              backgroundImage: `
-                linear-gradient(to right, rgba(22,44,88,0.11) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(22,44,88,0.11) 1px, transparent 1px),
-                linear-gradient(to right, rgba(216,172,39,0.24) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(216,172,39,0.24) 1px, transparent 1px)
-              `,
-              backgroundSize: `${grid5}px ${grid5}px, ${grid5}px ${grid5}px, ${grid10}px ${grid10}px, ${grid10}px ${grid10}px`,
-            }}
-          />
-          <div
-            className="absolute top-0 bottom-0 pointer-events-none z-30"
-            style={{
-              left: A4_W * scale * 0.5,
-              borderLeft: "1px solid rgba(220,38,38,0.35)",
-            }}
-          />
-          <div
-            className="absolute left-0 right-0 pointer-events-none z-30"
-            style={{
-              top: A4_H * scale * 0.5,
-              borderTop: "1px solid rgba(220,38,38,0.35)",
-            }}
-          />
-        </>
-      )}
-
-      {showRulers && (
-        <>
-          <div
-            className="absolute left-0 right-0 top-0 z-40 pointer-events-none border-b border-slate-300 bg-white/90 text-[9px] text-slate-600"
-            style={{ height: rulerTop }}
-          >
-            {rulerLabelsX.map((mm) => (
-              <span
-                key={`x-${mm}`}
-                className="absolute top-1 font-medium tabular-nums"
-                style={{ left: mm * PX_PER_MM * scale + 4 }}
-              >
-                {mm}
-              </span>
-            ))}
-          </div>
-          <div
-            className="absolute top-0 bottom-0 right-0 z-40 pointer-events-none border-l border-slate-300 bg-white/90 text-[9px] text-slate-600"
-            style={{ width: rulerSide }}
-          >
-            {rulerLabelsY.map((mm) => (
-              <span
-                key={`y-${mm}`}
-                className="absolute right-1 font-medium tabular-nums"
-                style={{ top: mm * PX_PER_MM * scale + 24 }}
-              >
-                {mm}
-              </span>
-            ))}
-          </div>
-        </>
-      )}
-
-      {showSafeZones && (
-        <>
-          {/* Top strip background — visually marks the reserved logo area. */}
-          <div
-            data-safe-bg="top"
-            className="absolute left-0 right-0 top-0 pointer-events-none z-10"
-            style={{
-              height: safeTopPx,
-              background:
-                "repeating-linear-gradient(45deg, hsl(var(--accent) / 0.08), hsl(var(--accent) / 0.08) 10px, hsl(var(--accent) / 0.04) 10px, hsl(var(--accent) / 0.04) 20px)",
-            }}
-          />
-          {/* Bottom strip background — visually marks the reserved footer area. */}
-          <div
-            data-safe-bg="bottom"
-            className="absolute left-0 right-0 bottom-0 pointer-events-none z-10"
-            style={{
-              height: safeBottomPx,
-              background:
-                "repeating-linear-gradient(45deg, hsl(var(--accent) / 0.08), hsl(var(--accent) / 0.08) 10px, hsl(var(--accent) / 0.04) 10px, hsl(var(--accent) / 0.04) 20px)",
-            }}
-          />
-
-          {/* Top safe-zone boundary — draggable dashed line. */}
-          <div
-            data-safe-line="top"
-            className="absolute left-0 right-0 group z-50"
-            style={{
-              top: safeTopPx,
-              height: 24,
-              marginTop: -12,
-              cursor: interactive ? "ns-resize" : "default",
-              pointerEvents: interactive ? "auto" : "none",
-            }}
-            title={
-              interactive
-                ? "גרור לשינוי גובה הסטריפ העליון (קפיצות של 1 מ\"מ)"
-                : undefined
-            }
-            onMouseDown={startSafeZoneDrag("top", scale)}
-            aria-label="גרור לשינוי גובה סטריפ עליון"
-          >
-            <div
-              className="absolute left-0 right-0 top-1/2 -translate-y-1/2 transition-all"
-              style={{
-                borderTop: "2px dashed hsl(var(--accent))",
-                boxShadow: "0 0 0 1px hsl(var(--accent) / 0.25)",
-              }}
-            />
-            <span
-              data-safe-label="top"
-              className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] font-semibold px-1.5 py-0.5 rounded-sm select-none pointer-events-none whitespace-nowrap"
-              style={{
-                background: "hsl(var(--accent))",
-                color: "hsl(var(--primary))",
-                lineHeight: 1,
-              }}
-            >
-              סטריפ עליון · {fixState.safeZoneTopMm} מ"מ
-            </span>
-          </div>
-
-          {/* Bottom safe-zone boundary — draggable dashed line. */}
-          <div
-            data-safe-line="bottom"
-            className="absolute left-0 right-0 group z-50"
-            style={{
-              bottom: safeBottomPx,
-              height: 24,
-              marginBottom: -12,
-              cursor: interactive ? "ns-resize" : "default",
-              pointerEvents: interactive ? "auto" : "none",
-            }}
-            title={
-              interactive
-                ? "גרור לשינוי גובה הסטריפ התחתון (קפיצות של 1 מ\"מ)"
-                : undefined
-            }
-            onMouseDown={startSafeZoneDrag("bottom", scale)}
-            aria-label="גרור לשינוי גובה סטריפ תחתון"
-          >
-            <div
-              className="absolute left-0 right-0 top-1/2 -translate-y-1/2 transition-all"
-              style={{
-                borderTop: "2px dashed hsl(var(--accent))",
-                boxShadow: "0 0 0 1px hsl(var(--accent) / 0.25)",
-              }}
-            />
-            <span
-              data-safe-label="bottom"
-              className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] font-semibold px-1.5 py-0.5 rounded-sm select-none pointer-events-none whitespace-nowrap"
-              style={{
-                background: "hsl(var(--accent))",
-                color: "hsl(var(--primary))",
-                lineHeight: 1,
-              }}
-            >
-              סטריפ תחתון · {fixState.safeZoneBottomMm} מ"מ
-            </span>
-          </div>
-        </>
-      )}
-
       <div className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-foreground/70 text-background pointer-events-none">
         {label ? `${label} · ` : ""}
         {pageIdx + 1} / {pageCount}
       </div>
-
-      {interactive && (
-        <button
-          type="button"
-          title="מחק את הדף הזה (התוכן יוסר)"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!confirm(`למחוק את עמוד ${pageIdx + 1}? התוכן שעליו יוסר מההצגה.`)) return;
-            setFixState((s) => ({
-              ...s,
-              deletedPages: Array.from(new Set([...(s.deletedPages || []), pageIdx])).sort((a, b) => a - b),
-            }));
-          }}
-          className="absolute top-1 left-1 z-[60] text-[10px] font-semibold px-2 py-1 rounded bg-destructive text-destructive-foreground shadow hover:opacity-90"
-        >
-          🗑 מחק דף
-        </button>
-      )}
     </div>
   );
-};
-
-
 
   useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+
+  // Scroll the active page into view when `page` changes via buttons/keyboard.
+  // Skipped when the change originated from scrolling (see scroll-sync below).
+  useEffect(() => {
     if (mode === "single" || mode === "compare") return;
+    if (programmaticScrollRef.current) {
+      programmaticScrollRef.current = false;
+      return;
+    }
     const scroller = scrollerRef.current;
     if (!scroller) return;
     const target = scroller.querySelector<HTMLElement>(`[data-page-index="${page}"]`);
     if (!target) return;
-    target.scrollIntoView({ block: "center", behavior: "smooth" });
+    scrollLockRef.current = performance.now() + 650;
+    target.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [mode, page]);
+
+  // Vertical scroll sync: keep the "page X of Y" counter aligned with whichever
+  // page is nearest the viewport centre while scrolling.
+  useEffect(() => {
+    if (mode === "single" || mode === "compare") return;
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        if (performance.now() < scrollLockRef.current) return;
+        const boxes = scroller.querySelectorAll<HTMLElement>("[data-page-index]");
+        if (!boxes.length) return;
+        const centre = scroller.scrollTop + scroller.clientHeight / 2;
+        let nearest = 0;
+        let best = Infinity;
+        boxes.forEach((box) => {
+          const mid = box.offsetTop + box.offsetHeight / 2;
+          const dist = Math.abs(mid - centre);
+          if (dist < best) {
+            best = dist;
+            nearest = Number(box.dataset.pageIndex) || 0;
+          }
+        });
+        if (nearest !== pageRef.current) {
+          programmaticScrollRef.current = true;
+          setPage(nearest);
+        }
+      });
+    };
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      scroller.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [mode, pageCount]);
 
   return (
     <div className="h-full flex flex-col bg-muted/30 relative">
@@ -1859,7 +1235,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           position: "absolute",
           left: -99999,
           top: -99999,
-          width: A4_W,
+          width: pageW,
           height: 200,
           border: 0,
           visibility: "hidden",
@@ -1995,91 +1371,6 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
           )}
         </Toggle>
 
-        {/* Auto-enforce strip cutting toggle */}
-        <Toggle
-          size="sm"
-          pressed={fixState.autoEnforceStrips}
-          onPressedChange={(v) =>
-            setFixState((s) => ({ ...s, autoEnforceStrips: v }))
-          }
-          className="h-8 text-xs"
-          title="אם פעיל, טקסט שחורג לסטריפים יידחף אוטומטית לדף הבא"
-        >
-          חיתוך אוטומטי
-        </Toggle>
-
-        <span
-          className="h-8 px-2.5 inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-medium"
-          title="הסטריפ העליון והתחתון נשמרים ומוצגים בכל דף בתצוגת A4"
-        >
-          סטריפ עליון + תחתון בכל דף
-        </span>
-
-        <div className="bg-muted rounded-md p-0.5 flex items-center gap-0.5">
-          <Toggle
-            pressed={cleanPages}
-            onPressedChange={setCleanPages}
-            size="sm"
-            className="h-8 text-xs"
-            title="תצוגת דפים נקייה עם גבולות וצל ברור"
-          >
-            נקי
-          </Toggle>
-          <Toggle
-            pressed={showGrid}
-            onPressedChange={setShowGrid}
-            size="sm"
-            className="h-8 text-xs data-[state=on]:bg-[#162C58]/15 data-[state=on]:text-[#162C58]"
-            title="הצג גריד 5 מ״מ ו-10 מ״מ על כל דף"
-          >
-            <Grid3x3 className="h-3.5 w-3.5 ml-1.5" />
-            גריד
-          </Toggle>
-          <Toggle
-            pressed={showRulers}
-            onPressedChange={setShowRulers}
-            size="sm"
-            className="h-8 text-xs"
-            title="הצג סרגלים במ״מ בחלק העליון ובצד הדף"
-          >
-            סרגלים
-          </Toggle>
-          <Toggle
-            pressed={showSafeZones}
-            onPressedChange={setShowSafeZones}
-            size="sm"
-            className="h-8 text-xs"
-            title="הצג אזורי סטריפ עליון ותחתון"
-          >
-            אזורים
-          </Toggle>
-          <Toggle
-            pressed={showPageMap}
-            onPressedChange={setShowPageMap}
-            size="sm"
-            className="h-8 text-xs"
-            title="הצג מפת עמודים מהירה"
-          >
-            מפת עמודים
-          </Toggle>
-        </div>
-
-        {/* Restore deleted pages */}
-        {fixState.deletedPages && fixState.deletedPages.length > 0 && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 text-xs gap-1.5"
-            title={`שחזר ${fixState.deletedPages.length} דפים שנמחקו`}
-            onClick={() =>
-              setFixState((s) => ({ ...s, deletedPages: [] }))
-            }
-          >
-            ↩ שחזר {fixState.deletedPages.length} דפים
-          </Button>
-        )}
-
-
         {/* Pagination fix controls */}
         <div className="bg-muted rounded-md p-0.5 flex items-center gap-0.5">
           <Button
@@ -2110,16 +1401,9 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
               dir="rtl"
             >
               <div className="flex items-center justify-between pb-2 border-b">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="show-safe-zones"
-                    checked={showSafeZones}
-                    onCheckedChange={(v) => setShowSafeZones(!!v)}
-                  />
-                  <Label htmlFor="show-safe-zones" className="text-xs font-semibold cursor-pointer">
-                    הצג קווי גבול סטריפים
-                  </Label>
-                </div>
+                <Label className="text-xs font-semibold">
+                  אזורי בטיחות (לתיקון עימוד)
+                </Label>
                 <Button
                   size="sm"
                   variant="outline"
@@ -2216,41 +1500,6 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
                     }
                     className="h-7 w-16 text-[11px]"
                   />
-                </div>
-              </div>
-
-              <div className="pt-2 border-t">
-                <Label className="text-xs font-semibold mb-2 block">
-                  פריסטים מקצועיים לסטריפים
-                </Label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {[
-                    { label: "קומפקטי", top: 30, bottom: 26 },
-                    { label: "סטנדרטי", top: 38, bottom: 30 },
-                    { label: "ממותג", top: 50, bottom: 34 },
-                  ].map((preset) => (
-                    <Button
-                      key={preset.label}
-                      size="sm"
-                      variant={
-                        fixState.safeZoneTopMm === preset.top &&
-                        fixState.safeZoneBottomMm === preset.bottom
-                          ? "default"
-                          : "outline"
-                      }
-                      className="h-8 px-2 text-[11px]"
-                      onClick={() =>
-                        setFixState((s) => ({
-                          ...s,
-                          safeZoneTopMm: preset.top,
-                          safeZoneBottomMm: preset.bottom,
-                        }))
-                      }
-                      title={`עליון ${preset.top} מ"מ / תחתון ${preset.bottom} מ"מ`}
-                    >
-                      {preset.label}
-                    </Button>
-                  ))}
                 </div>
               </div>
 
@@ -2415,94 +1664,22 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
         </div>
       </div>
 
-      <div
-        className={`border-b px-4 py-2 flex items-center justify-between gap-3 flex-wrap text-xs ${
-          printReadiness.ready
-            ? "bg-emerald-50 text-emerald-800 border-emerald-100"
-            : printReadiness.hasIssues
-              ? "bg-red-50 text-red-800 border-red-100"
-              : "bg-amber-50 text-amber-800 border-amber-100"
-        }`}
-      >
-        <div className="flex items-center gap-2 font-semibold">
-          {printReadiness.ready ? (
-            <FileText className="h-4 w-4" />
-          ) : (
-            <AlertTriangle className="h-4 w-4" />
-          )}
-          <span>{printReadiness.label}</span>
-          <span className="font-normal opacity-80">{printReadiness.detail}</span>
-        </div>
-        <div className="flex items-center gap-3 text-[11px] font-medium">
-          <span>A4</span>
-          <span>{pageCount} {pageCount === 1 ? "דף" : "דפים"}</span>
-          <span>תוכן נטו: {printReadiness.usableHeightMm} מ"מ</span>
-          <span>עליון {fixState.safeZoneTopMm} מ"מ / תחתון {fixState.safeZoneBottomMm} מ"מ</span>
-        </div>
-      </div>
-
       {/* Viewport */}
-      <div className="flex-1 min-h-0 flex bg-slate-100/70" dir="rtl">
-        {showPageMap && (
-          <aside className="w-32 shrink-0 border-l bg-white/90 p-2 overflow-auto">
-            <div className="text-[11px] font-semibold text-slate-600 mb-2 px-1">
-              עמודים
-            </div>
-            <div className="space-y-2">
-              {Array.from({ length: pageCount }).map((_, i) => {
-                const active = i === page;
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => {
-                      setPage(i);
-                      if (mode === "grid") setMode("single");
-                    }}
-                    className={`w-full rounded-md border p-1.5 text-right transition ${
-                      active
-                        ? "border-[#162C58] bg-[#162C58]/10 text-[#162C58]"
-                        : "border-slate-200 bg-white hover:border-[#d8ac27] hover:bg-[#fff8e1]"
-                    }`}
-                    title={`עבור לעמוד ${i + 1}`}
-                  >
-                    <div
-                      className="mx-auto mb-1 rounded-sm border bg-white shadow-sm"
-                      style={{
-                        width: 46,
-                        height: 65,
-                        backgroundImage: showGrid
-                          ? "linear-gradient(to right, rgba(22,44,88,.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(22,44,88,.12) 1px, transparent 1px)"
-                          : undefined,
-                        backgroundSize: "8px 8px",
-                      }}
-                    >
-                      <div className="h-2 bg-[#162C58]/15 border-b border-[#d8ac27]/50" />
-                      <div className="mt-2 mx-2 space-y-1">
-                        <div className="h-1 bg-slate-300 rounded" />
-                        <div className="h-1 bg-slate-200 rounded" />
-                        <div className="h-1 bg-slate-200 rounded w-2/3" />
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] font-medium">
-                      <span>עמוד {i + 1}</span>
-                      {active && highlightIssues && issues > 0 && (
-                        <span className="h-2 w-2 rounded-full bg-red-500" />
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </aside>
+      <div
+        ref={scrollerRef}
+        className="pages-preview-scroll flex-1 overflow-auto p-6"
+        dir="ltr"
+        style={{
+          scrollSnapType:
+            mode === "continuous" || mode === "spread" ? "y proximity" : undefined,
+          scrollBehavior: "smooth",
+        }}
+      >
+        {mode === "single" && (
+          <div className="flex justify-center">
+            <div ref={captureRef}>{renderPageViewport(page, zoom, true)}</div>
+          </div>
         )}
-
-        <div ref={scrollerRef} className="pages-preview-scroll flex-1 overflow-auto p-6" dir="ltr">
-          {mode === "single" && (
-            <div className="flex justify-center">
-              <div ref={captureRef}>{renderPageViewport(page, zoom, true)}</div>
-            </div>
-          )}
 
         {mode === "continuous" && (
           <div className="flex flex-col gap-8 items-center pb-8">
@@ -2525,7 +1702,7 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
                   ) : (
                     <div
                       className="border border-dashed border-border/70 bg-muted/40"
-                      style={{ width: A4_W * zoom * 0.78, height: A4_H * zoom * 0.78 }}
+                      style={{ width: pageW * zoom * 0.78, height: pageH * zoom * 0.78 }}
                     />
                   )}
                 </div>
@@ -2615,7 +1792,6 @@ img,svg{break-inside:avoid;page-break-inside:avoid;}
             </div>
           </div>
         )}
-        </div>
       </div>
 
       {/* Floating manual-edit panel */}
