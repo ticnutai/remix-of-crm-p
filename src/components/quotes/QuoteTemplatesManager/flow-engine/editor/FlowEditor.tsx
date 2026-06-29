@@ -867,6 +867,14 @@ export default function FlowEditor({
         .flow-editor-content [data-field] { user-select: all; }
         .flow-editor-content .flow-multi-sel { background: rgba(216, 172, 39, 0.32); box-shadow: inset 0 -2px 0 rgba(216, 172, 39, 0.85); border-radius: 2px; }
         .flow-editor-content .ProseMirror-focused { outline: none; }
+        .flow-editor-content img, .flow-editor-content svg, .flow-editor-content video, .flow-editor-content iframe { max-width: 100% !important; height: auto; display: block; margin-inline: auto; box-sizing: border-box; }
+        .flow-editor-content figure { max-width: 100%; margin-inline: auto; }
+        .flow-editor-content table { table-layout: fixed; max-width: 100%; }
+        .flow-editor-content .flow-page-strip-frame { max-width: 100%; }
+        .flow-editor-content.rm-with-pagination .rm-pagination-gap {
+          height: var(--flow-editor-page-gap, 57px) !important;
+          min-height: var(--flow-editor-page-gap, 57px) !important;
+        }
       `}</style>
     </div>
   );
