@@ -8842,10 +8842,10 @@ ${tbAt('footer')}
             <TooltipProvider delayDuration={200}>
               <TabsList
                 className={cn(
-                  "bg-transparent flex-wrap",
+                  "bg-transparent flex flex-nowrap overflow-x-auto items-center max-w-full",
                   tabDisplayMode === "stacked" || tabDisplayMode === "twoRows"
-                    ? "h-auto py-0.5 gap-0.5"
-                    : "h-12 gap-2"
+                    ? "h-auto py-0.5 gap-1"
+                    : "h-12 gap-1.5"
                 )}
               >
                 {tabConfig
@@ -8861,15 +8861,16 @@ ${tbAt('footer')}
                       <TabsTrigger
                         key={t.value}
                         value={t.value}
-                        className={
+                        className={cn(
+                          "shrink-0 inline-flex items-center gap-1 whitespace-nowrap",
                           tabDisplayMode === "iconsOnly"
                             ? `${meta.activeClass} !w-9 !h-9 !p-0 justify-center`
                             : tabDisplayMode === "stacked"
-                              ? `${meta.activeClass} flex-col px-1.5 py-0.5 text-[11px] h-auto leading-tight`
+                              ? `${meta.activeClass} flex-col !gap-0.5 px-1.5 py-0.5 text-[11px] h-auto leading-tight`
                               : tabDisplayMode === "twoRows"
-                                ? `${meta.activeClass} px-1.5 py-0.5 text-[11px] h-7 leading-none inline-flex items-center whitespace-nowrap`
-                                : meta.activeClass
-                        }
+                                ? `${meta.activeClass} px-1.5 py-0.5 text-[11px] h-7 leading-none`
+                                : `${meta.activeClass} px-2 h-9 text-sm`
+                        )}
                         aria-label={meta.label}
                       >
                         <Icon
@@ -8877,10 +8878,10 @@ ${tbAt('footer')}
                             tabDisplayMode === "iconsOnly"
                               ? "h-4 w-4"
                               : tabDisplayMode === "stacked"
-                                ? "h-3.5 w-3.5 mb-0.5"
+                                ? "h-3.5 w-3.5"
                                 : tabDisplayMode === "twoRows"
-                                  ? "h-3 w-3 ml-1"
-                                  : "h-4 w-4 ml-2"
+                                  ? "h-3 w-3"
+                                  : "h-4 w-4"
                           }
                         />
                         {tabDisplayMode !== "iconsOnly" && displayText}
