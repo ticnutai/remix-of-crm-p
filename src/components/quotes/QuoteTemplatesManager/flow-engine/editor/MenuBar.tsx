@@ -138,7 +138,7 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs hover:bg-muted"
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-xs hover:bg-muted"
             title="גופן"
           >
             <Type className="h-3.5 w-3.5" />
@@ -173,7 +173,7 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs hover:bg-muted"
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-xs hover:bg-muted"
             title="גודל"
           >
             <span className="font-bold">A↕</span>
@@ -240,7 +240,7 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md hover:bg-muted"
             title="צבעים"
           >
             <Palette className="h-3.5 w-3.5" />
@@ -268,7 +268,7 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md hover:bg-muted"
             title="גרדיאנט"
           >
             <Sparkles className="h-3.5 w-3.5" />
@@ -443,7 +443,7 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
             type="button"
             size="sm"
             variant="outline"
-            className="h-8 gap-1 text-xs"
+            className="h-8 shrink-0 gap-1 text-xs"
             title="הוסף שדה דינמי"
           >
             <Tag className="h-3.5 w-3.5" />
