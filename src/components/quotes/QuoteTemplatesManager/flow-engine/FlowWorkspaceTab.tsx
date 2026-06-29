@@ -388,6 +388,27 @@ export default function FlowWorkspaceTab({
     }
   });
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
+  const [density, setDensity] = useState<Density>(() => {
+    try {
+      const v = localStorage.getItem(densityKey) as Density | null;
+      return v && DENSITY_CYCLE.includes(v) ? v : "standard";
+    } catch {
+      return "standard";
+    }
+  });
+  const cycleDensity = () => {
+    setDensity((prev) => {
+      const next = DENSITY_CYCLE[(DENSITY_CYCLE.indexOf(prev) + 1) % DENSITY_CYCLE.length];
+      try {
+        localStorage.setItem(densityKey, next);
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+  const showSecondary = density !== "compact";
+  const showAdvanced = density === "full";
 
   // אם החליפו תבנית — טען טיוטה שמורה או תוכן בסיס
   useEffect(() => {
