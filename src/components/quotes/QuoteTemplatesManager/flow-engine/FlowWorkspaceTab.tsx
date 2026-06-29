@@ -555,6 +555,286 @@ export default function FlowWorkspaceTab({
     setPostSaveDialogOpen(false);
   };
 
+  // ===== Render helpers: blocks reused in inline-full mode and Settings popover =====
+  const renderStripsBlock = () => (
+    <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 px-2 py-1">
+      <Label className="whitespace-nowrap text-xs font-medium">סטריפים</Label>
+      <input
+        ref={headerStripInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          handleStripUpload("header", e.target.files?.[0]);
+          e.currentTarget.value = "";
+        }}
+      />
+      <input
+        ref={footerStripInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          handleStripUpload("footer", e.target.files?.[0]);
+          e.currentTarget.value = "";
+        }}
+      />
+      <label className="flex items-center gap-1 text-xs">
+        <input
+          type="checkbox"
+          checked={designSettings?.repeatHeaderOnAllPages !== false}
+          onChange={(e) => updateDesignSettings({ repeatHeaderOnAllPages: e.target.checked })}
+        />
+        עליון
+      </label>
+      <Button
+        type="button"
+        variant={designSettings?.headerStripUrl || designSettings?.header_strip_url ? "secondary" : "outline"}
+        size="sm"
+        className="h-7 gap-1 px-2 text-xs"
+        onClick={() => headerStripInputRef.current?.click()}
+        title="העלה או החלף סטריפ עליון"
+      >
+        <ImagePlus className="h-3.5 w-3.5" />
+        העלה עליון
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-7 gap-1 px-2 text-xs"
+        onClick={() => setDesignerPosition("header")}
+        title="עיצוב מתקדם לסטריפ העליון"
+      >
+        <SlidersHorizontal className="h-3.5 w-3.5" />
+        עצב
+      </Button>
+      {(designSettings?.headerStripUrl || designSettings?.header_strip_url) && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0"
+          onClick={() => clearStrip("header")}
+          title="נקה סטריפ עליון"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      )}
+      <input
+        className="h-7 w-14 rounded border bg-background px-1 text-center text-xs"
+        type="number"
+        value={designSettings?.headerStripHeight ?? 150}
+        onChange={(e) => updateDesignSettings({ headerStripHeight: looseNumber(e.target.value, 150) })}
+        title="גובה סטריפ עליון בפיקסלים"
+      />
+      <span className="text-[10px] text-muted-foreground">px</span>
+      <input
+        className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
+        type="number"
+        value={headerStripWidthPercent}
+        onChange={(e) => {
+          const next = looseNumber(e.target.value, 100);
+          updateDesignSettings({
+            headerStripWidthPercent: next,
+            header_strip_width_percent: next,
+          });
+        }}
+        title="רוחב סטריפ עליון באחוזים מרוחב הדף"
+      />
+      <span className="text-[10px] text-muted-foreground">% רוחב עליון</span>
+      <span className="mx-1 h-5 w-px bg-border" />
+      <label className="flex items-center gap-1 text-xs">
+        <input
+          type="checkbox"
+          checked={designSettings?.repeatFooterOnAllPages !== false}
+          onChange={(e) => updateDesignSettings({ repeatFooterOnAllPages: e.target.checked })}
+        />
+        תחתון
+      </label>
+      <Button
+        type="button"
+        variant={designSettings?.footerStripUrl || designSettings?.footer_strip_url ? "secondary" : "outline"}
+        size="sm"
+        className="h-7 gap-1 px-2 text-xs"
+        onClick={() => footerStripInputRef.current?.click()}
+        title="העלה או החלף סטריפ תחתון"
+      >
+        <ImagePlus className="h-3.5 w-3.5" />
+        העלה תחתון
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-7 gap-1 px-2 text-xs"
+        onClick={() => setDesignerPosition("footer")}
+        title="עיצוב מתקדם לסטריפ התחתון"
+      >
+        <SlidersHorizontal className="h-3.5 w-3.5" />
+        עצב
+      </Button>
+      {(designSettings?.footerStripUrl || designSettings?.footer_strip_url) && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0"
+          onClick={() => clearStrip("footer")}
+          title="נקה סטריפ תחתון"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      )}
+      <input
+        className="h-7 w-14 rounded border bg-background px-1 text-center text-xs"
+        type="number"
+        value={designSettings?.footerStripHeight ?? 90}
+        onChange={(e) => updateDesignSettings({ footerStripHeight: looseNumber(e.target.value, 90) })}
+        title="גובה סטריפ תחתון בפיקסלים"
+      />
+      <span className="text-[10px] text-muted-foreground">px</span>
+      <input
+        className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
+        type="number"
+        value={footerStripWidthPercent}
+        onChange={(e) => {
+          const next = looseNumber(e.target.value, 100);
+          updateDesignSettings({
+            footerStripWidthPercent: next,
+            footer_strip_width_percent: next,
+          });
+        }}
+        title="רוחב סטריפ תחתון באחוזים מרוחב הדף"
+      />
+      <span className="text-[10px] text-muted-foreground">% רוחב תחתון</span>
+      <input
+        className="h-7 w-8 cursor-pointer rounded border bg-background p-0.5"
+        type="color"
+        value={designSettings?.stripBgColor || "#ffffff"}
+        onChange={(e) => updateDesignSettings({ stripBgColor: e.target.value })}
+        title="צבע רקע מאחורי הסטריפים"
+      />
+      <span className="mx-1 h-5 w-px bg-border" />
+      <Label className="whitespace-nowrap text-xs font-medium">גבולות כתיבה</Label>
+      <input
+        className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
+        type="number"
+        min={0}
+        max={240}
+        value={headerContentGapPx}
+        onChange={(e) => {
+          const next = boundedNumber(e.target.value, 18, 0, 240);
+          updateDesignSettings({
+            headerStripContentGapPx: next,
+            header_content_gap_px: next,
+          });
+        }}
+        title="רווח כתיבה מתחת לסטריפ העליון בפיקסלים"
+      />
+      <span className="text-[10px] text-muted-foreground">מתחת לעליון</span>
+      <input
+        className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
+        type="number"
+        min={0}
+        max={240}
+        value={footerContentGapPx}
+        onChange={(e) => {
+          const next = boundedNumber(e.target.value, 18, 0, 240);
+          updateDesignSettings({
+            footerStripContentGapPx: next,
+            footer_content_gap_px: next,
+          });
+        }}
+        title="רווח כתיבה מעל הסטריפ התחתון בפיקסלים"
+      />
+      <span className="text-[10px] text-muted-foreground">מעל תחתון</span>
+      <input
+        className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
+        type="number"
+        min={0}
+        max={120}
+        value={flowPageGapPx}
+        onChange={(e) => {
+          const next = boundedNumber(e.target.value, 18, 0, 120);
+          updateDesignSettings({
+            flowPageGapPx: next,
+            flow_page_gap_px: next,
+          });
+        }}
+        title="רווח חזותי בין הדפים בפיקסלים"
+      />
+      <span className="text-[10px] text-muted-foreground">בין דפים</span>
+    </div>
+  );
+
+  const renderPageBlock = () => (
+    <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-2 py-1">
+      <Label className="whitespace-nowrap text-xs font-medium">גודל דף</Label>
+      <select
+        className="h-7 rounded border bg-background px-2 text-xs"
+        value={pageSetup.size}
+        onChange={(e) => updatePageSetup({ size: e.target.value as FlowPageSizePreset })}
+        title="גודל הדף של הצעת המחיר ב-Flow V2"
+      >
+        {PAGE_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {pageSetup.size !== "custom" && pageSetup.size !== "none" ? (
+        <select
+          className="h-7 rounded border bg-background px-2 text-xs"
+          value={pageSetup.orientation || "portrait"}
+          onChange={(e) =>
+            updatePageSetup({ orientation: e.target.value as FlowPageSetup["orientation"] })
+          }
+          title="כיוון הדף"
+        >
+          <option value="portrait">לאורך</option>
+          <option value="landscape">לרוחב</option>
+        </select>
+      ) : pageSetup.size === "custom" ? (
+        <div className="flex items-center gap-1" dir="ltr">
+          <input
+            className="h-7 w-14 rounded border bg-background px-1 text-center text-xs"
+            type="number"
+            min={50}
+            value={pageSetup.customSizeMm?.width || 210}
+            onChange={(e) =>
+              updatePageSetup({
+                customSizeMm: {
+                  ...(pageSetup.customSizeMm || DEFAULT_PAGE_SETUP.customSizeMm),
+                  width: Number(e.target.value) || 210,
+                },
+              })
+            }
+            title="רוחב במילימטרים"
+          />
+          <span className="text-xs text-muted-foreground">×</span>
+          <input
+            className="h-7 w-14 rounded border bg-background px-1 text-center text-xs"
+            type="number"
+            min={50}
+            value={pageSetup.customSizeMm?.height || 297}
+            onChange={(e) =>
+              updatePageSetup({
+                customSizeMm: {
+                  ...(pageSetup.customSizeMm || DEFAULT_PAGE_SETUP.customSizeMm),
+                  height: Number(e.target.value) || 297,
+                },
+              })
+            }
+            title="גובה במילימטרים"
+          />
+          <span className="text-[10px] text-muted-foreground">mm</span>
+        </div>
+      ) : null}
+    </div>
+  );
+
+
   return (
     <Tabs
       value={activeTab}
