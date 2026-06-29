@@ -4751,20 +4751,21 @@ export function HtmlTemplateEditor({
   ];
   const TAB_META: Record<
     EditorTabKey,
-    { label: string; icon: any; activeClass: string }
+    { label: string; shortLabel: string; icon: any; activeClass: string }
   > = {
-    "flow-v2": { label: "עורך המסמך", icon: Sparkles, activeClass: "data-[state=active]:bg-emerald-100 data-[state=active]:text-emerald-700 font-bold" },
-    project: { label: "פרטי פרויקט", icon: User, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
-    content: { label: "תוכן", icon: FileText, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
-    payments: { label: "תשלומים", icon: CreditCard, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
-    design: { label: "עיצוב", icon: Palette, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
-    "logo-strip": { label: "לוגו", icon: Crop, activeClass: "data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700" },
-    "text-boxes": { label: "טקסט", icon: Type, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
-    tools: { label: "כלים", icon: Wrench, activeClass: "data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700" },
-    preview: { label: "תצוגה מקדימה", icon: Eye, activeClass: "data-[state=active]:bg-green-100 data-[state=active]:text-green-700" },
-    split: { label: "עריכה + תצוגה", icon: Columns, activeClass: "data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700" },
-    pages: { label: "תצוגת דפים", icon: Layers, activeClass: "data-[state=active]:bg-[#162C58]/10 data-[state=active]:text-[#162C58]" },
+    "flow-v2": { label: "עורך המסמך", shortLabel: "מסמך", icon: Sparkles, activeClass: "data-[state=active]:bg-emerald-100 data-[state=active]:text-emerald-700 font-bold" },
+    project: { label: "פרטי פרויקט", shortLabel: "פרטים", icon: User, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    content: { label: "תוכן", shortLabel: "תוכן", icon: FileText, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    payments: { label: "תשלומים", shortLabel: "תשלום", icon: CreditCard, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    design: { label: "עיצוב", shortLabel: "עיצוב", icon: Palette, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    "logo-strip": { label: "לוגו", shortLabel: "לוגו", icon: Crop, activeClass: "data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700" },
+    "text-boxes": { label: "טקסט", shortLabel: "טקסט", icon: Type, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
+    tools: { label: "כלים", shortLabel: "כלים", icon: Wrench, activeClass: "data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700" },
+    preview: { label: "תצוגה מקדימה", shortLabel: "תצוגה", icon: Eye, activeClass: "data-[state=active]:bg-green-100 data-[state=active]:text-green-700" },
+    split: { label: "עריכה + תצוגה", shortLabel: "פיצול", icon: Columns, activeClass: "data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700" },
+    pages: { label: "תצוגת דפים", shortLabel: "דפים", icon: Layers, activeClass: "data-[state=active]:bg-[#162C58]/10 data-[state=active]:text-[#162C58]" },
   };
+
   const [tabConfig, setTabConfig] = useState<
     Array<{ value: EditorTabKey; visible: boolean }>
   >(() => {
