@@ -51,6 +51,7 @@ interface Props {
   editor: Editor | null;
   fields?: DynamicFieldDefinition[];
   onCreateField?: () => void;
+  toolbarActions?: React.ReactNode;
 }
 
 type TabKey = "text" | "paragraph" | "insert" | "fields";
@@ -59,7 +60,7 @@ const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?
   { key: "text", label: "טקסט", icon: Type },
   { key: "paragraph", label: "פסקה", icon: Pilcrow },
   { key: "insert", label: "הוספה", icon: PlusSquare },
-  { key: "fields", label: "שדות ופעולות", icon: Tag },
+  { key: "fields", label: "שדות", icon: Tag },
 ];
 
 const FONT_FAMILIES = [
@@ -103,7 +104,7 @@ function ToolButton({
           onClick={onClick}
           disabled={disabled}
           className={cn(
-            "inline-flex h-8 min-w-8 items-center justify-center rounded-md px-1.5 text-sm transition-colors",
+            "inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-md px-1.5 text-sm transition-colors",
             "hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed",
             active && "bg-primary text-primary-foreground hover:bg-primary/90",
           )}
@@ -119,10 +120,10 @@ function ToolButton({
 }
 
 function Sep() {
-  return <div className="mx-0.5 h-5 w-px bg-border" />;
+  return <div className="mx-0.5 h-5 w-px shrink-0 bg-border" />;
 }
 
-export default function MenuBar({ editor, fields, onCreateField }: Props) {
+export default function MenuBar({ editor, fields, onCreateField, toolbarActions }: Props) {
   const [tab, setTab] = useState<TabKey>("text");
   const [fieldsOpen, setFieldsOpen] = useState(false);
   if (!editor) return null;
@@ -137,7 +138,7 @@ export default function MenuBar({ editor, fields, onCreateField }: Props) {
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs hover:bg-muted"
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-xs hover:bg-muted"
             title="גופן"
           >
             <Type className="h-3.5 w-3.5" />
@@ -172,7 +173,7 @@ export default function MenuBar({ editor, fields, onCreateField }: Props) {
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs hover:bg-muted"
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-xs hover:bg-muted"
             title="גודל"
           >
             <span className="font-bold">A↕</span>
@@ -239,7 +240,7 @@ export default function MenuBar({ editor, fields, onCreateField }: Props) {
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md hover:bg-muted"
             title="צבעים"
           >
             <Palette className="h-3.5 w-3.5" />
@@ -267,7 +268,7 @@ export default function MenuBar({ editor, fields, onCreateField }: Props) {
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md hover:bg-muted"
             title="גרדיאנט"
           >
             <Sparkles className="h-3.5 w-3.5" />
@@ -442,11 +443,11 @@ export default function MenuBar({ editor, fields, onCreateField }: Props) {
             type="button"
             size="sm"
             variant="outline"
-            className="h-8 gap-1 text-xs"
+            className="h-8 shrink-0 gap-1 text-xs"
             title="הוסף שדה דינמי"
           >
             <Tag className="h-3.5 w-3.5" />
-            הוסף שדה
+            שדה
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="max-h-80 w-56 overflow-auto">
@@ -515,8 +516,14 @@ export default function MenuBar({ editor, fields, onCreateField }: Props) {
   return (
     <TooltipProvider delayDuration={250}>
       <div className="border-b bg-background" dir="rtl">
-        {/* שורה 1: טאבים */}
-        <div className="flex items-center gap-1 px-2 pt-1.5">
+        <div className="grid max-h-[72px] grid-flow-col auto-cols-max grid-rows-2 items-center gap-x-1 gap-y-1 overflow-x-auto overflow-y-hidden px-2 py-1.5">
+          {toolbarActions && (
+            <>
+              {toolbarActions}
+              <Sep />
+            </>
+          )}
+
           {TABS.map((t) => {
             const Icon = t.icon;
             const active = tab === t.key;
@@ -526,10 +533,10 @@ export default function MenuBar({ editor, fields, onCreateField }: Props) {
                 type="button"
                 onClick={() => setTab(t.key)}
                 className={cn(
-                  "inline-flex h-7 items-center gap-1.5 rounded-t-md border-b-2 px-3 text-xs font-medium transition-colors",
+                  "inline-flex h-8 shrink-0 items-center gap-1 rounded-md border px-2 text-xs font-medium transition-colors",
                   active
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -537,10 +544,8 @@ export default function MenuBar({ editor, fields, onCreateField }: Props) {
               </button>
             );
           })}
-        </div>
 
-        {/* שורה 2: כלים של הטאב הפעיל */}
-        <div className="flex min-h-[40px] flex-wrap items-center gap-0.5 border-t bg-muted/30 px-2 py-1">
+          <Sep />
           {tab === "text" && renderText()}
           {tab === "paragraph" && renderParagraph()}
           {tab === "insert" && renderInsert()}

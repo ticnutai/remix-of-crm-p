@@ -1,5 +1,5 @@
 // BubbleToolbar — תפריט צף שמופיע כשבוחרים טקסט בעורך
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import type { Editor } from "@tiptap/react";
 import {
@@ -74,13 +74,18 @@ export default function BubbleToolbar({ editor }: Props) {
   const [copied, setCopied] = useState(false);
   // re-render כשמשתנים ה-ranges (storage לא מפעיל רנדר אוטומטית)
   const [, force] = useState(0);
+  const extrasCountRef = useRef(0);
   React.useEffect(() => {
     if (!editor) return;
-    const handler = () => force((n) => n + 1);
-    editor.on("transaction", handler);
+    const handler = () => {
+      const nextCount = getExtraRanges(editor).length;
+      if (nextCount !== extrasCountRef.current) {
+        extrasCountRef.current = nextCount;
+        force((n) => n + 1);
+      }
+    };
     editor.on("selectionUpdate", handler);
     return () => {
-      editor.off("transaction", handler);
       editor.off("selectionUpdate", handler);
     };
   }, [editor]);
@@ -96,6 +101,13 @@ export default function BubbleToolbar({ editor }: Props) {
 
   const apply = (cb: (chain: any) => any) => applyAcrossRanges(editor, cb);
   const run = (fn: () => void) => () => fn();
+  const bubbleOptions = useMemo(() => ({ placement: "top" as const }), []);
+  const shouldShow = useCallback(({ editor, from, to }: { editor: Editor; from: number; to: number }) => {
+    if (!editor.isEditable) return false;
+    const hasExtras = getExtraRanges(editor).length > 0;
+    if (from === to && !hasExtras) return false;
+    return true;
+  }, []);
 
   const copySelection = async () => {
     const { from, to, empty } = editor.state.selection;
@@ -113,13 +125,8 @@ export default function BubbleToolbar({ editor }: Props) {
   return (
     <BubbleMenu
       editor={editor}
-      options={{ placement: "top" }}
-      shouldShow={({ editor, from, to }) => {
-        if (!editor.isEditable) return false;
-        const hasExtras = getExtraRanges(editor).length > 0;
-        if (from === to && !hasExtras) return false;
-        return true;
-      }}
+      options={bubbleOptions}
+      shouldShow={shouldShow}
       className="z-50 flex items-center gap-0.5 rounded-lg border border-border bg-popover px-1.5 py-1 shadow-lg"
     >
       {/* Multi-selection indicator */}

@@ -4,7 +4,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
@@ -17,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Cloud, Eye, ImagePlus, Loader2, Pencil, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Settings2, LayoutPanelTop } from "lucide-react";
+import { Cloud, Eye, ImagePlus, Loader2, Pencil, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Settings2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -38,23 +37,13 @@ interface Props {
   projectDetails?: any;
   designSettings?: any;
   onDesignSettingsChange?: React.Dispatch<React.SetStateAction<any>>;
+  workspaceActions?: React.ReactNode;
 }
 
 const storageKey = (id?: string) => `flow-edit:${id || "untitled"}:v2`;
 const styleKey = (id?: string) => `flow-edit:${id || "untitled"}:preserveStyles`;
 const presetKey = (id?: string) => `flow-edit:${id || "untitled"}:presetId`;
 const pageKey = (id?: string) => `flow-edit:${id || "untitled"}:pageSetup`;
-const densityKey = "flow-edit:density";
-
-type Density = "compact" | "standard" | "full";
-const DENSITY_CYCLE: Density[] = ["compact", "standard", "full"];
-const DENSITY_LABEL: Record<Density, string> = {
-  compact: "תצוגה קומפקטית",
-  standard: "תצוגה רגילה",
-  full: "תצוגה מלאה",
-};
-
-
 const DEFAULT_PAGE_SETUP: FlowPageSetup = {
   size: "A4",
   orientation: "portrait",
@@ -152,6 +141,7 @@ export default function FlowWorkspaceTab({
   projectDetails,
   designSettings,
   onDesignSettingsChange,
+  workspaceActions,
 }: Props) {
   // toggle: שמירת עיצוב מקורי מהתבנית (off = הזרימה הקיימת, on = שכבה 1)
   const [preserveStyles, setPreserveStyles] = useState<boolean>(() => {
@@ -388,28 +378,6 @@ export default function FlowWorkspaceTab({
     }
   });
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
-  const [density, setDensity] = useState<Density>(() => {
-    try {
-      const v = localStorage.getItem(densityKey) as Density | null;
-      return v && DENSITY_CYCLE.includes(v) ? v : "standard";
-    } catch {
-      return "standard";
-    }
-  });
-  const cycleDensity = () => {
-    setDensity((prev) => {
-      const next = DENSITY_CYCLE[(DENSITY_CYCLE.indexOf(prev) + 1) % DENSITY_CYCLE.length];
-      try {
-        localStorage.setItem(densityKey, next);
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
-  };
-  const showSecondary = density !== "compact";
-  const showAdvanced = density === "full";
-
   // אם החליפו תבנית — טען טיוטה שמורה או תוכן בסיס
   useEffect(() => {
     try {
@@ -835,148 +803,111 @@ export default function FlowWorkspaceTab({
   );
 
 
+  const toolbarActions = (
+    <>
+      <div className="flex shrink-0 items-center gap-1 pl-1">
+        <Sparkles className="h-3.5 w-3.5 text-primary" />
+        <span className="text-xs font-medium">Flow</span>
+      </div>
+
+      {workspaceActions}
+
+      {workspaceActions && <span className="h-5 w-px shrink-0 bg-border" />}
+
+      <TabsList className="!h-8 !min-h-0 !w-auto shrink-0 p-0.5">
+        <TabsTrigger value="edit" className="h-7 gap-1 px-2 text-xs">
+          <Pencil className="h-3.5 w-3.5" />
+          עריכה
+        </TabsTrigger>
+        <TabsTrigger value="preview" className="h-7 gap-1 px-2 text-xs">
+          <Eye className="h-3.5 w-3.5" />
+          תצוגה
+        </TabsTrigger>
+      </TabsList>
+
+      <Button
+        type="button"
+        variant="default"
+        size="sm"
+        onClick={handleCloudSave}
+        disabled={cloudSaving}
+        title="שמור את ההצעה הנוכחית כטיוטה חדשה בטיוטות הצעות מחיר"
+        className="h-8 shrink-0 gap-1 px-2 text-xs"
+      >
+        {cloudSaving ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Cloud className="h-3.5 w-3.5" />
+        )}
+        שמור
+      </Button>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={handleReset}
+            aria-label="אפס לתוכן התבנית המקורי"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>אפס לתוכן התבנית המקורי</TooltipContent>
+      </Tooltip>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                aria-label="הגדרות מסמך"
+              >
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>עיצוב · סטריפים · דף</TooltipContent>
+          </Tooltip>
+        </PopoverTrigger>
+        <PopoverContent align="end" sideOffset={6} className="w-[680px] max-w-[95vw] max-h-[70vh] overflow-auto p-3 space-y-3">
+          <div className="text-xs font-medium text-muted-foreground">הגדרות מסמך</div>
+          <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/40 px-2 py-2">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="preserve-styles"
+                checked={preserveStyles}
+                onCheckedChange={handleTogglePreserve}
+              />
+              <Label
+                htmlFor="preserve-styles"
+                className="cursor-pointer text-xs font-medium"
+                title="טוען צבעים, פונטים, גדלים והדגשות שהוגדרו בעורך התבניות המקורי"
+              >
+                עיצוב
+              </Label>
+            </div>
+            <span className="h-5 w-px bg-border" />
+            <PresetPicker selectedId={selectedPresetId} onSelect={handlePresetSelect} />
+          </div>
+          {onDesignSettingsChange && renderStripsBlock()}
+          {renderPageBlock()}
+        </PopoverContent>
+      </Popover>
+    </>
+  );
+
   return (
     <Tabs
       value={activeTab}
       onValueChange={(v) => setActiveTab(v as "edit" | "preview")}
       className="flex h-full flex-col"
     >
-      <TooltipProvider delayDuration={250}>
-        <div className="shrink-0 border-b bg-background">
-          {/* שורה 1 — פעולות עיקריות */}
-          <div className="flex flex-wrap items-center gap-2 px-3 py-2">
-            <TabsList className="h-8">
-              <TabsTrigger value="edit" className="h-7 gap-1 text-xs">
-                <Pencil className="h-3.5 w-3.5" />
-                עריכה
-              </TabsTrigger>
-              <TabsTrigger value="preview" className="h-7 gap-1 text-xs">
-                <Eye className="h-3.5 w-3.5" />
-                תצוגה מקדימה
-              </TabsTrigger>
-            </TabsList>
-
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              onClick={handleCloudSave}
-              disabled={cloudSaving}
-              title="שמור את ההצעה הנוכחית כטיוטה חדשה בטיוטות הצעות מחיר"
-              className="h-8 gap-1"
-            >
-              {cloudSaving ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Cloud className="h-3.5 w-3.5" />
-              )}
-              שמור בענן
-            </Button>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={handleReset}
-                  aria-label="אפס לתוכן התבנית המקורי"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>אפס לתוכן התבנית המקורי</TooltipContent>
-            </Tooltip>
-
-            <span className="mx-1 h-5 w-px bg-border" />
-
-            {/* הגדרות מתקדמות בפופ-אפ */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      aria-label="הגדרות מסמך"
-                    >
-                      <Settings2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>סטריפים · גודל דף · מרווחים</TooltipContent>
-                </Tooltip>
-              </PopoverTrigger>
-              <PopoverContent align="end" sideOffset={6} className="w-[680px] max-w-[95vw] max-h-[70vh] overflow-auto p-3 space-y-3">
-                <div className="text-xs font-medium text-muted-foreground">הגדרות מסמך מתקדמות</div>
-                {onDesignSettingsChange && renderStripsBlock()}
-                {renderPageBlock()}
-              </PopoverContent>
-            </Popover>
-
-            {/* טוגל תצוגה */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={cycleDensity}
-                  aria-label="החלף תצוגה"
-                >
-                  <LayoutPanelTop className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{DENSITY_LABEL[density]} — לחץ להחלפה</TooltipContent>
-            </Tooltip>
-
-            <div className="mr-auto flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">Flow V2</span>
-              {density === "full" && (
-                <Badge variant="outline" className="h-5 text-[10px]">
-                  מבודד מהמערכת הישנה
-                </Badge>
-              )}
-            </div>
-          </div>
-
-          {/* שורה 2 — שמירת עיצוב + ערכה */}
-          {showSecondary && (
-            <div className="flex flex-wrap items-center gap-3 border-t bg-muted/30 px-3 py-1.5">
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="preserve-styles"
-                  checked={preserveStyles}
-                  onCheckedChange={handleTogglePreserve}
-                />
-                <Label
-                  htmlFor="preserve-styles"
-                  className="cursor-pointer text-xs font-medium"
-                  title="טוען צבעים, פונטים, גדלים והדגשות שהוגדרו בעורך התבניות המקורי"
-                >
-                  שמור עיצוב מקורי מהתבנית
-                </Label>
-              </div>
-              <span className="h-5 w-px bg-border" />
-              <PresetPicker selectedId={selectedPresetId} onSelect={handlePresetSelect} />
-            </div>
-          )}
-
-          {/* שורה 3 — מתקדמות אינליין (במצב מלא בלבד) */}
-          {showAdvanced && onDesignSettingsChange && (
-            <div className="flex flex-wrap items-center gap-3 border-t bg-muted/20 px-3 py-1.5">
-              {renderStripsBlock()}
-              {renderPageBlock()}
-            </div>
-          )}
-        </div>
-      </TooltipProvider>
-
-
       <TabsContent value="edit" className="m-0 flex-1 overflow-hidden">
         <FlowEditor
           initialHtml={html}
@@ -987,17 +918,29 @@ export default function FlowWorkspaceTab({
           designSettings={designSettings}
           onDesignSettingsChange={updateDesignSettings}
           projectDetails={projectDetails}
+          toolbarActions={toolbarActions}
         />
       </TabsContent>
       <TabsContent value="preview" className="m-0 flex-1 overflow-hidden">
-        <FlowPreviewTab
-          template={template}
-          editedHtml={html}
-          preset={presetCfg}
-          projectDetails={projectDetails}
-          designSettings={designSettings}
-          pageSetup={pageSetup}
-        />
+        <div className="flex h-full flex-col">
+          <TooltipProvider delayDuration={250}>
+            <div className="shrink-0 border-b bg-background">
+              <div className="flex max-h-[72px] flex-wrap items-center gap-1 overflow-y-auto px-2 py-1.5">
+                {toolbarActions}
+              </div>
+            </div>
+          </TooltipProvider>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <FlowPreviewTab
+              template={template}
+              editedHtml={html}
+              preset={presetCfg}
+              projectDetails={projectDetails}
+              designSettings={designSettings}
+              pageSetup={pageSetup}
+            />
+          </div>
+        </div>
       </TabsContent>
 
       <AlertDialog open={postSaveDialogOpen} onOpenChange={setPostSaveDialogOpen}>
