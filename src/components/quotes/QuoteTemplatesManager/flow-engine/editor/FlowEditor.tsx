@@ -308,6 +308,7 @@ export default function FlowEditor({
     };
     document.body.style.cursor = "ns-resize";
     document.body.style.userSelect = "none";
+    document.body.classList.add("flow-strip-resizing");
   };
 
   const setContextMenuCursor = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -481,6 +482,7 @@ export default function FlowEditor({
       dragRef.current = null;
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
+      document.body.classList.remove("flow-strip-resizing");
     };
 
     window.addEventListener("mousemove", handleMove);
@@ -490,6 +492,7 @@ export default function FlowEditor({
       window.removeEventListener("mouseup", handleUp);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
+      document.body.classList.remove("flow-strip-resizing");
     };
   }, [onDesignSettingsChange]);
 
@@ -672,31 +675,62 @@ export default function FlowEditor({
         }
         .flow-editor-strip-handle {
           position: absolute;
-          left: 50%;
+          left: 0;
+          right: 0;
           z-index: 8;
-          width: 92px;
-          height: 13px;
-          transform: translateX(-50%);
-          border: 1px solid rgba(22, 44, 88, 0.35);
-          border-radius: 999px;
-          background: linear-gradient(180deg, #ffffff, #eef4fb);
-          box-shadow: 0 3px 10px rgba(15, 23, 42, 0.18);
+          width: 100%;
+          height: 18px;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
+          box-shadow: none;
           cursor: ns-resize;
           pointer-events: auto;
           padding: 0;
+          opacity: 1;
+          touch-action: none;
+          appearance: none;
+          -webkit-appearance: none;
         }
-        .flow-editor-strip-handle::before {
+        .flow-editor-strip-handle::before,
+        .flow-editor-strip-handle::after {
           content: "";
           position: absolute;
-          inset: 4px 20px;
-          border-top: 1px solid rgba(22, 44, 88, 0.5);
-          border-bottom: 1px solid rgba(22, 44, 88, 0.5);
+          left: 0;
+          right: 0;
+          top: 50%;
+          transform: translateY(-50%);
+          pointer-events: none;
+        }
+        .flow-editor-strip-handle::before {
+          height: 1px;
+          background: rgba(216, 172, 39, 0.56);
+        }
+        .flow-editor-strip-handle::after {
+          height: 8px;
+          opacity: 0;
+          background: linear-gradient(
+            180deg,
+            transparent,
+            rgba(14, 126, 245, 0.18),
+            transparent
+          );
+          transition: opacity 120ms ease;
+        }
+        .flow-editor-strip-handle:hover::after,
+        .flow-editor-strip-handle:focus-visible::after,
+        .flow-strip-resizing .flow-editor-strip-handle::after {
+          opacity: 1;
+        }
+        .flow-editor-strip-handle:focus-visible {
+          outline: 2px solid rgba(14, 126, 245, 0.72);
+          outline-offset: -2px;
         }
         .flow-editor-strip-handle-bottom {
-          bottom: -7px;
+          bottom: -9px;
         }
         .flow-editor-strip-handle-top {
-          top: -7px;
+          top: -9px;
         }
         .flow-editor-content h1 { font-size: ${preset?.headings.h1.size || "1.6rem"}; font-weight: ${preset?.headings.h1.weight || "700"}; margin: 1rem 0 0.5rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; border-bottom: 2px solid ${preset?.colors.accent || "hsl(var(--accent))"}; padding-bottom: .3rem; font-family: ${preset?.fonts.heading || "inherit"}; }
         .flow-editor-content h2 { font-size: ${preset?.headings.h2.size || "1.3rem"}; font-weight: ${preset?.headings.h2.weight || "700"}; margin: .9rem 0 .4rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; font-family: ${preset?.fonts.heading || "inherit"}; }

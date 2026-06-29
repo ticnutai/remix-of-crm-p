@@ -835,7 +835,7 @@
         <div class="result-title" id="resultTitle">תוצאה וקטורית לעריכה (מתעדכן למטה)</div>
         <div class="canvas-stage" id="stage">
           <svg id="svgCanvas" viewBox="0 0 1200 340" xmlns="http://www.w3.org/2000/svg">
-            <rect x="0" y="0" width="1200" height="340" fill="#f8fafc"></rect>
+            <rect id="stageBackground" data-editor-only="1" x="0" y="0" width="1200" height="340" fill="#f8fafc"></rect>
             <g id="referenceLayer">
               <image id="referenceImage" x="0" y="0" width="1200" height="340" opacity="0.25" preserveAspectRatio="xMidYMid meet"></image>
             </g>
@@ -888,6 +888,7 @@
       const mobileLayersToggleBtn = document.getElementById("mobileLayersToggleBtn");
       const sidebarMediaQuery = window.matchMedia("(max-width: 1200px)");
       const SIDEBAR_STATE_KEY = "vector-logo-strip-sidebars-v1";
+      const hostMode = new URLSearchParams(window.location.search).get("host") || "";
 
       let selectedIds = new Set();
       let selectionMode = "touch";
@@ -1061,6 +1062,16 @@
 
       function closeAndReturnToHost() {
         let focusedHost = false;
+
+        try {
+          [window.parent, window.opener].forEach((target) => {
+            if (target && target !== window && !target.closed) {
+              target.postMessage({ type: "vector-logo-strip:close", ts: Date.now() }, window.location.origin);
+            }
+          });
+        } catch (err) {
+          console.warn("[CLOSE EDITOR] host notify failed", err);
+        }
 
         try {
           if (window.opener && !window.opener.closed) {
@@ -1580,6 +1591,79 @@
         return true;
       }
 
+      function decodeSvgDataUrl(src) {
+        const commaIndex = src.indexOf(",");
+        if (commaIndex === -1) return "";
+        const meta = src.slice(0, commaIndex).toLowerCase();
+        const payload = src.slice(commaIndex + 1);
+        try {
+          return meta.includes(";base64") ? atob(payload) : decodeURIComponent(payload);
+        } catch {
+          return "";
+        }
+      }
+
+      async function readSvgSource(src) {
+        if (!src) return "";
+        if (src.startsWith("data:image/svg+xml")) return decodeSvgDataUrl(src);
+        if (src.trim().startsWith("<svg")) return src;
+
+        const isSameOriginPath = src.startsWith("/") || src.startsWith(window.location.origin);
+        if (!isSameOriginPath || !src.toLowerCase().includes(".svg")) return "";
+
+        try {
+          const response = await fetch(src);
+          if (!response.ok) return "";
+          return await response.text();
+        } catch {
+          return "";
+        }
+      }
+
+      async function loadSourceFromHost(payload) {
+        const src = String(payload?.source || "");
+        const svgXml = String(payload?.svgXml || "");
+        const project = payload?.project;
+        if (project) {
+          loadProject(project);
+          t("פרויקט וקטורי נטען מ-Flow");
+          return;
+        }
+
+        const sourceXml = svgXml || (await readSvgSource(src));
+        if (src) {
+          referenceSrc = src;
+          referenceImage.setAttribute("href", src);
+          setSourcePreview(src);
+          document.getElementById("refVisible").checked = true;
+          referenceLayer.style.display = "";
+          const refOpacity = Number(payload?.refOpacity ?? 35);
+          document.getElementById("refOpacity").value = String(refOpacity);
+          referenceImage.setAttribute("opacity", String(refOpacity / 100));
+        }
+
+        if (sourceXml && parseSvgElements(sourceXml)) {
+          t("SVG מ-Flow נטען לעריכה");
+          return;
+        }
+
+        if (src) {
+          elementsLayer.innerHTML = "";
+          deriveNextIdCounter();
+          clearSelection();
+          renderLayers();
+          pushHistory();
+          t("תמונת מקור מ-Flow נטענה. לחץ חלץ ל-SVG");
+        }
+      }
+
+      window.addEventListener("message", (event) => {
+        if (event.origin !== window.location.origin) return;
+        const payload = event.data;
+        if (!payload || payload.type !== "vector-logo-strip:load-source") return;
+        void loadSourceFromHost(payload);
+      });
+
       function preprocessToBw(image, threshold) {
         const canvas = workCanvas;
         const maxWidth = 1400;
@@ -1812,6 +1896,7 @@
 
       function buildCleanSvgClone() {
         const clone = svg.cloneNode(true);
+        clone.querySelector("#stageBackground")?.remove();
         clone.querySelector("#selectionOverlay")?.remove();
         clone.querySelector("#selectionRect")?.remove();
         clone.querySelector("#referenceLayer")?.remove();
@@ -1850,8 +1935,9 @@
       function applyToHost(reason = "manual") {
         const xml = buildCleanSvgXml();
         const payload = {
-          type: "vector-logo-strip:apply",
+          type: hostMode === "flow-v2-strip-designer" ? "flow-v2-strip:apply" : "vector-logo-strip:apply",
           version: 1,
+          host: hostMode,
           reason,
           svgXml: xml,
           dataUrl: svgXmlToDataUrl(xml),
