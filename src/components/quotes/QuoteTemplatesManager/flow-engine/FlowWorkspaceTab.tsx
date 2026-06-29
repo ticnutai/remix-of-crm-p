@@ -808,7 +808,7 @@ export default function FlowWorkspaceTab({
         <span className="text-xs font-medium">Flow</span>
       </div>
 
-      <TabsList className="h-8 shrink-0 p-0.5">
+      <TabsList className="!h-8 !min-h-0 !w-auto shrink-0 p-0.5">
         <TabsTrigger value="edit" className="h-7 gap-1 px-2 text-xs">
           <Pencil className="h-3.5 w-3.5" />
           עריכה
