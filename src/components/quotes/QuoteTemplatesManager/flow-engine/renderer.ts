@@ -112,12 +112,16 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   const m = page.marginMm;
   const hasHeaderStrip = Boolean(branding.headerStripUrl);
   const hasFooterStrip = Boolean(branding.footerStripUrl);
-  const headerStripMm = Math.max(8, Math.round((Number(branding.headerStripHeight) || 150) * 0.264583));
-  const footerStripMm = Math.max(8, Math.round((Number(branding.footerStripHeight) || 90) * 0.264583));
-  const headerStripWidthPercent = Math.max(20, Math.min(100, Math.round(Number(branding.headerStripWidthPercent) || 100)));
-  const footerStripWidthPercent = Math.max(20, Math.min(100, Math.round(Number(branding.footerStripWidthPercent) || 100)));
-  const topMargin = Math.max(m.top, hasHeaderStrip ? headerStripMm + 6 : m.top);
-  const bottomMargin = Math.max(m.bottom, hasFooterStrip ? footerStripMm + 5 : m.bottom);
+  const headerStripHeightPx = Number(branding.headerStripHeight);
+  const footerStripHeightPx = Number(branding.footerStripHeight);
+  const headerStripMm = Math.max(0, Math.round((Number.isFinite(headerStripHeightPx) ? headerStripHeightPx : 150) * 0.264583));
+  const footerStripMm = Math.max(0, Math.round((Number.isFinite(footerStripHeightPx) ? footerStripHeightPx : 90) * 0.264583));
+  const headerStripWidthValue = Number(branding.headerStripWidthPercent);
+  const footerStripWidthValue = Number(branding.footerStripWidthPercent);
+  const headerStripWidthPercent = Math.round(Number.isFinite(headerStripWidthValue) ? headerStripWidthValue : 100);
+  const footerStripWidthPercent = Math.round(Number.isFinite(footerStripWidthValue) ? footerStripWidthValue : 100);
+  const topMargin = hasHeaderStrip ? headerStripMm : m.top;
+  const bottomMargin = hasFooterStrip ? footerStripMm : m.bottom;
   const stripBgColor = branding.stripBgColor || "#ffffff";
 
   const sectionsHtml = sections

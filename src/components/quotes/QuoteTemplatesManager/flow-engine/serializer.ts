@@ -254,28 +254,20 @@ export function serializeTemplate(
     ds.footer_logo_url,
     isStripLogo ? logoUrl : undefined,
   );
+  const headerStripWidthPercent = Number(firstValue(ds.headerStripWidthPercent, ds.header_strip_width_percent));
+  const footerStripWidthPercent = Number(firstValue(ds.footerStripWidthPercent, ds.footer_strip_width_percent));
+  const headerStripHeightPx = Number(ds.headerStripHeight);
+  const footerStripHeightPx = Number(ds.footerStripHeight);
 
   const branding: FlowBranding = {
     logoUrl,
     headerStripUrl,
     footerStripUrl,
     stripBgColor: firstValue(ds.stripBgColor, ds.strip_bg_color, "#ffffff"),
-    headerStripHeight: Math.max(24, Math.round(Number(ds.headerStripHeight) || 150)),
-    footerStripHeight: Math.max(24, Math.round(Number(ds.footerStripHeight) || 90)),
-    headerStripWidthPercent: Math.max(
-      20,
-      Math.min(
-        100,
-        Math.round(Number(firstValue(ds.headerStripWidthPercent, ds.header_strip_width_percent, ds.stripWidth, ds.strip_width)) || 100),
-      ),
-    ),
-    footerStripWidthPercent: Math.max(
-      20,
-      Math.min(
-        100,
-        Math.round(Number(firstValue(ds.footerStripWidthPercent, ds.footer_strip_width_percent, ds.stripWidth, ds.strip_width)) || 100),
-      ),
-    ),
+    headerStripHeight: Math.max(0, Number.isFinite(headerStripHeightPx) ? Math.round(headerStripHeightPx) : 150),
+    footerStripHeight: Math.max(0, Number.isFinite(footerStripHeightPx) ? Math.round(footerStripHeightPx) : 90),
+    headerStripWidthPercent: Number.isFinite(headerStripWidthPercent) ? Math.round(headerStripWidthPercent) : 100,
+    footerStripWidthPercent: Number.isFinite(footerStripWidthPercent) ? Math.round(footerStripWidthPercent) : 100,
     companyName: firstValue(ds.companyName, ds.company_name, ""),
     companySubtitle: firstValue(ds.companySubtitle, ds.company_subtitle, ""),
     contactLine: [contact.phone, contact.email, contact.address].filter(Boolean).join("  |  "),

@@ -119,6 +119,11 @@ function numberValue(value: unknown, fallback: number, min = 0, max = Number.POS
   return Math.max(min, Math.min(max, Math.round(numeric)));
 }
 
+function looseNumber(value: unknown, fallback: number) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.round(numeric) : fallback;
+}
+
 function getStripSettings(templateDesignSettings?: any, designSettings?: any) {
   const ds = { ...(templateDesignSettings || {}), ...(designSettings || {}) };
   const logoUrl = firstValue(ds.logoUrl, ds.logo_url, ds.logoURL, ds.originalLogoUrl, ds.original_logo_url);
@@ -131,18 +136,14 @@ function getStripSettings(templateDesignSettings?: any, designSettings?: any) {
     headerUrl,
     footerUrl,
     bgColor: firstValue(ds.stripBgColor, ds.strip_bg_color, "#ffffff") || "#ffffff",
-    headerHeight: Math.max(24, Math.round(Number(ds.headerStripHeight) || 150)),
-    footerHeight: Math.max(24, Math.round(Number(ds.footerStripHeight) || 90)),
-    headerWidthPercent: numberValue(
-      firstValue(ds.headerStripWidthPercent, ds.header_strip_width_percent, ds.stripWidth, ds.strip_width),
-      100,
-      20,
+    headerHeight: Math.max(0, looseNumber(ds.headerStripHeight, 150)),
+    footerHeight: Math.max(0, looseNumber(ds.footerStripHeight, 90)),
+    headerWidthPercent: looseNumber(
+      firstValue(ds.headerStripWidthPercent, ds.header_strip_width_percent),
       100,
     ),
-    footerWidthPercent: numberValue(
-      firstValue(ds.footerStripWidthPercent, ds.footer_strip_width_percent, ds.stripWidth, ds.strip_width),
-      100,
-      20,
+    footerWidthPercent: looseNumber(
+      firstValue(ds.footerStripWidthPercent, ds.footer_strip_width_percent),
       100,
     ),
     headerContentGap: numberValue(
@@ -196,9 +197,9 @@ function makeStripHtml(
 
   return `
     <div class="flow-page-strip-frame flow-page-strip-${position}" contenteditable="false" style="height:${Math.max(
-      24,
+      0,
       Math.round(height),
-    )}px;width:${Math.max(20, Math.min(100, Math.round(widthPercent)))}%;background-color:${escapeAttr(bgColor)};">
+    )}px;width:${Math.round(widthPercent)}%;background-color:${escapeAttr(bgColor)};">
       <img class="flow-page-strip-img" src="${escapeAttr(url)}" alt="" draggable="false" />
       ${resizeHandle}
     </div>
@@ -533,7 +534,7 @@ export default function FlowEditor({
         drag.position === "header"
           ? drag.startHeight + delta
           : drag.startHeight - delta;
-      const nextHeight = Math.max(24, Math.min(420, Math.round(rawHeight)));
+      const nextHeight = Math.max(0, Math.round(rawHeight));
       onDesignSettingsChange(
         drag.position === "header"
           ? { headerStripHeight: nextHeight }

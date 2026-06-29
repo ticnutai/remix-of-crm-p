@@ -67,6 +67,11 @@ function boundedNumber(value: unknown, fallback: number, min = 0, max = Number.P
   return Math.max(min, Math.min(max, Math.round(numeric)));
 }
 
+function looseNumber(value: unknown, fallback: number) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.round(numeric) : fallback;
+}
+
 function knownLogoSources(settings?: any, position?: StripPosition) {
   return [
     settings?.logoUrl,
@@ -181,22 +186,12 @@ export default function FlowWorkspaceTab({
     0,
     120,
   );
-  const headerStripWidthPercent = boundedNumber(
-    designSettings?.headerStripWidthPercent ??
-      designSettings?.header_strip_width_percent ??
-      designSettings?.stripWidth ??
-      designSettings?.strip_width,
-    100,
-    20,
+  const headerStripWidthPercent = looseNumber(
+    designSettings?.headerStripWidthPercent ?? designSettings?.header_strip_width_percent,
     100,
   );
-  const footerStripWidthPercent = boundedNumber(
-    designSettings?.footerStripWidthPercent ??
-      designSettings?.footer_strip_width_percent ??
-      designSettings?.stripWidth ??
-      designSettings?.strip_width,
-    100,
-    20,
+  const footerStripWidthPercent = looseNumber(
+    designSettings?.footerStripWidthPercent ?? designSettings?.footer_strip_width_percent,
     100,
   );
 
@@ -251,9 +246,9 @@ export default function FlowWorkspaceTab({
           headerStripDesign: null,
           header_strip_design: null,
           repeatHeaderOnAllPages: true,
-          headerStripHeight: designSettings?.headerStripHeight || 150,
-          headerStripWidthPercent: headerStripWidthPercent || 100,
-          header_strip_width_percent: headerStripWidthPercent || 100,
+          headerStripHeight: designSettings?.headerStripHeight ?? 150,
+          headerStripWidthPercent,
+          header_strip_width_percent: headerStripWidthPercent,
           stripBgColor: designSettings?.stripBgColor || "#ffffff",
         });
       } else {
@@ -264,9 +259,9 @@ export default function FlowWorkspaceTab({
           footerStripDesign: null,
           footer_strip_design: null,
           repeatFooterOnAllPages: true,
-          footerStripHeight: designSettings?.footerStripHeight || 90,
-          footerStripWidthPercent: footerStripWidthPercent || 100,
-          footer_strip_width_percent: footerStripWidthPercent || 100,
+          footerStripHeight: designSettings?.footerStripHeight ?? 90,
+          footerStripWidthPercent,
+          footer_strip_width_percent: footerStripWidthPercent,
           stripBgColor: designSettings?.stripBgColor || "#ffffff",
         });
       }
@@ -315,8 +310,8 @@ export default function FlowWorkspaceTab({
         headerStripDesign: state,
         header_strip_design: state,
         headerStripHeight: state.canvas.height,
-        headerStripWidthPercent: headerStripWidthPercent || 100,
-        header_strip_width_percent: headerStripWidthPercent || 100,
+        headerStripWidthPercent,
+        header_strip_width_percent: headerStripWidthPercent,
         stripBgColor: state.canvas.backgroundColor || designSettings?.stripBgColor || "#ffffff",
         repeatHeaderOnAllPages: true,
       });
@@ -329,8 +324,8 @@ export default function FlowWorkspaceTab({
       footerStripDesign: state,
       footer_strip_design: state,
       footerStripHeight: state.canvas.height,
-      footerStripWidthPercent: footerStripWidthPercent || 100,
-      footer_strip_width_percent: footerStripWidthPercent || 100,
+      footerStripWidthPercent,
+      footer_strip_width_percent: footerStripWidthPercent,
       stripBgColor: state.canvas.backgroundColor || designSettings?.stripBgColor || "#ffffff",
       repeatFooterOnAllPages: true,
     });
@@ -626,21 +621,17 @@ export default function FlowWorkspaceTab({
               <input
                 className="h-7 w-14 rounded border bg-background px-1 text-center text-xs"
                 type="number"
-                min={24}
-                max={400}
-                value={designSettings?.headerStripHeight || 150}
-                onChange={(e) => updateDesignSettings({ headerStripHeight: Number(e.target.value) || 150 })}
+                value={designSettings?.headerStripHeight ?? 150}
+                onChange={(e) => updateDesignSettings({ headerStripHeight: looseNumber(e.target.value, 150) })}
                 title="גובה סטריפ עליון בפיקסלים"
               />
               <span className="text-[10px] text-muted-foreground">px</span>
               <input
                 className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
                 type="number"
-                min={20}
-                max={100}
                 value={headerStripWidthPercent}
                 onChange={(e) => {
-                  const next = boundedNumber(e.target.value, 100, 20, 100);
+                  const next = looseNumber(e.target.value, 100);
                   updateDesignSettings({
                     headerStripWidthPercent: next,
                     header_strip_width_percent: next,
@@ -695,21 +686,17 @@ export default function FlowWorkspaceTab({
               <input
                 className="h-7 w-14 rounded border bg-background px-1 text-center text-xs"
                 type="number"
-                min={24}
-                max={300}
-                value={designSettings?.footerStripHeight || 90}
-                onChange={(e) => updateDesignSettings({ footerStripHeight: Number(e.target.value) || 90 })}
+                value={designSettings?.footerStripHeight ?? 90}
+                onChange={(e) => updateDesignSettings({ footerStripHeight: looseNumber(e.target.value, 90) })}
                 title="גובה סטריפ תחתון בפיקסלים"
               />
               <span className="text-[10px] text-muted-foreground">px</span>
               <input
                 className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
                 type="number"
-                min={20}
-                max={100}
                 value={footerStripWidthPercent}
                 onChange={(e) => {
-                  const next = boundedNumber(e.target.value, 100, 20, 100);
+                  const next = looseNumber(e.target.value, 100);
                   updateDesignSettings({
                     footerStripWidthPercent: next,
                     footer_strip_width_percent: next,
