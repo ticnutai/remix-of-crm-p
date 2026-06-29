@@ -25,6 +25,40 @@ interface FlowPreviewTabProps {
   pageSetup?: FlowPageSetup;
 }
 
+function splitPagedDocument(html: string) {
+  if (typeof DOMParser === "undefined") {
+    return { content: html, stylesheets: [] as Array<Record<string, string> | string> };
+  }
+
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const stylesheets: Array<Record<string, string> | string> = [];
+  const content = document.createDocumentFragment();
+
+  doc.querySelectorAll("style:not([data-pagedjs-ignore])").forEach((style, index) => {
+    const css = style.textContent || "";
+    if (css.trim()) {
+      stylesheets.push({ [`${window.location.href}#flow-preview-style-${index}`]: css });
+    }
+    style.remove();
+  });
+
+  doc.querySelectorAll("link[rel='stylesheet']:not([data-pagedjs-ignore])").forEach((link) => {
+    const href = (link as HTMLLinkElement).href;
+    if (href) stylesheets.push(href);
+    link.remove();
+  });
+
+  doc.querySelectorAll("script").forEach((script) => script.remove());
+  Array.from(doc.body?.childNodes || []).forEach((node) => {
+    content.appendChild(document.importNode(node, true));
+  });
+
+  return {
+    content,
+    stylesheets,
+  };
+}
+
 export default function FlowPreviewTab({
   template,
   mergeData,
@@ -73,7 +107,8 @@ export default function FlowPreviewTab({
         const Previewer = mod.Previewer || mod.default?.Previewer;
         if (!Previewer) throw new Error("pagedjs Previewer not found");
         const previewer = new Previewer();
-        const flow = await previewer.preview(html, [], target);
+        const pagedDocument = splitPagedDocument(html);
+        const flow = await previewer.preview(pagedDocument.content, pagedDocument.stylesheets, target);
         if (cancelled) return;
         setPageCount(flow?.total ?? target.querySelectorAll(".pagedjs_page").length);
       } catch (err: any) {
@@ -88,17 +123,14 @@ export default function FlowPreviewTab({
     };
   }, [html, renderToken]);
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     // משתמשים בתוצר ה-Paged.js שכבר עומד מול המשתמש (containerRef).
-    // מעתיקים את אותו DOM לחלון חדש ומוסיפים CSS הדפסה שמבטיח שכל
-    // .pagedjs_page יתפוס דף בפועל ב-PDF (break-after: page).
+    // מעתיקים את אותו DOM ל-iframe נסתר כדי לא לפתוח about:blank בדפדפן הפנימי.
     const target = containerRef.current;
     if (!target || !target.querySelector(".pagedjs_page")) {
       window.alert("התצוגה עוד לא הסתיימה לטעון. נסה שוב בעוד רגע.");
       return;
     }
-    const w = window.open("", "_blank", "width=900,height=1200");
-    if (!w) return;
     const printPageSize =
       flowDoc.page.size === "custom"
         ? `${Math.max(50, flowDoc.page.customSizeMm?.width || 210)}mm ${Math.max(
@@ -106,12 +138,19 @@ export default function FlowPreviewTab({
             flowDoc.page.customSizeMm?.height || 297,
           )}mm`
         : `${flowDoc.page.size}${flowDoc.page.orientation === "landscape" ? " landscape" : ""}`;
+    const pagedStyles = Array.from(
+      document.querySelectorAll<HTMLStyleElement>("style[data-pagedjs-inserted-styles]"),
+    )
+      .map((style) => style.textContent || "")
+      .filter(Boolean)
+      .join("\n");
     const printDoc = `<!doctype html>
 <html dir="rtl" lang="he">
 <head>
 <meta charset="utf-8" />
 <title>${flowDoc.title.replace(/</g, "&lt;")}</title>
 <style>
+  ${pagedStyles}
   @page { size: ${printPageSize}; margin: 0; }
   html, body { margin: 0; padding: 0; background: #fff;
     -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -134,21 +173,68 @@ export default function FlowPreviewTab({
 </head>
 <body>${target.innerHTML}</body>
 </html>`;
-    w.document.open();
-    w.document.write(printDoc);
-    w.document.close();
-    const tryPrint = () => {
-      try {
-        if (!w.document.querySelector(".pagedjs_page")) {
-          return window.setTimeout(tryPrint, 150);
-        }
-        w.focus();
-        w.print();
-      } catch {
-        /* ignore */
-      }
+    const iframe = document.createElement("iframe");
+    iframe.title = "Flow print preview";
+    iframe.setAttribute("aria-hidden", "true");
+    Object.assign(iframe.style, {
+      position: "fixed",
+      left: "-10000px",
+      top: "0",
+      width: "1px",
+      height: "1px",
+      border: "0",
+      opacity: "0",
+      pointerEvents: "none",
+    });
+    document.body.appendChild(iframe);
+
+    const printWindow = iframe.contentWindow;
+    const printDocument = iframe.contentDocument || printWindow?.document;
+    if (!printWindow || !printDocument) {
+      iframe.remove();
+      window.alert("לא ניתן לפתוח את מערכת ההדפסה בדפדפן הזה.");
+      return;
+    }
+
+    const cleanup = () => {
+      window.setTimeout(() => iframe.remove(), 500);
     };
-    window.setTimeout(tryPrint, 400);
+    printWindow.addEventListener("afterprint", cleanup, { once: true });
+
+    printDocument.open();
+    printDocument.write(printDoc);
+    printDocument.close();
+
+    const waitForImages = Promise.all(
+      Array.from(printDocument.images).map(
+        (img) =>
+          new Promise<void>((resolve) => {
+            if (img.complete) return resolve();
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+          }),
+      ),
+    );
+    const waitForFonts = printDocument.fonts?.ready || Promise.resolve();
+    await Promise.race([
+      Promise.all([waitForImages, waitForFonts]),
+      new Promise((resolve) => window.setTimeout(resolve, 2500)),
+    ]);
+
+    if (!printDocument.querySelector(".pagedjs_page")) {
+      cleanup();
+      window.alert("התצוגה להדפסה לא נטענה. נסה לרענן את התצוגה המקדימה.");
+      return;
+    }
+
+    try {
+      printWindow.focus();
+      printWindow.print();
+      window.setTimeout(cleanup, 30000);
+    } catch {
+      cleanup();
+      window.alert("לא ניתן לפתוח את חלון ההדפסה בדפדפן הזה.");
+    }
   };
 
   return (

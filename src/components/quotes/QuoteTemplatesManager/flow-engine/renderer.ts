@@ -212,7 +212,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     margin: 0; padding: 0;
     font-family: ${branding.fontFamily};
     color: #1a1a1a;
-    direction: rtl;
+    direction: ltr;
     font-size: 11pt;
     line-height: 1.55;
     /* קריטי: שומר על צבעים, רקעים וגרדיאנטים בהדפסה ל-PDF */
@@ -235,6 +235,26 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
 
   .flow-section { break-inside: auto; margin-bottom: 6mm; }
   .flow-section.keep { break-inside: avoid; }
+  .pagedjs_pages,
+  .pagedjs_page,
+  .pagedjs_sheet,
+  .pagedjs_pagebox,
+  .pagedjs_area,
+  .pagedjs_page_content,
+  .pagedjs_page_content > div {
+    direction: ltr;
+  }
+  .flow-doc,
+  .flow-section {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+  }
+  .flow-doc {
+    direction: rtl;
+    text-align: right;
+  }
 
   .flow-h { color: ${branding.primaryColor}; margin: 4mm 0 2mm; break-after: avoid; }
   .flow-h1 { font-size: 20pt; border-bottom: 2px solid ${branding.accentColor}; padding-bottom: 2mm; }

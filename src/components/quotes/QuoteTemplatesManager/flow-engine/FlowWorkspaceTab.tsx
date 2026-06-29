@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Cloud, Eye, ImagePlus, Loader2, Pencil, RotateCcw, Sparkles, Trash2 } from "lucide-react";
+import { Cloud, Eye, ImagePlus, Loader2, Pencil, RotateCcw, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { QuoteTemplate } from "../types";
@@ -28,6 +28,7 @@ import PresetPicker from "./presets/PresetPicker";
 import type { DesignPreset } from "./presets/types";
 import { safeConfig, usePresets } from "./presets/usePresets";
 import { projectToMergeData } from "./projectTokens";
+import StripDesignerDialog, { type FlowStripDesignState, type StripPosition } from "./StripDesignerDialog";
 import type { FlowPageSetup, FlowPageSizePreset } from "./types";
 
 interface Props {
@@ -64,6 +65,53 @@ function boundedNumber(value: unknown, fallback: number, min = 0, max = Number.P
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return fallback;
   return Math.max(min, Math.min(max, Math.round(numeric)));
+}
+
+function knownLogoSources(settings?: any, position?: StripPosition) {
+  return [
+    settings?.logoUrl,
+    settings?.logo_url,
+    settings?.logoURL,
+    settings?.originalLogoUrl,
+    settings?.original_logo_url,
+    settings?.stripUrl,
+    settings?.strip_url,
+    position === "header" ? settings?.headerStripUrl : undefined,
+    position === "header" ? settings?.header_strip_url : undefined,
+    position === "footer" ? settings?.footerStripUrl : undefined,
+    position === "footer" ? settings?.footer_strip_url : undefined,
+    position === "footer" ? settings?.footerLogoUrl : undefined,
+    position === "footer" ? settings?.footer_logo_url : undefined,
+  ].filter((value): value is string => typeof value === "string" && value.length > 0);
+}
+
+function shouldReplaceLogoSrc(src: string, sources: string[]) {
+  if (sources.includes(src)) return true;
+  const lower = src.toLowerCase();
+  return lower.includes("company-header") || lower.includes("logo") || lower.includes("header-strip");
+}
+
+function replaceLogoImagesInHtml(html: string, nextLogoUrl: string, sources: string[]) {
+  if (!html || !nextLogoUrl) return html;
+  return html.replace(/(<img\b[^>]*\bsrc=["'])([^"']+)(["'][^>]*>)/gi, (match, prefix, src, suffix) => {
+    if (!shouldReplaceLogoSrc(String(src), sources)) return match;
+    return `${prefix}${nextLogoUrl}${suffix}`;
+  });
+}
+
+function logoReplacementPatch(logoUrl: string, position: StripPosition) {
+  const patch: Record<string, any> = {
+    logoUrl,
+    logo_url: logoUrl,
+    originalLogoUrl: logoUrl,
+    original_logo_url: logoUrl,
+    showLogo: true,
+  };
+  if (position === "footer") {
+    patch.footerLogoUrl = logoUrl;
+    patch.footer_logo_url = logoUrl;
+  }
+  return patch;
 }
 
 function loadPageSetup(templateId?: string): FlowPageSetup {
@@ -114,6 +162,7 @@ export default function FlowWorkspaceTab({
   const [pageSetup, setPageSetup] = useState<FlowPageSetup>(() => loadPageSetup(template.id));
   const headerStripInputRef = useRef<HTMLInputElement | null>(null);
   const footerStripInputRef = useRef<HTMLInputElement | null>(null);
+  const [designerPosition, setDesignerPosition] = useState<StripPosition | null>(null);
   const headerContentGapPx = boundedNumber(
     designSettings?.headerStripContentGapPx ?? designSettings?.header_content_gap_px,
     18,
@@ -154,24 +203,46 @@ export default function FlowWorkspaceTab({
     onDesignSettingsChange?.((prev: any) => ({ ...(prev || {}), ...patch }));
   };
 
+  const replaceLogoEverywhere = (nextLogoUrl: string, position: StripPosition) => {
+    const sources = knownLogoSources(designSettings, position);
+    setHtml((prev) => {
+      const next = replaceLogoImagesInHtml(prev, nextLogoUrl, sources);
+      if (next !== prev) {
+        try {
+          localStorage.setItem(storageKey(template.id), next);
+        } catch {
+          /* quota / private mode */
+        }
+      }
+      return next;
+    });
+  };
+
   const handleStripUpload = (position: "header" | "footer", file?: File | null) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = typeof reader.result === "string" ? reader.result : "";
       if (!dataUrl) return;
+      replaceLogoEverywhere(dataUrl, position);
       if (position === "header") {
         updateDesignSettings({
+          ...logoReplacementPatch(dataUrl, "header"),
           headerStripUrl: dataUrl,
           header_strip_url: dataUrl,
+          headerStripDesign: null,
+          header_strip_design: null,
           repeatHeaderOnAllPages: true,
           headerStripHeight: designSettings?.headerStripHeight || 150,
           stripBgColor: designSettings?.stripBgColor || "#ffffff",
         });
       } else {
         updateDesignSettings({
+          ...logoReplacementPatch(dataUrl, "footer"),
           footerStripUrl: dataUrl,
           footer_strip_url: dataUrl,
+          footerStripDesign: null,
+          footer_strip_design: null,
           repeatFooterOnAllPages: true,
           footerStripHeight: designSettings?.footerStripHeight || 90,
           stripBgColor: designSettings?.stripBgColor || "#ffffff",
@@ -186,6 +257,8 @@ export default function FlowWorkspaceTab({
       updateDesignSettings({
         headerStripUrl: null,
         header_strip_url: null,
+        headerStripDesign: null,
+        header_strip_design: null,
         repeatHeaderOnAllPages: false,
       });
       return;
@@ -193,7 +266,47 @@ export default function FlowWorkspaceTab({
     updateDesignSettings({
       footerStripUrl: null,
       footer_strip_url: null,
+      footerStripDesign: null,
+      footer_strip_design: null,
       repeatFooterOnAllPages: false,
+    });
+  };
+
+  const applyDesignedStrip = ({
+    position,
+    dataUrl,
+    state,
+    logoSourceUrl,
+  }: {
+    position: StripPosition;
+    dataUrl: string;
+    state: FlowStripDesignState;
+    logoSourceUrl?: string;
+  }) => {
+    const logoPatch = logoSourceUrl ? logoReplacementPatch(logoSourceUrl, position) : {};
+    if (logoSourceUrl) replaceLogoEverywhere(logoSourceUrl, position);
+    if (position === "header") {
+      updateDesignSettings({
+        ...logoPatch,
+        headerStripUrl: dataUrl,
+        header_strip_url: dataUrl,
+        headerStripDesign: state,
+        header_strip_design: state,
+        headerStripHeight: state.canvas.height,
+        stripBgColor: state.canvas.backgroundColor || designSettings?.stripBgColor || "#ffffff",
+        repeatHeaderOnAllPages: true,
+      });
+      return;
+    }
+    updateDesignSettings({
+      ...logoPatch,
+      footerStripUrl: dataUrl,
+      footer_strip_url: dataUrl,
+      footerStripDesign: state,
+      footer_strip_design: state,
+      footerStripHeight: state.canvas.height,
+      stripBgColor: state.canvas.backgroundColor || designSettings?.stripBgColor || "#ffffff",
+      repeatFooterOnAllPages: true,
     });
   };
 
@@ -461,6 +574,17 @@ export default function FlowWorkspaceTab({
                 <ImagePlus className="h-3.5 w-3.5" />
                 העלה עליון
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1 px-2 text-xs"
+                onClick={() => setDesignerPosition("header")}
+                title="עיצוב מתקדם לסטריפ העליון"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                עצב
+              </Button>
               {(designSettings?.headerStripUrl || designSettings?.header_strip_url) && (
                 <Button
                   type="button"
@@ -502,6 +626,17 @@ export default function FlowWorkspaceTab({
               >
                 <ImagePlus className="h-3.5 w-3.5" />
                 העלה תחתון
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1 px-2 text-xs"
+                onClick={() => setDesignerPosition("footer")}
+                title="עיצוב מתקדם לסטריפ התחתון"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                עצב
               </Button>
               {(designSettings?.footerStripUrl || designSettings?.footer_strip_url) && (
                 <Button
@@ -730,6 +865,17 @@ export default function FlowWorkspaceTab({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {onDesignSettingsChange && designerPosition && (
+        <StripDesignerDialog
+          open={Boolean(designerPosition)}
+          position={designerPosition}
+          designSettings={designSettings}
+          onApply={applyDesignedStrip}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) setDesignerPosition(null);
+          }}
+        />
+      )}
     </Tabs>
   );
 }
