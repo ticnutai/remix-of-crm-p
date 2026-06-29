@@ -120,7 +120,7 @@ function ToolButton({
 }
 
 function Sep() {
-  return <div className="mx-0.5 h-5 w-px bg-border" />;
+  return <div className="mx-0.5 h-5 w-px shrink-0 bg-border" />;
 }
 
 export default function MenuBar({ editor, fields, onCreateField, toolbarActions }: Props) {
@@ -516,7 +516,7 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
   return (
     <TooltipProvider delayDuration={250}>
       <div className="border-b bg-background" dir="rtl">
-        <div className="flex max-h-[72px] flex-wrap items-center gap-1 overflow-y-auto px-2 py-1.5">
+        <div className="grid max-h-[72px] grid-flow-col auto-cols-max grid-rows-2 items-center gap-x-1 gap-y-1 overflow-x-auto overflow-y-hidden px-2 py-1.5">
           {toolbarActions && (
             <>
               {toolbarActions}
