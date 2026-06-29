@@ -150,7 +150,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     </div>`;
 
   return `<!doctype html>
-<html dir="rtl" lang="he">
+<html dir="rtl" lang="he" class="${hasHeaderStrip ? "flow-has-header-strip" : ""} ${hasFooterStrip ? "flow-has-footer-strip" : ""}">
 <head>
 <meta charset="utf-8" />
 <title>${esc(doc.title)}</title>
@@ -161,7 +161,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     margin: ${topMargin}mm 0mm ${bottomMargin}mm 0mm;
     @top-center { content: element(runHeader); }
     @bottom-center { content: element(runFooter); }
-    ${page.showPageNumbers ? `@bottom-left { content: counter(page) " / " counter(pages); font-family: ${branding.fontFamily}; font-size: 9pt; color: #888; }` : ""}
+    ${page.showPageNumbers && !hasFooterStrip ? `@bottom-left { content: counter(page) " / " counter(pages); font-family: ${branding.fontFamily}; font-size: 9pt; color: #888; }` : ""}
   }
 
   /* ===== Running elements (header/footer חוזרים בכל עמוד) ===== */
@@ -194,6 +194,12 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     object-fit: fill;
     object-position: center;
   }
+  .flow-has-header-strip .pagedjs_margin-top,
+  .flow-has-header-strip .pagedjs_margin-top-center {
+    grid-column: 1 / -1 !important;
+    width: var(--pagedjs-pagebox-width) !important;
+    max-width: none !important;
+  }
   .rh-name { font-weight: 700; color: ${branding.primaryColor}; font-size: 12pt; }
   .rh-sub  { color: #555; font-size: 9pt; }
 
@@ -221,6 +227,12 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     margin-right: auto;
     object-fit: fill;
     object-position: center;
+  }
+  .flow-has-footer-strip .pagedjs_margin-bottom,
+  .flow-has-footer-strip .pagedjs_margin-bottom-center {
+    grid-column: 1 / -1 !important;
+    width: var(--pagedjs-pagebox-width) !important;
+    max-width: none !important;
   }
 
   /* ===== Document body (זורם) ===== */
