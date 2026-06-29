@@ -59,7 +59,7 @@ const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?
   { key: "text", label: "טקסט", icon: Type },
   { key: "paragraph", label: "פסקה", icon: Pilcrow },
   { key: "insert", label: "הוספה", icon: PlusSquare },
-  { key: "fields", label: "שדות ופעולות", icon: Tag },
+  { key: "fields", label: "שדות", icon: Tag },
 ];
 
 const FONT_FAMILIES = [
@@ -446,7 +446,7 @@ export default function MenuBar({ editor, fields, onCreateField }: Props) {
             title="הוסף שדה דינמי"
           >
             <Tag className="h-3.5 w-3.5" />
-            הוסף שדה
+            שדה
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="max-h-80 w-56 overflow-auto">
@@ -515,8 +515,7 @@ export default function MenuBar({ editor, fields, onCreateField }: Props) {
   return (
     <TooltipProvider delayDuration={250}>
       <div className="border-b bg-background" dir="rtl">
-        {/* שורה 1: טאבים */}
-        <div className="flex items-center gap-1 px-2 pt-1.5">
+        <div className="flex max-h-[72px] flex-wrap items-center gap-1 overflow-y-auto px-2 py-1.5">
           {TABS.map((t) => {
             const Icon = t.icon;
             const active = tab === t.key;
@@ -526,10 +525,10 @@ export default function MenuBar({ editor, fields, onCreateField }: Props) {
                 type="button"
                 onClick={() => setTab(t.key)}
                 className={cn(
-                  "inline-flex h-7 items-center gap-1.5 rounded-t-md border-b-2 px-3 text-xs font-medium transition-colors",
+                  "inline-flex h-8 shrink-0 items-center gap-1 rounded-md border px-2 text-xs font-medium transition-colors",
                   active
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -537,10 +536,8 @@ export default function MenuBar({ editor, fields, onCreateField }: Props) {
               </button>
             );
           })}
-        </div>
 
-        {/* שורה 2: כלים של הטאב הפעיל */}
-        <div className="flex min-h-[40px] flex-wrap items-center gap-0.5 border-t bg-muted/30 px-2 py-1">
+          <Sep />
           {tab === "text" && renderText()}
           {tab === "paragraph" && renderParagraph()}
           {tab === "insert" && renderInsert()}
