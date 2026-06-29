@@ -154,7 +154,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   /* ===== Paged Media setup ===== */
   @page {
     size: ${pageSizeCss(page)};
-    margin: ${topMargin}mm ${m.right}mm ${bottomMargin}mm ${m.left}mm;
+    margin: ${topMargin}mm 0mm ${bottomMargin}mm 0mm;
     @top-center { content: element(runHeader); }
     @bottom-center { content: element(runFooter); }
     ${page.showPageNumbers ? `@bottom-left { content: counter(page) " / " counter(pages); font-family: ${branding.fontFamily}; font-size: 9pt; color: #888; }` : ""}
@@ -171,10 +171,10 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   .running-header img { max-height: 16mm; width: auto; }
   .running-header.strip {
     display: block;
-    width: calc(100% + ${m.left + m.right}mm);
+    width: 100%;
     height: ${headerStripMm}mm;
-    margin-left: -${m.left}mm;
-    margin-right: -${m.right}mm;
+    margin-left: 0;
+    margin-right: 0;
     overflow: hidden;
     padding: 0;
     border-bottom: 0;
@@ -200,10 +200,10 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     color: #666; font-size: 9pt; direction: rtl;
   }
   .running-footer.strip {
-    width: calc(100% + ${m.left + m.right}mm);
+    width: 100%;
     height: ${footerStripMm}mm;
-    margin-left: -${m.left}mm;
-    margin-right: -${m.right}mm;
+    margin-left: 0;
+    margin-right: 0;
     overflow: hidden;
     padding: 0;
     border-top: 0;
@@ -266,6 +266,8 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   .flow-doc {
     direction: rtl;
     text-align: right;
+    padding-left: ${m.left}mm;
+    padding-right: ${m.right}mm;
   }
 
   .flow-h { color: ${branding.primaryColor}; margin: 4mm 0 2mm; break-after: avoid; }
