@@ -635,7 +635,7 @@ export default function FlowEditor({
                 <EditorContent editor={editor} />
               </div>
             </ContextMenuTrigger>
-            <ContextMenuContent className="max-h-80 w-64 overflow-auto" dir="rtl">
+            <ContextMenuContent className="rtl max-h-80 w-64 overflow-auto">
               <ContextMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Tag className="h-3.5 w-3.5" />
                 הוסף שדה במקום הסמן
@@ -656,7 +656,7 @@ export default function FlowEditor({
                     <ContextMenuSubTrigger className="justify-between">
                       {group}
                     </ContextMenuSubTrigger>
-                    <ContextMenuSubContent className="max-h-72 w-56 overflow-auto" dir="rtl">
+                    <ContextMenuSubContent className="rtl max-h-72 w-56 overflow-auto">
                       {fields.map((field) => (
                         <ContextMenuItem
                           key={field.key}
