@@ -44,6 +44,16 @@ const storageKey = (id?: string) => `flow-edit:${id || "untitled"}:v2`;
 const styleKey = (id?: string) => `flow-edit:${id || "untitled"}:preserveStyles`;
 const presetKey = (id?: string) => `flow-edit:${id || "untitled"}:presetId`;
 const pageKey = (id?: string) => `flow-edit:${id || "untitled"}:pageSetup`;
+const densityKey = "flow-edit:density";
+
+type Density = "compact" | "standard" | "full";
+const DENSITY_CYCLE: Density[] = ["compact", "standard", "full"];
+const DENSITY_LABEL: Record<Density, string> = {
+  compact: "תצוגה קומפקטית",
+  standard: "תצוגה רגילה",
+  full: "תצוגה מלאה",
+};
+
 
 const DEFAULT_PAGE_SETUP: FlowPageSetup = {
   size: "A4",
