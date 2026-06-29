@@ -8842,10 +8842,10 @@ ${tbAt('footer')}
             <TooltipProvider delayDuration={200}>
               <TabsList
                 className={cn(
-                  "bg-transparent gap-2 flex-wrap",
+                  "bg-transparent flex-wrap",
                   tabDisplayMode === "stacked" || tabDisplayMode === "twoRows"
-                    ? "h-auto py-1"
-                    : "h-12"
+                    ? "h-auto py-0.5 gap-0.5"
+                    : "h-12 gap-2"
                 )}
               >
                 {tabConfig
@@ -8853,6 +8853,10 @@ ${tbAt('footer')}
                   .map((t) => {
                     const meta = TAB_META[t.value];
                     const Icon = meta.icon;
+                    const displayText =
+                      tabDisplayMode === "twoRows" || tabDisplayMode === "stacked"
+                        ? meta.shortLabel
+                        : meta.label;
                     const trigger = (
                       <TabsTrigger
                         key={t.value}
@@ -8861,9 +8865,9 @@ ${tbAt('footer')}
                           tabDisplayMode === "iconsOnly"
                             ? `${meta.activeClass} !w-9 !h-9 !p-0 justify-center`
                             : tabDisplayMode === "stacked"
-                              ? `${meta.activeClass} flex-col px-2 py-1 text-xs h-auto leading-tight`
+                              ? `${meta.activeClass} flex-col px-1.5 py-0.5 text-[11px] h-auto leading-tight`
                               : tabDisplayMode === "twoRows"
-                                ? `${meta.activeClass} px-2 py-1 text-xs h-auto leading-tight inline-flex items-center`
+                                ? `${meta.activeClass} px-1.5 py-0.5 text-[11px] h-7 leading-none inline-flex items-center whitespace-nowrap`
                                 : meta.activeClass
                         }
                         aria-label={meta.label}
@@ -8873,13 +8877,13 @@ ${tbAt('footer')}
                             tabDisplayMode === "iconsOnly"
                               ? "h-4 w-4"
                               : tabDisplayMode === "stacked"
-                                ? "h-4 w-4 mb-0.5"
+                                ? "h-3.5 w-3.5 mb-0.5"
                                 : tabDisplayMode === "twoRows"
-                                  ? "h-3.5 w-3.5 ml-1.5"
+                                  ? "h-3 w-3 ml-1"
                                   : "h-4 w-4 ml-2"
                           }
                         />
-                        {tabDisplayMode !== "iconsOnly" && meta.label}
+                        {tabDisplayMode !== "iconsOnly" && displayText}
                       </TabsTrigger>
                     );
                     if (tabDisplayMode === "full") return trigger;
@@ -8891,6 +8895,7 @@ ${tbAt('footer')}
                     );
                   })}
               </TabsList>
+
             </TooltipProvider>
             <div className="flex items-center gap-1 shrink-0">
               <TooltipProvider delayDuration={200}>
