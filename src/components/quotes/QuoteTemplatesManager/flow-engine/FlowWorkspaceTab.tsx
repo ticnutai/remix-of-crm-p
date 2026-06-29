@@ -37,6 +37,7 @@ interface Props {
   projectDetails?: any;
   designSettings?: any;
   onDesignSettingsChange?: React.Dispatch<React.SetStateAction<any>>;
+  workspaceActions?: React.ReactNode;
 }
 
 const storageKey = (id?: string) => `flow-edit:${id || "untitled"}:v2`;
@@ -140,6 +141,7 @@ export default function FlowWorkspaceTab({
   projectDetails,
   designSettings,
   onDesignSettingsChange,
+  workspaceActions,
 }: Props) {
   // toggle: שמירת עיצוב מקורי מהתבנית (off = הזרימה הקיימת, on = שכבה 1)
   const [preserveStyles, setPreserveStyles] = useState<boolean>(() => {
@@ -807,6 +809,10 @@ export default function FlowWorkspaceTab({
         <Sparkles className="h-3.5 w-3.5 text-primary" />
         <span className="text-xs font-medium">Flow</span>
       </div>
+
+      {workspaceActions}
+
+      {workspaceActions && <span className="h-5 w-px shrink-0 bg-border" />}
 
       <TabsList className="!h-8 !min-h-0 !w-auto shrink-0 p-0.5">
         <TabsTrigger value="edit" className="h-7 gap-1 px-2 text-xs">
