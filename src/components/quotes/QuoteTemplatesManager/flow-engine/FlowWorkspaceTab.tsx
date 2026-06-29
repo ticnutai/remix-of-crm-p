@@ -17,7 +17,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Cloud, Eye, ImagePlus, Loader2, Pencil, RotateCcw, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
+import { Cloud, Eye, ImagePlus, Loader2, Pencil, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Settings2, LayoutPanelTop } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { QuoteTemplate } from "../types";
