@@ -46,6 +46,7 @@ interface Props {
   designSettings?: any;
   onDesignSettingsChange?: (patch: Record<string, any>) => void;
   projectDetails?: ProjectTokenData;
+  toolbarActions?: React.ReactNode;
 }
 
 const PAGE_SIZES_MM: Record<string, { width: number; height: number }> = {
@@ -273,6 +274,7 @@ export default function FlowEditor({
   designSettings,
   onDesignSettingsChange,
   projectDetails,
+  toolbarActions,
 }: Props) {
   const debounceRef = useRef<number | null>(null);
   const dragRef = useRef<{
@@ -596,6 +598,7 @@ export default function FlowEditor({
         editor={editor}
         fields={dynamicFields}
         onCreateField={() => setCreateFieldOpen(true)}
+        toolbarActions={toolbarActions}
       />
       <BubbleToolbar editor={editor} />
       <CreateFieldDialog
