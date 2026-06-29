@@ -656,7 +656,7 @@ export default function FlowEditor({
                     <ContextMenuSubTrigger className="justify-between">
                       {group}
                     </ContextMenuSubTrigger>
-                    <ContextMenuSubContent className="max-h-72 w-56 overflow-auto" dir="rtl">
+                    <ContextMenuSubContent className="rtl max-h-72 w-56 overflow-auto">
                       {fields.map((field) => (
                         <ContextMenuItem
                           key={field.key}
