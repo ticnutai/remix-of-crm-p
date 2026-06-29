@@ -51,6 +51,7 @@ interface Props {
   editor: Editor | null;
   fields?: DynamicFieldDefinition[];
   onCreateField?: () => void;
+  toolbarActions?: React.ReactNode;
 }
 
 type TabKey = "text" | "paragraph" | "insert" | "fields";
@@ -122,7 +123,7 @@ function Sep() {
   return <div className="mx-0.5 h-5 w-px bg-border" />;
 }
 
-export default function MenuBar({ editor, fields, onCreateField }: Props) {
+export default function MenuBar({ editor, fields, onCreateField, toolbarActions }: Props) {
   const [tab, setTab] = useState<TabKey>("text");
   const [fieldsOpen, setFieldsOpen] = useState(false);
   if (!editor) return null;
@@ -516,6 +517,13 @@ export default function MenuBar({ editor, fields, onCreateField }: Props) {
     <TooltipProvider delayDuration={250}>
       <div className="border-b bg-background" dir="rtl">
         <div className="flex max-h-[72px] flex-wrap items-center gap-1 overflow-y-auto px-2 py-1.5">
+          {toolbarActions && (
+            <>
+              {toolbarActions}
+              <Sep />
+            </>
+          )}
+
           {TABS.map((t) => {
             const Icon = t.icon;
             const active = tab === t.key;
