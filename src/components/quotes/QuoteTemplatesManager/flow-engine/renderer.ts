@@ -114,6 +114,8 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   const hasFooterStrip = Boolean(branding.footerStripUrl);
   const headerStripMm = Math.max(8, Math.round((Number(branding.headerStripHeight) || 150) * 0.264583));
   const footerStripMm = Math.max(8, Math.round((Number(branding.footerStripHeight) || 90) * 0.264583));
+  const headerStripWidthPercent = Math.max(20, Math.min(100, Math.round(Number(branding.headerStripWidthPercent) || 100)));
+  const footerStripWidthPercent = Math.max(20, Math.min(100, Math.round(Number(branding.footerStripWidthPercent) || 100)));
   const topMargin = Math.max(m.top, hasHeaderStrip ? headerStripMm + 6 : m.top);
   const bottomMargin = Math.max(m.bottom, hasFooterStrip ? footerStripMm + 5 : m.bottom);
   const stripBgColor = branding.stripBgColor || "#ffffff";
@@ -169,7 +171,10 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   .running-header img { max-height: 16mm; width: auto; }
   .running-header.strip {
     display: block;
+    width: calc(100% + ${m.left + m.right}mm);
     height: ${headerStripMm}mm;
+    margin-left: -${m.left}mm;
+    margin-right: -${m.right}mm;
     overflow: hidden;
     padding: 0;
     border-bottom: 0;
@@ -177,10 +182,12 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   }
   .running-header.strip .strip-img {
     display: block;
-    width: 100%;
+    width: ${headerStripWidthPercent}%;
     height: ${headerStripMm}mm;
+    margin-left: auto;
+    margin-right: auto;
     max-height: none;
-    object-fit: cover;
+    object-fit: fill;
     object-position: center;
   }
   .rh-name { font-weight: 700; color: ${branding.primaryColor}; font-size: 12pt; }
@@ -193,7 +200,10 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     color: #666; font-size: 9pt; direction: rtl;
   }
   .running-footer.strip {
+    width: calc(100% + ${m.left + m.right}mm);
     height: ${footerStripMm}mm;
+    margin-left: -${m.left}mm;
+    margin-right: -${m.right}mm;
     overflow: hidden;
     padding: 0;
     border-top: 0;
@@ -201,9 +211,11 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   }
   .running-footer.strip .strip-img {
     display: block;
-    width: 100%;
+    width: ${footerStripWidthPercent}%;
     height: ${footerStripMm}mm;
-    object-fit: cover;
+    margin-left: auto;
+    margin-right: auto;
+    object-fit: fill;
     object-position: center;
   }
 

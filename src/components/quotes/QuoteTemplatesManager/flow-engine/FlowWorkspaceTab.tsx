@@ -181,6 +181,24 @@ export default function FlowWorkspaceTab({
     0,
     120,
   );
+  const headerStripWidthPercent = boundedNumber(
+    designSettings?.headerStripWidthPercent ??
+      designSettings?.header_strip_width_percent ??
+      designSettings?.stripWidth ??
+      designSettings?.strip_width,
+    100,
+    20,
+    100,
+  );
+  const footerStripWidthPercent = boundedNumber(
+    designSettings?.footerStripWidthPercent ??
+      designSettings?.footer_strip_width_percent ??
+      designSettings?.stripWidth ??
+      designSettings?.strip_width,
+    100,
+    20,
+    100,
+  );
 
   const updatePageSetup = (patch: Partial<FlowPageSetup>) => {
     setPageSetup((prev) => {
@@ -234,6 +252,8 @@ export default function FlowWorkspaceTab({
           header_strip_design: null,
           repeatHeaderOnAllPages: true,
           headerStripHeight: designSettings?.headerStripHeight || 150,
+          headerStripWidthPercent: headerStripWidthPercent || 100,
+          header_strip_width_percent: headerStripWidthPercent || 100,
           stripBgColor: designSettings?.stripBgColor || "#ffffff",
         });
       } else {
@@ -245,6 +265,8 @@ export default function FlowWorkspaceTab({
           footer_strip_design: null,
           repeatFooterOnAllPages: true,
           footerStripHeight: designSettings?.footerStripHeight || 90,
+          footerStripWidthPercent: footerStripWidthPercent || 100,
+          footer_strip_width_percent: footerStripWidthPercent || 100,
           stripBgColor: designSettings?.stripBgColor || "#ffffff",
         });
       }
@@ -293,6 +315,8 @@ export default function FlowWorkspaceTab({
         headerStripDesign: state,
         header_strip_design: state,
         headerStripHeight: state.canvas.height,
+        headerStripWidthPercent: headerStripWidthPercent || 100,
+        header_strip_width_percent: headerStripWidthPercent || 100,
         stripBgColor: state.canvas.backgroundColor || designSettings?.stripBgColor || "#ffffff",
         repeatHeaderOnAllPages: true,
       });
@@ -305,6 +329,8 @@ export default function FlowWorkspaceTab({
       footerStripDesign: state,
       footer_strip_design: state,
       footerStripHeight: state.canvas.height,
+      footerStripWidthPercent: footerStripWidthPercent || 100,
+      footer_strip_width_percent: footerStripWidthPercent || 100,
       stripBgColor: state.canvas.backgroundColor || designSettings?.stripBgColor || "#ffffff",
       repeatFooterOnAllPages: true,
     });
@@ -607,6 +633,22 @@ export default function FlowWorkspaceTab({
                 title="גובה סטריפ עליון בפיקסלים"
               />
               <span className="text-[10px] text-muted-foreground">px</span>
+              <input
+                className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
+                type="number"
+                min={20}
+                max={100}
+                value={headerStripWidthPercent}
+                onChange={(e) => {
+                  const next = boundedNumber(e.target.value, 100, 20, 100);
+                  updateDesignSettings({
+                    headerStripWidthPercent: next,
+                    header_strip_width_percent: next,
+                  });
+                }}
+                title="רוחב סטריפ עליון באחוזים מרוחב הדף"
+              />
+              <span className="text-[10px] text-muted-foreground">% רוחב עליון</span>
               <span className="mx-1 h-5 w-px bg-border" />
               <label className="flex items-center gap-1 text-xs">
                 <input
@@ -660,6 +702,22 @@ export default function FlowWorkspaceTab({
                 title="גובה סטריפ תחתון בפיקסלים"
               />
               <span className="text-[10px] text-muted-foreground">px</span>
+              <input
+                className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
+                type="number"
+                min={20}
+                max={100}
+                value={footerStripWidthPercent}
+                onChange={(e) => {
+                  const next = boundedNumber(e.target.value, 100, 20, 100);
+                  updateDesignSettings({
+                    footerStripWidthPercent: next,
+                    footer_strip_width_percent: next,
+                  });
+                }}
+                title="רוחב סטריפ תחתון באחוזים מרוחב הדף"
+              />
+              <span className="text-[10px] text-muted-foreground">% רוחב תחתון</span>
               <input
                 className="h-7 w-8 cursor-pointer rounded border bg-background p-0.5"
                 type="color"

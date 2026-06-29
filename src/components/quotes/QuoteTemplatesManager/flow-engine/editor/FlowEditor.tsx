@@ -133,6 +133,18 @@ function getStripSettings(templateDesignSettings?: any, designSettings?: any) {
     bgColor: firstValue(ds.stripBgColor, ds.strip_bg_color, "#ffffff") || "#ffffff",
     headerHeight: Math.max(24, Math.round(Number(ds.headerStripHeight) || 150)),
     footerHeight: Math.max(24, Math.round(Number(ds.footerStripHeight) || 90)),
+    headerWidthPercent: numberValue(
+      firstValue(ds.headerStripWidthPercent, ds.header_strip_width_percent, ds.stripWidth, ds.strip_width),
+      100,
+      20,
+      100,
+    ),
+    footerWidthPercent: numberValue(
+      firstValue(ds.footerStripWidthPercent, ds.footer_strip_width_percent, ds.stripWidth, ds.strip_width),
+      100,
+      20,
+      100,
+    ),
     headerContentGap: numberValue(
       firstValue(ds.headerStripContentGapPx, ds.header_content_gap_px),
       DEFAULT_STRIP_CONTENT_GAP_PX,
@@ -168,6 +180,7 @@ function makeStripHtml(
   position: "header" | "footer",
   url: unknown,
   height: number,
+  widthPercent: number,
   bgColor: string,
   canResize: boolean,
 ) {
@@ -185,7 +198,7 @@ function makeStripHtml(
     <div class="flow-page-strip-frame flow-page-strip-${position}" contenteditable="false" style="height:${Math.max(
       24,
       Math.round(height),
-    )}px;background-color:${escapeAttr(bgColor)};">
+    )}px;width:${Math.max(20, Math.min(100, Math.round(widthPercent)))}%;background-color:${escapeAttr(bgColor)};">
       <img class="flow-page-strip-img" src="${escapeAttr(url)}" alt="" draggable="false" />
       ${resizeHandle}
     </div>
@@ -228,6 +241,7 @@ function buildPaginationOptions({
           "header",
           stripSettings.headerUrl,
           stripSettings.headerHeight,
+          stripSettings.headerWidthPercent,
           stripSettings.bgColor,
           canResizeStrips,
         )
@@ -238,6 +252,7 @@ function buildPaginationOptions({
           "footer",
           stripSettings.footerUrl,
           stripSettings.footerHeight,
+          stripSettings.footerWidthPercent,
           stripSettings.bgColor,
           canResizeStrips,
         )
@@ -297,6 +312,8 @@ export default function FlowEditor({
       stripSettings.bgColor,
       stripSettings.headerHeight,
       stripSettings.footerHeight,
+      stripSettings.headerWidthPercent,
+      stripSettings.footerWidthPercent,
       stripSettings.headerContentGap,
       stripSettings.footerContentGap,
       stripSettings.pageGap,
@@ -699,7 +716,8 @@ export default function FlowEditor({
           position: relative;
           overflow: visible !important;
         }
-        .flow-editor-content.rm-with-pagination .rm-first-page-header .rm-page-header-content {
+        .flow-editor-content.rm-with-pagination .rm-page-header-content,
+        .flow-editor-content.rm-with-pagination .rm-page-footer-content {
           width: calc(100% + var(--rm-margin-left) + var(--rm-margin-right)) !important;
           margin-left: calc(-1 * var(--rm-margin-left));
           margin-right: calc(-1 * var(--rm-margin-right));
@@ -727,6 +745,8 @@ export default function FlowEditor({
         .flow-page-strip-frame {
           position: relative;
           width: 100%;
+          margin-left: auto !important;
+          margin-right: auto !important;
           overflow: hidden;
           border-top: 1px solid rgba(216, 172, 39, 0.34);
           border-bottom: 1px solid rgba(216, 172, 39, 0.34);
