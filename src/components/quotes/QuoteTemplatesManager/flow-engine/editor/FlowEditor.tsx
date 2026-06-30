@@ -936,7 +936,7 @@ export default function FlowEditor({
         .flow-editor-strip-handle-top {
           top: -9px;
         }
-        .flow-editor-content h1 { font-size: ${preset?.headings.h1.size || "1.6rem"}; font-weight: ${preset?.headings.h1.weight || "700"}; margin: 1rem 0 0.5rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; border-bottom: 2px solid ${preset?.colors.accent || "hsl(var(--accent))"}; padding-bottom: .3rem; font-family: ${preset?.fonts.heading || "inherit"}; }
+        .flow-editor-content h1 { font-size: ${preset?.headings.h1.size || "1.6rem"}; font-weight: ${preset?.headings.h1.weight || "700"}; margin: 1rem 0 0.5rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; padding-bottom: .3rem; font-family: ${preset?.fonts.heading || "inherit"}; }
         .flow-editor-content h2 { font-size: ${preset?.headings.h2.size || "1.3rem"}; font-weight: ${preset?.headings.h2.weight || "700"}; margin: .9rem 0 .4rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; font-family: ${preset?.fonts.heading || "inherit"}; }
         .flow-editor-content h3 { font-size: 1.1rem; font-weight: 600; margin: .7rem 0 .3rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; }
         .flow-editor-content p { margin: 0 0 ${preset?.spacing.paragraphGap || ".5rem"}; }
