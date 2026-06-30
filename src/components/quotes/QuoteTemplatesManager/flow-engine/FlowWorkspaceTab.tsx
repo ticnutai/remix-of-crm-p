@@ -463,6 +463,15 @@ export default function FlowWorkspaceTab({
     setHtml(baseHtml);
   };
 
+  const setPaymentsLayout = (value: PaymentsLayout) => {
+    setPaymentsLayoutState(value);
+    try {
+      localStorage.setItem(paymentsLayoutKey(template.id), value);
+    } catch {
+      /* ignore */
+    }
+  };
+
   const handleTogglePreserve = (value: boolean) => {
     // החלפת מצב משכתבת את ה-base וגם את הטיוטה — לכן מאשרים אם יש שינויים
     const hasDraft = (() => {
