@@ -369,6 +369,12 @@ export function serializeTemplate(
       },
     ];
 
+    // סיכומים: סה"כ אחוזים, סה"כ סכום, סה"כ מע"מ, סה"כ כולל
+    const totalPct = rowsCalc.reduce((a, r) => a + (Number(r.p.percentage) || 0), 0);
+    const totalAmount = rowsCalc.reduce((a, r) => a + r.amount, 0);
+    const totalWithVat = rowsCalc.reduce((a, r) => a + r.withVat, 0);
+    const totalVat = totalWithVat - totalAmount;
+
     if (layout === "list" || layout === "both") {
       paymentBlocks.push({
         type: "list",
@@ -416,7 +422,42 @@ export function serializeTemplate(
         }
         return [String(idx + 1), String(p.description || ""), `${p.percentage}%`];
       });
+      // שורת סיכום
+      if (basePrice > 0 && showVat) {
+        rows.push(["", 'סה"כ', `${totalPct}%`, fmt(totalAmount), "", fmt(totalWithVat)]);
+      } else if (basePrice > 0) {
+        rows.push(["", 'סה"כ', `${totalPct}%`, fmt(totalAmount)]);
+      } else {
+        rows.push(["", 'סה"כ', `${totalPct}%`]);
+      }
       paymentBlocks.push({ type: "table", headers, rows, breakable: true });
+    }
+
+    // סיכום מפורט (תמיד מופיע אחרי הרשימה/טבלה כשיש מחיר)
+    if (basePrice > 0) {
+      if (showVat) {
+        paymentBlocks.push({
+          type: "paragraph",
+          align: "left",
+          content: [
+            { type: "text", text: 'סה"כ לפני מע״מ: ', bold: true },
+            { type: "text", text: `${fmt(totalAmount)}   ` },
+            { type: "text", text: 'מע״מ: ', bold: true },
+            { type: "text", text: `${fmt(totalVat)}   ` },
+            { type: "text", text: 'סה"כ כולל מע״מ: ', bold: true },
+            { type: "text", text: fmt(totalWithVat) },
+          ],
+        });
+      } else {
+        paymentBlocks.push({
+          type: "paragraph",
+          align: "left",
+          content: [
+            { type: "text", text: 'סה"כ: ', bold: true },
+            { type: "text", text: fmt(totalAmount) },
+          ],
+        });
+      }
     }
 
     sections.push({
