@@ -793,8 +793,11 @@ export default function FlowEditor({
         }
         .flow-editor-content.rm-with-pagination .rm-pagination-gap {
           border: 0 !important;
-          background: transparent !important;
+          background: rgb(226 232 240 / 0.9) !important;
+          box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.08), inset 0 -1px 0 rgba(15, 23, 42, 0.08);
           position: relative;
+          margin-left: -1px;
+          margin-right: -1px;
         }
         .flow-editor-content.rm-with-pagination .rm-pagination-gap::before {
           content: "";
