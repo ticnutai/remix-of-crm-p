@@ -35,6 +35,8 @@ export interface SerializeOptions {
    * (`{type:"field"}`) כדי שהעורך יחליף אותם בערך החי מ"פרטי פרויקט".
    */
   keepFieldsAsPlaceholders?: boolean;
+  /** תצורת תצוגת לוח התשלומים: רשימה (ברירת מחדל) / טבלה / גם וגם. */
+  paymentsLayout?: "list" | "table" | "both";
 }
 
 // מיפוי טוקנים בעברית (מסוגריים מרובעים) למפתחות שדה דינמי.
@@ -349,43 +351,81 @@ export function serializeTemplate(
     const showVat = template.show_vat !== false;
     const fmt = (n: number) =>
       `₪${Math.round(n).toLocaleString("he-IL")}`;
+    const layout: "list" | "table" | "both" = opts?.paymentsLayout || "list";
+
+    const rowsCalc = template.payment_schedule.map((p: any) => {
+      const amount = basePrice * (Number(p.percentage) || 0) / 100;
+      const vatRate =
+        p.useCustomVat && typeof p.vatRate === "number" ? p.vatRate : defaultVat;
+      const withVat = amount * (1 + vatRate / 100);
+      return { p, amount, vatRate, withVat };
+    });
+
+    const paymentBlocks: FlowBlock[] = [
+      {
+        type: "heading",
+        level: 2,
+        content: [{ type: "text", text: "לוח תשלומים" }],
+      },
+    ];
+
+    if (layout === "list" || layout === "both") {
+      paymentBlocks.push({
+        type: "list",
+        ordered: true,
+        items: rowsCalc.map(({ p, amount, vatRate, withVat }) => {
+          const inlines: FlowInline[] = [
+            { type: "text", text: `${p.percentage}% — `, bold: true },
+            ...textToInlines(p.description || "", data),
+          ];
+          if (basePrice > 0) {
+            const moneyText = showVat
+              ? ` — ${fmt(amount)} + מע״מ ${vatRate}% = ${fmt(withVat)}`
+              : ` — ${fmt(amount)}`;
+            inlines.push({ type: "text", text: moneyText });
+          }
+          return inlines;
+        }),
+      });
+    }
+
+    if (layout === "table" || layout === "both") {
+      const headers = basePrice > 0 && showVat
+        ? ["#", "תיאור", "אחוז", "סכום", "מע״מ", 'סה"כ']
+        : basePrice > 0
+        ? ["#", "תיאור", "אחוז", "סכום"]
+        : ["#", "תיאור", "אחוז"];
+      const rows = rowsCalc.map(({ p, amount, vatRate, withVat }, idx) => {
+        if (basePrice > 0 && showVat) {
+          return [
+            String(idx + 1),
+            String(p.description || ""),
+            `${p.percentage}%`,
+            fmt(amount),
+            `${vatRate}%`,
+            fmt(withVat),
+          ];
+        }
+        if (basePrice > 0) {
+          return [
+            String(idx + 1),
+            String(p.description || ""),
+            `${p.percentage}%`,
+            fmt(amount),
+          ];
+        }
+        return [String(idx + 1), String(p.description || ""), `${p.percentage}%`];
+      });
+      paymentBlocks.push({ type: "table", headers, rows, breakable: true });
+    }
 
     sections.push({
       id: "payments",
       keepTogether: true,
-      blocks: [
-        {
-          type: "heading",
-          level: 2,
-          content: [{ type: "text", text: "לוח תשלומים" }],
-        },
-        {
-          type: "list",
-          ordered: true,
-          items: template.payment_schedule.map((p: any) => {
-            const amount = basePrice * (Number(p.percentage) || 0) / 100;
-            const vatRate =
-              p.useCustomVat && typeof p.vatRate === "number"
-                ? p.vatRate
-                : defaultVat;
-            const withVat = amount * (1 + vatRate / 100);
-
-            const inlines: FlowInline[] = [
-              { type: "text", text: `${p.percentage}% — `, bold: true },
-              ...textToInlines(p.description || "", data),
-            ];
-            if (basePrice > 0) {
-              const moneyText = showVat
-                ? ` — ${fmt(amount)} + מע״מ ${vatRate}% = ${fmt(withVat)}`
-                : ` — ${fmt(amount)}`;
-              inlines.push({ type: "text", text: moneyText });
-            }
-            return inlines;
-          }),
-        },
-      ],
+      blocks: paymentBlocks,
     });
   }
+
 
   // 5. לוח זמנים
   if (template.timeline && template.timeline.length) {

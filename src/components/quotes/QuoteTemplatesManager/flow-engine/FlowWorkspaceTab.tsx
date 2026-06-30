@@ -43,6 +43,8 @@ interface Props {
 
 const storageKey = (id?: string) => `flow-edit:${id || "untitled"}:v2`;
 const styleKey = (id?: string) => `flow-edit:${id || "untitled"}:preserveStyles`;
+const paymentsLayoutKey = (id?: string) => `flow-edit:${id || "untitled"}:paymentsLayout`;
+type PaymentsLayout = "list" | "table" | "both";
 const presetKey = (id?: string) => `flow-edit:${id || "untitled"}:presetId`;
 const pageKey = (id?: string) => `flow-edit:${id || "untitled"}:pageSetup`;
 const DEFAULT_PAGE_SETUP: FlowPageSetup = {
@@ -150,6 +152,16 @@ export default function FlowWorkspaceTab({
       return localStorage.getItem(styleKey(template.id)) === "1";
     } catch {
       return false;
+    }
+  });
+
+  // תצוגת לוח התשלומים: רשימה / טבלה / גם וגם
+  const [paymentsLayout, setPaymentsLayoutState] = useState<PaymentsLayout>(() => {
+    try {
+      const v = localStorage.getItem(paymentsLayoutKey(template.id));
+      return v === "table" || v === "both" ? v : "list";
+    } catch {
+      return "list";
     }
   });
 
@@ -358,10 +370,15 @@ export default function FlowWorkspaceTab({
     }
 
     setPageSetup(loadPageSetup(template.id));
+    try {
+      const v = localStorage.getItem(paymentsLayoutKey(template.id));
+      setPaymentsLayoutState(v === "table" || v === "both" ? v : "list");
+    } catch {
+      setPaymentsLayoutState("list");
+    }
   }, [template.id]);
 
   const baseHtml = useMemo(() => {
-    // אם קיים override שנשמר ע"י "שמור + עדכן תבנית" — נטען אותו ישירות
     const override =
       (template as any)?.design_settings?.flowV2OverrideHtml ||
       (template as any)?.flowV2OverrideHtml ||
@@ -371,8 +388,9 @@ export default function FlowWorkspaceTab({
       preserveItemStyling: preserveStyles,
       projectDetails,
       keepFieldsAsPlaceholders: true,
+      paymentsLayout,
     });
-  }, [template, preserveStyles, projectDetails]);
+  }, [template, preserveStyles, projectDetails, paymentsLayout]);
 
   const [html, setHtml] = useState<string>(() => {
     try {
@@ -396,7 +414,10 @@ export default function FlowWorkspaceTab({
   // ===== סנכרון אוטומטי של "לוח תשלומים" מטאב "תוכן" לעורך =====
   // ברגע שמשתמש משנה את לוח התשלומים / מחיר בסיס / מע״מ בטאב תוכן —
   // מקטע התשלומים בעורך Flow מתעדכן מיידית, גם אם יש טיוטה שמורה.
-  const paySig = useMemo(() => paymentsSignature(template), [template]);
+  const paySig = useMemo(
+    () => paymentsSignature(template) + `|${paymentsLayout}`,
+    [template, paymentsLayout],
+  );
   const prevPaySigRef = useRef<string>(paySig);
   const firstRunRef = useRef(true);
   useEffect(() => {
@@ -411,6 +432,7 @@ export default function FlowWorkspaceTab({
       const next = syncPaymentsSection(prev, template, {
         preserveItemStyling: preserveStyles,
         projectDetails,
+        paymentsLayout,
       });
       if (next === prev) return prev;
       try {
@@ -420,7 +442,7 @@ export default function FlowWorkspaceTab({
       }
       return next;
     });
-  }, [paySig, template, preserveStyles, projectDetails]);
+  }, [paySig, template, preserveStyles, projectDetails, paymentsLayout]);
 
   const handleChange = (next: string) => {
     setHtml(next);
@@ -439,6 +461,15 @@ export default function FlowWorkspaceTab({
       /* ignore */
     }
     setHtml(baseHtml);
+  };
+
+  const setPaymentsLayout = (value: PaymentsLayout) => {
+    setPaymentsLayoutState(value);
+    try {
+      localStorage.setItem(paymentsLayoutKey(template.id), value);
+    } catch {
+      /* ignore */
+    }
   };
 
   const handleTogglePreserve = (value: boolean) => {
@@ -984,6 +1015,32 @@ export default function FlowWorkspaceTab({
             </div>
             <span className="h-5 w-px bg-border" />
             <PresetPicker selectedId={selectedPresetId} onSelect={handlePresetSelect} />
+            <span className="h-5 w-px bg-border" />
+            <div className="flex items-center gap-2">
+              <Label className="text-xs font-medium" title="כיצד יוצג לוח התשלומים בעורך וב-PDF">
+                לוח תשלומים
+              </Label>
+              <div className="flex rounded-md border border-border overflow-hidden">
+                {([
+                  { v: "list", l: "רשימה" },
+                  { v: "table", l: "טבלה" },
+                  { v: "both", l: "גם וגם" },
+                ] as Array<{ v: PaymentsLayout; l: string }>).map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => setPaymentsLayout(opt.v)}
+                    className={`px-2 py-1 text-xs transition-colors ${
+                      paymentsLayout === opt.v
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {opt.l}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
           {onDesignSettingsChange && renderStripsBlock()}
           {renderPageBlock()}
