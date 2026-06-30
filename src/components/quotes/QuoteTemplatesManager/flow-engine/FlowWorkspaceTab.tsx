@@ -989,9 +989,9 @@ export default function FlowWorkspaceTab({
       </Tooltip>
 
       <Popover>
-        <PopoverTrigger asChild>
-          <Tooltip>
-            <TooltipTrigger asChild>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
               <Button
                 type="button"
                 variant="outline"
@@ -1001,10 +1001,10 @@ export default function FlowWorkspaceTab({
               >
                 <Settings2 className="h-4 w-4" />
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>עיצוב · סטריפים · דף</TooltipContent>
-          </Tooltip>
-        </PopoverTrigger>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent>עיצוב · סטריפים · דף</TooltipContent>
+        </Tooltip>
         <PopoverContent align="end" sideOffset={6} className="w-[680px] max-w-[95vw] max-h-[70vh] overflow-auto p-3 space-y-3">
           <div className="text-xs font-medium text-muted-foreground">הגדרות מסמך</div>
           <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/40 px-2 py-2">
