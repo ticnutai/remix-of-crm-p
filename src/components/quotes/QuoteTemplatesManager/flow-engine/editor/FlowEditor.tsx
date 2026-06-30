@@ -12,6 +12,7 @@ import TableHeader from "@tiptap/extension-table-header";
 import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
 import { FontFamily } from "@tiptap/extension-font-family";
+import Link from "@tiptap/extension-link";
 import { PaginationPlus, type PaginationPlusOptions } from "tiptap-pagination-plus";
 import { Tag, Plus } from "lucide-react";
 import {
