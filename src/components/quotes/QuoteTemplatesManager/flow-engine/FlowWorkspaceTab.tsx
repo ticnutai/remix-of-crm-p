@@ -155,6 +155,16 @@ export default function FlowWorkspaceTab({
     }
   });
 
+  // תצוגת לוח התשלומים: רשימה / טבלה / גם וגם
+  const [paymentsLayout, setPaymentsLayoutState] = useState<PaymentsLayout>(() => {
+    try {
+      const v = localStorage.getItem(paymentsLayoutKey(template.id));
+      return v === "table" || v === "both" ? v : "list";
+    } catch {
+      return "list";
+    }
+  });
+
   // ערכת עיצוב נבחרת — נשמרת לפי תבנית
   const { presets } = usePresets();
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(() => {
