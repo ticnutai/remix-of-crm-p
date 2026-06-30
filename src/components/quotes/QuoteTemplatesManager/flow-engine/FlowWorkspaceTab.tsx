@@ -988,73 +988,103 @@ export default function FlowWorkspaceTab({
         <TooltipContent>אפס לתוכן התבנית המקורי</TooltipContent>
       </Tooltip>
 
+      {/* ===== Per-feature popovers: each icon+label opens its own panel ===== */}
+
+      {/* עיצוב — toggle preserve styles */}
+      <div className="flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-background px-2 h-8">
+        <Palette className="h-3.5 w-3.5 text-muted-foreground" />
+        <Label
+          htmlFor="preserve-styles"
+          className="cursor-pointer text-xs font-medium"
+          title="שמירת עיצוב מקורי מהתבנית"
+        >
+          עיצוב
+        </Label>
+        <Switch
+          id="preserve-styles"
+          checked={preserveStyles}
+          onCheckedChange={handleTogglePreserve}
+          className="scale-75"
+        />
+      </div>
+
+      {/* ערכות */}
       <Popover>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <PopoverTrigger asChild>
-              <Button
+        <PopoverTrigger asChild>
+          <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 gap-1 px-2 text-xs">
+            <Layers className="h-3.5 w-3.5" />
+            ערכות
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" sideOffset={6} dir="rtl" className="w-[320px] p-3">
+          <div className="mb-2 text-xs font-medium text-muted-foreground">ערכות עיצוב</div>
+          <PresetPicker selectedId={selectedPresetId} onSelect={handlePresetSelect} />
+        </PopoverContent>
+      </Popover>
+
+      {/* תשלומים */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 gap-1 px-2 text-xs">
+            <Receipt className="h-3.5 w-3.5" />
+            תשלומים
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" sideOffset={6} dir="rtl" className="w-[260px] p-3">
+          <div className="mb-2 text-xs font-medium text-muted-foreground">תצוגת לוח תשלומים</div>
+          <div className="flex rounded-md border border-border overflow-hidden">
+            {([
+              { v: "list", l: "רשימה" },
+              { v: "table", l: "טבלה" },
+              { v: "both", l: "גם וגם" },
+            ] as Array<{ v: PaymentsLayout; l: string }>).map((opt) => (
+              <button
+                key={opt.v}
                 type="button"
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 shrink-0"
-                aria-label="הגדרות מסמך"
+                onClick={() => setPaymentsLayout(opt.v)}
+                className={`flex-1 px-2 py-1.5 text-xs transition-colors ${
+                  paymentsLayout === opt.v
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background text-foreground hover:bg-muted"
+                }`}
               >
-                <Settings2 className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-          </TooltipTrigger>
-          <TooltipContent>עיצוב · סטריפים · דף</TooltipContent>
-        </Tooltip>
-        <PopoverContent align="end" sideOffset={6} className="w-[680px] max-w-[95vw] max-h-[70vh] overflow-auto p-3 space-y-3">
-          <div className="text-xs font-medium text-muted-foreground">הגדרות מסמך</div>
-          <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/40 px-2 py-2">
-            <div className="flex items-center gap-2">
-              <Switch
-                id="preserve-styles"
-                checked={preserveStyles}
-                onCheckedChange={handleTogglePreserve}
-              />
-              <Label
-                htmlFor="preserve-styles"
-                className="cursor-pointer text-xs font-medium"
-                title="טוען צבעים, פונטים, גדלים והדגשות שהוגדרו בעורך התבניות המקורי"
-              >
-                עיצוב
-              </Label>
-            </div>
-            <span className="h-5 w-px bg-border" />
-            <PresetPicker selectedId={selectedPresetId} onSelect={handlePresetSelect} />
-            <span className="h-5 w-px bg-border" />
-            <div className="flex items-center gap-2">
-              <Label className="text-xs font-medium" title="כיצד יוצג לוח התשלומים בעורך וב-PDF">
-                לוח תשלומים
-              </Label>
-              <div className="flex rounded-md border border-border overflow-hidden">
-                {([
-                  { v: "list", l: "רשימה" },
-                  { v: "table", l: "טבלה" },
-                  { v: "both", l: "גם וגם" },
-                ] as Array<{ v: PaymentsLayout; l: string }>).map((opt) => (
-                  <button
-                    key={opt.v}
-                    type="button"
-                    onClick={() => setPaymentsLayout(opt.v)}
-                    className={`px-2 py-1 text-xs transition-colors ${
-                      paymentsLayout === opt.v
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-background text-foreground hover:bg-muted"
-                    }`}
-                  >
-                    {opt.l}
-                  </button>
-                ))}
-              </div>
-            </div>
+                {opt.l}
+              </button>
+            ))}
           </div>
-          {onDesignSettingsChange && renderStripsBlock()}
+        </PopoverContent>
+      </Popover>
+
+      {/* סטריפים */}
+      {onDesignSettingsChange && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 gap-1 px-2 text-xs">
+              <Rows3 className="h-3.5 w-3.5" />
+              סטריפים
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" sideOffset={6} dir="rtl" className="w-[680px] max-w-[95vw] max-h-[70vh] overflow-auto p-3">
+            <div className="mb-2 text-xs font-medium text-muted-foreground">סטריפים וגבולות כתיבה</div>
+            {renderStripsBlock()}
+          </PopoverContent>
+        </Popover>
+      )}
+
+      {/* דף */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 gap-1 px-2 text-xs">
+            <FileText className="h-3.5 w-3.5" />
+            דף
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" sideOffset={6} dir="rtl" className="w-[360px] p-3">
+          <div className="mb-2 text-xs font-medium text-muted-foreground">גודל וכיוון דף</div>
           {renderPageBlock()}
         </PopoverContent>
       </Popover>
+
     </>
   );
 
