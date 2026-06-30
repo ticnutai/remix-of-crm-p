@@ -3,6 +3,23 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
+// Hebrew fonts for quote templates editor
+import "@fontsource/david-libre/400.css";
+import "@fontsource/david-libre/700.css";
+import "@fontsource/frank-ruhl-libre/400.css";
+import "@fontsource/frank-ruhl-libre/700.css";
+import "@fontsource/alef/400.css";
+import "@fontsource/alef/700.css";
+import "@fontsource/bellefair/400.css";
+import "@fontsource/miriam-libre/400.css";
+import "@fontsource/miriam-libre/700.css";
+import "@fontsource/secular-one/400.css";
+import "@fontsource/suez-one/400.css";
+import "@fontsource/noto-serif-hebrew/400.css";
+import "@fontsource/noto-serif-hebrew/700.css";
+import "@fontsource/noto-sans-hebrew/400.css";
+import "@fontsource/noto-sans-hebrew/700.css";
+
 // Some third-party libs still read process.env in the browser.
 if (!(globalThis as any).process) {
   (globalThis as any).process = { env: { NODE_ENV: import.meta.env.MODE } };
