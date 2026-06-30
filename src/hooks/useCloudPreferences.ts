@@ -124,6 +124,11 @@ const SYNC_KEYS = [
   // Quote template text-box custom templates & colors
   "text-box-custom-templates",
   "text-box-custom-colors",
+
+  // Quote template editor — tabs order/visibility & display mode
+  "lov-html-editor-tabs-cfg-v1",
+  "qt-editor-tab-display-mode",
+  "qt-editor-flow-sub-tab",
 ] as const;
 
 // Additional prefixes for dynamic keys (like dashboard-dynamic-stats-1, dashboard-dynamic-stats-2)
