@@ -722,9 +722,20 @@ export default function FlowEditor({
         }
         .flow-editor-content.rm-with-pagination .rm-page-header-content,
         .flow-editor-content.rm-with-pagination .rm-page-footer-content {
-          width: calc(100% + var(--rm-margin-left) + var(--rm-margin-right)) !important;
-          margin-left: calc(-1 * var(--rm-margin-left));
-          margin-right: calc(-1 * var(--rm-margin-right));
+          width: 100% !important;
+          max-width: 100% !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          box-sizing: border-box;
+          overflow: hidden;
+        }
+        .flow-editor-content.rm-with-pagination .flow-page-strip-frame {
+          width: 100% !important;
+          max-width: 100% !important;
+        }
+        .flow-editor-content.rm-with-pagination .flow-page-strip-img {
+          width: 100% !important;
+          max-width: 100% !important;
         }
         .flow-editor-content.rm-with-pagination .rm-page-header-left,
         .flow-editor-content.rm-with-pagination .rm-page-footer-left {
