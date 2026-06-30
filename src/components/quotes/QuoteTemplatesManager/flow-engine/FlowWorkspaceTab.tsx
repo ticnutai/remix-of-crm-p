@@ -414,7 +414,10 @@ export default function FlowWorkspaceTab({
   // ===== סנכרון אוטומטי של "לוח תשלומים" מטאב "תוכן" לעורך =====
   // ברגע שמשתמש משנה את לוח התשלומים / מחיר בסיס / מע״מ בטאב תוכן —
   // מקטע התשלומים בעורך Flow מתעדכן מיידית, גם אם יש טיוטה שמורה.
-  const paySig = useMemo(() => paymentsSignature(template), [template]);
+  const paySig = useMemo(
+    () => paymentsSignature(template) + `|${paymentsLayout}`,
+    [template, paymentsLayout],
+  );
   const prevPaySigRef = useRef<string>(paySig);
   const firstRunRef = useRef(true);
   useEffect(() => {
@@ -429,6 +432,7 @@ export default function FlowWorkspaceTab({
       const next = syncPaymentsSection(prev, template, {
         preserveItemStyling: preserveStyles,
         projectDetails,
+        paymentsLayout,
       });
       if (next === prev) return prev;
       try {
@@ -438,7 +442,7 @@ export default function FlowWorkspaceTab({
       }
       return next;
     });
-  }, [paySig, template, preserveStyles, projectDetails]);
+  }, [paySig, template, preserveStyles, projectDetails, paymentsLayout]);
 
   const handleChange = (next: string) => {
     setHtml(next);
