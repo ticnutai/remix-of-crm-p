@@ -777,8 +777,10 @@ export default function FlowEditor({
         .flow-editor-content.rm-with-pagination .rm-page-footer-left {
           display: block !important;
           float: none !important;
-          width: 100%;
-          margin: 0 !important;
+          width: calc(100% + var(--rm-margin-left, 0px) + var(--rm-margin-right, 0px)) !important;
+          margin-left: calc(var(--rm-margin-left, 0px) * -1) !important;
+          margin-right: calc(var(--rm-margin-right, 0px) * -1) !important;
+          box-sizing: border-box;
         }
         .flow-editor-content.rm-with-pagination .rm-page-header-right {
           display: none !important;
