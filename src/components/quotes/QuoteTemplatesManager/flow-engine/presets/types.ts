@@ -25,6 +25,14 @@ export interface DesignPresetConfig {
   page: {
     margin: string; // CSS length (e.g. "20mm")
   };
+  table?: {
+    headerBg?: string;
+    headerText?: string;
+    borderColor?: string;
+    rowAltBg?: string;
+    fontSize?: string; // e.g. "10pt" / ".9rem"
+    padding?: string; // e.g. "2mm 3mm"
+  };
 }
 
 export interface DesignPreset {
@@ -53,6 +61,14 @@ export const DEFAULT_PRESET_CONFIG: DesignPresetConfig = {
     h2: { size: "19px", weight: "700" },
   },
   page: { margin: "20mm" },
+  table: {
+    headerBg: "#162C58",
+    headerText: "#ffffff",
+    borderColor: "#dddddd",
+    rowAltBg: "",
+    fontSize: "10pt",
+    padding: "2mm 3mm",
+  },
 };
 
 /** מחזיר block CSS שמחיל את הערכה דרך CSS variables על scope נתון. */
@@ -72,5 +88,11 @@ export function presetToCssVars(p: DesignPresetConfig): string {
     --flow-h2-size: ${p.headings.h2.size};
     --flow-h2-weight: ${p.headings.h2.weight};
     --flow-page-margin: ${p.page.margin};
+    --flow-table-header-bg: ${p.table?.headerBg || p.colors.heading};
+    --flow-table-header-text: ${p.table?.headerText || "#ffffff"};
+    --flow-table-border: ${p.table?.borderColor || "#dddddd"};
+    --flow-table-row-alt: ${p.table?.rowAltBg || "transparent"};
+    --flow-table-font-size: ${p.table?.fontSize || "10pt"};
+    --flow-table-padding: ${p.table?.padding || "2mm 3mm"};
   `;
 }
