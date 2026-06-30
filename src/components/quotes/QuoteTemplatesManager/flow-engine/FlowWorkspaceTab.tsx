@@ -359,15 +359,19 @@ export default function FlowWorkspaceTab({
     setPageSetup(loadPageSetup(template.id));
   }, [template.id]);
 
-  const baseHtml = useMemo(
-    () =>
-      templateToEditableHtml(template, {
-        preserveItemStyling: preserveStyles,
-        projectDetails,
-        keepFieldsAsPlaceholders: true,
-      }),
-    [template, preserveStyles, projectDetails],
-  );
+  const baseHtml = useMemo(() => {
+    // אם קיים override שנשמר ע"י "שמור + עדכן תבנית" — נטען אותו ישירות
+    const override =
+      (template as any)?.design_settings?.flowV2OverrideHtml ||
+      (template as any)?.flowV2OverrideHtml ||
+      null;
+    if (typeof override === "string" && override.trim()) return override;
+    return templateToEditableHtml(template, {
+      preserveItemStyling: preserveStyles,
+      projectDetails,
+      keepFieldsAsPlaceholders: true,
+    });
+  }, [template, preserveStyles, projectDetails]);
 
   const [html, setHtml] = useState<string>(() => {
     try {
