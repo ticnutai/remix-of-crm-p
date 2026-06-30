@@ -1,4 +1,4 @@
-// BubbleToolbar — תפריט צף שמופיע כשבוחרים טקסט בעורך
+// BubbleToolbar — תפריט צף משודרג שמופיע כשבוחרים טקסט בעורך
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import type { Editor } from "@tiptap/react";
@@ -6,7 +6,6 @@ import {
   Bold,
   Italic,
   Underline as UnderlineIcon,
-  Highlighter,
   Copy,
   Palette,
   Sparkles,
@@ -15,6 +14,15 @@ import {
   AlignCenter,
   AlignLeft,
   AlignJustify,
+  List,
+  ListOrdered,
+  Heading1,
+  Heading2,
+  Heading3,
+  Link2,
+  Link2Off,
+  Eraser,
+  ALargeSmall,
 } from "lucide-react";
 import {
   Popover,
@@ -23,7 +31,6 @@ import {
 } from "@/components/ui/popover";
 import { applyAcrossRanges, getExtraRanges, clearExtraRanges } from "./MultiSelection";
 import SmartColorPicker from "./SmartColorPicker";
-import type { ColorCategory } from "./useSavedColors";
 
 interface Props {
   editor: Editor | null;
@@ -49,12 +56,6 @@ const FONT_FAMILIES = [
 
 const FONT_SIZES = ["10px", "12px", "14px", "16px", "18px", "20px", "24px", "28px", "32px", "40px", "56px"];
 
-const COLOR_SWATCHES = [
-  "#000000", "#1f2937", "#dc2626", "#ea580c", "#d97706",
-  "#16a34a", "#0891b2", "#2563eb", "#7c3aed", "#db2777",
-  "#162C58", "#d8ac27",
-];
-
 const GRADIENTS = [
   { label: "זהב", value: "linear-gradient(90deg,#d8ac27,#f4d03f)" },
   { label: "מלכותי", value: "linear-gradient(90deg,#162C58,#2563eb)" },
@@ -79,9 +80,45 @@ const WORD_SPACINGS = [
   { label: "עצום", value: "0.6em" },
 ];
 
+// כפתור גדול ונוח עם אייקון + תווית
+function ToolBtn({
+  icon: Icon,
+  label,
+  active,
+  onClick,
+  title,
+  children,
+}: {
+  icon?: any;
+  label?: string;
+  active?: boolean;
+  onClick?: () => void;
+  title?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title || label}
+      className={`inline-flex flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1.5 min-w-[44px] h-[46px] transition-colors ${
+        active
+          ? "bg-primary text-primary-foreground hover:bg-primary/90"
+          : "text-foreground hover:bg-muted"
+      }`}
+    >
+      {Icon ? <Icon className="h-[20px] w-[20px]" strokeWidth={2.2} /> : children}
+      {label && <span className="text-[10px] leading-none">{label}</span>}
+    </button>
+  );
+}
+
+const divider = (
+  <div className="mx-0.5 h-8 w-px bg-border self-center" />
+);
+
 export default function BubbleToolbar({ editor }: Props) {
   const [copied, setCopied] = useState(false);
-  // re-render כשמשתנים ה-ranges (storage לא מפעיל רנדר אוטומטית)
   const [, force] = useState(0);
   const extrasCountRef = useRef(0);
   React.useEffect(() => {
@@ -104,13 +141,8 @@ export default function BubbleToolbar({ editor }: Props) {
   const extras = getExtraRanges(editor);
   const extrasCount = extras.length;
 
-  const btnBase =
-    "inline-flex h-7 w-7 items-center justify-center rounded text-foreground hover:bg-muted transition-colors";
-  const btnActive = "bg-primary text-primary-foreground hover:bg-primary/90";
-
   const apply = (cb: (chain: any) => any) => applyAcrossRanges(editor, cb);
-  const run = (fn: () => void) => () => fn();
-  const bubbleOptions = useMemo(() => ({ placement: "top" as const }), []);
+  const bubbleOptions = useMemo(() => ({ placement: "top" as const, offset: 10 }), []);
   const shouldShow = useCallback(({ editor, from, to }: { editor: Editor; from: number; to: number }) => {
     if (!editor.isEditable) return false;
     const hasExtras = getExtraRanges(editor).length > 0;
@@ -131,75 +163,74 @@ export default function BubbleToolbar({ editor }: Props) {
     }
   };
 
+  const promptLink = () => {
+    const prev = editor.getAttributes("link").href as string | undefined;
+    const url = window.prompt("כתובת קישור (https://...)", prev || "https://");
+    if (url === null) return;
+    if (url === "") {
+      apply((c) => c.unsetLink());
+      return;
+    }
+    apply((c) => c.extendMarkRange("link").setLink({ href: url, target: "_blank" }));
+  };
+
   return (
     <BubbleMenu
       editor={editor}
       options={bubbleOptions}
       shouldShow={shouldShow}
-      className="z-50 flex items-center gap-0.5 rounded-lg border border-border bg-popover px-1.5 py-1 shadow-lg"
+      className="z-50 flex items-center gap-0.5 rounded-xl border border-border bg-popover px-2 py-1.5 shadow-2xl backdrop-blur"
+      style={{ direction: "rtl" }}
     >
-      {/* Multi-selection indicator */}
       {extrasCount > 0 && (
         <>
           <button
             type="button"
             onClick={() => clearExtraRanges(editor)}
             title={`${extrasCount + 1} טווחים נבחרו — לחץ לאיפוס (Esc)`}
-            className="inline-flex h-7 items-center gap-1 rounded bg-primary/10 px-1.5 text-[10px] font-bold text-primary hover:bg-primary/20"
+            className="inline-flex h-[46px] items-center gap-1 rounded-md bg-primary/10 px-2 text-xs font-bold text-primary hover:bg-primary/20"
           >
             ×{extrasCount + 1}
           </button>
-          <div className="mx-1 h-5 w-px bg-border" />
+          {divider}
         </>
       )}
 
       {/* Bold / Italic / Underline */}
-      <button
-        type="button"
-        className={`${btnBase} ${editor.isActive("bold") ? btnActive : ""}`}
-        onClick={run(() => apply((c) => c.toggleBold()))}
-        title="מודגש"
-      >
-        <Bold className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        className={`${btnBase} ${editor.isActive("italic") ? btnActive : ""}`}
-        onClick={run(() => apply((c) => c.toggleItalic()))}
-        title="נטוי"
-      >
-        <Italic className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        className={`${btnBase} ${editor.isActive("underline") ? btnActive : ""}`}
-        onClick={run(() => apply((c) => c.toggleUnderline()))}
-        title="קו תחתון"
-      >
-        <UnderlineIcon className="h-3.5 w-3.5" />
-      </button>
+      <ToolBtn icon={Bold} label="בולד" active={editor.isActive("bold")} onClick={() => apply((c) => c.toggleBold())} />
+      <ToolBtn icon={Italic} label="נטוי" active={editor.isActive("italic")} onClick={() => apply((c) => c.toggleItalic())} />
+      <ToolBtn icon={UnderlineIcon} label="קו" active={editor.isActive("underline")} onClick={() => apply((c) => c.toggleUnderline())} />
 
-      <div className="mx-1 h-5 w-px bg-border" />
+      {divider}
 
+      {/* Headings */}
+      <ToolBtn icon={Heading1} label="H1" active={editor.isActive("heading", { level: 1 })} onClick={() => apply((c) => c.toggleHeading({ level: 1 }))} />
+      <ToolBtn icon={Heading2} label="H2" active={editor.isActive("heading", { level: 2 })} onClick={() => apply((c) => c.toggleHeading({ level: 2 }))} />
+      <ToolBtn icon={Heading3} label="H3" active={editor.isActive("heading", { level: 3 })} onClick={() => apply((c) => c.toggleHeading({ level: 3 }))} />
+
+      {divider}
+
+      {/* Lists */}
+      <ToolBtn icon={List} label="תבליט" active={editor.isActive("bulletList")} onClick={() => apply((c) => c.toggleBulletList())} />
+      <ToolBtn icon={ListOrdered} label="ממוספר" active={editor.isActive("orderedList")} onClick={() => apply((c) => c.toggleOrderedList())} />
+
+      {divider}
 
       {/* Font family */}
       <Popover>
         <PopoverTrigger asChild>
-          <button type="button" className={btnBase} title="גופן">
-            <Type className="h-3.5 w-3.5" />
+          <button type="button" title="גופן" className="inline-flex flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1.5 min-w-[44px] h-[46px] text-foreground hover:bg-muted">
+            <Type className="h-[20px] w-[20px]" strokeWidth={2.2} />
+            <span className="text-[10px] leading-none">גופן</span>
           </button>
         </PopoverTrigger>
-        <PopoverContent
-          className="w-44 p-1"
-          align="center"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
+        <PopoverContent className="w-52 p-1 max-h-[320px] overflow-y-auto" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
           <div className="mb-1 px-2 py-1 text-[11px] text-muted-foreground">גופן</div>
           {FONT_FAMILIES.map((f) => (
             <button
               key={f.value}
               type="button"
-              className="w-full rounded px-2 py-1 text-right text-sm hover:bg-muted"
+              className="w-full rounded px-2 py-1.5 text-right text-sm hover:bg-muted"
               style={{ fontFamily: f.value }}
               onClick={() => apply((c) => c.setFontFamily(f.value))}
             >
@@ -220,18 +251,19 @@ export default function BubbleToolbar({ editor }: Props) {
       {/* Font size */}
       <Popover>
         <PopoverTrigger asChild>
-          <button type="button" className={`${btnBase} text-[10px] font-bold`} title="גודל">
-            A↕
+          <button type="button" title="גודל" className="inline-flex flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1.5 min-w-[44px] h-[46px] text-foreground hover:bg-muted">
+            <ALargeSmall className="h-[20px] w-[20px]" strokeWidth={2.2} />
+            <span className="text-[10px] leading-none">גודל</span>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-32 p-1" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
-          <div className="mb-1 px-2 py-1 text-[11px] text-muted-foreground">גודל</div>
+        <PopoverContent className="w-40 p-2" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <div className="mb-1 px-1 text-[11px] text-muted-foreground">גודל גופן</div>
           <div className="grid grid-cols-3 gap-1">
             {FONT_SIZES.map((s) => (
               <button
                 key={s}
                 type="button"
-                className="rounded border border-border px-1 py-0.5 text-xs hover:bg-muted"
+                className="rounded border border-border px-1.5 py-1 text-xs hover:bg-muted"
                 onClick={() => apply((c) => c.setFontSize(s))}
               >
                 {parseInt(s)}
@@ -240,7 +272,7 @@ export default function BubbleToolbar({ editor }: Props) {
           </div>
           <button
             type="button"
-            className="mt-1 w-full rounded px-2 py-1 text-right text-xs text-muted-foreground hover:bg-muted"
+            className="mt-2 w-full rounded px-2 py-1 text-right text-xs text-muted-foreground hover:bg-muted"
             onClick={() => apply((c) => c.setFontSize(null))}
           >
             אפס
@@ -248,11 +280,12 @@ export default function BubbleToolbar({ editor }: Props) {
         </PopoverContent>
       </Popover>
 
-      {/* Smart Color Picker — 3 קטגוריות + Eyedropper + צבעים שמורים בענן */}
+      {/* Colors */}
       <Popover>
         <PopoverTrigger asChild>
-          <button type="button" className={btnBase} title="צבעים (טקסט / רקע / קו תחתון)">
-            <Palette className="h-3.5 w-3.5" />
+          <button type="button" title="צבעים" className="inline-flex flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1.5 min-w-[44px] h-[46px] text-foreground hover:bg-muted">
+            <Palette className="h-[20px] w-[20px]" strokeWidth={2.2} />
+            <span className="text-[10px] leading-none">צבע</span>
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0 overflow-hidden" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -280,15 +313,15 @@ export default function BubbleToolbar({ editor }: Props) {
         </PopoverContent>
       </Popover>
 
-
       {/* Gradient */}
       <Popover>
         <PopoverTrigger asChild>
-          <button type="button" className={btnBase} title="גרדיאנט">
-            <Sparkles className="h-3.5 w-3.5" />
+          <button type="button" title="גרדיאנט" className="inline-flex flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1.5 min-w-[44px] h-[46px] text-foreground hover:bg-muted">
+            <Sparkles className="h-[20px] w-[20px]" strokeWidth={2.2} />
+            <span className="text-[10px] leading-none">גרדיאנט</span>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-56 p-2" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <PopoverContent className="w-60 p-2" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
           <div className="mb-1 text-[11px] text-muted-foreground">גרדיאנט טקסט</div>
           <div className="grid grid-cols-1 gap-1">
             {GRADIENTS.map((g) => (
@@ -319,24 +352,28 @@ export default function BubbleToolbar({ editor }: Props) {
         </PopoverContent>
       </Popover>
 
-      <div className="mx-1 h-5 w-px bg-border" />
+      {divider}
+
+      {/* Align */}
+      <ToolBtn icon={AlignRight} label="ימין" active={editor.isActive({ textAlign: "right" })} onClick={() => apply((c) => c.setTextAlign("right"))} />
+      <ToolBtn icon={AlignCenter} label="מרכז" active={editor.isActive({ textAlign: "center" })} onClick={() => apply((c) => c.setTextAlign("center"))} />
+      <ToolBtn icon={AlignLeft} label="שמאל" active={editor.isActive({ textAlign: "left" })} onClick={() => apply((c) => c.setTextAlign("left"))} />
+      <ToolBtn icon={AlignJustify} label="מיושר" active={editor.isActive({ textAlign: "justify" })} onClick={() => apply((c) => c.setTextAlign("justify"))} />
+
+      {divider}
 
       {/* Letter spacing */}
       <Popover>
         <PopoverTrigger asChild>
-          <button type="button" className={`${btnBase} text-[10px] font-bold`} title="מרווח אותיות">
-            A↔
+          <button type="button" title="מרווח אותיות" className="inline-flex flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1.5 min-w-[44px] h-[46px] text-foreground hover:bg-muted">
+            <span className="text-sm font-bold leading-none">A↔</span>
+            <span className="text-[10px] leading-none">אותיות</span>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-44 p-1" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <PopoverContent className="w-48 p-1" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
           <div className="mb-1 px-2 py-1 text-[11px] text-muted-foreground">מרווח בין אותיות</div>
           {SPACINGS.map((s) => (
-            <button
-              key={s.value}
-              type="button"
-              className="w-full rounded px-2 py-1 text-right text-sm hover:bg-muted"
-              onClick={() => apply((c) => c.setLetterSpacing(s.value))}
-            >
+            <button key={s.value} type="button" className="w-full rounded px-2 py-1.5 text-right text-sm hover:bg-muted" onClick={() => apply((c) => c.setLetterSpacing(s.value))}>
               {s.label}
             </button>
           ))}
@@ -346,72 +383,44 @@ export default function BubbleToolbar({ editor }: Props) {
       {/* Word spacing */}
       <Popover>
         <PopoverTrigger asChild>
-          <button type="button" className={`${btnBase} text-[10px] font-bold`} title="מרווח מילים">
-            W↔
+          <button type="button" title="מרווח מילים" className="inline-flex flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1.5 min-w-[44px] h-[46px] text-foreground hover:bg-muted">
+            <span className="text-sm font-bold leading-none">W↔</span>
+            <span className="text-[10px] leading-none">מילים</span>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-44 p-1" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <PopoverContent className="w-48 p-1" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
           <div className="mb-1 px-2 py-1 text-[11px] text-muted-foreground">מרווח בין מילים</div>
           {WORD_SPACINGS.map((s) => (
-            <button
-              key={s.value}
-              type="button"
-              className="w-full rounded px-2 py-1 text-right text-sm hover:bg-muted"
-              onClick={() => apply((c) => c.setWordSpacing(s.value))}
-            >
+            <button key={s.value} type="button" className="w-full rounded px-2 py-1.5 text-right text-sm hover:bg-muted" onClick={() => apply((c) => c.setWordSpacing(s.value))}>
               {s.label}
             </button>
           ))}
         </PopoverContent>
       </Popover>
 
-      <div className="mx-1 h-5 w-px bg-border" />
+      {divider}
 
-      {/* Align */}
-      <button
-        type="button"
-        className={`${btnBase} ${editor.isActive({ textAlign: "right" }) ? btnActive : ""}`}
-        onClick={() => apply((c) => c.setTextAlign("right"))}
-        title="ימין"
-      >
-        <AlignRight className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        className={`${btnBase} ${editor.isActive({ textAlign: "center" }) ? btnActive : ""}`}
-        onClick={() => apply((c) => c.setTextAlign("center"))}
-        title="מרכז"
-      >
-        <AlignCenter className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        className={`${btnBase} ${editor.isActive({ textAlign: "left" }) ? btnActive : ""}`}
-        onClick={() => apply((c) => c.setTextAlign("left"))}
-        title="שמאל"
-      >
-        <AlignLeft className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        className={`${btnBase} ${editor.isActive({ textAlign: "justify" }) ? btnActive : ""}`}
-        onClick={() => apply((c) => c.setTextAlign("justify"))}
-        title="מיושר"
-      >
-        <AlignJustify className="h-3.5 w-3.5" />
-      </button>
+      {/* Link */}
+      <ToolBtn icon={Link2} label="קישור" active={editor.isActive("link")} onClick={promptLink} />
+      {editor.isActive("link") && (
+        <ToolBtn icon={Link2Off} label="הסר" onClick={() => apply((c) => c.unsetLink())} />
+      )}
 
-      <div className="mx-1 h-5 w-px bg-border" />
+      {/* Clear formatting */}
+      <ToolBtn
+        icon={Eraser}
+        label="נקה"
+        title="נקה עיצוב"
+        onClick={() => apply((c) => c.unsetAllMarks().clearNodes())}
+      />
 
       {/* Copy */}
-      <button
-        type="button"
-        className={btnBase}
+      <ToolBtn
+        icon={Copy}
+        label={copied ? "הועתק" : "העתק"}
         onClick={copySelection}
-        title={copied ? "הועתק" : "העתק"}
-      >
-        <Copy className={`h-3.5 w-3.5 ${copied ? "text-primary" : ""}`} />
-      </button>
+        active={copied}
+      />
     </BubbleMenu>
   );
 }
