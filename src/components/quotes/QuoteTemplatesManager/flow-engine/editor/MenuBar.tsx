@@ -92,6 +92,95 @@ const GRADIENTS = [
   { label: "ורוד", value: "linear-gradient(90deg,#db2777,#7c3aed)" },
 ];
 
+const DIVIDER_COLORS = ["#d8ac27", "#162c58", "#000000", "#666666", "#cccccc", "#dc2626", "#16a34a", "#2563eb"];
+const DIVIDER_STYLES: Array<{ label: string; value: "solid" | "dashed" | "dotted" | "double" }> = [
+  { label: "מלא", value: "solid" },
+  { label: "מקווקוו", value: "dashed" },
+  { label: "נקודות", value: "dotted" },
+  { label: "כפול", value: "double" },
+];
+
+function DividerInserter({ editor }: { editor: Editor }) {
+  const [color, setColor] = React.useState("#d8ac27");
+  const [thickness, setThickness] = React.useState(1);
+  const [style, setStyle] = React.useState<"solid" | "dashed" | "dotted" | "double">("solid");
+
+  const insert = () => {
+    const css = `border:0;border-top:${thickness}px ${style} ${color};margin:.8rem 0;`;
+    (editor.chain().focus() as any)
+      .insertContent(`<hr style="${css}" />`)
+      .run();
+  };
+
+  return (
+    <div className="space-y-2.5">
+      <div>
+        <div className="text-[11px] text-muted-foreground mb-1">צבע</div>
+        <div className="flex flex-wrap gap-1.5">
+          {DIVIDER_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setColor(c)}
+              className={cn(
+                "h-6 w-6 rounded-full border-2 transition",
+                color === c ? "border-foreground scale-110" : "border-transparent",
+              )}
+              style={{ background: c }}
+              title={c}
+            />
+          ))}
+          <input
+            type="color"
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            className="h-6 w-6 cursor-pointer rounded border"
+            title="צבע מותאם"
+          />
+        </div>
+      </div>
+      <div>
+        <div className="text-[11px] text-muted-foreground mb-1">עובי: {thickness}px</div>
+        <input
+          type="range"
+          min={1}
+          max={8}
+          value={thickness}
+          onChange={(e) => setThickness(Number(e.target.value))}
+          className="w-full"
+        />
+      </div>
+      <div>
+        <div className="text-[11px] text-muted-foreground mb-1">סגנון</div>
+        <div className="flex gap-1">
+          {DIVIDER_STYLES.map((s) => (
+            <button
+              key={s.value}
+              type="button"
+              onClick={() => setStyle(s.value)}
+              className={cn(
+                "flex-1 rounded border px-2 py-1 text-xs transition",
+                style === s.value ? "border-primary bg-primary/10" : "border-border hover:bg-muted",
+              )}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div
+        className="rounded border bg-muted/30 p-2"
+        style={{ borderTop: `${thickness}px ${style} ${color}`, borderTopWidth: `${thickness}px` }}
+      >
+        <div style={{ borderTop: `${thickness}px ${style} ${color}`, height: 0 }} />
+      </div>
+      <Button type="button" size="sm" className="w-full" onClick={insert}>
+        הוסף קו
+      </Button>
+    </div>
+  );
+}
+
 function ToolButton({
   active,
   onClick,
