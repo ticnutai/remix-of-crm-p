@@ -8970,6 +8970,41 @@ ${tbAt('footer')}
             </div>
           </div>
 
+          {/* Second row: Flow sub-tabs (visible only when Flow is active) */}
+          {activeTab === "flow-v2" && (
+            <div className="hidden md:flex border-b bg-emerald-50/40 px-6 items-center gap-1.5 h-10">
+              <span className="text-[11px] font-medium text-emerald-700/80 ml-1">Flow:</span>
+              <button
+                type="button"
+                onClick={() => setFlowSubTab("edit")}
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 h-7 rounded-md text-xs font-medium transition-colors",
+                  flowSubTab === "edit"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                עריכה
+              </button>
+              <button
+                type="button"
+                onClick={() => setFlowSubTab("preview")}
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 h-7 rounded-md text-xs font-medium transition-colors",
+                  flowSubTab === "preview"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <Eye className="h-3.5 w-3.5" />
+                תצוגה מקדימה
+              </button>
+            </div>
+          )}
+
+
+
           {/* Tabs settings dialog — non-blocking (modal={false}) */}
           <Dialog
             open={showTabsSettings}
