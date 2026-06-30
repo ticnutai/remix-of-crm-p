@@ -392,14 +392,17 @@ export default function FlowEditor({
       handleKeyDown(view, event) {
         const mod = event.ctrlKey || event.metaKey;
         if (!mod) return false;
-        const key = event.key.toLowerCase();
-        // Ctrl/Cmd + Z = undo, Ctrl/Cmd + Shift + Z = redo, Ctrl/Cmd + Y = redo
-        if (key === "z" && !event.shiftKey) {
+        // Use event.code so the shortcut works in any keyboard layout (Hebrew, Arabic, etc.)
+        const code = event.code;
+        const key = (event.key || "").toLowerCase();
+        const isZ = code === "KeyZ" || key === "z" || key === "ז";
+        const isY = code === "KeyY" || key === "y" || key === "ט";
+        if (isZ && !event.shiftKey) {
           event.preventDefault();
           (editor as any)?.chain().focus().undo().run();
           return true;
         }
-        if ((key === "z" && event.shiftKey) || key === "y") {
+        if ((isZ && event.shiftKey) || isY) {
           event.preventDefault();
           (editor as any)?.chain().focus().redo().run();
           return true;
@@ -414,6 +417,38 @@ export default function FlowEditor({
       }, 500);
     },
   });
+
+  // Global Undo/Redo (Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z) — works in any keyboard layout
+  // including Hebrew, even when focus is in a toolbar/popover but not in another input.
+  useEffect(() => {
+    if (!editor) return;
+    const onKey = (event: KeyboardEvent) => {
+      const mod = event.ctrlKey || event.metaKey;
+      if (!mod) return;
+      const code = event.code;
+      const key = (event.key || "").toLowerCase();
+      const isZ = code === "KeyZ" || key === "z" || key === "ז";
+      const isY = code === "KeyY" || key === "y" || key === "ט";
+      if (!isZ && !isY) return;
+      // Skip if focus is in another editable element (input/textarea/contenteditable that's not ours)
+      const t = event.target as HTMLElement | null;
+      if (t) {
+        const tag = t.tagName;
+        const inOtherEditable =
+          (tag === "INPUT" || tag === "TEXTAREA" || t.isContentEditable) &&
+          !t.closest(".flow-editor-content");
+        if (inOtherEditable) return;
+      }
+      event.preventDefault();
+      if (isY || (isZ && event.shiftKey)) {
+        (editor as any).chain().focus().redo().run();
+      } else if (isZ) {
+        (editor as any).chain().focus().undo().run();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [editor]);
 
   // עדכון תוכן כשטוענים מסמך חדש (החלפת תבנית)
   useEffect(() => {

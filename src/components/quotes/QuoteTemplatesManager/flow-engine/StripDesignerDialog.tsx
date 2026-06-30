@@ -706,17 +706,30 @@ export default function StripDesignerDialog({
         designState: shouldSaveStrip ? exportState : undefined,
       });
 
-      await saveLocalBrandAsset(asset);
-      setBrandAssets((prev) => [asset, ...prev.filter((item) => item.id !== asset.id)]);
+      let savedLocally = false;
+      try {
+        await saveLocalBrandAsset(asset);
+        savedLocally = true;
+        setBrandAssets((prev) => [asset, ...prev.filter((item) => item.id !== asset.id)]);
+      } catch (e: any) {
+        console.warn("[brand library] local save failed", e);
+      }
 
       try {
         const synced = await saveCloudBrandAsset(asset);
         setBrandAssets((prev) => [synced, ...prev.filter((item) => item.id !== asset.id)]);
-      } catch {
-        setError("נשמר מקומית. הסנכרון לענן יפעל אחרי שהטבלה בענן תהיה זמינה.");
+        setError(null);
+      } catch (e: any) {
+        const msg = e?.message || String(e);
+        console.error("[brand library] cloud save failed", e);
+        if (savedLocally) {
+          setError(`נשמר מקומית. סנכרון לענן נכשל: ${msg}`);
+        } else {
+          setError(`שמירה נכשלה: ${msg}`);
+        }
       }
-    } catch {
-      setError("שמירת הנכס לספרייה נכשלה.");
+    } catch (e: any) {
+      setError(`שמירת הנכס לספרייה נכשלה: ${e?.message || e}`);
     } finally {
       setBrandActionId(null);
     }
