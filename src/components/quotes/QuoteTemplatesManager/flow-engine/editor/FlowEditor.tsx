@@ -947,7 +947,8 @@ export default function FlowEditor({
         .flow-editor-content th { background: ${preset?.table?.headerBg || preset?.colors.heading || "hsl(var(--primary))"}; color: ${preset?.table?.headerText || "#fff"}; }
         ${preset?.table?.rowAltBg ? `.flow-editor-content tbody tr:nth-child(even) td { background: ${preset.table.rowAltBg}; }` : ""}
         .flow-editor-content tbody tr:last-child td { font-weight: 700; background: ${(preset?.colors.accent || "#d8ac27")}22; }
-        .flow-editor-content hr { border: 0; border-top: 1px dashed hsl(var(--border)); margin: .8rem 0; }
+        .flow-editor-content hr { border: 0; border-top: 1px solid hsl(var(--border)); margin: .8rem 0; }
+        .flow-editor-content hr[style] { /* allow inline overrides for custom color/thickness/style */ }
         .flow-editor-content mark { background: ${preset?.colors.accent || "hsl(var(--accent))"}59; padding: 0 .15rem; border-radius: .15rem; }
         ${buildPresetExtraCss(preset, ".flow-editor-content")}
         .flow-editor-content [data-field] { user-select: all; }
