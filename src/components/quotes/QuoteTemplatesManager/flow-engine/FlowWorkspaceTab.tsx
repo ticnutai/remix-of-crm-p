@@ -43,6 +43,8 @@ interface Props {
 
 const storageKey = (id?: string) => `flow-edit:${id || "untitled"}:v2`;
 const styleKey = (id?: string) => `flow-edit:${id || "untitled"}:preserveStyles`;
+const paymentsLayoutKey = (id?: string) => `flow-edit:${id || "untitled"}:paymentsLayout`;
+type PaymentsLayout = "list" | "table" | "both";
 const presetKey = (id?: string) => `flow-edit:${id || "untitled"}:presetId`;
 const pageKey = (id?: string) => `flow-edit:${id || "untitled"}:pageSetup`;
 const DEFAULT_PAGE_SETUP: FlowPageSetup = {
