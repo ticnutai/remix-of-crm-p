@@ -78,16 +78,25 @@ export function usePresets() {
 
 export function safeConfig(p: DesignPreset | null | undefined): DesignPresetConfig {
   if (!p) return DEFAULT_PRESET_CONFIG;
-  // הגנה — אם משדה ב-DB חסר משהו, ממזגים עם ברירת מחדל
-  const c = p.config || ({} as any);
+  const c = (p.config || {}) as any;
+  const D = DEFAULT_PRESET_CONFIG;
   return {
-    fonts: { ...DEFAULT_PRESET_CONFIG.fonts, ...(c.fonts || {}) },
-    colors: { ...DEFAULT_PRESET_CONFIG.colors, ...(c.colors || {}) },
-    spacing: { ...DEFAULT_PRESET_CONFIG.spacing, ...(c.spacing || {}) },
+    fonts: { ...D.fonts, ...(c.fonts || {}) },
+    colors: { ...D.colors, ...(c.colors || {}) },
+    spacing: { ...D.spacing, ...(c.spacing || {}) },
     headings: {
-      h1: { ...DEFAULT_PRESET_CONFIG.headings.h1, ...((c.headings || {}).h1 || {}) },
-      h2: { ...DEFAULT_PRESET_CONFIG.headings.h2, ...((c.headings || {}).h2 || {}) },
+      h1: { ...D.headings.h1, ...((c.headings || {}).h1 || {}) },
+      h2: { ...D.headings.h2, ...((c.headings || {}).h2 || {}) },
+      h3: { ...(D.headings.h3 || {}), ...((c.headings || {}).h3 || {}) },
     },
-    page: { ...DEFAULT_PRESET_CONFIG.page, ...(c.page || {}) },
+    page: { ...D.page, ...(c.page || {}) },
+    table: { ...(D.table || {}), ...(c.table || {}) },
+    blocks: {
+      paragraphFrame: { ...(D.blocks?.paragraphFrame || {}), ...((c.blocks || {}).paragraphFrame || {}) },
+      callout: { ...(D.blocks?.callout || {}), ...((c.blocks || {}).callout || {}) },
+      blockquote: { ...(D.blocks?.blockquote || {}), ...((c.blocks || {}).blockquote || {}) },
+      divider: { ...(D.blocks?.divider || {}), ...((c.blocks || {}).divider || {}) },
+    },
+    strips: { ...(D.strips || {}), ...(c.strips || {}) },
   };
 }
