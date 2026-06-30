@@ -4807,6 +4807,50 @@ export function HtmlTemplateEditor({
     }
   }, [tabConfig]);
 
+  // One-shot: hydrate tabs config & display mode from cloud (user_preferences.ui_preferences)
+  // so that a different device picks up the latest settings even before CloudSyncProvider
+  // finishes applying the full payload to localStorage.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        const uid = userData?.user?.id;
+        if (!uid) return;
+        const { data } = await (supabase as any)
+          .from("user_preferences")
+          .select("ui_preferences")
+          .eq("user_id", uid)
+          .maybeSingle();
+        const ui = (data as any)?.ui_preferences;
+        if (!ui || cancelled) return;
+        // Tabs order/visibility
+        const cloudTabs = ui[TABS_CFG_LS_KEY];
+        if (Array.isArray(cloudTabs) && cloudTabs.length > 0) {
+          const knownValues = new Set(DEFAULT_TAB_ORDER);
+          const sanitized = (cloudTabs as Array<{ value: EditorTabKey; visible: boolean }>)
+            .filter((t) => t && knownValues.has(t.value as EditorTabKey));
+          DEFAULT_TAB_ORDER.forEach((v) => {
+            if (!sanitized.some((s) => s.value === v))
+              sanitized.push({ value: v, visible: true });
+          });
+          setTabConfig(sanitized);
+        }
+        // Display mode
+        const cloudMode = ui[TAB_DISPLAY_MODE_LS_KEY];
+        if (cloudMode === "full" || cloudMode === "iconsOnly" || cloudMode === "stacked" || cloudMode === "twoRows") {
+          setTabDisplayMode(cloudMode);
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Swipe gestures on mobile to switch between tabs
   useSwipeTabs(tabsContainerRef, {
     enabled: isMobile,
