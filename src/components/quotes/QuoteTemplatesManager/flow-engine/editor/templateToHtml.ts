@@ -82,9 +82,16 @@ function blockToHtml(block: FlowBlock): string {
 
 export function flowDocToEditableHtml(doc: FlowDocument): string {
   return doc.sections
-    .map((s) => s.blocks.map(blockToHtml).join(""))
+    .map((s) => {
+      const inner = s.blocks.map(blockToHtml).join("");
+      if (s.id === "payments" && inner) {
+        return `<div data-payments-block="1" class="payments-block">${inner}</div>`;
+      }
+      return inner;
+    })
     .join("");
 }
+
 
 export function templateToEditableHtml(
   template: QuoteTemplate,

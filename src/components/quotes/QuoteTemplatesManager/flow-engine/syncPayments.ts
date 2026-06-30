@@ -59,6 +59,22 @@ export function syncPaymentsSection(
     const root = dom.getElementById("root");
     if (!root) return fresh ? html + fresh : html;
 
+    // 1) אם קיים גוש תשלומים נגרר — מחליפים את התוכן הפנימי שלו במקום (שמירת מיקום)
+    const existingBlock = root.querySelector('[data-payments-block]') as HTMLElement | null;
+    if (existingBlock) {
+      if (!fresh) {
+        existingBlock.remove();
+        return root.innerHTML;
+      }
+      // fresh מגיע כ-<div data-payments-block>...</div>; חולצים את התוכן הפנימי
+      const tmp = dom.createElement("div");
+      tmp.innerHTML = fresh;
+      const freshBlock = tmp.querySelector('[data-payments-block]') as HTMLElement | null;
+      existingBlock.innerHTML = freshBlock ? freshBlock.innerHTML : fresh;
+      return root.innerHTML;
+    }
+
+    // 2) גרסה ישנה ללא גוש — מסירים heading + רשימה/טבלה צמודים
     const headings = Array.from(root.querySelectorAll("h1,h2,h3,h4"));
     const heading = headings.find((h) =>
       PAYMENTS_HEADING_RE.test((h.textContent || "").replace(/\s+/g, " ").trim()),
@@ -75,7 +91,7 @@ export function syncPaymentsSection(
 
     if (!fresh) return root.innerHTML;
 
-    // הוסף את המקטע הטרי בסוף (או במקום הישן אם רוצים — לפשטות, בסוף).
+    // 3) הוספה ראשונית בסוף — בפעם הבאה כבר יהיה גוש נגרר במיקום שהמשתמש בחר
     const wrap = dom.createElement("div");
     wrap.innerHTML = fresh;
     Array.from(wrap.childNodes).forEach((n) => root.appendChild(n));
@@ -84,3 +100,4 @@ export function syncPaymentsSection(
     return html;
   }
 }
+

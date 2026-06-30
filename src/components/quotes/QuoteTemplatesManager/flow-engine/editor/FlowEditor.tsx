@@ -33,6 +33,7 @@ import AdvancedTextStyle from "./AdvancedTextStyle";
 import { useDynamicFields, type DynamicFieldDefinition } from "./dynamicFields";
 import CreateFieldDialog from "./CreateFieldDialog";
 import { MultiSelection, addExtraRange, clearExtraRanges, getExtraRanges } from "./MultiSelection";
+import { PaymentsBlock } from "./PaymentsBlock";
 
 import type { DesignPresetConfig } from "../presets/types";
 import type { FlowPageSetup } from "../types";
@@ -378,6 +379,7 @@ export default function FlowEditor({
       TableCell,
       DynamicField,
       MultiSelection,
+      PaymentsBlock,
       Placeholder.configure({ placeholder: "התחל לכתוב..." }),
       PaginationPlus.configure(paginationOptions),
     ],
@@ -718,6 +720,36 @@ export default function FlowEditor({
       </div>
       <style>{`
         .flow-editor-content { padding: 1.5rem; font-family: ${preset?.fonts.body || "Heebo, Arial, sans-serif"}; font-size: ${preset?.fonts.size || "14px"}; line-height: ${preset?.spacing.lineHeight || "1.7"}; color: ${preset?.colors.text || "hsl(var(--foreground))"}; }
+        /* גוש לוח תשלומים — נגרר ביחידה אחת */
+        .flow-editor-content .payments-block {
+          position: relative;
+          padding: 0.5rem 0.75rem 0.5rem 2rem;
+          margin: 0.75rem 0;
+          border: 1px dashed transparent;
+          border-radius: 6px;
+          transition: border-color 0.15s, background-color 0.15s;
+        }
+        .flow-editor-content .payments-block:hover {
+          border-color: hsl(var(--border));
+          background: hsl(var(--muted) / 0.4);
+        }
+        .flow-editor-content .payments-block::before {
+          content: "⋮⋮ גרור לוח תשלומים";
+          position: absolute;
+          top: 4px;
+          left: 8px;
+          font-size: 10px;
+          color: hsl(var(--muted-foreground));
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.15s;
+          font-family: Heebo, Arial, sans-serif;
+        }
+        .flow-editor-content .payments-block:hover::before { opacity: 1; }
+        .flow-editor-content .payments-block.ProseMirror-selectednode {
+          border-color: hsl(var(--primary));
+          background: hsl(var(--primary) / 0.05);
+        }
         .flow-editor-shell-paged {
           position: relative;
           width: var(--flow-editor-page-width);
