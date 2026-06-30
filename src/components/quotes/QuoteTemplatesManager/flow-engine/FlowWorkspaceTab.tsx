@@ -379,7 +379,6 @@ export default function FlowWorkspaceTab({
   }, [template.id]);
 
   const baseHtml = useMemo(() => {
-    // אם קיים override שנשמר ע"י "שמור + עדכן תבנית" — נטען אותו ישירות
     const override =
       (template as any)?.design_settings?.flowV2OverrideHtml ||
       (template as any)?.flowV2OverrideHtml ||
@@ -389,8 +388,9 @@ export default function FlowWorkspaceTab({
       preserveItemStyling: preserveStyles,
       projectDetails,
       keepFieldsAsPlaceholders: true,
+      paymentsLayout,
     });
-  }, [template, preserveStyles, projectDetails]);
+  }, [template, preserveStyles, projectDetails, paymentsLayout]);
 
   const [html, setHtml] = useState<string>(() => {
     try {
