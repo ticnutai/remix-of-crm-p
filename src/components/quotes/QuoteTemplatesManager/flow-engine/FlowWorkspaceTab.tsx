@@ -39,6 +39,11 @@ interface Props {
   designSettings?: any;
   onDesignSettingsChange?: React.Dispatch<React.SetStateAction<any>>;
   workspaceActions?: React.ReactNode;
+  /** טאב משני נשלט מההורה (edit | preview). אם לא מסופק — מצב פנימי. */
+  subTab?: "edit" | "preview";
+  onSubTabChange?: (next: "edit" | "preview") => void;
+  /** אם true — אל תראה את ה-TabsList הפנימי (ההורה מציג שורה משלו). */
+  hideInternalSubTabs?: boolean;
 }
 
 const storageKey = (id?: string) => `flow-edit:${id || "untitled"}:v2`;
