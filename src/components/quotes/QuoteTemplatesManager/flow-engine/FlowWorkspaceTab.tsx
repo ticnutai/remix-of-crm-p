@@ -370,6 +370,12 @@ export default function FlowWorkspaceTab({
     }
 
     setPageSetup(loadPageSetup(template.id));
+    try {
+      const v = localStorage.getItem(paymentsLayoutKey(template.id));
+      setPaymentsLayoutState(v === "table" || v === "both" ? v : "list");
+    } catch {
+      setPaymentsLayoutState("list");
+    }
   }, [template.id]);
 
   const baseHtml = useMemo(() => {
