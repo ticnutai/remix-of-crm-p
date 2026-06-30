@@ -47,6 +47,21 @@ export default function PresetPicker({ selectedId, onSelect, onDialogOpenChange 
     }
   };
 
+  const handleDuplicate = async (e: React.MouseEvent, p: DesignPreset) => {
+    e.stopPropagation();
+    try {
+      // יוצרים עותק עם כל ההגדרות, ופותחים מיד לעריכה
+      const cloneName = `${p.name} (עותק)`;
+      const cloneConfig = JSON.parse(JSON.stringify(p.config || {}));
+      const created = await create(cloneName, cloneConfig);
+      onSelect(created);
+      toast.success("הערכה שוכפלה");
+      openDialog(created);
+    } catch (err: any) {
+      toast.error(err?.message || "שגיאה בשכפול");
+    }
+  };
+
   return (
     <>
       <div className="space-y-2">
@@ -88,14 +103,22 @@ export default function PresetPicker({ selectedId, onSelect, onDialogOpenChange 
                 actions={
                   <>
                     <IconBtn
-                      title={p.is_builtin ? "שכפל וערוך" : "ערוך"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openDialog(p);
-                      }}
+                      title="שכפל ערכה"
+                      onClick={(e) => handleDuplicate(e, p)}
                     >
-                      {p.is_builtin ? <Copy className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
+                      <Copy className="h-3 w-3" />
                     </IconBtn>
+                    {!p.is_builtin && (
+                      <IconBtn
+                        title="ערוך"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDialog(p);
+                        }}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </IconBtn>
+                    )}
                     {!p.is_builtin && (
                       <IconBtn
                         title="מחק"
