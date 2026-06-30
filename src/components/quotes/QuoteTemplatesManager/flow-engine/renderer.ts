@@ -233,6 +233,41 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     grid-column: 1 / -1 !important;
     width: var(--pagedjs-pagebox-width) !important;
     max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: ${footerStripMm}mm !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+  .flow-has-footer-strip .pagedjs_margin-bottom-center > .running-footer.strip,
+  .flow-has-footer-strip .running-footer.strip {
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+  .flow-has-footer-strip .running-footer.strip .strip-img {
+    display: block !important;
+    margin-bottom: 0 !important;
+    vertical-align: bottom !important;
+  }
+  /* same fix for top strip to keep it flush to the very top edge */
+  .flow-has-header-strip .pagedjs_margin-top,
+  .flow-has-header-strip .pagedjs_margin-top-center {
+    padding: 0 !important;
+    margin: 0 !important;
+    height: ${headerStripMm}mm !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+  .flow-has-header-strip .running-header.strip,
+  .flow-has-header-strip .running-header.strip .strip-img {
+    margin: 0 !important;
+    padding: 0 !important;
+    vertical-align: top !important;
   }
 
   /* ===== Document body (זורם) ===== */
