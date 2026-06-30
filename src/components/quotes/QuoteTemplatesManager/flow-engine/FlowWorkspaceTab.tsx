@@ -904,16 +904,18 @@ export default function FlowWorkspaceTab({
 
       {workspaceActions && <span className="h-5 w-px shrink-0 bg-border" />}
 
-      <TabsList className="!h-8 !min-h-0 !w-auto shrink-0 p-0.5">
-        <TabsTrigger value="edit" className="h-7 gap-1 px-2 text-xs">
-          <Pencil className="h-3.5 w-3.5" />
-          עריכה
-        </TabsTrigger>
-        <TabsTrigger value="preview" className="h-7 gap-1 px-2 text-xs">
-          <Eye className="h-3.5 w-3.5" />
-          תצוגה
-        </TabsTrigger>
-      </TabsList>
+      {!hideInternalSubTabs && (
+        <TabsList className="!h-8 !min-h-0 !w-auto shrink-0 p-0.5">
+          <TabsTrigger value="edit" className="h-7 gap-1 px-2 text-xs">
+            <Pencil className="h-3.5 w-3.5" />
+            עריכה
+          </TabsTrigger>
+          <TabsTrigger value="preview" className="h-7 gap-1 px-2 text-xs">
+            <Eye className="h-3.5 w-3.5" />
+            תצוגה
+          </TabsTrigger>
+        </TabsList>
+      )}
 
       <Popover open={saveMenuOpen} onOpenChange={setSaveMenuOpen} modal={false}>
         <PopoverTrigger asChild>
