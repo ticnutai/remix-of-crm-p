@@ -8835,7 +8835,7 @@ ${tbAt('footer')}
           <div
             className={cn(
               "hidden border-b bg-white px-6 items-center justify-between gap-2",
-              activeTab !== "flow-v2" && "md:flex",
+              "md:flex",
             )}
           >
             <TooltipProvider delayDuration={200}>
