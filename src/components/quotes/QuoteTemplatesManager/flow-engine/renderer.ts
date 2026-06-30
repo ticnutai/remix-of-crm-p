@@ -319,12 +319,15 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   .flow-h1 { font-size: ${preset.headings.h1.size}; font-weight: ${preset.headings.h1.weight}; border-bottom-color: ${preset.colors.accent}; }
   .flow-h2 { font-size: ${preset.headings.h2.size}; font-weight: ${preset.headings.h2.weight}; }
   .flow-p { margin: 0 0 ${preset.spacing.paragraphGap}; }
-  .flow-table th { background: ${preset.colors.heading}; }
+  .flow-table th, .flow-table td { border-color: ${preset.table?.borderColor || "#ddd"}; padding: ${preset.table?.padding || "2mm 3mm"}; font-size: ${preset.table?.fontSize || "10pt"}; }
+  .flow-table th { background: ${preset.table?.headerBg || preset.colors.heading}; color: ${preset.table?.headerText || "#fff"}; }
+  ${preset.table?.rowAltBg ? `.flow-table tbody tr:nth-child(even) td { background: ${preset.table.rowAltBg}; }` : ""}
+  .flow-table tbody tr:last-child td { font-weight: 700; background: ${preset.colors.accent}22; }
   .rh-name { color: ${preset.colors.heading}; }
   .running-header { border-bottom-color: ${preset.colors.accent}; }
   .running-footer { border-top-color: ${preset.colors.accent}; color: ${preset.colors.muted}; }
   .fld { background: ${preset.colors.accent}22; color: ${preset.colors.heading}; }
-  ` : ""}
+  ` : `.flow-table tbody tr:last-child td { font-weight: 700; background: ${branding.accentColor}22; }`}
 </style>
 </head>
 <body>

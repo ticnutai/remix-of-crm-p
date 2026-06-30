@@ -139,7 +139,30 @@ export default function PresetEditorDialog({ open, onOpenChange, preset, onSave 
           <Field label="שולי עמוד">
             <Input value={cfg.page.margin} onChange={(e) => patch("page.margin", e.target.value)} />
           </Field>
+
+          <Separator className="md:col-span-2" />
+          <div className="md:col-span-2 text-sm font-semibold text-muted-foreground">עיצוב טבלאות</div>
+
+          <Field label="צבע רקע כותרת טבלה">
+            <ColorInput value={cfg.table?.headerBg || ""} onChange={(v) => patch("table.headerBg", v)} />
+          </Field>
+          <Field label="צבע טקסט כותרת טבלה">
+            <ColorInput value={cfg.table?.headerText || "#ffffff"} onChange={(v) => patch("table.headerText", v)} />
+          </Field>
+          <Field label="צבע מסגרת">
+            <ColorInput value={cfg.table?.borderColor || "#dddddd"} onChange={(v) => patch("table.borderColor", v)} />
+          </Field>
+          <Field label="פס רקע לשורות זוגיות (Zebra)">
+            <ColorInput value={cfg.table?.rowAltBg || ""} onChange={(v) => patch("table.rowAltBg", v)} />
+          </Field>
+          <Field label="גודל טקסט בטבלה">
+            <Input value={cfg.table?.fontSize || "10pt"} onChange={(e) => patch("table.fontSize", e.target.value)} />
+          </Field>
+          <Field label="ריפוד תאים (padding)">
+            <Input value={cfg.table?.padding || "2mm 3mm"} onChange={(e) => patch("table.padding", e.target.value)} />
+          </Field>
         </div>
+
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
