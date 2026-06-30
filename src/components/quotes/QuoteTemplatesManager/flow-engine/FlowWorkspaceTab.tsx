@@ -847,22 +847,60 @@ export default function FlowWorkspaceTab({
         </TabsTrigger>
       </TabsList>
 
-      <Button
-        type="button"
-        variant="default"
-        size="sm"
-        onClick={handleCloudSave}
-        disabled={cloudSaving}
-        title="שמור את ההצעה הנוכחית כטיוטה חדשה בטיוטות הצעות מחיר"
-        className="h-8 shrink-0 gap-1 px-2 text-xs"
-      >
-        {cloudSaving ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <Cloud className="h-3.5 w-3.5" />
-        )}
-        שמור
-      </Button>
+      <Popover open={saveMenuOpen} onOpenChange={setSaveMenuOpen} modal={false}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            disabled={cloudSaving}
+            title="שמור את ההצעה — בחר אם לעדכן גם את התבנית"
+            className="h-8 shrink-0 gap-1 px-2 text-xs"
+          >
+            {cloudSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Cloud className="h-3.5 w-3.5" />
+            )}
+            שמור
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          dir="rtl"
+          className="w-72 p-2"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <div className="space-y-1.5">
+            <p className="px-1 pb-1 text-[11px] text-muted-foreground">
+              ההצעה תישמר כטיוטה ללקוח. פרטי הלקוח בלבד יתרוקנו — שאר התבנית
+              תישאר.
+            </p>
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="w-full justify-start gap-2 text-xs"
+              disabled={cloudSaving}
+              onClick={() => performCloudSave("client-only")}
+            >
+              <Cloud className="h-3.5 w-3.5" />
+              שמור הצעה ללקוח (אל תעדכן תבנית)
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="w-full justify-start gap-2 text-xs"
+              disabled={cloudSaving}
+              onClick={() => performCloudSave("client-and-template")}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              שמור הצעה + עדכן תבנית
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
 
       <Tooltip>
         <TooltipTrigger asChild>
