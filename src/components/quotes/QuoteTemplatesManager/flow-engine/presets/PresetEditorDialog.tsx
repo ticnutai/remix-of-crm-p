@@ -161,6 +161,8 @@ export default function PresetEditorDialog({ open, onOpenChange, preset, onSave 
           <Field label="ריפוד תאים (padding)">
             <Input value={cfg.table?.padding || "2mm 3mm"} onChange={(e) => patch("table.padding", e.target.value)} />
           </Field>
+        </div>
+
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
