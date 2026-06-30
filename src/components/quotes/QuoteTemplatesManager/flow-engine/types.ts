@@ -8,7 +8,7 @@ export type FlowInline =
   | { type: "raw"; html: string }; // עיצוב מורחב שמגיע מהעורך (גרדיאנט, גופן, מרווחים)
 
 export type FlowBlock =
-  | { type: "heading"; level: 1 | 2 | 3; content: FlowInline[] }
+  | { type: "heading"; level: 1 | 2 | 3; content: FlowInline[]; align?: "right" | "center" | "left" }
   | { type: "paragraph"; content: FlowInline[]; align?: "right" | "center" | "left" }
   | { type: "list"; ordered?: boolean; items: FlowInline[][] }
   | {
@@ -19,7 +19,7 @@ export type FlowBlock =
       breakable?: boolean;
     }
   | { type: "spacer"; mm: number }
-  | { type: "divider" }
+  | { type: "divider"; color?: string; thickness?: number; style?: "solid" | "dashed" | "dotted" | "double" }
   | { type: "page-break" };
 
 export interface FlowSection {
