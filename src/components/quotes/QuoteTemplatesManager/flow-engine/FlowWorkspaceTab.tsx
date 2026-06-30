@@ -359,15 +359,19 @@ export default function FlowWorkspaceTab({
     setPageSetup(loadPageSetup(template.id));
   }, [template.id]);
 
-  const baseHtml = useMemo(
-    () =>
-      templateToEditableHtml(template, {
-        preserveItemStyling: preserveStyles,
-        projectDetails,
-        keepFieldsAsPlaceholders: true,
-      }),
-    [template, preserveStyles, projectDetails],
-  );
+  const baseHtml = useMemo(() => {
+    // אם קיים override שנשמר ע"י "שמור + עדכן תבנית" — נטען אותו ישירות
+    const override =
+      (template as any)?.design_settings?.flowV2OverrideHtml ||
+      (template as any)?.flowV2OverrideHtml ||
+      null;
+    if (typeof override === "string" && override.trim()) return override;
+    return templateToEditableHtml(template, {
+      preserveItemStyling: preserveStyles,
+      projectDetails,
+      keepFieldsAsPlaceholders: true,
+    });
+  }, [template, preserveStyles, projectDetails]);
 
   const [html, setHtml] = useState<string>(() => {
     try {
@@ -433,13 +437,17 @@ export default function FlowWorkspaceTab({
     }
   };
 
-  // ===== שמירה בענן: יוצר הצעת מחיר חדשה, אופציה לנקות את התבנית =====
+  // ===== שמירה בענן: שתי אופציות —
+  //   (1) שמור הצעה ללקוח (אל תעדכן תבנית)
+  //   (2) שמור הצעה + עדכן תבנית
+  // בשתיהן: מנקה רק את ערכי השדות החכמים שמגיעים מ"פרטי פרויקט"
+  // (השדות עצמם נשארים כ-placeholder למילוי הבא).
   const [cloudSaving, setCloudSaving] = useState(false);
-  const [postSaveDialogOpen, setPostSaveDialogOpen] = useState(false);
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
   const lastSavedQuoteIdRef = useRef<string | null>(null);
 
-  // הפיכת ה-HTML הנוכחי ל"תבנית נקייה": מוחק data-resolved-value
-  // ומחזיר את תוכן הצ'יפ ל-{{label}}, כך שתיטען בפעם הבאה כ-placeholder.
+  // ניקוי data-resolved-value מצ'יפים של שדות דינמיים — מחזיר את הצ'יפ
+  // למצב placeholder כך שבטעינה הבאה ה-fieldResolver ימלא ערך חדש מפרטי פרויקט.
   const stripResolvedFromHtml = (raw: string): string => {
     try {
       const doc = new DOMParser().parseFromString(`<div>${raw}</div>`, "text/html");
@@ -457,8 +465,9 @@ export default function FlowWorkspaceTab({
     }
   };
 
-  const handleCloudSave = async () => {
+  const performCloudSave = async (mode: "client-only" | "client-and-template") => {
     if (cloudSaving) return;
+    setSaveMenuOpen(false);
     setCloudSaving(true);
     try {
       const { data: userRes } = await supabase.auth.getUser();
@@ -473,6 +482,8 @@ export default function FlowWorkspaceTab({
         (projectDetails as any)?.family ||
         template.name ||
         "טיוטה ללא שם";
+
+      // 1) שמירת ההצעה כטיוטה בענן (תמיד)
       const payload: any = {
         user_id: userId,
         template_id: template.id || null,
@@ -495,32 +506,43 @@ export default function FlowWorkspaceTab({
         .single();
       if (error) throw error;
       lastSavedQuoteIdRef.current = data?.id || null;
-      toast.success("נשמרה הצעת מחיר חדשה בטיוטות");
-      setPostSaveDialogOpen(true);
+
+      // 2) אם נבחר — עדכון התבנית עצמה (HTML override + design_settings)
+      const cleanedHtml = stripResolvedFromHtml(html);
+      if (mode === "client-and-template" && template.id) {
+        const nextDesignSettings = {
+          ...((template as any)?.design_settings || {}),
+          ...(designSettings || {}),
+          flowV2OverrideHtml: cleanedHtml,
+        };
+        const { error: tplErr } = await (supabase.from("quote_templates") as any)
+          .update({
+            html_content: cleanedHtml,
+            design_settings: nextDesignSettings,
+          })
+          .eq("id", template.id);
+        if (tplErr) throw tplErr;
+      }
+
+      // 3) ריקון פרטי לקוח בלבד — שאר התבנית נשארת
+      try {
+        localStorage.setItem(storageKey(template.id), cleanedHtml);
+      } catch {
+        /* ignore */
+      }
+      setHtml(cleanedHtml);
+
+      toast.success(
+        mode === "client-and-template"
+          ? "נשמר ✓ ההצעה נשמרה והתבנית עודכנה"
+          : "נשמר ✓ ההצעה נשמרה כטיוטה",
+      );
     } catch (err: any) {
       console.error("[FlowWorkspace] cloud save failed", err);
       toast.error(err?.message || "שמירה בענן נכשלה");
     } finally {
       setCloudSaving(false);
     }
-  };
-
-
-  const handleResetTemplateAfterSave = () => {
-    // מנקה את ה-HTML מערכים שנפתרו ושומר חזרה כטיוטה ריקה לחלוטין
-    const cleanedFromCurrent = stripResolvedFromHtml(html);
-    try {
-      localStorage.setItem(storageKey(template.id), cleanedFromCurrent);
-    } catch {
-      /* ignore */
-    }
-    setHtml(cleanedFromCurrent);
-    setPostSaveDialogOpen(false);
-    toast.success("התבנית רוקנה ומוכנה למילוי חדש");
-  };
-
-  const handleKeepCurrentAfterSave = () => {
-    setPostSaveDialogOpen(false);
   };
 
   // ===== Render helpers: blocks reused in inline-full mode and Settings popover =====
@@ -825,22 +847,60 @@ export default function FlowWorkspaceTab({
         </TabsTrigger>
       </TabsList>
 
-      <Button
-        type="button"
-        variant="default"
-        size="sm"
-        onClick={handleCloudSave}
-        disabled={cloudSaving}
-        title="שמור את ההצעה הנוכחית כטיוטה חדשה בטיוטות הצעות מחיר"
-        className="h-8 shrink-0 gap-1 px-2 text-xs"
-      >
-        {cloudSaving ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <Cloud className="h-3.5 w-3.5" />
-        )}
-        שמור
-      </Button>
+      <Popover open={saveMenuOpen} onOpenChange={setSaveMenuOpen} modal={false}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            disabled={cloudSaving}
+            title="שמור את ההצעה — בחר אם לעדכן גם את התבנית"
+            className="h-8 shrink-0 gap-1 px-2 text-xs"
+          >
+            {cloudSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Cloud className="h-3.5 w-3.5" />
+            )}
+            שמור
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          dir="rtl"
+          className="w-72 p-2"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <div className="space-y-1.5">
+            <p className="px-1 pb-1 text-[11px] text-muted-foreground">
+              ההצעה תישמר כטיוטה ללקוח. פרטי הלקוח בלבד יתרוקנו — שאר התבנית
+              תישאר.
+            </p>
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="w-full justify-start gap-2 text-xs"
+              disabled={cloudSaving}
+              onClick={() => performCloudSave("client-only")}
+            >
+              <Cloud className="h-3.5 w-3.5" />
+              שמור הצעה ללקוח (אל תעדכן תבנית)
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="w-full justify-start gap-2 text-xs"
+              disabled={cloudSaving}
+              onClick={() => performCloudSave("client-and-template")}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              שמור הצעה + עדכן תבנית
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
 
       <Tooltip>
         <TooltipTrigger asChild>
@@ -943,27 +1003,8 @@ export default function FlowWorkspaceTab({
         </div>
       </TabsContent>
 
-      <AlertDialog open={postSaveDialogOpen} onOpenChange={setPostSaveDialogOpen}>
-        <AlertDialogContent dir="rtl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>הטיוטה נשמרה בענן</AlertDialogTitle>
-            <AlertDialogDescription>
-              ההצעה נשמרה בטיוטות הצעות המחיר עם כל הנתונים שמולאו.
-              <br />
-              האם לרוקן את התבנית הנוכחית כך שתהיה ריקה למילוי חדש (השדות
-              החכמים יישארו, אך הערכים שמולאו יוסרו)?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleKeepCurrentAfterSave}>
-              לא, השאר כפי שהיא
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleResetTemplateAfterSave}>
-              כן, רוקן את התבנית
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
+
       {onDesignSettingsChange && designerPosition && (
         <StripDesignerDialog
           open={Boolean(designerPosition)}
