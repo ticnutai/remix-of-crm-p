@@ -33,6 +33,7 @@ import AdvancedTextStyle from "./AdvancedTextStyle";
 import { useDynamicFields, type DynamicFieldDefinition } from "./dynamicFields";
 import CreateFieldDialog from "./CreateFieldDialog";
 import { MultiSelection, addExtraRange, clearExtraRanges, getExtraRanges } from "./MultiSelection";
+import { PaymentsBlock } from "./PaymentsBlock";
 
 import type { DesignPresetConfig } from "../presets/types";
 import type { FlowPageSetup } from "../types";
