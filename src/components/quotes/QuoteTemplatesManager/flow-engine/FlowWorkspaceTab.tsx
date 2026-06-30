@@ -437,13 +437,17 @@ export default function FlowWorkspaceTab({
     }
   };
 
-  // ===== שמירה בענן: יוצר הצעת מחיר חדשה, אופציה לנקות את התבנית =====
+  // ===== שמירה בענן: שתי אופציות —
+  //   (1) שמור הצעה ללקוח (אל תעדכן תבנית)
+  //   (2) שמור הצעה + עדכן תבנית
+  // בשתיהן: מנקה רק את ערכי השדות החכמים שמגיעים מ"פרטי פרויקט"
+  // (השדות עצמם נשארים כ-placeholder למילוי הבא).
   const [cloudSaving, setCloudSaving] = useState(false);
-  const [postSaveDialogOpen, setPostSaveDialogOpen] = useState(false);
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
   const lastSavedQuoteIdRef = useRef<string | null>(null);
 
-  // הפיכת ה-HTML הנוכחי ל"תבנית נקייה": מוחק data-resolved-value
-  // ומחזיר את תוכן הצ'יפ ל-{{label}}, כך שתיטען בפעם הבאה כ-placeholder.
+  // ניקוי data-resolved-value מצ'יפים של שדות דינמיים — מחזיר את הצ'יפ
+  // למצב placeholder כך שבטעינה הבאה ה-fieldResolver ימלא ערך חדש מפרטי פרויקט.
   const stripResolvedFromHtml = (raw: string): string => {
     try {
       const doc = new DOMParser().parseFromString(`<div>${raw}</div>`, "text/html");
@@ -461,8 +465,9 @@ export default function FlowWorkspaceTab({
     }
   };
 
-  const handleCloudSave = async () => {
+  const performCloudSave = async (mode: "client-only" | "client-and-template") => {
     if (cloudSaving) return;
+    setSaveMenuOpen(false);
     setCloudSaving(true);
     try {
       const { data: userRes } = await supabase.auth.getUser();
@@ -477,6 +482,8 @@ export default function FlowWorkspaceTab({
         (projectDetails as any)?.family ||
         template.name ||
         "טיוטה ללא שם";
+
+      // 1) שמירת ההצעה כטיוטה בענן (תמיד)
       const payload: any = {
         user_id: userId,
         template_id: template.id || null,
@@ -499,32 +506,43 @@ export default function FlowWorkspaceTab({
         .single();
       if (error) throw error;
       lastSavedQuoteIdRef.current = data?.id || null;
-      toast.success("נשמרה הצעת מחיר חדשה בטיוטות");
-      setPostSaveDialogOpen(true);
+
+      // 2) אם נבחר — עדכון התבנית עצמה (HTML override + design_settings)
+      const cleanedHtml = stripResolvedFromHtml(html);
+      if (mode === "client-and-template" && template.id) {
+        const nextDesignSettings = {
+          ...((template as any)?.design_settings || {}),
+          ...(designSettings || {}),
+          flowV2OverrideHtml: cleanedHtml,
+        };
+        const { error: tplErr } = await (supabase.from("quote_templates") as any)
+          .update({
+            html_content: cleanedHtml,
+            design_settings: nextDesignSettings,
+          })
+          .eq("id", template.id);
+        if (tplErr) throw tplErr;
+      }
+
+      // 3) ריקון פרטי לקוח בלבד — שאר התבנית נשארת
+      try {
+        localStorage.setItem(storageKey(template.id), cleanedHtml);
+      } catch {
+        /* ignore */
+      }
+      setHtml(cleanedHtml);
+
+      toast.success(
+        mode === "client-and-template"
+          ? "נשמר ✓ ההצעה נשמרה והתבנית עודכנה"
+          : "נשמר ✓ ההצעה נשמרה כטיוטה",
+      );
     } catch (err: any) {
       console.error("[FlowWorkspace] cloud save failed", err);
       toast.error(err?.message || "שמירה בענן נכשלה");
     } finally {
       setCloudSaving(false);
     }
-  };
-
-
-  const handleResetTemplateAfterSave = () => {
-    // מנקה את ה-HTML מערכים שנפתרו ושומר חזרה כטיוטה ריקה לחלוטין
-    const cleanedFromCurrent = stripResolvedFromHtml(html);
-    try {
-      localStorage.setItem(storageKey(template.id), cleanedFromCurrent);
-    } catch {
-      /* ignore */
-    }
-    setHtml(cleanedFromCurrent);
-    setPostSaveDialogOpen(false);
-    toast.success("התבנית רוקנה ומוכנה למילוי חדש");
-  };
-
-  const handleKeepCurrentAfterSave = () => {
-    setPostSaveDialogOpen(false);
   };
 
   // ===== Render helpers: blocks reused in inline-full mode and Settings popover =====
