@@ -12,13 +12,18 @@ const PAYMENTS_HEADING_RE = /^\s*לוח\s+תשלומים/;
 /** בונה רק את ה-HTML של מקטע לוח התשלומים (heading + ol) מהתבנית. */
 export function buildPaymentsHtml(
   template: QuoteTemplate,
-  opts?: { preserveItemStyling?: boolean; projectDetails?: ProjectTokenData },
+  opts?: {
+    preserveItemStyling?: boolean;
+    projectDetails?: ProjectTokenData;
+    paymentsLayout?: "list" | "table" | "both";
+  },
 ): string {
   if (!template.payment_schedule || !template.payment_schedule.length) return "";
   const doc = serializeTemplate(template, undefined, {
     preserveItemStyling: opts?.preserveItemStyling,
     projectDetails: opts?.projectDetails,
     keepFieldsAsPlaceholders: true,
+    paymentsLayout: opts?.paymentsLayout,
   });
   const payments = doc.sections.find((s) => s.id === "payments");
   if (!payments) return "";
