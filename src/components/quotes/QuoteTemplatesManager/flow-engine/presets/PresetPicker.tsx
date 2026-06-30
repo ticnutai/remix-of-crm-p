@@ -16,20 +16,23 @@ import { cn } from "@/lib/utils";
 interface Props {
   selectedId: string | null;
   onSelect: (preset: DesignPreset | null) => void;
-  /** נקרא לפני פתיחת דיאלוג כדי לסגור Popover/Dropdown שעוטפים אותנו. */
-  onBeforeOpenDialog?: () => void;
+  /** מדווח להורה אם דיאלוג עריכה/יצירה פתוח, כדי שלא יסגור את ה-Popover שעוטף אותנו. */
+  onDialogOpenChange?: (open: boolean) => void;
 }
 
-export default function PresetPicker({ selectedId, onSelect, onBeforeOpenDialog }: Props) {
+export default function PresetPicker({ selectedId, onSelect, onDialogOpenChange }: Props) {
   const { presets, loading, create, update, remove } = usePresets();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogOpen, setDialogOpenState] = useState(false);
   const [editing, setEditing] = useState<DesignPreset | null>(null);
+
+  const setDialogOpen = (open: boolean) => {
+    setDialogOpenState(open);
+    onDialogOpenChange?.(open);
+  };
 
   const openDialog = (p: DesignPreset | null) => {
     setEditing(p);
-    onBeforeOpenDialog?.();
-    // delay slightly so the parent popover can unmount before the dialog opens
-    setTimeout(() => setDialogOpen(true), 30);
+    setDialogOpen(true);
   };
 
   const handleRemove = async (e: React.MouseEvent, p: DesignPreset) => {
