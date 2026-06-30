@@ -52,8 +52,10 @@ function renderInlines(nodes: FlowInline[]): string {
 
 function renderBlock(block: FlowBlock): string {
   switch (block.type) {
-    case "heading":
-      return `<h${block.level} class="flow-h flow-h${block.level}">${renderInlines(block.content)}</h${block.level}>`;
+    case "heading": {
+      const align = block.align ? ` style="text-align:${block.align}"` : "";
+      return `<h${block.level} class="flow-h flow-h${block.level}"${align}>${renderInlines(block.content)}</h${block.level}>`;
+    }
     case "paragraph":
       return `<p class="flow-p" style="text-align:${block.align || "right"}">${renderInlines(block.content)}</p>`;
     case "list": {
@@ -76,8 +78,12 @@ function renderBlock(block: FlowBlock): string {
     }
     case "spacer":
       return `<div class="flow-spacer" style="height:${block.mm}mm"></div>`;
-    case "divider":
-      return `<hr class="flow-divider" />`;
+    case "divider": {
+      const color = block.color || "#d8ac27";
+      const thickness = Math.max(1, Math.round(block.thickness || 1));
+      const style = block.style || "solid";
+      return `<hr class="flow-divider" style="border:0;border-top:${thickness}px ${style} ${color};margin:4mm 0;" />`;
+    }
     case "page-break":
       return `<div class="flow-pagebreak"></div>`;
   }
