@@ -418,6 +418,38 @@ export default function FlowEditor({
     },
   });
 
+  // Global Undo/Redo (Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z) — works in any keyboard layout
+  // including Hebrew, even when focus is in a toolbar/popover but not in another input.
+  useEffect(() => {
+    if (!editor) return;
+    const onKey = (event: KeyboardEvent) => {
+      const mod = event.ctrlKey || event.metaKey;
+      if (!mod) return;
+      const code = event.code;
+      const key = (event.key || "").toLowerCase();
+      const isZ = code === "KeyZ" || key === "z" || key === "ז";
+      const isY = code === "KeyY" || key === "y" || key === "ט";
+      if (!isZ && !isY) return;
+      // Skip if focus is in another editable element (input/textarea/contenteditable that's not ours)
+      const t = event.target as HTMLElement | null;
+      if (t) {
+        const tag = t.tagName;
+        const inOtherEditable =
+          (tag === "INPUT" || tag === "TEXTAREA" || t.isContentEditable) &&
+          !t.closest(".flow-editor-content");
+        if (inOtherEditable) return;
+      }
+      event.preventDefault();
+      if (isY || (isZ && event.shiftKey)) {
+        (editor as any).chain().focus().redo().run();
+      } else if (isZ) {
+        (editor as any).chain().focus().undo().run();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [editor]);
+
   // עדכון תוכן כשטוענים מסמך חדש (החלפת תבנית)
   useEffect(() => {
     if (!editor) return;
