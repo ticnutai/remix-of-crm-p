@@ -418,14 +418,8 @@ export default function FlowWorkspaceTab({
     () => paymentsSignature(template) + `|${paymentsLayout}`,
     [template, paymentsLayout],
   );
-  const prevPaySigRef = useRef<string>(paySig);
-  const firstRunRef = useRef(true);
+  const prevPaySigRef = useRef<string>("");
   useEffect(() => {
-    if (firstRunRef.current) {
-      firstRunRef.current = false;
-      prevPaySigRef.current = paySig;
-      return;
-    }
     if (prevPaySigRef.current === paySig) return;
     prevPaySigRef.current = paySig;
     setHtml((prev) => {
