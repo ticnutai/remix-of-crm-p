@@ -875,8 +875,10 @@ export default function FlowEditor({
         .flow-editor-content ul, .flow-editor-content ol { padding-inline-start: 1.5rem; margin: 0 0 .7rem; }
         .flow-editor-content li { margin-bottom: .2rem; }
         .flow-editor-content table { border-collapse: collapse; width: 100%; margin: .5rem 0; }
-        .flow-editor-content th, .flow-editor-content td { border: 1px solid hsl(var(--border)); padding: .35rem .55rem; text-align: right; }
-        .flow-editor-content th { background: ${preset?.colors.heading || "hsl(var(--primary))"}; color: #fff; }
+        .flow-editor-content th, .flow-editor-content td { border: 1px solid ${preset?.table?.borderColor || "hsl(var(--border))"}; padding: ${preset?.table?.padding || ".35rem .55rem"}; text-align: right; font-size: ${preset?.table?.fontSize || "inherit"}; }
+        .flow-editor-content th { background: ${preset?.table?.headerBg || preset?.colors.heading || "hsl(var(--primary))"}; color: ${preset?.table?.headerText || "#fff"}; }
+        ${preset?.table?.rowAltBg ? `.flow-editor-content tbody tr:nth-child(even) td { background: ${preset.table.rowAltBg}; }` : ""}
+        .flow-editor-content tbody tr:last-child td { font-weight: 700; background: ${(preset?.colors.accent || "#d8ac27")}22; }
         .flow-editor-content hr { border: 0; border-top: 1px dashed hsl(var(--border)); margin: .8rem 0; }
         .flow-editor-content mark { background: ${preset?.colors.accent || "hsl(var(--accent))"}59; padding: 0 .15rem; border-radius: .15rem; }
         .flow-editor-content [data-field] { user-select: all; }
