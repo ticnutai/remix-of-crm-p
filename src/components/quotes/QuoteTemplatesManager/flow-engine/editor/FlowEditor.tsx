@@ -392,14 +392,17 @@ export default function FlowEditor({
       handleKeyDown(view, event) {
         const mod = event.ctrlKey || event.metaKey;
         if (!mod) return false;
-        const key = event.key.toLowerCase();
-        // Ctrl/Cmd + Z = undo, Ctrl/Cmd + Shift + Z = redo, Ctrl/Cmd + Y = redo
-        if (key === "z" && !event.shiftKey) {
+        // Use event.code so the shortcut works in any keyboard layout (Hebrew, Arabic, etc.)
+        const code = event.code;
+        const key = (event.key || "").toLowerCase();
+        const isZ = code === "KeyZ" || key === "z" || key === "ז";
+        const isY = code === "KeyY" || key === "y" || key === "ט";
+        if (isZ && !event.shiftKey) {
           event.preventDefault();
           (editor as any)?.chain().focus().undo().run();
           return true;
         }
-        if ((key === "z" && event.shiftKey) || key === "y") {
+        if ((isZ && event.shiftKey) || isY) {
           event.preventDefault();
           (editor as any)?.chain().focus().redo().run();
           return true;
