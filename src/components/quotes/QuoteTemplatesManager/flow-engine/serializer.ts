@@ -35,6 +35,8 @@ export interface SerializeOptions {
    * (`{type:"field"}`) כדי שהעורך יחליף אותם בערך החי מ"פרטי פרויקט".
    */
   keepFieldsAsPlaceholders?: boolean;
+  /** תצורת תצוגת לוח התשלומים: רשימה (ברירת מחדל) / טבלה / גם וגם. */
+  paymentsLayout?: "list" | "table" | "both";
 }
 
 // מיפוי טוקנים בעברית (מסוגריים מרובעים) למפתחות שדה דינמי.
