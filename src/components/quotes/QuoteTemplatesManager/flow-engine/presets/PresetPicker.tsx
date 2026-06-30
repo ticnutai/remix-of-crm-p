@@ -103,14 +103,22 @@ export default function PresetPicker({ selectedId, onSelect, onDialogOpenChange 
                 actions={
                   <>
                     <IconBtn
-                      title={p.is_builtin ? "שכפל וערוך" : "ערוך"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openDialog(p);
-                      }}
+                      title="שכפל ערכה"
+                      onClick={(e) => handleDuplicate(e, p)}
                     >
-                      {p.is_builtin ? <Copy className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
+                      <Copy className="h-3 w-3" />
                     </IconBtn>
+                    {!p.is_builtin && (
+                      <IconBtn
+                        title="ערוך"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDialog(p);
+                        }}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </IconBtn>
+                    )}
                     {!p.is_builtin && (
                       <IconBtn
                         title="מחק"
