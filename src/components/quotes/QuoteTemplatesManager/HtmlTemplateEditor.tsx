@@ -4700,6 +4700,18 @@ export function HtmlTemplateEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("flow-v2");
+  const FLOW_SUB_TAB_LS_KEY = "qt-editor-flow-sub-tab";
+  const [flowSubTab, setFlowSubTab] = useState<"edit" | "preview">(() => {
+    try {
+      const v = localStorage.getItem(FLOW_SUB_TAB_LS_KEY);
+      return v === "preview" ? "preview" : "edit";
+    } catch {
+      return "edit";
+    }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(FLOW_SUB_TAB_LS_KEY, flowSubTab); } catch { /* ignore */ }
+  }, [flowSubTab]);
   const TAB_DISPLAY_MODE_LS_KEY = "qt-editor-tab-display-mode";
   type TabDisplayMode = "full" | "iconsOnly" | "stacked" | "twoRows";
   const [tabDisplayMode, setTabDisplayMode] = useState<TabDisplayMode>(() => {
