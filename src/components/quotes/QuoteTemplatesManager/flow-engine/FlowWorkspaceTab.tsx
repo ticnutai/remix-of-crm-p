@@ -1015,6 +1015,32 @@ export default function FlowWorkspaceTab({
             </div>
             <span className="h-5 w-px bg-border" />
             <PresetPicker selectedId={selectedPresetId} onSelect={handlePresetSelect} />
+            <span className="h-5 w-px bg-border" />
+            <div className="flex items-center gap-2">
+              <Label className="text-xs font-medium" title="כיצד יוצג לוח התשלומים בעורך וב-PDF">
+                לוח תשלומים
+              </Label>
+              <div className="flex rounded-md border border-border overflow-hidden">
+                {([
+                  { v: "list", l: "רשימה" },
+                  { v: "table", l: "טבלה" },
+                  { v: "both", l: "גם וגם" },
+                ] as Array<{ v: PaymentsLayout; l: string }>).map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => setPaymentsLayout(opt.v)}
+                    className={`px-2 py-1 text-xs transition-colors ${
+                      paymentsLayout === opt.v
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {opt.l}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
           {onDesignSettingsChange && renderStripsBlock()}
           {renderPageBlock()}
