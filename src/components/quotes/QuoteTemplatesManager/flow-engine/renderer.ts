@@ -348,7 +348,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   }
 
   .flow-h { color: ${branding.primaryColor}; margin: 4mm 0 2mm; break-after: avoid; }
-  .flow-h1 { font-size: 20pt; border-bottom: 2px solid ${branding.accentColor}; padding-bottom: 2mm; }
+  .flow-h1 { font-size: 20pt; padding-bottom: 2mm; }
   .flow-h2 { font-size: 14pt; }
   .flow-h3 { font-size: 12pt; }
 
