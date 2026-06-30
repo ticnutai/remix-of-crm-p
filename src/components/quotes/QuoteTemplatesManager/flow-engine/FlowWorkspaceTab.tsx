@@ -25,6 +25,7 @@ import type { QuoteTemplate } from "../types";
 import FlowEditor from "./editor/FlowEditor";
 import FlowPreviewTab from "./FlowPreviewTab";
 import { templateToEditableHtml } from "./editor/templateToHtml";
+import { paymentsSignature, syncPaymentsSection } from "./syncPayments";
 import PresetPicker from "./presets/PresetPicker";
 import type { DesignPreset } from "./presets/types";
 import { safeConfig, usePresets } from "./presets/usePresets";
@@ -391,6 +392,35 @@ export default function FlowWorkspaceTab({
       setHtml(baseHtml);
     }
   }, [template.id, baseHtml]);
+
+  // ===== סנכרון אוטומטי של "לוח תשלומים" מטאב "תוכן" לעורך =====
+  // ברגע שמשתמש משנה את לוח התשלומים / מחיר בסיס / מע״מ בטאב תוכן —
+  // מקטע התשלומים בעורך Flow מתעדכן מיידית, גם אם יש טיוטה שמורה.
+  const paySig = useMemo(() => paymentsSignature(template), [template]);
+  const prevPaySigRef = useRef<string>(paySig);
+  const firstRunRef = useRef(true);
+  useEffect(() => {
+    if (firstRunRef.current) {
+      firstRunRef.current = false;
+      prevPaySigRef.current = paySig;
+      return;
+    }
+    if (prevPaySigRef.current === paySig) return;
+    prevPaySigRef.current = paySig;
+    setHtml((prev) => {
+      const next = syncPaymentsSection(prev, template, {
+        preserveItemStyling: preserveStyles,
+        projectDetails,
+      });
+      if (next === prev) return prev;
+      try {
+        localStorage.setItem(storageKey(template.id), next);
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, [paySig, template, preserveStyles, projectDetails]);
 
   const handleChange = (next: string) => {
     setHtml(next);
