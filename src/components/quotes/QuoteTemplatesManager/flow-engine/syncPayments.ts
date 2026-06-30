@@ -47,7 +47,11 @@ export function paymentsSignature(template: QuoteTemplate): string {
 export function syncPaymentsSection(
   html: string,
   template: QuoteTemplate,
-  opts?: { preserveItemStyling?: boolean; projectDetails?: ProjectTokenData },
+  opts?: {
+    preserveItemStyling?: boolean;
+    projectDetails?: ProjectTokenData;
+    paymentsLayout?: "list" | "table" | "both";
+  },
 ): string {
   const fresh = buildPaymentsHtml(template, opts);
   try {
@@ -55,15 +59,18 @@ export function syncPaymentsSection(
     const root = dom.getElementById("root");
     if (!root) return fresh ? html + fresh : html;
 
-    // מצא heading קיים של "לוח תשלומים" + הרשימה שאחריו, והסר.
     const headings = Array.from(root.querySelectorAll("h1,h2,h3,h4"));
     const heading = headings.find((h) =>
       PAYMENTS_HEADING_RE.test((h.textContent || "").replace(/\s+/g, " ").trim()),
     );
     if (heading) {
-      const next = heading.nextElementSibling;
+      let next = heading.nextElementSibling;
       heading.remove();
-      if (next && (next.tagName === "OL" || next.tagName === "UL")) next.remove();
+      while (next && (next.tagName === "OL" || next.tagName === "UL" || next.tagName === "TABLE")) {
+        const after = next.nextElementSibling;
+        next.remove();
+        next = after;
+      }
     }
 
     if (!fresh) return root.innerHTML;
