@@ -379,6 +379,7 @@ export default function FlowEditor({
       TableCell,
       DynamicField,
       MultiSelection,
+      PaymentsBlock,
       Placeholder.configure({ placeholder: "התחל לכתוב..." }),
       PaginationPlus.configure(paginationOptions),
     ],
