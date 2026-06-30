@@ -25,6 +25,7 @@ import type { QuoteTemplate } from "../types";
 import FlowEditor from "./editor/FlowEditor";
 import FlowPreviewTab from "./FlowPreviewTab";
 import { templateToEditableHtml } from "./editor/templateToHtml";
+import { paymentsSignature, syncPaymentsSection } from "./syncPayments";
 import PresetPicker from "./presets/PresetPicker";
 import type { DesignPreset } from "./presets/types";
 import { safeConfig, usePresets } from "./presets/usePresets";
