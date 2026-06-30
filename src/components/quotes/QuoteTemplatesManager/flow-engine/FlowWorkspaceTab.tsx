@@ -182,6 +182,7 @@ export default function FlowWorkspaceTab({
       return null;
     }
   });
+  const [presetsOpen, setPresetsOpen] = useState(false);
   const selectedPreset = useMemo<DesignPreset | null>(
     () => presets.find((p) => p.id === selectedPresetId) || null,
     [presets, selectedPresetId],
