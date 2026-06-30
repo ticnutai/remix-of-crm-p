@@ -182,6 +182,7 @@ export default function FlowWorkspaceTab({
       return null;
     }
   });
+  const [presetsOpen, setPresetsOpen] = useState(false);
   const selectedPreset = useMemo<DesignPreset | null>(
     () => presets.find((p) => p.id === selectedPresetId) || null,
     [presets, selectedPresetId],
@@ -1009,16 +1010,23 @@ export default function FlowWorkspaceTab({
       </div>
 
       {/* ערכות */}
-      <Popover>
+      <Popover open={presetsOpen} onOpenChange={setPresetsOpen}>
         <PopoverTrigger asChild>
           <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 gap-1 px-2 text-xs">
             <Layers className="h-3.5 w-3.5" />
             ערכות
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" sideOffset={6} dir="rtl" className="w-[320px] p-3">
+        <PopoverContent align="end" sideOffset={6} dir="rtl" className="w-[340px] p-3">
           <div className="mb-2 text-xs font-medium text-muted-foreground">ערכות עיצוב</div>
-          <PresetPicker selectedId={selectedPresetId} onSelect={handlePresetSelect} />
+          <PresetPicker
+            selectedId={selectedPresetId}
+            onSelect={(p) => {
+              handlePresetSelect(p);
+              setPresetsOpen(false);
+            }}
+            onBeforeOpenDialog={() => setPresetsOpen(false)}
+          />
         </PopoverContent>
       </Popover>
 
