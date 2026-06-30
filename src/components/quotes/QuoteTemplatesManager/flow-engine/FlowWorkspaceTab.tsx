@@ -408,7 +408,12 @@ export default function FlowWorkspaceTab({
       return baseHtml;
     }
   });
-  const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
+  const [internalSubTab, setInternalSubTab] = useState<"edit" | "preview">("edit");
+  const activeTab = subTab ?? internalSubTab;
+  const setActiveTab = (next: "edit" | "preview") => {
+    if (onSubTabChange) onSubTabChange(next);
+    else setInternalSubTab(next);
+  };
   // אם החליפו תבנית — טען טיוטה שמורה או תוכן בסיס
   useEffect(() => {
     try {
