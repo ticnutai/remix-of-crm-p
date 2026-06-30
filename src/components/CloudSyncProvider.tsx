@@ -116,6 +116,11 @@ const WATCH_KEYS = [
   "dev-buttons-config",
   "dev-buttons-positions",
   "dev-tools-minimized",
+
+  // Quote template editor — tabs order/visibility & display mode
+  "lov-html-editor-tabs-cfg-v1",
+  "qt-editor-tab-display-mode",
+  "qt-editor-flow-sub-tab",
 ];
 
 // Additional prefixes for dynamic keys (like dashboard-dynamic-stats-1, dashboard-dynamic-stats-2)
