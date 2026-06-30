@@ -14688,40 +14688,9 @@ ${tbAt('footer')}
               projectDetails={projectDetails}
               designSettings={designSettings}
               onDesignSettingsChange={setDesignSettings}
-              workspaceActions={
-                <>
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    title="חזרה לתבניות הצעות מחיר"
-                    aria-label="חזרה לתבניות הצעות מחיר"
-                    className="inline-flex h-8 shrink-0 items-center justify-center rounded-md px-1.5 text-muted-foreground hover:bg-muted hover:text-primary"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                  {tabConfig
-                    .filter((t) => t.visible && t.value !== "flow-v2")
-                    .map((t) => {
-                      const meta = TAB_META[t.value];
-                      const Icon = meta.icon;
-                      return (
-                        <button
-                          key={t.value}
-                          type="button"
-                          onClick={() => {
-                            if (t.value === "logo-strip") setLogoStripMode("logo");
-                            setActiveTab(t.value);
-                          }}
-                          title={meta.label}
-                          className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-border px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                          {meta.shortLabel}
-                        </button>
-                      );
-                    })}
-                </>
-              }
+              subTab={flowSubTab}
+              onSubTabChange={setFlowSubTab}
+              hideInternalSubTabs
             />
           </TabsContent>
 
