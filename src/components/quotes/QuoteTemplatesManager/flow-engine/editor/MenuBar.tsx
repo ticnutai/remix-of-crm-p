@@ -424,12 +424,21 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
         <TableIcon className="h-3.5 w-3.5" />
       </ToolButton>
 
-      <ToolButton
-        onClick={() => (editor.chain().focus() as any).setHorizontalRule().run()}
-        title="קו מפריד"
-      >
-        <Minus className="h-3.5 w-3.5" />
-      </ToolButton>
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-md px-1.5 text-sm transition-colors hover:bg-muted"
+            title="הוסף קו (צבע / עובי / סגנון)"
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-64 p-3 space-y-3" dir="rtl">
+          <div className="text-xs font-medium text-muted-foreground">קו מפריד</div>
+          <DividerInserter editor={editor} />
+        </PopoverContent>
+      </Popover>
 
       <ToolButton
         onClick={() =>
