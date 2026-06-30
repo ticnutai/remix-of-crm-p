@@ -4700,6 +4700,18 @@ export function HtmlTemplateEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("flow-v2");
+  const FLOW_SUB_TAB_LS_KEY = "qt-editor-flow-sub-tab";
+  const [flowSubTab, setFlowSubTab] = useState<"edit" | "preview">(() => {
+    try {
+      const v = localStorage.getItem(FLOW_SUB_TAB_LS_KEY);
+      return v === "preview" ? "preview" : "edit";
+    } catch {
+      return "edit";
+    }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(FLOW_SUB_TAB_LS_KEY, flowSubTab); } catch { /* ignore */ }
+  }, [flowSubTab]);
   const TAB_DISPLAY_MODE_LS_KEY = "qt-editor-tab-display-mode";
   type TabDisplayMode = "full" | "iconsOnly" | "stacked" | "twoRows";
   const [tabDisplayMode, setTabDisplayMode] = useState<TabDisplayMode>(() => {
@@ -8823,7 +8835,7 @@ ${tbAt('footer')}
           <div
             className={cn(
               "hidden border-b bg-white px-6 items-center justify-between gap-2",
-              activeTab !== "flow-v2" && "md:flex",
+              "md:flex",
             )}
           >
             <TooltipProvider delayDuration={200}>
@@ -8957,6 +8969,41 @@ ${tbAt('footer')}
               </Button>
             </div>
           </div>
+
+          {/* Second row: Flow sub-tabs (visible only when Flow is active) */}
+          {activeTab === "flow-v2" && (
+            <div className="hidden md:flex border-b bg-emerald-50/40 px-6 items-center gap-1.5 h-10">
+              <span className="text-[11px] font-medium text-emerald-700/80 ml-1">Flow:</span>
+              <button
+                type="button"
+                onClick={() => setFlowSubTab("edit")}
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 h-7 rounded-md text-xs font-medium transition-colors",
+                  flowSubTab === "edit"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                עריכה
+              </button>
+              <button
+                type="button"
+                onClick={() => setFlowSubTab("preview")}
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 h-7 rounded-md text-xs font-medium transition-colors",
+                  flowSubTab === "preview"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <Eye className="h-3.5 w-3.5" />
+                תצוגה מקדימה
+              </button>
+            </div>
+          )}
+
+
 
           {/* Tabs settings dialog — non-blocking (modal={false}) */}
           <Dialog
@@ -14641,40 +14688,9 @@ ${tbAt('footer')}
               projectDetails={projectDetails}
               designSettings={designSettings}
               onDesignSettingsChange={setDesignSettings}
-              workspaceActions={
-                <>
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    title="חזרה לתבניות הצעות מחיר"
-                    aria-label="חזרה לתבניות הצעות מחיר"
-                    className="inline-flex h-8 shrink-0 items-center justify-center rounded-md px-1.5 text-muted-foreground hover:bg-muted hover:text-primary"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                  {tabConfig
-                    .filter((t) => t.visible && t.value !== "flow-v2")
-                    .map((t) => {
-                      const meta = TAB_META[t.value];
-                      const Icon = meta.icon;
-                      return (
-                        <button
-                          key={t.value}
-                          type="button"
-                          onClick={() => {
-                            if (t.value === "logo-strip") setLogoStripMode("logo");
-                            setActiveTab(t.value);
-                          }}
-                          title={meta.label}
-                          className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-border px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                          {meta.shortLabel}
-                        </button>
-                      );
-                    })}
-                </>
-              }
+              subTab={flowSubTab}
+              onSubTabChange={setFlowSubTab}
+              hideInternalSubTabs
             />
           </TabsContent>
 
