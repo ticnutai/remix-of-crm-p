@@ -373,6 +373,7 @@ export default function FlowEditor({
       Color,
       FontFamily,
       Underline,
+      Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" } }),
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Table.configure({ resizable: false }),
