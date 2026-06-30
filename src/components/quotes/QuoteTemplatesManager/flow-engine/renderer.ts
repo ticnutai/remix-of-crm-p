@@ -8,6 +8,7 @@
 
 import type { FlowBlock, FlowDocument, FlowInline } from "./types";
 import type { DesignPresetConfig } from "./presets/types";
+import { buildPresetExtraCss } from "./presets/presetExtras";
 
 const esc = (s: string) =>
   s
@@ -108,7 +109,26 @@ export function renderFlowToHtml(
 }
 
 function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig): string {
-  const { branding, page, sections } = doc;
+  const { branding: origBranding, page, sections } = doc;
+  // Apply preset strip overrides (preset wins over document branding when override=true)
+  const stripCfg = preset?.strips;
+  const overrideStrips = !!stripCfg?.override;
+  const headerMode = overrideStrips ? (stripCfg?.headerMode || "inherit") : "inherit";
+  const footerMode = overrideStrips ? (stripCfg?.footerMode || "inherit") : "inherit";
+  const branding = overrideStrips
+    ? {
+        ...origBranding,
+        headerStripUrl:
+          headerMode === "none" ? "" : headerMode === "custom" ? (stripCfg?.headerStripUrl || origBranding.headerStripUrl) : origBranding.headerStripUrl,
+        footerStripUrl:
+          footerMode === "none" ? "" : footerMode === "custom" ? (stripCfg?.footerStripUrl || origBranding.footerStripUrl) : origBranding.footerStripUrl,
+        headerStripHeight:
+          headerMode === "custom" && stripCfg?.headerStripHeightPx ? stripCfg.headerStripHeightPx : (origBranding as any).headerStripHeight,
+        footerStripHeight:
+          footerMode === "custom" && stripCfg?.footerStripHeightPx ? stripCfg.footerStripHeightPx : (origBranding as any).footerStripHeight,
+        stripBgColor: stripCfg?.bgColor || (origBranding as any).stripBgColor,
+      }
+    : origBranding;
   const m = page.marginMm;
   const hasHeaderStrip = Boolean(branding.headerStripUrl);
   const hasFooterStrip = Boolean(branding.footerStripUrl);
@@ -363,6 +383,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   .running-footer { border-top-color: ${preset.colors.accent}; color: ${preset.colors.muted}; }
   .fld { background: ${preset.colors.accent}22; color: ${preset.colors.heading}; }
   ` : `.flow-table tbody tr:last-child td { font-weight: 700; background: ${branding.accentColor}22; }`}
+  ${buildPresetExtraCss(preset, "")}
 </style>
 </head>
 <body>
