@@ -377,7 +377,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   /* ===== Design Preset override ===== */
   body { font-family: ${preset.fonts.body}; font-size: ${preset.fonts.size}; line-height: ${preset.spacing.lineHeight}; color: ${preset.colors.text}; }
   .flow-h { color: ${preset.colors.heading}; font-family: ${preset.fonts.heading}; }
-  .flow-h1 { font-size: ${preset.headings.h1.size}; font-weight: ${preset.headings.h1.weight}; border-bottom-color: ${preset.colors.accent}; }
+  .flow-h1 { font-size: ${preset.headings.h1.size}; font-weight: ${preset.headings.h1.weight}; }
   .flow-h2 { font-size: ${preset.headings.h2.size}; font-weight: ${preset.headings.h2.weight}; }
   .flow-p { margin: 0 0 ${preset.spacing.paragraphGap}; }
   .flow-table th, .flow-table td { border-color: ${preset.table?.borderColor || "#ddd"}; padding: ${preset.table?.padding || "2mm 3mm"}; font-size: ${preset.table?.fontSize || "10pt"}; }
