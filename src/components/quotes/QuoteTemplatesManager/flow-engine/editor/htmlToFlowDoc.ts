@@ -73,7 +73,8 @@ function elementToBlock(el: HTMLElement): FlowBlock | FlowBlock[] | null {
     case "h2":
     case "h3": {
       const level = Number(tag[1]) as 1 | 2 | 3;
-      return { type: "heading", level, content: parseInlines(el) };
+      const align = (el.style.textAlign as "right" | "center" | "left") || undefined;
+      return { type: "heading", level, content: parseInlines(el), align };
     }
     case "p": {
       const align = (el.style.textAlign as "right" | "center" | "left") || "right";
@@ -104,7 +105,29 @@ function elementToBlock(el: HTMLElement): FlowBlock | FlowBlock[] | null {
     }
     case "hr": {
       if (el.getAttribute("data-pagebreak") === "1") return { type: "page-break" };
-      return { type: "divider" };
+      // קווים ניתנים לעריכה: שומרים צבע/עובי/סגנון אם הוגדרו ב-inline style
+      const styleAttr = el.getAttribute("style") || "";
+      const colorMatch = styleAttr.match(/border(?:-top)?-color\s*:\s*([^;]+)/i);
+      const widthMatch = styleAttr.match(/border(?:-top)?-width\s*:\s*([0-9.]+)px/i);
+      const styleMatch = styleAttr.match(/border(?:-top)?-style\s*:\s*(solid|dashed|dotted|double)/i);
+      return {
+        type: "divider",
+        color: colorMatch ? colorMatch[1].trim() : undefined,
+        thickness: widthMatch ? Number(widthMatch[1]) : undefined,
+        style: (styleMatch ? (styleMatch[1].toLowerCase() as any) : undefined),
+      };
+    }
+    case "div": {
+      // div כללי (למשל data-payments-block) — נכנס פנימה ומפענח כל ילד כבלוק
+      const out: FlowBlock[] = [];
+      el.childNodes.forEach((child) => {
+        if (child.nodeType !== Node.ELEMENT_NODE) return;
+        const r = elementToBlock(child as HTMLElement);
+        if (!r) return;
+        if (Array.isArray(r)) out.push(...r);
+        else out.push(r);
+      });
+      return out.length ? out : null;
     }
     default:
       return null;

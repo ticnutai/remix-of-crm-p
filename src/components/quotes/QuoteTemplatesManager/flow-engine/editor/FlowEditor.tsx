@@ -936,7 +936,7 @@ export default function FlowEditor({
         .flow-editor-strip-handle-top {
           top: -9px;
         }
-        .flow-editor-content h1 { font-size: ${preset?.headings.h1.size || "1.6rem"}; font-weight: ${preset?.headings.h1.weight || "700"}; margin: 1rem 0 0.5rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; border-bottom: 2px solid ${preset?.colors.accent || "hsl(var(--accent))"}; padding-bottom: .3rem; font-family: ${preset?.fonts.heading || "inherit"}; }
+        .flow-editor-content h1 { font-size: ${preset?.headings.h1.size || "1.6rem"}; font-weight: ${preset?.headings.h1.weight || "700"}; margin: 1rem 0 0.5rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; padding-bottom: .3rem; font-family: ${preset?.fonts.heading || "inherit"}; }
         .flow-editor-content h2 { font-size: ${preset?.headings.h2.size || "1.3rem"}; font-weight: ${preset?.headings.h2.weight || "700"}; margin: .9rem 0 .4rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; font-family: ${preset?.fonts.heading || "inherit"}; }
         .flow-editor-content h3 { font-size: 1.1rem; font-weight: 600; margin: .7rem 0 .3rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; }
         .flow-editor-content p { margin: 0 0 ${preset?.spacing.paragraphGap || ".5rem"}; }
@@ -947,7 +947,8 @@ export default function FlowEditor({
         .flow-editor-content th { background: ${preset?.table?.headerBg || preset?.colors.heading || "hsl(var(--primary))"}; color: ${preset?.table?.headerText || "#fff"}; }
         ${preset?.table?.rowAltBg ? `.flow-editor-content tbody tr:nth-child(even) td { background: ${preset.table.rowAltBg}; }` : ""}
         .flow-editor-content tbody tr:last-child td { font-weight: 700; background: ${(preset?.colors.accent || "#d8ac27")}22; }
-        .flow-editor-content hr { border: 0; border-top: 1px dashed hsl(var(--border)); margin: .8rem 0; }
+        .flow-editor-content hr { border: 0; border-top: 1px solid hsl(var(--border)); margin: .8rem 0; }
+        .flow-editor-content hr[style] { /* allow inline overrides for custom color/thickness/style */ }
         .flow-editor-content mark { background: ${preset?.colors.accent || "hsl(var(--accent))"}59; padding: 0 .15rem; border-radius: .15rem; }
         ${buildPresetExtraCss(preset, ".flow-editor-content")}
         .flow-editor-content [data-field] { user-select: all; }
