@@ -386,6 +386,34 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   .flow-divider { border: 0; border-top: 1px dashed #ccc; margin: 4mm 0; }
   .flow-pagebreak { break-after: page; }
 
+  /* Baseline styling for frames/callouts/blockquote (preset extras override below) */
+  .flow-frame {
+    border: 1px solid ${branding.accentColor};
+    border-radius: 6px;
+    padding: 3mm 4mm;
+    margin: 3mm 0;
+    background: transparent;
+  }
+  .flow-frame > :last-child { margin-bottom: 0; }
+  .flow-callout {
+    background: ${branding.accentColor}1a;
+    border: 1px solid ${branding.accentColor};
+    border-right: 4px solid ${branding.accentColor};
+    padding: 3mm 4mm;
+    border-radius: 6px;
+    margin: 3mm 0;
+  }
+  .flow-callout > :last-child { margin-bottom: 0; }
+  blockquote {
+    border-right: 3px solid ${branding.accentColor};
+    padding: 1mm 4mm;
+    margin: 3mm 0;
+    color: #555;
+    font-style: italic;
+    background: transparent;
+  }
+  blockquote > :last-child { margin-bottom: 0; }
+
   .fld {
     display: inline-block; padding: 0 4px; border-radius: 3px;
     background: ${branding.accentColor}22; color: ${branding.primaryColor};
