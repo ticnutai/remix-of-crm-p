@@ -20,6 +20,7 @@ export type FlowBlock =
     }
   | { type: "spacer"; mm: number }
   | { type: "divider"; color?: string; thickness?: number; style?: "solid" | "dashed" | "dotted" | "double" }
+  | { type: "raw"; html: string }
   | { type: "page-break" };
 
 export interface FlowSection {
