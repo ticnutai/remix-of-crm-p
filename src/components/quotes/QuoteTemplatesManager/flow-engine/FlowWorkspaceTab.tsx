@@ -155,6 +155,7 @@ export default function FlowWorkspaceTab({
   subTab,
   onSubTabChange,
   hideInternalSubTabs,
+  onOpenLegacyDesign,
 }: Props) {
   // toggle: שמירת עיצוב מקורי מהתבנית (off = הזרימה הקיימת, on = שכבה 1)
   const [preserveStyles, setPreserveStyles] = useState<boolean>(() => {
