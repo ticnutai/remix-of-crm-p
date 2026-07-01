@@ -59,13 +59,11 @@ function isValidHex(v: string): boolean {
 interface SwatchProps {
   color: string;
   onPick: () => void;
-  onSave?: () => void;
   onRemove?: () => void;
-  saved?: boolean;
   size?: number;
 }
 
-function Swatch({ color, onPick, onSave, onRemove, saved, size = 28 }: SwatchProps) {
+function Swatch({ color, onPick, onRemove, size = 28 }: SwatchProps) {
   return (
     <div className="group relative" style={{ width: size, height: size }}>
       <button
@@ -75,28 +73,6 @@ function Swatch({ color, onPick, onSave, onRemove, saved, size = 28 }: SwatchPro
         style={{ backgroundColor: color }}
         title={color}
       />
-      {onSave && !saved && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSave();
-          }}
-          className="absolute -left-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-amber-950 shadow-md ring-1 ring-amber-600/40 transition-transform hover:scale-125"
-          title="שמור צבע"
-          aria-label="שמור צבע"
-        >
-          <Star className="h-2.5 w-2.5 fill-current" />
-        </button>
-      )}
-      {saved && !onRemove && (
-        <span
-          className="absolute -left-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow"
-          title="שמור"
-        >
-          <Check className="h-2.5 w-2.5" />
-        </span>
-      )}
       {onRemove && (
         <button
           type="button"
