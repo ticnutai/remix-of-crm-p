@@ -1011,6 +1011,25 @@ export default function FlowWorkspaceTab({
         />
       </div>
 
+      {/* מותג ועיצוב — פותח את הפאנל הישן (לוגו/פלטות/אפקטים/מסגרת) */}
+      {onOpenLegacyDesign && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 shrink-0 gap-1 px-2 text-xs"
+              onClick={onOpenLegacyDesign}
+            >
+              <ImagePlus className="h-3.5 w-3.5" />
+              מותג
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>לוגו, פלטות צבעים, אפקטים ומסגרות</TooltipContent>
+        </Tooltip>
+      )}
+
       {/* ערכות */}
       <Popover
         open={presetsOpen}
