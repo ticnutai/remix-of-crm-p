@@ -68,6 +68,14 @@ function parseInlines(node: Node): FlowInline[] {
 
 function elementToBlock(el: HTMLElement): FlowBlock | FlowBlock[] | null {
   const tag = el.tagName.toLowerCase();
+  const cls = el.getAttribute("class") || "";
+  // מסגרות/הדגשות/ציטוטים → שמור כ-raw כדי שה-class יגיע ל-Paged.js
+  if (
+    tag === "blockquote" ||
+    (tag === "div" && /(^|\s)(flow-frame|flow-callout)(\s|$)/.test(cls))
+  ) {
+    return { type: "raw", html: el.outerHTML };
+  }
   switch (tag) {
     case "h1":
     case "h2":
