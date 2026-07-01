@@ -333,7 +333,6 @@ export default function SmartColorPicker({
             <Icon className="h-3 w-3" />
             פלטה
           </span>
-          <span className="text-[10px] opacity-60">⭐ = שמור</span>
         </div>
 
         {/* Presets */}
@@ -343,8 +342,6 @@ export default function SmartColorPicker({
               key={c}
               color={c}
               onPick={() => pick(c)}
-              onSave={() => save(c)}
-              saved={isSaved(c)}
             />
           ))}
         </div>
