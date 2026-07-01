@@ -9816,6 +9816,18 @@ ${tbAt('footer')}
               {/* Sticky sub-navigation for design sections */}
               <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b shadow-sm" dir="rtl">
                 <div className="max-w-6xl mx-auto px-4 md:px-6 py-3 flex items-center gap-2 overflow-x-auto">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setActiveTab("flow-v2")}
+                    className="shrink-0 h-8 gap-1 text-xs text-[#162C58] hover:bg-[#162C58]/10"
+                    title="חזרה לעורך המסמך"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                    חזרה לעורך
+                  </Button>
+                  <span className="mx-1 h-5 w-px bg-border shrink-0" aria-hidden />
                   <span className="text-xs font-semibold text-gray-500 ml-2 shrink-0">קפיצה לקטגוריה:</span>
                   {[
                     { id: "design-logo", label: "לוגו וסטריפ", icon: "🖼️" },
