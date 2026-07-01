@@ -499,6 +499,20 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
       >
         <Quote className="h-3.5 w-3.5" />
       </ToolButton>
+      <ToolButton
+        active={editor.isActive("flowFrame", { variant: "frame" })}
+        onClick={() => apply((c: any) => c.toggleFlowFrame("frame"))}
+        title="מסגרת סביב הפסקה"
+      >
+        <Square className="h-3.5 w-3.5" />
+      </ToolButton>
+      <ToolButton
+        active={editor.isActive("flowFrame", { variant: "callout" })}
+        onClick={() => apply((c: any) => c.toggleFlowFrame("callout"))}
+        title="הדגשה (Callout)"
+      >
+        <AlertCircle className="h-3.5 w-3.5" />
+      </ToolButton>
     </>
   );
 
