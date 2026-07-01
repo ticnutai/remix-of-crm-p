@@ -129,6 +129,7 @@ const SYNC_KEYS = [
   "lov-html-editor-tabs-cfg-v1",
   "qt-editor-tab-display-mode",
   "qt-editor-flow-sub-tab",
+  "qt-flow-bubble-toolbar-cfg-v1",
 ] as const;
 
 // Additional prefixes for dynamic keys (like dashboard-dynamic-stats-1, dashboard-dynamic-stats-2)
