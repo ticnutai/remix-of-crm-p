@@ -84,10 +84,25 @@ function renderBlock(block: FlowBlock): string {
       const style = block.style || "solid";
       return `<hr class="flow-divider" style="border:0;border-top:${thickness}px ${style} ${color};margin:4mm 0;" />`;
     }
+    case "raw":
+      return resolveRawFields(block.html);
     case "page-break":
       return `<div class="flow-pagebreak"></div>`;
   }
 }
+
+function resolveRawFields(html: string): string {
+  if (!html) return "";
+  // מחליף <span data-field="key">…</span> בערך שנפתר (או משאיר כפי שהיה)
+  return html.replace(
+    /<span\b[^>]*\bdata-field=("|')([^"']+)\1[^>]*>([\s\S]*?)<\/span>/gi,
+    (match, _q, key, inner) => {
+      const resolved = resolveFieldKey(key);
+      if (resolved !== undefined) return esc(resolved);
+      // Fallback — משאיר את הטקסט שהיה בתוך ה-span (למשל {{key}} או שם השדה)
+      return inner || `{{${esc(key)}}}`;
+    },
+  );
 
 function pageSizeCss(page: FlowDocument["page"]): string {
   if (page.size === "none") {
