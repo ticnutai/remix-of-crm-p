@@ -4748,12 +4748,13 @@ export function HtmlTemplateEditor({
     | "preview"
     | "split"
     | "pages";
+  // NOTE: "design" הוסר מרשימת הטאבים הגלויה — התוכן עדיין קיים ונגיש
+  // דרך כפתור "מותג ועיצוב" ב-Toolbar של Flow (setActiveTab("design")).
   const DEFAULT_TAB_ORDER: EditorTabKey[] = [
     "flow-v2",
     "project",
     "content",
     "payments",
-    "design",
     "logo-strip",
     "text-boxes",
     "tools",
