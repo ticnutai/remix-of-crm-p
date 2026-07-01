@@ -35,6 +35,7 @@ import { useDynamicFields, type DynamicFieldDefinition } from "./dynamicFields";
 import CreateFieldDialog from "./CreateFieldDialog";
 import { MultiSelection, addExtraRange, clearExtraRanges, getExtraRanges } from "./MultiSelection";
 import { PaymentsBlock } from "./PaymentsBlock";
+import { FlowFrame } from "./FlowFrameNode";
 
 import type { DesignPresetConfig } from "../presets/types";
 import { buildPresetExtraCss } from "../presets/presetExtras";
