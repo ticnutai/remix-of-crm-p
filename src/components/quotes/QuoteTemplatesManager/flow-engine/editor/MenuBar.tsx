@@ -31,6 +31,8 @@ import {
   FileText,
   Pilcrow,
   PlusSquare,
+  Square,
+  AlertCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
