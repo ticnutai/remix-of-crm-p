@@ -44,6 +44,8 @@ interface Props {
   onSubTabChange?: (next: "edit" | "preview") => void;
   /** אם true — אל תראה את ה-TabsList הפנימי (ההורה מציג שורה משלו). */
   hideInternalSubTabs?: boolean;
+  /** פותח את פאנל המותג/עיצוב הישן (לוגו, פלטות, אפקטים, מסגרת). */
+  onOpenLegacyDesign?: () => void;
 }
 
 const storageKey = (id?: string) => `flow-edit:${id || "untitled"}:v2`;
