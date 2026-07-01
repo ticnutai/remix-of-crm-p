@@ -14748,6 +14748,7 @@ ${tbAt('footer')}
               subTab={flowSubTab}
               onSubTabChange={setFlowSubTab}
               hideInternalSubTabs
+              onOpenLegacyDesign={() => setActiveTab("design")}
             />
           </TabsContent>
 
