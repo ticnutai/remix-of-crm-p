@@ -669,18 +669,17 @@ export default function FlowWorkspaceTab({
         <SlidersHorizontal className="h-3.5 w-3.5" />
         עצב
       </Button>
-      {(designSettings?.headerStripUrl || designSettings?.header_strip_url) && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0"
-          onClick={() => clearStrip("header")}
-          title="נקה סטריפ עליון"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      )}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+        onClick={() => clearStrip("header")}
+        title="נקה סטריפ עליון מכל העמודים"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+
       <input
         className="h-7 w-14 rounded border bg-background px-1 text-center text-xs"
         type="number"
