@@ -373,7 +373,7 @@ export default function SmartColorPicker({
           </div>
         ) : (
           <div className="rounded-md border border-dashed border-border px-2 py-2 text-center text-[10.5px] text-muted-foreground">
-            לחץ ⭐ על צבע, או "+" כדי להוסיף
+            לחץ '+' כדי להוסיף צבע לשמורים
           </div>
         )}
 
