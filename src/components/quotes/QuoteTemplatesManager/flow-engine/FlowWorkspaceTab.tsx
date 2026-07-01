@@ -44,6 +44,8 @@ interface Props {
   onSubTabChange?: (next: "edit" | "preview") => void;
   /** אם true — אל תראה את ה-TabsList הפנימי (ההורה מציג שורה משלו). */
   hideInternalSubTabs?: boolean;
+  /** פותח את פאנל המותג/עיצוב הישן (לוגו, פלטות, אפקטים, מסגרת). */
+  onOpenLegacyDesign?: () => void;
 }
 
 const storageKey = (id?: string) => `flow-edit:${id || "untitled"}:v2`;
@@ -153,6 +155,7 @@ export default function FlowWorkspaceTab({
   subTab,
   onSubTabChange,
   hideInternalSubTabs,
+  onOpenLegacyDesign,
 }: Props) {
   // toggle: שמירת עיצוב מקורי מהתבנית (off = הזרימה הקיימת, on = שכבה 1)
   const [preserveStyles, setPreserveStyles] = useState<boolean>(() => {
@@ -1007,6 +1010,25 @@ export default function FlowWorkspaceTab({
           className="scale-75"
         />
       </div>
+
+      {/* מותג ועיצוב — פותח את הפאנל הישן (לוגו/פלטות/אפקטים/מסגרת) */}
+      {onOpenLegacyDesign && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 shrink-0 gap-1 px-2 text-xs"
+              onClick={onOpenLegacyDesign}
+            >
+              <ImagePlus className="h-3.5 w-3.5" />
+              מותג
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>לוגו, פלטות צבעים, אפקטים ומסגרות</TooltipContent>
+        </Tooltip>
+      )}
 
       {/* ערכות */}
       <Popover
