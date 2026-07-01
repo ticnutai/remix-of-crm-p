@@ -664,7 +664,7 @@ export default function FlowEditor({
           "--flow-editor-footer-strip-height": showFooterStrip
             ? `${stripSettings.footerHeight}px`
             : "0px",
-          "--flow-editor-page-gap": `${Math.max(stripSettings.pageGap || 0, 57)}px`,
+          "--flow-editor-page-gap": `${Math.max(0, stripSettings.pageGap || 0)}px`,
           "--flow-editor-page-gap-bg": "rgb(226 232 240 / 0.7)",
         } as React.CSSProperties}
       >

@@ -197,19 +197,16 @@ export default function FlowWorkspaceTab({
     designSettings?.headerStripContentGapPx ?? designSettings?.header_content_gap_px,
     18,
     0,
-    240,
   );
   const footerContentGapPx = boundedNumber(
     designSettings?.footerStripContentGapPx ?? designSettings?.footer_content_gap_px,
     18,
     0,
-    240,
   );
   const flowPageGapPx = boundedNumber(
     designSettings?.flowPageGapPx ?? designSettings?.flow_page_gap_px,
     18,
     0,
-    120,
   );
   const headerStripWidthPercent = looseNumber(
     designSettings?.headerStripWidthPercent ?? designSettings?.header_strip_width_percent,
@@ -779,10 +776,9 @@ export default function FlowWorkspaceTab({
         className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
         type="number"
         min={0}
-        max={240}
         value={headerContentGapPx}
         onChange={(e) => {
-          const next = boundedNumber(e.target.value, 18, 0, 240);
+          const next = boundedNumber(e.target.value, 18, 0);
           updateDesignSettings({
             headerStripContentGapPx: next,
             header_content_gap_px: next,
@@ -795,10 +791,9 @@ export default function FlowWorkspaceTab({
         className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
         type="number"
         min={0}
-        max={240}
         value={footerContentGapPx}
         onChange={(e) => {
-          const next = boundedNumber(e.target.value, 18, 0, 240);
+          const next = boundedNumber(e.target.value, 18, 0);
           updateDesignSettings({
             footerStripContentGapPx: next,
             footer_content_gap_px: next,
@@ -811,10 +806,9 @@ export default function FlowWorkspaceTab({
         className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
         type="number"
         min={0}
-        max={120}
         value={flowPageGapPx}
         onChange={(e) => {
-          const next = boundedNumber(e.target.value, 18, 0, 120);
+          const next = boundedNumber(e.target.value, 18, 0);
           updateDesignSettings({
             flowPageGapPx: next,
             flow_page_gap_px: next,
