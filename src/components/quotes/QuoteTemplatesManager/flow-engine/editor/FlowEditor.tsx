@@ -954,6 +954,12 @@ export default function FlowEditor({
         .flow-editor-content hr { border: 0; border-top: 1px solid hsl(var(--border)); margin: .8rem 0; }
         .flow-editor-content hr[style] { /* allow inline overrides for custom color/thickness/style */ }
         .flow-editor-content mark { background: ${preset?.colors.accent || "hsl(var(--accent))"}59; padding: 0 .15rem; border-radius: .15rem; }
+        /* Baseline for frames/callouts/blockquote — preset extras below can override */
+        .flow-editor-content .flow-frame { border: 1px solid ${preset?.colors.accent || "#d8ac27"}; border-radius: 6px; padding: .55rem .8rem; margin: .6rem 0; background: transparent; }
+        .flow-editor-content .flow-frame > :last-child { margin-bottom: 0; }
+        .flow-editor-content .flow-callout { background: ${(preset?.colors.accent || "#d8ac27")}1a; border: 1px solid ${preset?.colors.accent || "#d8ac27"}; border-right: 4px solid ${preset?.colors.accent || "#d8ac27"}; padding: .55rem .8rem; border-radius: 6px; margin: .6rem 0; }
+        .flow-editor-content .flow-callout > :last-child { margin-bottom: 0; }
+        .flow-editor-content blockquote { border-right: 3px solid ${preset?.colors.accent || "#d8ac27"}; padding: .3rem .8rem; margin: .6rem 0; color: hsl(var(--muted-foreground)); font-style: italic; }
         ${buildPresetExtraCss(preset, ".flow-editor-content")}
         .flow-editor-content [data-field] { user-select: all; }
         .flow-editor-content .flow-multi-sel { background: rgba(216, 172, 39, 0.32); box-shadow: inset 0 -2px 0 rgba(216, 172, 39, 0.85); border-radius: 2px; }
