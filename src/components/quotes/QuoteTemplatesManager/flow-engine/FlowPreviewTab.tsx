@@ -321,6 +321,52 @@ export default function FlowPreviewTab({
             background: #fff;
             box-shadow: 0 4px 16px rgba(0,0,0,0.08);
           }
+          /* ===== Diagnostics overlay ===== */
+          .flow-preview-host.flow-diag .pagedjs_pagebox { outline: 1px dashed hsl(var(--primary) / 0.55); outline-offset: -1px; }
+          .flow-preview-host.flow-diag .pagedjs_margin-top,
+          .flow-preview-host.flow-diag .pagedjs_margin-bottom {
+            outline: 1px dashed hsl(var(--destructive) / 0.7);
+            outline-offset: -1px;
+            background: hsl(var(--destructive) / 0.06);
+            position: relative;
+          }
+          .flow-preview-host.flow-diag .pagedjs_margin-top::after,
+          .flow-preview-host.flow-diag .pagedjs_margin-bottom::after {
+            content: attr(class);
+            position: absolute; inset-inline-end: 4px; top: 2px;
+            font: 10px/1 ui-monospace, monospace;
+            color: hsl(var(--destructive));
+            background: hsl(var(--background) / 0.85);
+            padding: 1px 4px; border-radius: 3px;
+            pointer-events: none;
+          }
+          .flow-preview-host.flow-diag .running-header.strip,
+          .flow-preview-host.flow-diag .running-footer.strip {
+            outline: 2px solid hsl(var(--accent-foreground) / 0.9);
+            outline-offset: -2px;
+            box-shadow: inset 0 0 0 9999px hsl(var(--primary) / 0.08);
+            position: relative;
+          }
+          .flow-preview-host.flow-diag .running-footer.strip::before,
+          .flow-preview-host.flow-diag .running-header.strip::before {
+            content: "STRIP";
+            position: absolute; top: 2px; inset-inline-start: 4px;
+            font: 10px/1 ui-monospace, monospace;
+            color: hsl(var(--primary-foreground));
+            background: hsl(var(--primary));
+            padding: 2px 5px; border-radius: 3px;
+            z-index: 5;
+          }
+          .flow-preview-host.flow-diag .running-footer.strip::before { content: "FOOTER STRIP"; }
+          .flow-preview-host.flow-diag .running-header.strip::before { content: "HEADER STRIP"; }
+          /* קו אדום דק בקצה התחתון של כל דף — כדי לזהות מיד רווח לבן מתחת לסטריפ */
+          .flow-preview-host.flow-diag .pagedjs_page { position: relative; }
+          .flow-preview-host.flow-diag .pagedjs_page::before {
+            content: "";
+            position: absolute; left: 0; right: 0; bottom: 0;
+            height: 2px; background: hsl(var(--destructive));
+            pointer-events: none; z-index: 6;
+          }
         `}</style>
       </div>
     </div>
