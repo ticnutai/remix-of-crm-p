@@ -44,9 +44,9 @@ interface Props {
   designSettings?: any;
   onDesignSettingsChange?: React.Dispatch<React.SetStateAction<any>>;
   workspaceActions?: React.ReactNode;
-  /** טאב משני נשלט מההורה (edit | preview). אם לא מסופק — מצב פנימי. */
-  subTab?: "edit" | "preview";
-  onSubTabChange?: (next: "edit" | "preview") => void;
+  /** טאב משני נשלט מההורה. אם לא מסופק — מצב פנימי. */
+  subTab?: "edit" | "preview" | "split" | "compare";
+  onSubTabChange?: (next: "edit" | "preview" | "split" | "compare") => void;
   /** אם true — אל תראה את ה-TabsList הפנימי (ההורה מציג שורה משלו). */
   hideInternalSubTabs?: boolean;
 }
