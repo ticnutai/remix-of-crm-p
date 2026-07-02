@@ -65,6 +65,8 @@ import {
   ChevronRight,
   ChevronUp,
   Pencil,
+  SplitSquareHorizontal,
+  Columns2,
   Plus,
   Trash2,
   GripVertical,
