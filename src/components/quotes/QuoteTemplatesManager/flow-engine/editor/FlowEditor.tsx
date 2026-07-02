@@ -683,6 +683,32 @@ export default function FlowEditor({
               : "max-w-[860px] rounded-md border bg-background shadow-sm"
           }`}
         >
+          {/* Overlay: Paged.js precise page-break guides (matches PDF exactly) */}
+          {pagedGuides?.enabled && pagedGuides.breakYs.length > 0 && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 z-[3]"
+              style={{ contain: "layout paint" }}
+            >
+              {pagedGuides.breakYs.map((y, i) => (
+                <div
+                  key={`${y}-${i}`}
+                  className="absolute inset-x-0 flex items-center"
+                  style={{ top: `${y}px`, transform: "translateY(-1px)" }}
+                >
+                  <div className="h-px w-full border-t-2 border-dashed border-primary/70" />
+                  <span className="absolute right-2 -translate-y-1/2 rounded bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground shadow">
+                    PDF · עמוד {i + 2}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {pagedGuides?.enabled && pagedGuides.loading && (
+            <div className="pointer-events-none absolute right-3 top-2 z-[4] rounded bg-background/80 px-2 py-0.5 text-[10px] text-muted-foreground shadow">
+              מחשב שבירות PDF…
+            </div>
+          )}
           <ContextMenu>
             <ContextMenuTrigger asChild>
               <div className="flow-editor-context-trigger" onContextMenu={setContextMenuCursor}>
