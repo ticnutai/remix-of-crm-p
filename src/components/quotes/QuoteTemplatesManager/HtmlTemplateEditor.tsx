@@ -4701,10 +4701,11 @@ export function HtmlTemplateEditor({
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("flow-v2");
   const FLOW_SUB_TAB_LS_KEY = "qt-editor-flow-sub-tab";
-  const [flowSubTab, setFlowSubTab] = useState<"edit" | "preview">(() => {
+  const [flowSubTab, setFlowSubTab] = useState<"edit" | "preview" | "split" | "compare">(() => {
     try {
       const v = localStorage.getItem(FLOW_SUB_TAB_LS_KEY);
-      return v === "preview" ? "preview" : "edit";
+      if (v === "preview" || v === "split" || v === "compare") return v;
+      return "edit";
     } catch {
       return "edit";
     }
