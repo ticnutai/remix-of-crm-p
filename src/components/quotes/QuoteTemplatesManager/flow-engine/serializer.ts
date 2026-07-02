@@ -260,6 +260,8 @@ export function serializeTemplate(
   const footerStripWidthPercent = Number(firstValue(ds.footerStripWidthPercent, ds.footer_strip_width_percent));
   const headerStripHeightPx = Number(ds.headerStripHeight);
   const footerStripHeightPx = Number(ds.footerStripHeight);
+  const headerStripContentGapPx = Number(firstValue(ds.headerStripContentGapPx, ds.header_content_gap_px));
+  const footerStripContentGapPx = Number(firstValue(ds.footerStripContentGapPx, ds.footer_content_gap_px));
 
   const branding: FlowBranding = {
     logoUrl,
@@ -270,6 +272,8 @@ export function serializeTemplate(
     footerStripHeight: Math.max(0, Number.isFinite(footerStripHeightPx) ? Math.round(footerStripHeightPx) : 90),
     headerStripWidthPercent: Number.isFinite(headerStripWidthPercent) ? Math.round(headerStripWidthPercent) : 100,
     footerStripWidthPercent: Number.isFinite(footerStripWidthPercent) ? Math.round(footerStripWidthPercent) : 100,
+    headerStripContentGapPx: Math.max(0, Number.isFinite(headerStripContentGapPx) ? Math.round(headerStripContentGapPx) : 18),
+    footerStripContentGapPx: Math.max(0, Number.isFinite(footerStripContentGapPx) ? Math.round(footerStripContentGapPx) : 18),
     companyName: firstValue(ds.companyName, ds.company_name, ""),
     companySubtitle: firstValue(ds.companySubtitle, ds.company_subtitle, ""),
     contactLine: [contact.phone, contact.email, contact.address].filter(Boolean).join("  |  "),
