@@ -412,10 +412,10 @@ export default function FlowWorkspaceTab({
       return baseHtml;
     }
   });
-  const [internalSubTab, setInternalSubTab] = useState<"edit" | "preview" | "compare">("edit");
-  const activeTab = (subTab ?? internalSubTab) as "edit" | "preview" | "compare";
-  const setActiveTab = (next: "edit" | "preview" | "compare") => {
-    if (next === "compare") setInternalSubTab("compare");
+  const [internalSubTab, setInternalSubTab] = useState<"edit" | "preview" | "compare" | "split">("edit");
+  const activeTab = (subTab ?? internalSubTab) as "edit" | "preview" | "compare" | "split";
+  const setActiveTab = (next: "edit" | "preview" | "compare" | "split") => {
+    if (next === "compare" || next === "split") setInternalSubTab(next);
     else if (onSubTabChange) onSubTabChange(next);
     else setInternalSubTab(next);
   };
