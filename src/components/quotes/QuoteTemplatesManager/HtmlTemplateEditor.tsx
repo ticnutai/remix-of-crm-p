@@ -9045,6 +9045,34 @@ ${tbAt('footer')}
                 <Eye className="h-3.5 w-3.5" />
                 תצוגה מקדימה
               </button>
+              <button
+                type="button"
+                onClick={() => setFlowSubTab("split")}
+                title="פיצול מסך — עורך + תצוגה חיה מיידית"
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 h-7 rounded-md text-xs font-medium transition-colors",
+                  flowSubTab === "split"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <SplitSquareHorizontal className="h-3.5 w-3.5" />
+                פיצול
+              </button>
+              <button
+                type="button"
+                onClick={() => setFlowSubTab("compare")}
+                title="השוואת עריכה מול תצוגה + זיהוי פערי שבירות עמוד"
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 h-7 rounded-md text-xs font-medium transition-colors",
+                  flowSubTab === "compare"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <Columns2 className="h-3.5 w-3.5" />
+                השוואה
+              </button>
             </div>
           )}
 
