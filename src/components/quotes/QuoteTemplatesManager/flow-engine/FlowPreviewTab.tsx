@@ -280,6 +280,16 @@ export default function FlowPreviewTab({
         <div className="flex items-center gap-2">
           <Button
             type="button"
+            variant={diagnostics ? "default" : "outline"}
+            size="sm"
+            onClick={() => setDiagnostics((v) => !v)}
+            title="הצג/הסתר גבולות של סטריפים ותאי Paged.js לצורך אבחון"
+          >
+            <Ruler className="ml-1 h-3.5 w-3.5" />
+            דיאגנוסטיקה
+          </Button>
+          <Button
+            type="button"
             variant="ghost"
             size="sm"
             onClick={() => setRenderToken((n) => n + 1)}
@@ -298,10 +308,8 @@ export default function FlowPreviewTab({
       <div className="flex-1 overflow-auto p-6">
         <div
           ref={containerRef}
-          className="flow-preview-host mx-auto"
+          className={`flow-preview-host mx-auto ${diagnostics ? "flow-diag" : ""}`}
           style={{
-            // העיצוב הויזואלי של "דפים מודפסים" מסופק ע"י Paged.js עצמו
-            // (mc .pagedjs_page) — אנחנו רק נותנים רקע שמסביב.
             minHeight: "100%",
           }}
         />
