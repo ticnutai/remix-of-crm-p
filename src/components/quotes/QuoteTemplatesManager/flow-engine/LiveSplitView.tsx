@@ -2,7 +2,7 @@
 // המטרה: עדכון מיידי בזמן הקלדה, בלי רינדור שמורגש בעין.
 // (מציג עיצוב אמת, סטריפים, טוקנים — אבל ללא חלוקה מדויקת לעמודים.)
 
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, Pencil } from "lucide-react";
 import type { QuoteTemplate } from "../types";
 import type { DesignPresetConfig } from "./presets/types";
