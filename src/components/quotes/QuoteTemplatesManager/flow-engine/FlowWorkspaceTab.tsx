@@ -1285,6 +1285,31 @@ export default function FlowWorkspaceTab({
           </div>
         </div>
       </TabsContent>
+      <TabsContent value="split" className="m-0 flex-1 overflow-hidden">
+        <div className="flex h-full flex-col">
+          <TooltipProvider delayDuration={250}>
+            <div className="shrink-0 border-b bg-background">
+              <div className="flex max-h-[72px] flex-wrap items-center gap-1 overflow-y-auto px-2 py-1.5">
+                {toolbarActions}
+              </div>
+            </div>
+          </TooltipProvider>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <LiveSplitView
+              template={template}
+              html={html}
+              onChange={handleChange}
+              preset={presetCfg}
+              pageSetup={pageSetup}
+              projectDetails={projectDetails}
+              designSettings={designSettings}
+              onDesignSettingsChange={updateDesignSettings}
+            />
+          </div>
+        </div>
+      </TabsContent>
+
+
 
 
 
