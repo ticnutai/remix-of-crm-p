@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Cloud, Columns2, Eye, FileText, Hash, ImagePlus, Layers, Loader2, Palette, Pencil, Receipt, RotateCcw, Rows3, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
+import { Cloud, Columns2, Eye, FileText, Hash, ImagePlus, Layers, Loader2, Palette, Pencil, Receipt, RotateCcw, Rows3, SlidersHorizontal, Sparkles, SplitSquareHorizontal, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
