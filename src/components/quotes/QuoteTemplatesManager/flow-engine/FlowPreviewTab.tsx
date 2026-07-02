@@ -5,7 +5,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Printer, RefreshCw, Sparkles } from "lucide-react";
+import { Loader2, Printer, RefreshCw, Sparkles, Ruler } from "lucide-react";
 import type { QuoteTemplate } from "../types";
 import { serializeTemplate, type MergeData } from "./serializer";
 import { renderFlowToHtml } from "./renderer";
