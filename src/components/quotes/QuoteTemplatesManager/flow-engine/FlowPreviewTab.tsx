@@ -98,6 +98,11 @@ export default function FlowPreviewTab({
     setRendering(true);
     setError(null);
     target.innerHTML = "";
+    // Paged.js מזריק סטיילים ל-head ולא מנקה אותם בין רנדרים.
+    // הסרה ידנית מבטיחה שכללי @page / ::after ישנים לא ידלפו לרנדר הבא.
+    document.head
+      .querySelectorAll("style[data-pagedjs-inserted-styles]")
+      .forEach((el) => el.remove());
 
     (async () => {
       try {
