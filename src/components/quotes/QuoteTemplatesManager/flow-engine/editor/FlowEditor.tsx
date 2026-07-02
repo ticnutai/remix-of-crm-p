@@ -475,6 +475,33 @@ export default function FlowEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialHtml, editor]);
 
+  // הזרקת data-flow-fid לכל בלוק ב-DOM של העורך — נדרש להצלבה עם Paged.js
+  // (usePagedGuides מזריק אותם ב-HTML לתצוגה מקדימה ומחפש התאמה כאן).
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom as HTMLElement;
+    const injectFids = () => {
+      let counter = 0;
+      const nodes = dom.querySelectorAll<HTMLElement>(
+        "p,h1,h2,h3,h4,h5,h6,ul,ol,li,table,tr,blockquote,figure,hr,div,section,article",
+      );
+      nodes.forEach((el) => {
+        counter += 1;
+        if (el.getAttribute("data-flow-fid") !== String(counter)) {
+          el.setAttribute("data-flow-fid", String(counter));
+        }
+      });
+    };
+    injectFids();
+    const observer = new MutationObserver(() => {
+      // דחייה קצרה כדי לא להיכנס לולאה עם ProseMirror
+      window.requestAnimationFrame(injectFids);
+    });
+    observer.observe(dom, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [editor]);
+
+
   // עדכון resolver של שדות דינמיים + צריבת snapshot לתוך attrs של כל node
   // כך שערכים שנפתרו יישרדו רענון/החלפת טאב גם בלי resolver פעיל.
   useEffect(() => {
