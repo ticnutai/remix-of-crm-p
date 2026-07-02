@@ -677,7 +677,7 @@ export default function FlowEditor({
         } as React.CSSProperties}
       >
         <div
-          className={`flow-editor-shell mx-auto my-4 ${
+          className={`flow-editor-shell relative mx-auto my-4 ${
             pagedMode
               ? "flow-editor-shell-paged flow-editor-shell-pagination-plus"
               : "max-w-[860px] rounded-md border bg-background shadow-sm"
