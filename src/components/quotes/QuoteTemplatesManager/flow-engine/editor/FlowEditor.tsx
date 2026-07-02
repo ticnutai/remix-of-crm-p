@@ -839,6 +839,11 @@ export default function FlowEditor({
           cursor: default !important;
           overflow: visible !important;
         }
+        .flow-editor-content.rm-with-pagination .rm-page-footer {
+          display: flex !important;
+          align-items: flex-end !important;
+          line-height: 1 !important;
+        }
         .flow-editor-content.rm-with-pagination .rm-page-header-content,
         .flow-editor-content.rm-with-pagination .rm-page-footer-content {
           position: relative;
