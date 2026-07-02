@@ -408,10 +408,11 @@ export default function FlowWorkspaceTab({
       return baseHtml;
     }
   });
-  const [internalSubTab, setInternalSubTab] = useState<"edit" | "preview">("edit");
-  const activeTab = subTab ?? internalSubTab;
-  const setActiveTab = (next: "edit" | "preview") => {
-    if (onSubTabChange) onSubTabChange(next);
+  const [internalSubTab, setInternalSubTab] = useState<"edit" | "preview" | "compare">("edit");
+  const activeTab = (subTab ?? internalSubTab) as "edit" | "preview" | "compare";
+  const setActiveTab = (next: "edit" | "preview" | "compare") => {
+    if (next === "compare") setInternalSubTab("compare");
+    else if (onSubTabChange) onSubTabChange(next);
     else setInternalSubTab(next);
   };
   // אם החליפו תבנית — טען טיוטה שמורה או תוכן בסיס
