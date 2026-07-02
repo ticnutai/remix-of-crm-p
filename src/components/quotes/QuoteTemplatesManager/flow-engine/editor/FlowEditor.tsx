@@ -51,6 +51,13 @@ interface Props {
   onDesignSettingsChange?: (patch: Record<string, any>) => void;
   projectDetails?: ProjectTokenData;
   toolbarActions?: React.ReactNode;
+  /** מדריכי-עמוד מדויקים ע"י Paged.js (מקור אמת יחיד). */
+  pagedGuides?: {
+    enabled: boolean;
+    breakYs: number[];
+    loading?: boolean;
+    error?: string | null;
+  };
 }
 
 const PAGE_SIZES_MM: Record<string, { width: number; height: number }> = {
