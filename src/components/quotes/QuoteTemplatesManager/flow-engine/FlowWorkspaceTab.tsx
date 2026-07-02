@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Cloud, Eye, FileText, Hash, ImagePlus, Layers, Loader2, Palette, Pencil, Receipt, RotateCcw, Rows3, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
+import { Cloud, Columns2, Eye, FileText, Hash, ImagePlus, Layers, Loader2, Palette, Pencil, Receipt, RotateCcw, Rows3, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { QuoteTemplate } from "../types";
 import FlowEditor from "./editor/FlowEditor";
 import FlowPreviewTab from "./FlowPreviewTab";
+import FlowCompareView from "./FlowCompareView";
 import { templateToEditableHtml } from "./editor/templateToHtml";
 import { paymentsSignature, syncPaymentsSection } from "./syncPayments";
 import PresetPicker from "./presets/PresetPicker";
@@ -407,10 +408,11 @@ export default function FlowWorkspaceTab({
       return baseHtml;
     }
   });
-  const [internalSubTab, setInternalSubTab] = useState<"edit" | "preview">("edit");
-  const activeTab = subTab ?? internalSubTab;
-  const setActiveTab = (next: "edit" | "preview") => {
-    if (onSubTabChange) onSubTabChange(next);
+  const [internalSubTab, setInternalSubTab] = useState<"edit" | "preview" | "compare">("edit");
+  const activeTab = (subTab ?? internalSubTab) as "edit" | "preview" | "compare";
+  const setActiveTab = (next: "edit" | "preview" | "compare") => {
+    if (next === "compare") setInternalSubTab("compare");
+    else if (onSubTabChange) onSubTabChange(next);
     else setInternalSubTab(next);
   };
   // אם החליפו תבנית — טען טיוטה שמורה או תוכן בסיס
@@ -921,6 +923,10 @@ export default function FlowWorkspaceTab({
             <Eye className="h-3.5 w-3.5" />
             תצוגה
           </TabsTrigger>
+          <TabsTrigger value="compare" className="h-7 gap-1 px-2 text-xs" title="השוואת עריכה מול תצוגה + זיהוי פערי שבירת עמודים">
+            <Columns2 className="h-3.5 w-3.5" />
+            השוואה
+          </TabsTrigger>
         </TabsList>
       )}
 
@@ -1124,7 +1130,7 @@ export default function FlowWorkspaceTab({
   return (
     <Tabs
       value={activeTab}
-      onValueChange={(v) => setActiveTab(v as "edit" | "preview")}
+      onValueChange={(v) => setActiveTab(v as "edit" | "preview" | "compare")}
       className="flex h-full flex-col"
     >
       <TabsContent value="edit" className="m-0 flex-1 overflow-hidden">
@@ -1161,6 +1167,30 @@ export default function FlowWorkspaceTab({
           </div>
         </div>
       </TabsContent>
+      <TabsContent value="compare" className="m-0 flex-1 overflow-hidden">
+        <div className="flex h-full flex-col">
+          <TooltipProvider delayDuration={250}>
+            <div className="shrink-0 border-b bg-background">
+              <div className="flex max-h-[72px] flex-wrap items-center gap-1 overflow-y-auto px-2 py-1.5">
+                {toolbarActions}
+              </div>
+            </div>
+          </TooltipProvider>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <FlowCompareView
+              template={template}
+              html={html}
+              onChange={handleChange}
+              preset={presetCfg}
+              pageSetup={pageSetup}
+              projectDetails={projectDetails}
+              designSettings={designSettings}
+              onDesignSettingsChange={updateDesignSettings}
+            />
+          </div>
+        </div>
+      </TabsContent>
+
 
 
 
