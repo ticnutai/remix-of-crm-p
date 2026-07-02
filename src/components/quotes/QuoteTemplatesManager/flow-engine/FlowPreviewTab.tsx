@@ -258,7 +258,8 @@ export default function FlowPreviewTab({
   };
 
   return (
-    <div className="flex h-full flex-col bg-muted/30">
+    <div className={`flex flex-col bg-muted/30 ${hideToolbar ? "" : "h-full"}`}>
+
       {/* Toolbar */}
       {!hideToolbar && (
         <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-background px-4 py-2">
