@@ -418,6 +418,47 @@ export default function FlowWorkspaceTab({
     else if (onSubTabChange) onSubTabChange(next);
     else setInternalSubTab(next);
   };
+
+  // ==== מדריכי-עמוד מדויקים ע"י Paged.js (מקור אמת יחיד לשבירות) ====
+  const pagedGuidesStorageKey = `flow-edit:${template.id || "untitled"}:pagedGuides`;
+  const [pagedGuidesOn, setPagedGuidesOn] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(pagedGuidesStorageKey) === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(pagedGuidesStorageKey, pagedGuidesOn ? "1" : "0");
+    } catch { /* ignore */ }
+  }, [pagedGuidesOn, pagedGuidesStorageKey]);
+
+  const editorScrollRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    // מוצאים את container של תוכן העורך (מתקבל אחרי mount)
+    const el = document.querySelector<HTMLElement>(".flow-editor-content");
+    editorScrollRef.current = el;
+  }, [html, activeTab]);
+
+  const previewHtml = useMemo(() => {
+    if (!pagedGuidesOn) return "";
+    try {
+      const doc = htmlToFlowDoc(html, template, { designSettings });
+      const finalDoc = { ...doc, page: { ...doc.page, ...pageSetup } };
+      const merge = projectToMergeData(projectDetails);
+      return renderFlowToHtml(finalDoc, presetCfg, merge);
+    } catch {
+      return "";
+    }
+  }, [html, template, designSettings, pageSetup, presetCfg, projectDetails, pagedGuidesOn]);
+
+  const guides = usePagedGuides({
+    html: previewHtml,
+    enabled: pagedGuidesOn && activeTab === "edit",
+    editorContentEl: editorScrollRef.current,
+  });
+
   // אם החליפו תבנית — טען טיוטה שמורה או תוכן בסיס
   useEffect(() => {
     try {
