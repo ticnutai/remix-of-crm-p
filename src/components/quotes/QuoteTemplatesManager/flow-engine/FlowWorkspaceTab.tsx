@@ -25,6 +25,7 @@ import type { QuoteTemplate } from "../types";
 import FlowEditor from "./editor/FlowEditor";
 import FlowPreviewTab from "./FlowPreviewTab";
 import FlowCompareView from "./FlowCompareView";
+import LiveSplitView from "./LiveSplitView";
 import { templateToEditableHtml } from "./editor/templateToHtml";
 import { paymentsSignature, syncPaymentsSection } from "./syncPayments";
 import PresetPicker from "./presets/PresetPicker";
