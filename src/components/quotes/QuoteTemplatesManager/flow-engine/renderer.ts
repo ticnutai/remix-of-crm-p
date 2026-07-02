@@ -308,6 +308,9 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     object-fit: fill;
     object-position: center;
   }
+  /* מיישרים את הסטריפ התחתון עד לקצה התחתון של העמוד:
+     תא ה-grid של Paged.js בגובה strip+gap; חייב align-self:end + flex-end
+     כדי שהסטריפ יצטמד לקצה ולא ישאיר "שורה" מתחתיו. */
   .flow-has-footer-strip .pagedjs_margin-bottom,
   .flow-has-footer-strip .pagedjs_margin-bottom-center {
     grid-column: 1 / -1 !important;
@@ -315,7 +318,9 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     max-width: none !important;
     padding: 0 !important;
     margin: 0 !important;
+    align-self: end !important;
     height: ${mmCss(footerStripMm)}mm !important;
+    max-height: ${mmCss(footerStripMm)}mm !important;
     display: flex !important;
     align-items: flex-end !important;
     justify-content: center !important;
@@ -326,11 +331,24 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     margin: 0 !important;
     padding: 0 !important;
     display: block !important;
+    height: ${mmCss(footerStripMm)}mm !important;
   }
   .flow-has-footer-strip .running-footer.strip .strip-img {
     display: block !important;
-    margin-bottom: 0 !important;
+    height: ${mmCss(footerStripMm)}mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
     vertical-align: bottom !important;
+  }
+  /* בטיחות: כל תא בשורת ה-margin-bottom יישאר בגובה הסטריפ ובקצה התחתון */
+  .flow-has-footer-strip .pagedjs_margin-bottom-left,
+  .flow-has-footer-strip .pagedjs_margin-bottom-right,
+  .flow-has-footer-strip .pagedjs_margin-bottom-left-corner,
+  .flow-has-footer-strip .pagedjs_margin-bottom-right-corner {
+    align-self: end !important;
+    height: ${mmCss(footerStripMm)}mm !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
   /* same fix for top strip to keep it flush to the very top edge */
   .flow-has-header-strip .pagedjs_margin-top,
