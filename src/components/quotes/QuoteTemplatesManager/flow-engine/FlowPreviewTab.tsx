@@ -260,52 +260,54 @@ export default function FlowPreviewTab({
   return (
     <div className="flex h-full flex-col bg-muted/30">
       {/* Toolbar */}
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-background px-4 py-2">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <span className="text-sm font-medium">תצוגה מקדימה (Flow V2) — לקריאה והדפסה בלבד</span>
-          <Badge variant="outline" className="h-5 text-[10px]">העריכה מתבצעת בטאבים האחרים</Badge>
-          {rendering ? (
-            <Badge variant="secondary" className="h-5 text-[10px]">
-              <Loader2 className="ml-1 h-3 w-3 animate-spin" /> מעמד...
-            </Badge>
-          ) : pageCount != null ? (
-            <Badge variant="secondary" className="h-5 text-[10px]">
-              {pageCount} עמודים
-            </Badge>
-          ) : null}
-          {error && (
-            <Badge variant="destructive" className="h-5 text-[10px]">
-              שגיאה: {error}
-            </Badge>
-          )}
+      {!hideToolbar && (
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-background px-4 py-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">תצוגה מקדימה (Flow V2) — לקריאה והדפסה בלבד</span>
+            <Badge variant="outline" className="h-5 text-[10px]">העריכה מתבצעת בטאבים האחרים</Badge>
+            {rendering ? (
+              <Badge variant="secondary" className="h-5 text-[10px]">
+                <Loader2 className="ml-1 h-3 w-3 animate-spin" /> מעמד...
+              </Badge>
+            ) : pageCount != null ? (
+              <Badge variant="secondary" className="h-5 text-[10px]">
+                {pageCount} עמודים
+              </Badge>
+            ) : null}
+            {error && (
+              <Badge variant="destructive" className="h-5 text-[10px]">
+                שגיאה: {error}
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant={diagnostics ? "default" : "outline"}
+              size="sm"
+              onClick={() => setDiagnostics((v) => !v)}
+              title="הצג/הסתר גבולות של סטריפים ותאי Paged.js לצורך אבחון"
+            >
+              <Ruler className="ml-1 h-3.5 w-3.5" />
+              דיאגנוסטיקה
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setRenderToken((n) => n + 1)}
+            >
+              <RefreshCw className="ml-1 h-3.5 w-3.5" />
+              רענן
+            </Button>
+            <Button type="button" variant="default" size="sm" onClick={handlePrint}>
+              <Printer className="ml-1 h-3.5 w-3.5" />
+              הדפסה / PDF
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant={diagnostics ? "default" : "outline"}
-            size="sm"
-            onClick={() => setDiagnostics((v) => !v)}
-            title="הצג/הסתר גבולות של סטריפים ותאי Paged.js לצורך אבחון"
-          >
-            <Ruler className="ml-1 h-3.5 w-3.5" />
-            דיאגנוסטיקה
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setRenderToken((n) => n + 1)}
-          >
-            <RefreshCw className="ml-1 h-3.5 w-3.5" />
-            רענן
-          </Button>
-          <Button type="button" variant="default" size="sm" onClick={handlePrint}>
-            <Printer className="ml-1 h-3.5 w-3.5" />
-            הדפסה / PDF
-          </Button>
-        </div>
-      </div>
+      )}
 
       {/* Render area */}
       <div className="flex-1 overflow-auto p-6">
