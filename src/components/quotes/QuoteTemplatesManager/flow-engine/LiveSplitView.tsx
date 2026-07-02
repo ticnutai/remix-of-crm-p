@@ -25,13 +25,15 @@ interface Props {
 
 const PAGE_WIDTH_MM = 210;
 const PAGE_WIDTH_PX = (PAGE_WIDTH_MM * 96) / 25.4; // ≈ 793.7
-const FIT_BUFFER_PX = 32;
+const SCROLLBAR_PX = 18;
+const FIT_BUFFER_PX = 40;
 
-function computeFit(paneWidth: number, pageWidthPx = PAGE_WIDTH_PX) {
+function computeFit(paneWidth: number, contentWidth?: number, pageWidthPx = PAGE_WIDTH_PX) {
   if (!paneWidth) return 1;
-  const target = paneWidth - FIT_BUFFER_PX;
-  if (target >= pageWidthPx) return 1;
-  return Math.max(0.35, target / pageWidthPx);
+  const target = paneWidth - FIT_BUFFER_PX - SCROLLBAR_PX;
+  const base = Math.max(contentWidth || 0, pageWidthPx);
+  if (target >= base) return 1;
+  return Math.max(0.3, target / base);
 }
 
 export default function LiveSplitView(props: Props) {
@@ -43,15 +45,22 @@ export default function LiveSplitView(props: Props) {
   const [previewZoom, setPreviewZoom] = useState(1);
 
   useEffect(() => {
-    const observe = (el: HTMLElement | null, setter: (n: number) => void) => {
+    const observe = (el: HTMLElement | null, setter: (n: number) => void, useContent = true) => {
       if (!el) return () => {};
-      const ro = new ResizeObserver(() => setter(computeFit(el.clientWidth)));
+      const recompute = () => {
+        const inner = useContent ? (el.firstElementChild as HTMLElement | null) : null;
+        const contentW = inner ? inner.scrollWidth : 0;
+        setter(computeFit(el.clientWidth, contentW));
+      };
+      const ro = new ResizeObserver(recompute);
       ro.observe(el);
-      setter(computeFit(el.clientWidth));
-      return () => ro.disconnect();
+      if (el.firstElementChild) ro.observe(el.firstElementChild as Element);
+      recompute();
+      const t = window.setInterval(recompute, 1000);
+      return () => { ro.disconnect(); window.clearInterval(t); };
     };
     const c1 = observe(editorPaneRef.current, setEditorZoom);
-    const c2 = observe(previewPaneRef.current, setPreviewZoom);
+    const c2 = observe(previewPaneRef.current, setPreviewZoom, false);
     return () => { c1(); c2(); };
   }, []);
 

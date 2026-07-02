@@ -54,12 +54,14 @@ function measurePreviewBreaks(root: HTMLElement | null): BreakInfo {
 }
 
 const PAGE_WIDTH_PX = (210 * 96) / 25.4;
-const FIT_BUFFER_PX = 32;
-function computeFit(paneWidth: number) {
+const SCROLLBAR_PX = 18;
+const FIT_BUFFER_PX = 40;
+function computeFit(paneWidth: number, contentWidth?: number) {
   if (!paneWidth) return 1;
-  const target = paneWidth - FIT_BUFFER_PX;
-  if (target >= PAGE_WIDTH_PX) return 1;
-  return Math.max(0.35, target / PAGE_WIDTH_PX);
+  const target = paneWidth - FIT_BUFFER_PX - SCROLLBAR_PX;
+  const base = Math.max(contentWidth || 0, PAGE_WIDTH_PX);
+  if (target >= base) return 1;
+  return Math.max(0.3, target / base);
 }
 
 export default function FlowCompareView(props: Props) {
@@ -73,10 +75,18 @@ export default function FlowCompareView(props: Props) {
   useEffect(() => {
     const observe = (el: HTMLElement | null, setter: (n: number) => void) => {
       if (!el) return () => {};
-      const ro = new ResizeObserver(() => setter(computeFit(el.clientWidth)));
+      const recompute = () => {
+        // scrollWidth של הילד — כדי שגם אם התוכן רחב מ-A4 עדיין נכווץ.
+        const inner = el.firstElementChild as HTMLElement | null;
+        const contentW = inner ? inner.scrollWidth : 0;
+        setter(computeFit(el.clientWidth, contentW));
+      };
+      const ro = new ResizeObserver(recompute);
       ro.observe(el);
-      setter(computeFit(el.clientWidth));
-      return () => ro.disconnect();
+      if (el.firstElementChild) ro.observe(el.firstElementChild as Element);
+      recompute();
+      const t = window.setInterval(recompute, 1000);
+      return () => { ro.disconnect(); window.clearInterval(t); };
     };
     const c1 = observe(editorHostRef.current, setEditorZoom);
     const c2 = observe(previewHostRef.current, setPreviewZoom);
