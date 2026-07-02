@@ -31,6 +31,9 @@ import PresetPicker from "./presets/PresetPicker";
 import type { DesignPreset } from "./presets/types";
 import { safeConfig, usePresets } from "./presets/usePresets";
 import { projectToMergeData } from "./projectTokens";
+import { htmlToFlowDoc } from "./editor/htmlToFlowDoc";
+import { renderFlowToHtml } from "./renderer";
+import { usePagedGuides } from "./editor/usePagedGuides";
 import StripDesignerDialog, { type FlowStripDesignState, type StripPosition } from "./StripDesignerDialog";
 import type { FlowPageSetup, FlowPageSizePreset } from "./types";
 
@@ -415,6 +418,57 @@ export default function FlowWorkspaceTab({
     else if (onSubTabChange) onSubTabChange(next);
     else setInternalSubTab(next);
   };
+
+  // ==== מדריכי-עמוד מדויקים ע"י Paged.js (מקור אמת יחיד לשבירות) ====
+  const pagedGuidesStorageKey = `flow-edit:${template.id || "untitled"}:pagedGuides`;
+  const [pagedGuidesOn, setPagedGuidesOn] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(pagedGuidesStorageKey) === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(pagedGuidesStorageKey, pagedGuidesOn ? "1" : "0");
+    } catch { /* ignore */ }
+  }, [pagedGuidesOn, pagedGuidesStorageKey]);
+
+  const [editorContentEl, setEditorContentEl] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (activeTab !== "edit") return;
+    // ממתינים עד ש-TipTap ירנדר את .flow-editor-content לתוך ה-DOM
+    let attempts = 0;
+    const tick = () => {
+      const el = document.querySelector<HTMLElement>(".flow-editor-content");
+      if (el) {
+        setEditorContentEl(el);
+        return;
+      }
+      if (attempts++ < 20) window.setTimeout(tick, 100);
+    };
+    tick();
+  }, [activeTab, html]);
+
+
+  const previewHtml = useMemo(() => {
+    if (!pagedGuidesOn) return "";
+    try {
+      const doc = htmlToFlowDoc(html, template, { designSettings });
+      const finalDoc = { ...doc, page: { ...doc.page, ...pageSetup } };
+      const merge = projectToMergeData(projectDetails);
+      return renderFlowToHtml(finalDoc, presetCfg, merge);
+    } catch {
+      return "";
+    }
+  }, [html, template, designSettings, pageSetup, presetCfg, projectDetails, pagedGuidesOn]);
+
+  const guides = usePagedGuides({
+    html: previewHtml,
+    enabled: pagedGuidesOn && activeTab === "edit",
+    editorContentEl,
+  });
+
   // אם החליפו תבנית — טען טיוטה שמורה או תוכן בסיס
   useEffect(() => {
     try {
@@ -930,6 +984,36 @@ export default function FlowWorkspaceTab({
         </TabsList>
       )}
 
+      <TooltipProvider delayDuration={250}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant={pagedGuidesOn ? "default" : "outline"}
+              size="sm"
+              onClick={() => setPagedGuidesOn((v) => !v)}
+              className="h-8 shrink-0 gap-1 px-2 text-xs"
+            >
+              <Columns2 className="h-3.5 w-3.5" />
+              PDF מדויק
+              {pagedGuidesOn && guides.loading && (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              )}
+              {pagedGuidesOn && !guides.loading && guides.pageCount > 0 && (
+                <span className="rounded bg-primary-foreground/20 px-1 text-[10px]">
+                  {guides.pageCount}
+                </span>
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs text-right">
+            מציג במצב עריכה קווים מקווקווים בדיוק במקום שבו יישבר עמוד ב-PDF —
+            מקור אמת יחיד (Paged.js). מתעדכן אוטומטית תוך ~500ms אחרי הקלדה.
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+
       <Popover open={saveMenuOpen} onOpenChange={setSaveMenuOpen} modal={false}>
         <PopoverTrigger asChild>
           <Button
@@ -1144,6 +1228,12 @@ export default function FlowWorkspaceTab({
           onDesignSettingsChange={updateDesignSettings}
           projectDetails={projectDetails}
           toolbarActions={toolbarActions}
+          pagedGuides={{
+            enabled: pagedGuidesOn,
+            breakYs: guides.breakYs,
+            loading: guides.loading,
+            error: guides.error,
+          }}
         />
       </TabsContent>
       <TabsContent value="preview" className="m-0 flex-1 overflow-hidden">

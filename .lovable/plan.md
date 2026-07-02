@@ -1,27 +1,81 @@
-## מטרה
-להוסיף כפתור בסרגל הטאבים של עורך התבניות שמחליף בין שני מצבים:
-- **מצב מלא** (ברירת מחדל היום): אייקון + טקסט
-- **מצב קומפקטי**: אייקונים בלבד, עם Tooltip בעברית בעת ריחוף
+# החלפת מנוע העימוד בעורך ל-Paged.js (סנכרון 1:1 עם ה-PDF)
 
-## איפה
-`src/components/quotes/QuoteTemplatesManager/HtmlTemplateEditor.tsx` — שורת ה־`TabsList` שמכילה: פרטי פרויקט, תוכן, תשלומים, עיצוב, לוגו, טקסט, כלים, תצוגה מקדימה, עריכה+תצוגה, תצוגת דפים, עורך המסמך.
+## המטרה
+לבטל את `tiptap-pagination-plus` ולהשתמש ב-**מנוע אחד בלבד** (Paged.js) גם בעריכה וגם בתצוגה. שבירות עמוד יהיו זהות לחלוטין — אפס פערים.
 
-## מה משתנה (UI בלבד)
-1. **State חדש** `iconsOnly: boolean` עם persist ל־`localStorage` (מפתח `qt-editor-icons-only`) כדי שהבחירה תישמר בין מסכים.
-2. **כפתור Toggle** קטן בקצה ה־`TabsList` (אייקון `PanelsTopLeft` ↔ `LayoutList` מ־lucide), עם `Tooltip` "תצוגת אייקונים בלבד / תצוגה מלאה".
-3. **רנדור הטאבים** — כל `TabsTrigger` עוטף את התווית ב־`Tooltip`:
-   - `iconsOnly=false` → אייקון + טקסט (כמו היום).
-   - `iconsOnly=true` → רק אייקון; ה־`TooltipContent` מציג את שם הטאב.
-4. **לא נוגעים** בלוגיקת הטאבים, ב־Flow Editor, ב־serializer, ב־PDF או בנתונים. שינוי תצוגתי בלבד.
+## אתגר מרכזי
+Paged.js מייצר DOM סטטי (`.pagedjs_page`) — הוא לא עורך. TipTap צריך להישאר עורך חי. הפתרון: **ארכיטקטורת Overlay** — TipTap עורך תוכן זורם אחד, ולידו/מתחתיו Paged.js מרנדר תצוגה מפוגגת בזמן אמת כרפרנס ויזואלי.
 
-## פרטים טכניים
-- שימוש ב־`Tooltip` הקיים מ־`@/components/ui/tooltip` (כבר בשימוש בפרויקט) ועטיפת ה־`TabsList` ב־`TooltipProvider` אם חסר.
-- שמירה על RTL ועל ה־`text-foreground` הקיים — בלי צבעים חדשים.
-- ב־`iconsOnly` נוסיף `aria-label` לכל טריגר עם שם הטאב לנגישות.
-- רוחב הטאב במצב אייקונים: `w-9 h-9 p-0` כדי שהסרגל יתכווץ באמת.
+## ארכיטקטורה חדשה — "Live Paged Editor"
 
-## אימות
-- בנייה עוברת.
-- בדיקה ויזואלית קצרה בפליירייט: טעינת `/quote-templates/editor/...`, צילום לפני/אחרי לחיצה על הכפתור, ריחוף מעל אייקון כדי לוודא שה־Tooltip מופיע בעברית.
+```text
++----------------------------------------------------+
+| Toolbar (עיצוב, סטריפים, תשלומים, השוואה...)      |
++----------------------------------------------------+
+| Split או Overlay                                    |
+|                                                     |
+|  [TipTap Flow] (זרימה רציפה, בלי pagination plus)   |
+|         ↓ debounce 400ms                            |
+|  [Paged.js Live Preview] (מתעדכן עם כל הקלדה)      |
+|         ↓                                           |
+|  קוי מדריך (Guide Lines) שמסומנים על העורך         |
+|  ב-Y-positions שבהם Paged.js שבר עמוד              |
++----------------------------------------------------+
+```
 
-מחוץ לתחום: שום שינוי במצב הנתונים, ב־Flow, ב־PDF או בטאבים המוסתרים.
+## מצבי תצוגה בטאב Flow
+
+1. **עריכה קלאסית** — TipTap זורם + קווים מקווקווים דקים שמסמנים את שבירות ה-PDF (מגיעים מ-Paged.js ברקע).
+2. **תצוגה מקדימה** — Paged.js בלבד (כמו היום).
+3. **השוואה** — כמו שיש היום, אבל כעת יהיו זהים.
+4. **חדש: מצב "עמוד-על-עמוד"** — TipTap עורך שקוף מעל Paged.js render (העורך מקבל את ה-clip-path של הדפים).
+
+## שינויים בקבצים
+
+### הסרה
+- `tiptap-pagination-plus` — כל ההגדרות מ-`FlowEditor.tsx` (extensions, options).
+- כל התייחסות ל-`updatePageBreakBackground`, `PaginationPlusOptions`.
+
+### קובץ חדש: `flow-engine/editor/PagedGuides.ts`
+- הוק שמריץ Paged.js ברקע (Web Worker אם אפשר, אחרת off-screen iframe).
+- מחזיר `pageBreakYPositions: number[]` — הקואורדינטות ב-mm שבהן שבירות עמוד נופלות.
+- מזין את הערכים ל-CSS variables של העורך.
+
+### עדכון: `flow-engine/editor/FlowEditor.tsx`
+- הסרת ההגדרה של `PaginationPlus.configure(...)`.
+- הוספת שכבת overlay `<div class="page-guides">` שמצייר קווים אופקיים ב-Y-positions מ-Paged.js.
+- הוספת שולי `@page` "אמיתיים" (padding-top/bottom של כל pseudo-page) שיוצגו כאזורי header/footer מוגנים.
+
+### עדכון: `flow-engine/FlowWorkspaceTab.tsx`
+- הוספת טוגל "הצג מדריכי עמוד" (ברירת מחדל: פועל).
+- הסרת האפשרות "בטל מספור" מהעורך (מגיע כעת מ-Paged.js אחד).
+
+### קובץ חדש: `flow-engine/editor/pagedWorker.ts`
+- Worker/off-screen שמקבל HTML + preset ומחזיר breakpoints.
+- מבטל requests קודמים כשמגיע HTML חדש.
+
+## פתרון סוגיות ידועות
+
+- **ביצועים:** Paged.js לוקח ~300-800ms על מסמך A4. debounce 400ms + Web Worker.
+- **פונטים async:** ממתינים ל-`document.fonts.ready` לפני חישוב, מריצים render שני אחרי טעינת פונטים כבדים (David).
+- **טבלת תשלומים דינמית:** ה-PaymentsBlock כבר Node של TipTap, ממשיך לעבוד — Paged.js מכבד `break-inside: avoid` שלו.
+- **מצב offline / render fail:** נשמור fallback — אם Paged.js נופל, מציגים אזהרה קטנה ("מדריכי עמוד לא זמינים") אבל העורך עצמו עובד.
+
+## מה יורגש בפועל
+- אפס הפרש בין עריכה ל-PDF.
+- העורך יראה קווים דקים (1px, `border-color: hsl(var(--border))`) בדיוק במקום שבו יישבר עמוד ב-PDF.
+- כשמוסיפים שורה — הקווים "קופצים" לפי החישוב החדש (עם delay של ~400ms).
+- קלט Undo/Redo, סטריפים, ערכות, טבלת תשלומים — כולם ממשיכים לעבוד כמו שהם.
+
+## מה לא ישתנה
+- מבנה הנתונים (`FlowDocument`, `serializer.ts`).
+- שמירה לענן, ניהול טיוטות.
+- טאבי המשנה (עריכה/תצוגה/השוואה).
+- ה-Print dialog וייצוא ה-PDF.
+
+## סיכון
+- Web Worker + Paged.js דורש polyfill לחלק מה-DOM APIs. אם ייתקע — נריץ ב-off-screen iframe (יותר איטי אבל בטוח).
+- אם המסמך ענק (30+ עמודים) — נעבור למצב "ידני" (מחשב מחדש רק בלחיצה).
+
+## אישור
+מאשר לביצוע? אחרי אישור אתחיל בסדר: (1) קובץ ה-Worker, (2) שילוב ב-FlowEditor, (3) הסרת PaginationPlus, (4) בדיקת Playwright שההשוואה מראה 0 פערים.

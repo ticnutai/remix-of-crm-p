@@ -51,6 +51,13 @@ interface Props {
   onDesignSettingsChange?: (patch: Record<string, any>) => void;
   projectDetails?: ProjectTokenData;
   toolbarActions?: React.ReactNode;
+  /** מדריכי-עמוד מדויקים ע"י Paged.js (מקור אמת יחיד). */
+  pagedGuides?: {
+    enabled: boolean;
+    breakYs: number[];
+    loading?: boolean;
+    error?: string | null;
+  };
 }
 
 const PAGE_SIZES_MM: Record<string, { width: number; height: number }> = {
@@ -279,6 +286,7 @@ export default function FlowEditor({
   onDesignSettingsChange,
   projectDetails,
   toolbarActions,
+  pagedGuides,
 }: Props) {
   const debounceRef = useRef<number | null>(null);
   const dragRef = useRef<{
@@ -466,6 +474,33 @@ export default function FlowEditor({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialHtml, editor]);
+
+  // הזרקת data-flow-fid לכל בלוק ב-DOM של העורך — נדרש להצלבה עם Paged.js
+  // (usePagedGuides מזריק אותם ב-HTML לתצוגה מקדימה ומחפש התאמה כאן).
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom as HTMLElement;
+    const injectFids = () => {
+      let counter = 0;
+      const nodes = dom.querySelectorAll<HTMLElement>(
+        "p,h1,h2,h3,h4,h5,h6,ul,ol,li,table,tr,blockquote,figure,hr,div,section,article",
+      );
+      nodes.forEach((el) => {
+        counter += 1;
+        if (el.getAttribute("data-flow-fid") !== String(counter)) {
+          el.setAttribute("data-flow-fid", String(counter));
+        }
+      });
+    };
+    injectFids();
+    const observer = new MutationObserver(() => {
+      // דחייה קצרה כדי לא להיכנס לולאה עם ProseMirror
+      window.requestAnimationFrame(injectFids);
+    });
+    observer.observe(dom, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [editor]);
+
 
   // עדכון resolver של שדות דינמיים + צריבת snapshot לתוך attrs של כל node
   // כך שערכים שנפתרו יישרדו רענון/החלפת טאב גם בלי resolver פעיל.
@@ -669,12 +704,38 @@ export default function FlowEditor({
         } as React.CSSProperties}
       >
         <div
-          className={`flow-editor-shell mx-auto my-4 ${
+          className={`flow-editor-shell relative mx-auto my-4 ${
             pagedMode
               ? "flow-editor-shell-paged flow-editor-shell-pagination-plus"
               : "max-w-[860px] rounded-md border bg-background shadow-sm"
           }`}
         >
+          {/* Overlay: Paged.js precise page-break guides (matches PDF exactly) */}
+          {pagedGuides?.enabled && pagedGuides.breakYs.length > 0 && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 z-[3]"
+              style={{ contain: "layout paint" }}
+            >
+              {pagedGuides.breakYs.map((y, i) => (
+                <div
+                  key={`${y}-${i}`}
+                  className="absolute inset-x-0 flex items-center"
+                  style={{ top: `${y}px`, transform: "translateY(-1px)" }}
+                >
+                  <div className="h-px w-full border-t-2 border-dashed border-primary/70" />
+                  <span className="absolute right-2 -translate-y-1/2 rounded bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground shadow">
+                    PDF · עמוד {i + 2}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {pagedGuides?.enabled && pagedGuides.loading && (
+            <div className="pointer-events-none absolute right-3 top-2 z-[4] rounded bg-background/80 px-2 py-0.5 text-[10px] text-muted-foreground shadow">
+              מחשב שבירות PDF…
+            </div>
+          )}
           <ContextMenu>
             <ContextMenuTrigger asChild>
               <div className="flow-editor-context-trigger" onContextMenu={setContextMenuCursor}>
