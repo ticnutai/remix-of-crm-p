@@ -23,9 +23,43 @@ interface Props {
   onDesignSettingsChange?: any;
 }
 
+const PAGE_WIDTH_MM = 210;
+const PAGE_WIDTH_PX = (PAGE_WIDTH_MM * 96) / 25.4; // ≈ 793.7
+const FIT_BUFFER_PX = 32;
+
+function computeFit(paneWidth: number, pageWidthPx = PAGE_WIDTH_PX) {
+  if (!paneWidth) return 1;
+  const target = paneWidth - FIT_BUFFER_PX;
+  if (target >= pageWidthPx) return 1;
+  return Math.max(0.35, target / pageWidthPx);
+}
+
 export default function LiveSplitView(props: Props) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const readyRef = useRef(false);
+  const editorPaneRef = useRef<HTMLDivElement | null>(null);
+  const previewPaneRef = useRef<HTMLDivElement | null>(null);
+  const [editorZoom, setEditorZoom] = useState(1);
+  const [previewZoom, setPreviewZoom] = useState(1);
+
+  useEffect(() => {
+    const observe = (el: HTMLElement | null, setter: (n: number) => void) => {
+      if (!el) return () => {};
+      const ro = new ResizeObserver(() => setter(computeFit(el.clientWidth)));
+      ro.observe(el);
+      setter(computeFit(el.clientWidth));
+      return () => ro.disconnect();
+    };
+    const c1 = observe(editorPaneRef.current, setEditorZoom);
+    const c2 = observe(previewPaneRef.current, setPreviewZoom);
+    return () => { c1(); c2(); };
+  }, []);
+
+  // עדכון zoom בתוך ה-iframe
+  useEffect(() => {
+    const doc = iframeRef.current?.contentDocument;
+    if (doc?.body) (doc.body.style as any).zoom = String(previewZoom);
+  }, [previewZoom]);
 
   const previewHtml = useMemo(() => {
     try {
