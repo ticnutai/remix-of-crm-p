@@ -724,7 +724,7 @@ export default function FlowEditor({
         </div>
       </div>
       <style>{`
-        .flow-editor-content { padding: 1.5rem; font-family: ${preset?.fonts.body || "Heebo, Arial, sans-serif"}; font-size: ${preset?.fonts.size || "14px"}; line-height: ${preset?.spacing.lineHeight || "1.7"}; color: ${preset?.colors.text || "hsl(var(--foreground))"}; }
+        .flow-editor-content { padding: 1.5rem; font-family: ${preset?.fonts.body || "Heebo, Arial, sans-serif"}; font-size: ${preset?.fonts.size || "11pt"}; line-height: ${preset?.spacing.lineHeight || "1.55"}; color: ${preset?.colors.text || "hsl(var(--foreground))"}; }
         /* גוש לוח תשלומים — נגרר ביחידה אחת */
         .flow-editor-content .payments-block {
           position: relative;

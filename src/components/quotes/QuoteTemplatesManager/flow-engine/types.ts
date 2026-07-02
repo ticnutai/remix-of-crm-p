@@ -40,6 +40,8 @@ export interface FlowBranding {
   footerStripHeight?: number;
   headerStripWidthPercent?: number;
   footerStripWidthPercent?: number;
+  headerStripContentGapPx?: number;
+  footerStripContentGapPx?: number;
   companyName: string;
   companySubtitle?: string;
   contactLine?: string; // טלפון | מייל | כתובת

@@ -10,6 +10,17 @@ import type { FlowBlock, FlowDocument, FlowInline } from "./types";
 import type { DesignPresetConfig } from "./presets/types";
 import { buildPresetExtraCss } from "./presets/presetExtras";
 
+const PX_TO_MM = 25.4 / 96;
+
+function pxToMm(value: number, fallback: number) {
+  const safe = Number.isFinite(value) ? value : fallback;
+  return Math.max(0, safe * PX_TO_MM);
+}
+
+function mmCss(value: number) {
+  return Number(value.toFixed(3));
+}
+
 const esc = (s: string) =>
   s
     .replace(/&/g, "&amp;")
@@ -158,14 +169,16 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   const hasFooterStrip = Boolean(branding.footerStripUrl);
   const headerStripHeightPx = Number(branding.headerStripHeight);
   const footerStripHeightPx = Number(branding.footerStripHeight);
-  const headerStripMm = Math.max(0, Math.round((Number.isFinite(headerStripHeightPx) ? headerStripHeightPx : 150) * 0.264583));
-  const footerStripMm = Math.max(0, Math.round((Number.isFinite(footerStripHeightPx) ? footerStripHeightPx : 90) * 0.264583));
+  const headerStripMm = pxToMm(headerStripHeightPx, 150);
+  const footerStripMm = pxToMm(footerStripHeightPx, 90);
+  const headerContentGapMm = hasHeaderStrip ? pxToMm(Number(branding.headerStripContentGapPx), 18) : 0;
+  const footerContentGapMm = hasFooterStrip ? pxToMm(Number(branding.footerStripContentGapPx), 18) : 0;
   const headerStripWidthValue = Number(branding.headerStripWidthPercent);
   const footerStripWidthValue = Number(branding.footerStripWidthPercent);
   const headerStripWidthPercent = Math.round(Number.isFinite(headerStripWidthValue) ? headerStripWidthValue : 100);
   const footerStripWidthPercent = Math.round(Number.isFinite(footerStripWidthValue) ? footerStripWidthValue : 100);
-  const topMargin = hasHeaderStrip ? headerStripMm : m.top;
-  const bottomMargin = hasFooterStrip ? footerStripMm : m.bottom;
+  const topMargin = hasHeaderStrip ? headerStripMm + headerContentGapMm : m.top;
+  const bottomMargin = hasFooterStrip ? footerStripMm + footerContentGapMm : m.bottom;
   const stripBgColor = branding.stripBgColor || "#ffffff";
 
   const sectionsHtml = sections
@@ -202,7 +215,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   /* ===== Paged Media setup ===== */
   @page {
     size: ${pageSizeCss(page)};
-    margin: ${topMargin}mm 0mm ${bottomMargin}mm 0mm;
+    margin: ${mmCss(topMargin)}mm 0mm ${mmCss(bottomMargin)}mm 0mm;
     @top-center { content: element(runHeader); }
     @bottom-center { content: element(runFooter); }
   }
@@ -243,7 +256,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   .running-header.strip {
     display: block;
     width: 100%;
-    height: ${headerStripMm}mm;
+     height: ${mmCss(headerStripMm)}mm;
     margin-left: 0;
     margin-right: 0;
     overflow: hidden;
@@ -254,7 +267,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   .running-header.strip .strip-img {
     display: block;
     width: ${headerStripWidthPercent}%;
-    height: ${headerStripMm}mm;
+     height: ${mmCss(headerStripMm)}mm;
     margin-left: auto;
     margin-right: auto;
     max-height: none;
@@ -278,7 +291,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   }
   .running-footer.strip {
     width: 100%;
-    height: ${footerStripMm}mm;
+     height: ${mmCss(footerStripMm)}mm;
     margin-left: 0;
     margin-right: 0;
     overflow: hidden;
@@ -289,7 +302,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   .running-footer.strip .strip-img {
     display: block;
     width: ${footerStripWidthPercent}%;
-    height: ${footerStripMm}mm;
+     height: ${mmCss(footerStripMm)}mm;
     margin-left: auto;
     margin-right: auto;
     object-fit: fill;
@@ -302,7 +315,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     max-width: none !important;
     padding: 0 !important;
     margin: 0 !important;
-    height: ${footerStripMm}mm !important;
+    height: ${mmCss(footerStripMm)}mm !important;
     display: flex !important;
     align-items: flex-end !important;
     justify-content: center !important;
@@ -324,7 +337,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   .flow-has-header-strip .pagedjs_margin-top-center {
     padding: 0 !important;
     margin: 0 !important;
-    height: ${headerStripMm}mm !important;
+    height: ${mmCss(headerStripMm)}mm !important;
     display: flex !important;
     align-items: flex-start !important;
     justify-content: center !important;
