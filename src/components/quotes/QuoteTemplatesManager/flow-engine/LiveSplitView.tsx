@@ -26,14 +26,13 @@ interface Props {
 const PAGE_WIDTH_MM = 210;
 const PAGE_WIDTH_PX = (PAGE_WIDTH_MM * 96) / 25.4; // ≈ 793.7
 const SCROLLBAR_PX = 18;
-const FIT_BUFFER_PX = 40;
+const FIT_BUFFER_PX = 24;
 
-function computeFit(paneWidth: number, contentWidth?: number, pageWidthPx = PAGE_WIDTH_PX) {
+function computeFit(paneWidth: number, pageWidthPx = PAGE_WIDTH_PX) {
   if (!paneWidth) return 1;
   const target = paneWidth - FIT_BUFFER_PX - SCROLLBAR_PX;
-  const base = Math.max(contentWidth || 0, pageWidthPx);
-  if (target >= base) return 1;
-  return Math.max(0.3, target / base);
+  if (target >= pageWidthPx) return 1;
+  return Math.max(0.3, target / pageWidthPx);
 }
 
 export default function LiveSplitView(props: Props) {
@@ -45,22 +44,18 @@ export default function LiveSplitView(props: Props) {
   const [previewZoom, setPreviewZoom] = useState(1);
 
   useEffect(() => {
-    const observe = (el: HTMLElement | null, setter: (n: number) => void, useContent = true) => {
+    const observe = (el: HTMLElement | null, setter: (n: number) => void) => {
       if (!el) return () => {};
-      const recompute = () => {
-        const inner = useContent ? (el.firstElementChild as HTMLElement | null) : null;
-        const contentW = inner ? inner.scrollWidth : 0;
-        setter(computeFit(el.clientWidth, contentW));
-      };
+      // מודדים parent (לפני zoom) כדי לא ליצור לולאת פידבק.
+      const parent = el.parentElement || el;
+      const recompute = () => setter(computeFit(parent.clientWidth));
       const ro = new ResizeObserver(recompute);
-      ro.observe(el);
-      if (el.firstElementChild) ro.observe(el.firstElementChild as Element);
+      ro.observe(parent);
       recompute();
-      const t = window.setInterval(recompute, 1000);
-      return () => { ro.disconnect(); window.clearInterval(t); };
+      return () => ro.disconnect();
     };
     const c1 = observe(editorPaneRef.current, setEditorZoom);
-    const c2 = observe(previewPaneRef.current, setPreviewZoom, false);
+    const c2 = observe(previewPaneRef.current, setPreviewZoom);
     return () => { c1(); c2(); };
   }, []);
 
