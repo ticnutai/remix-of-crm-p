@@ -222,10 +222,10 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     padding: 0 8px;
     border: 1px solid rgba(22, 44, 88, 0.16);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.9);
-    color: ${branding.primaryColor};
+    background: rgba(255, 255, 255, 0.84);
+    color: #162c58;
     font-family: ${branding.fontFamily};
-    font-size: 10pt;
+    font-size: 11px;
     line-height: 1;
     white-space: nowrap;
     pointer-events: none;
