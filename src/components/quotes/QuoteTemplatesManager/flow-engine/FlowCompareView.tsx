@@ -55,13 +55,12 @@ function measurePreviewBreaks(root: HTMLElement | null): BreakInfo {
 
 const PAGE_WIDTH_PX = (210 * 96) / 25.4;
 const SCROLLBAR_PX = 18;
-const FIT_BUFFER_PX = 40;
-function computeFit(paneWidth: number, contentWidth?: number) {
+const FIT_BUFFER_PX = 24;
+function computeFit(paneWidth: number) {
   if (!paneWidth) return 1;
   const target = paneWidth - FIT_BUFFER_PX - SCROLLBAR_PX;
-  const base = Math.max(contentWidth || 0, PAGE_WIDTH_PX);
-  if (target >= base) return 1;
-  return Math.max(0.3, target / base);
+  if (target >= PAGE_WIDTH_PX) return 1;
+  return Math.max(0.3, target / PAGE_WIDTH_PX);
 }
 
 export default function FlowCompareView(props: Props) {
@@ -75,18 +74,13 @@ export default function FlowCompareView(props: Props) {
   useEffect(() => {
     const observe = (el: HTMLElement | null, setter: (n: number) => void) => {
       if (!el) return () => {};
-      const recompute = () => {
-        // scrollWidth של הילד — כדי שגם אם התוכן רחב מ-A4 עדיין נכווץ.
-        const inner = el.firstElementChild as HTMLElement | null;
-        const contentW = inner ? inner.scrollWidth : 0;
-        setter(computeFit(el.clientWidth, contentW));
-      };
+      // מודדים רק את רוחב החלונית (parent), לא את התוכן — למניעת לולאת פידבק עם zoom.
+      const parent = el.parentElement || el;
+      const recompute = () => setter(computeFit(parent.clientWidth));
       const ro = new ResizeObserver(recompute);
-      ro.observe(el);
-      if (el.firstElementChild) ro.observe(el.firstElementChild as Element);
+      ro.observe(parent);
       recompute();
-      const t = window.setInterval(recompute, 1000);
-      return () => { ro.disconnect(); window.clearInterval(t); };
+      return () => ro.disconnect();
     };
     const c1 = observe(editorHostRef.current, setEditorZoom);
     const c2 = observe(previewHostRef.current, setPreviewZoom);
