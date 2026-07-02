@@ -1188,6 +1188,12 @@ export default function FlowWorkspaceTab({
           onDesignSettingsChange={updateDesignSettings}
           projectDetails={projectDetails}
           toolbarActions={toolbarActions}
+          pagedGuides={{
+            enabled: pagedGuidesOn,
+            breakYs: guides.breakYs,
+            loading: guides.loading,
+            error: guides.error,
+          }}
         />
       </TabsContent>
       <TabsContent value="preview" className="m-0 flex-1 overflow-hidden">
