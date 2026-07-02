@@ -188,16 +188,19 @@ export default function FlowCompareView(props: Props) {
           <div className="shrink-0 border-b bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground h-7 flex items-center">
             <Eye className="ml-1 inline h-3 w-3" /> תצוגה מקדימה (Paged.js)
           </div>
-          <div ref={previewHostRef} className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto" style={{ zoom: previewZoom } as React.CSSProperties}>
-            <FlowPreviewTab
-              template={props.template}
-              editedHtml={props.html}
-              preset={props.preset}
-              projectDetails={props.projectDetails}
-              designSettings={props.designSettings}
-              pageSetup={props.pageSetup}
-              hideToolbar
-            />
+          {/* גלילה יחידה חיצונית — FlowPreviewTab כבר לא יוצר סקרול פנימי כש-hideToolbar=true */}
+          <div ref={previewHostRef} className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+            <div style={{ zoom: previewZoom } as React.CSSProperties}>
+              <FlowPreviewTab
+                template={props.template}
+                editedHtml={props.html}
+                preset={props.preset}
+                projectDetails={props.projectDetails}
+                designSettings={props.designSettings}
+                pageSetup={props.pageSetup}
+                hideToolbar
+              />
+            </div>
           </div>
         </div>
       </div>
