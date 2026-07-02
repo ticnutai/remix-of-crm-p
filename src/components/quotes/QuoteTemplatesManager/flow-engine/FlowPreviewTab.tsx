@@ -23,6 +23,8 @@ interface FlowPreviewTabProps {
   projectDetails?: any;
   designSettings?: any;
   pageSetup?: FlowPageSetup;
+  /** הסתר את שורת הכלים העליונה — לשימוש בתצוגת השוואה. */
+  hideToolbar?: boolean;
 }
 
 function splitPagedDocument(html: string) {
