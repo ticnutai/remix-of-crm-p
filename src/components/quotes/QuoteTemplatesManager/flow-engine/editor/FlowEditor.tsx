@@ -286,6 +286,7 @@ export default function FlowEditor({
   onDesignSettingsChange,
   projectDetails,
   toolbarActions,
+  pagedGuides,
 }: Props) {
   const debounceRef = useRef<number | null>(null);
   const dragRef = useRef<{
