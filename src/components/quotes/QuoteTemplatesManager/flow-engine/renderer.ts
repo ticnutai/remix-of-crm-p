@@ -229,9 +229,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     line-height: 1;
     white-space: nowrap;
     pointer-events: none;
-  }
-  @page {` : `@page {`}
-  }
+  }` : ""}
 
   /* ===== Running elements (header/footer חוזרים בכל עמוד) ===== */
   .running-header {
