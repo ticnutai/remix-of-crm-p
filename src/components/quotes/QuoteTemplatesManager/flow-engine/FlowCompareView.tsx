@@ -135,13 +135,13 @@ export default function FlowCompareView(props: Props) {
         </div>
       </div>
 
-      {/* Split view */}
+      {/* Split view — שני הצדדים בעלי אותה ראשית ציר Y, ללא גלילה אופקית */}
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col border-l">
-          <div className="shrink-0 border-b bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground">
+          <div className="shrink-0 border-b bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground h-7 flex items-center">
             <Pencil className="ml-1 inline h-3 w-3" /> עורך (Flow Editor)
           </div>
-          <div ref={editorHostRef} className="min-h-0 flex-1 overflow-hidden">
+          <div ref={editorHostRef} className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
             <FlowEditor
               initialHtml={props.html}
               onChange={props.onChange}
@@ -152,14 +152,15 @@ export default function FlowCompareView(props: Props) {
               onDesignSettingsChange={props.onDesignSettingsChange}
               projectDetails={props.projectDetails}
               toolbarActions={null}
+              hideMenuBar
             />
           </div>
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="shrink-0 border-b bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground">
+          <div className="shrink-0 border-b bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground h-7 flex items-center">
             <Eye className="ml-1 inline h-3 w-3" /> תצוגה מקדימה (Paged.js)
           </div>
-          <div ref={previewHostRef} className="min-h-0 flex-1 overflow-hidden">
+          <div ref={previewHostRef} className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
             <FlowPreviewTab
               template={props.template}
               editedHtml={props.html}
@@ -167,6 +168,7 @@ export default function FlowCompareView(props: Props) {
               projectDetails={props.projectDetails}
               designSettings={props.designSettings}
               pageSetup={props.pageSetup}
+              hideToolbar
             />
           </div>
         </div>

@@ -52,6 +52,8 @@ interface Props {
   onDesignSettingsChange?: (patch: Record<string, any>) => void;
   projectDetails?: ProjectTokenData;
   toolbarActions?: React.ReactNode;
+  /** הסתר את שורת התפריט העליונה — לשימוש בתצוגת השוואה. */
+  hideMenuBar?: boolean;
   /** מדריכי-עמוד מדויקים ע"י Paged.js (מקור אמת יחיד). */
   pagedGuides?: {
     enabled: boolean;
@@ -288,6 +290,7 @@ export default function FlowEditor({
   projectDetails,
   toolbarActions,
   pagedGuides,
+  hideMenuBar,
 }: Props) {
   const debounceRef = useRef<number | null>(null);
   const dragRef = useRef<{
@@ -661,12 +664,14 @@ export default function FlowEditor({
   return (
     <div className="flex h-full flex-col bg-background">
 
-      <MenuBar
-        editor={editor}
-        fields={dynamicFields}
-        onCreateField={() => setCreateFieldOpen(true)}
-        toolbarActions={toolbarActions}
-      />
+      {!hideMenuBar && (
+        <MenuBar
+          editor={editor}
+          fields={dynamicFields}
+          onCreateField={() => setCreateFieldOpen(true)}
+          toolbarActions={toolbarActions}
+        />
+      )}
       <BubbleToolbar editor={editor} />
       <CreateFieldDialog
         open={createFieldOpen}
