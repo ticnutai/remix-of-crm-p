@@ -982,6 +982,10 @@ export default function FlowWorkspaceTab({
             <Columns2 className="h-3.5 w-3.5" />
             השוואה
           </TabsTrigger>
+          <TabsTrigger value="split" className="h-7 gap-1 px-2 text-xs" title="פיצול מסך — עריכה + תצוגה חיה מיידית (ללא רינדור מורגש)">
+            <SplitSquareHorizontal className="h-3.5 w-3.5" />
+            פיצול
+          </TabsTrigger>
         </TabsList>
       )}
 
