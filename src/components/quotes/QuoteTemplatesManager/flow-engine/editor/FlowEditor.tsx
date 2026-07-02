@@ -664,12 +664,14 @@ export default function FlowEditor({
   return (
     <div className="flex h-full flex-col bg-background">
 
-      <MenuBar
-        editor={editor}
-        fields={dynamicFields}
-        onCreateField={() => setCreateFieldOpen(true)}
-        toolbarActions={toolbarActions}
-      />
+      {!hideMenuBar && (
+        <MenuBar
+          editor={editor}
+          fields={dynamicFields}
+          onCreateField={() => setCreateFieldOpen(true)}
+          toolbarActions={toolbarActions}
+        />
+      )}
       <BubbleToolbar editor={editor} />
       <CreateFieldDialog
         open={createFieldOpen}
