@@ -290,6 +290,7 @@ export default function FlowEditor({
   projectDetails,
   toolbarActions,
   pagedGuides,
+  hideMenuBar,
 }: Props) {
   const debounceRef = useRef<number | null>(null);
   const dragRef = useRef<{
