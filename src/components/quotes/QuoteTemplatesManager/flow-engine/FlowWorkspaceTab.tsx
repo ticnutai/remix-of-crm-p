@@ -466,7 +466,7 @@ export default function FlowWorkspaceTab({
   const guides = usePagedGuides({
     html: previewHtml,
     enabled: pagedGuidesOn && activeTab === "edit",
-    editorContentEl: editorScrollRef.current,
+    editorContentEl,
   });
 
   // אם החליפו תבנית — טען טיוטה שמורה או תוכן בסיס
