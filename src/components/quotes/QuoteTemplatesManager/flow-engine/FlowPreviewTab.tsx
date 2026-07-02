@@ -69,6 +69,7 @@ export default function FlowPreviewTab({
   projectDetails,
   designSettings,
   pageSetup,
+  hideToolbar,
 }: FlowPreviewTabProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [rendering, setRendering] = useState(false);
