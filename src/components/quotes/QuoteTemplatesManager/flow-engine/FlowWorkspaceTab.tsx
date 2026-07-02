@@ -1219,7 +1219,7 @@ export default function FlowWorkspaceTab({
   return (
     <Tabs
       value={activeTab}
-      onValueChange={(v) => setActiveTab(v as "edit" | "preview" | "compare")}
+      onValueChange={(v) => setActiveTab(v as "edit" | "preview" | "compare" | "split")}
       className="flex h-full flex-col"
     >
       <TabsContent value="edit" className="m-0 flex-1 overflow-hidden">
