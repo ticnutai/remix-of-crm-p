@@ -974,6 +974,36 @@ export default function FlowWorkspaceTab({
         </TabsList>
       )}
 
+      <TooltipProvider delayDuration={250}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant={pagedGuidesOn ? "default" : "outline"}
+              size="sm"
+              onClick={() => setPagedGuidesOn((v) => !v)}
+              className="h-8 shrink-0 gap-1 px-2 text-xs"
+            >
+              <Columns2 className="h-3.5 w-3.5" />
+              PDF מדויק
+              {pagedGuidesOn && guides.loading && (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              )}
+              {pagedGuidesOn && !guides.loading && guides.pageCount > 0 && (
+                <span className="rounded bg-primary-foreground/20 px-1 text-[10px]">
+                  {guides.pageCount}
+                </span>
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs text-right">
+            מציג במצב עריכה קווים מקווקווים בדיוק במקום שבו יישבר עמוד ב-PDF —
+            מקור אמת יחיד (Paged.js). מתעדכן אוטומטית תוך ~500ms אחרי הקלדה.
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+
       <Popover open={saveMenuOpen} onOpenChange={setSaveMenuOpen} modal={false}>
         <PopoverTrigger asChild>
           <Button
