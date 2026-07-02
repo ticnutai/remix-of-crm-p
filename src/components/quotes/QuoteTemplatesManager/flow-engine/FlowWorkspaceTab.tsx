@@ -923,6 +923,10 @@ export default function FlowWorkspaceTab({
             <Eye className="h-3.5 w-3.5" />
             תצוגה
           </TabsTrigger>
+          <TabsTrigger value="compare" className="h-7 gap-1 px-2 text-xs" title="השוואת עריכה מול תצוגה + זיהוי פערי שבירת עמודים">
+            <Columns2 className="h-3.5 w-3.5" />
+            השוואה
+          </TabsTrigger>
         </TabsList>
       )}
 
