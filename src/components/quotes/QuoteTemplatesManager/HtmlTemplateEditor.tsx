@@ -65,6 +65,8 @@ import {
   ChevronRight,
   ChevronUp,
   Pencil,
+  SplitSquareHorizontal,
+  Columns2,
   Plus,
   Trash2,
   GripVertical,
@@ -4701,10 +4703,11 @@ export function HtmlTemplateEditor({
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("flow-v2");
   const FLOW_SUB_TAB_LS_KEY = "qt-editor-flow-sub-tab";
-  const [flowSubTab, setFlowSubTab] = useState<"edit" | "preview">(() => {
+  const [flowSubTab, setFlowSubTab] = useState<"edit" | "preview" | "split" | "compare">(() => {
     try {
       const v = localStorage.getItem(FLOW_SUB_TAB_LS_KEY);
-      return v === "preview" ? "preview" : "edit";
+      if (v === "preview" || v === "split" || v === "compare") return v;
+      return "edit";
     } catch {
       return "edit";
     }
@@ -9043,6 +9046,34 @@ ${tbAt('footer')}
               >
                 <Eye className="h-3.5 w-3.5" />
                 תצוגה מקדימה
+              </button>
+              <button
+                type="button"
+                onClick={() => setFlowSubTab("split")}
+                title="פיצול מסך — עורך + תצוגה חיה מיידית"
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 h-7 rounded-md text-xs font-medium transition-colors",
+                  flowSubTab === "split"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <SplitSquareHorizontal className="h-3.5 w-3.5" />
+                פיצול
+              </button>
+              <button
+                type="button"
+                onClick={() => setFlowSubTab("compare")}
+                title="השוואת עריכה מול תצוגה + זיהוי פערי שבירות עמוד"
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 h-7 rounded-md text-xs font-medium transition-colors",
+                  flowSubTab === "compare"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <Columns2 className="h-3.5 w-3.5" />
+                השוואה
               </button>
             </div>
           )}

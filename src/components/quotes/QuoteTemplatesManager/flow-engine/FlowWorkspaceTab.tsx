@@ -44,9 +44,9 @@ interface Props {
   designSettings?: any;
   onDesignSettingsChange?: React.Dispatch<React.SetStateAction<any>>;
   workspaceActions?: React.ReactNode;
-  /** טאב משני נשלט מההורה (edit | preview). אם לא מסופק — מצב פנימי. */
-  subTab?: "edit" | "preview";
-  onSubTabChange?: (next: "edit" | "preview") => void;
+  /** טאב משני נשלט מההורה. אם לא מסופק — מצב פנימי. */
+  subTab?: "edit" | "preview" | "split" | "compare";
+  onSubTabChange?: (next: "edit" | "preview" | "split" | "compare") => void;
   /** אם true — אל תראה את ה-TabsList הפנימי (ההורה מציג שורה משלו). */
   hideInternalSubTabs?: boolean;
 }
@@ -415,8 +415,7 @@ export default function FlowWorkspaceTab({
   const [internalSubTab, setInternalSubTab] = useState<"edit" | "preview" | "compare" | "split">("edit");
   const activeTab = (subTab ?? internalSubTab) as "edit" | "preview" | "compare" | "split";
   const setActiveTab = (next: "edit" | "preview" | "compare" | "split") => {
-    if (next === "compare" || next === "split") setInternalSubTab(next);
-    else if (onSubTabChange) onSubTabChange(next);
+    if (onSubTabChange) onSubTabChange(next);
     else setInternalSubTab(next);
   };
 
