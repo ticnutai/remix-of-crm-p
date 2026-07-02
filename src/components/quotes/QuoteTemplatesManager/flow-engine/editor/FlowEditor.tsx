@@ -36,6 +36,7 @@ import CreateFieldDialog from "./CreateFieldDialog";
 import { MultiSelection, addExtraRange, clearExtraRanges, getExtraRanges } from "./MultiSelection";
 import { PaymentsBlock } from "./PaymentsBlock";
 import { FlowFrame } from "./FlowFrameNode";
+import { injectEditorFlowIds } from "./usePagedGuides";
 
 import type { DesignPresetConfig } from "../presets/types";
 import { buildPresetExtraCss } from "../presets/presetExtras";
@@ -475,23 +476,12 @@ export default function FlowEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialHtml, editor]);
 
-  // הזרקת data-flow-fid לכל בלוק ב-DOM של העורך — נדרש להצלבה עם Paged.js
-  // (usePagedGuides מזריק אותם ב-HTML לתצוגה מקדימה ומחפש התאמה כאן).
+  // הזרקת data-flow-fid רק לבלוקי תוכן אמיתיים — חייב להיות זהה לספירה של Paged.js.
+  // בעבר נספרו גם div/li/tr/מעטפות pagination ולכן הקו הוצלב מול אלמנט לא נכון.
   useEffect(() => {
     if (!editor) return;
     const dom = editor.view.dom as HTMLElement;
-    const injectFids = () => {
-      let counter = 0;
-      const nodes = dom.querySelectorAll<HTMLElement>(
-        "p,h1,h2,h3,h4,h5,h6,ul,ol,li,table,tr,blockquote,figure,hr,div,section,article",
-      );
-      nodes.forEach((el) => {
-        counter += 1;
-        if (el.getAttribute("data-flow-fid") !== String(counter)) {
-          el.setAttribute("data-flow-fid", String(counter));
-        }
-      });
-    };
+    const injectFids = () => injectEditorFlowIds(dom);
     injectFids();
     const observer = new MutationObserver(() => {
       // דחייה קצרה כדי לא להיכנס לולאה עם ProseMirror
