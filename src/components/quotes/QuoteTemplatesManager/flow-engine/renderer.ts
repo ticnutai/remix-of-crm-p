@@ -205,7 +205,32 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     margin: ${topMargin}mm 0mm ${bottomMargin}mm 0mm;
     @top-center { content: element(runHeader); }
     @bottom-center { content: element(runFooter); }
-    ${page.showPageNumbers && !hasFooterStrip ? `@bottom-left { content: counter(page) " / " counter(pages); font-family: ${branding.fontFamily}; font-size: 9pt; color: #888; }` : ""}
+  }
+  ${page.showPageNumbers ? `
+  .pagedjs_page { position: relative; }
+  .pagedjs_page::after {
+    content: "עמוד " attr(data-page-number);
+    position: absolute;
+    bottom: 4mm;
+    right: 6mm;
+    z-index: 9999;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px;
+    height: 20px;
+    padding: 0 8px;
+    border: 1px solid rgba(22, 44, 88, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    color: ${branding.primaryColor};
+    font-family: ${branding.fontFamily};
+    font-size: 10pt;
+    line-height: 1;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  @page {` : `@page {`}
   }
 
   /* ===== Running elements (header/footer חוזרים בכל עמוד) ===== */
