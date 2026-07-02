@@ -53,11 +53,35 @@ function measurePreviewBreaks(root: HTMLElement | null): BreakInfo {
   return { count: pages.length, positionsMm: positions };
 }
 
+const PAGE_WIDTH_PX = (210 * 96) / 25.4;
+const FIT_BUFFER_PX = 32;
+function computeFit(paneWidth: number) {
+  if (!paneWidth) return 1;
+  const target = paneWidth - FIT_BUFFER_PX;
+  if (target >= PAGE_WIDTH_PX) return 1;
+  return Math.max(0.35, target / PAGE_WIDTH_PX);
+}
+
 export default function FlowCompareView(props: Props) {
   const editorHostRef = useRef<HTMLDivElement | null>(null);
   const previewHostRef = useRef<HTMLDivElement | null>(null);
+  const [editorZoom, setEditorZoom] = useState(1);
+  const [previewZoom, setPreviewZoom] = useState(1);
   const [editorBreaks, setEditorBreaks] = useState<BreakInfo>({ count: 0, positionsMm: [] });
   const [previewBreaks, setPreviewBreaks] = useState<BreakInfo>({ count: 0, positionsMm: [] });
+
+  useEffect(() => {
+    const observe = (el: HTMLElement | null, setter: (n: number) => void) => {
+      if (!el) return () => {};
+      const ro = new ResizeObserver(() => setter(computeFit(el.clientWidth)));
+      ro.observe(el);
+      setter(computeFit(el.clientWidth));
+      return () => ro.disconnect();
+    };
+    const c1 = observe(editorHostRef.current, setEditorZoom);
+    const c2 = observe(previewHostRef.current, setPreviewZoom);
+    return () => { c1(); c2(); };
+  }, []);
 
   // Poll DOM periodically — Paged.js/Pagination Plus אינם פולטים אירועים אחידים.
   useEffect(() => {
@@ -141,7 +165,7 @@ export default function FlowCompareView(props: Props) {
           <div className="shrink-0 border-b bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground h-7 flex items-center">
             <Pencil className="ml-1 inline h-3 w-3" /> עורך (Flow Editor)
           </div>
-          <div ref={editorHostRef} className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+          <div ref={editorHostRef} className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto" style={{ zoom: editorZoom } as React.CSSProperties}>
             <FlowEditor
               initialHtml={props.html}
               onChange={props.onChange}
@@ -160,7 +184,7 @@ export default function FlowCompareView(props: Props) {
           <div className="shrink-0 border-b bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground h-7 flex items-center">
             <Eye className="ml-1 inline h-3 w-3" /> תצוגה מקדימה (Paged.js)
           </div>
-          <div ref={previewHostRef} className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+          <div ref={previewHostRef} className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto" style={{ zoom: previewZoom } as React.CSSProperties}>
             <FlowPreviewTab
               template={props.template}
               editedHtml={props.html}
