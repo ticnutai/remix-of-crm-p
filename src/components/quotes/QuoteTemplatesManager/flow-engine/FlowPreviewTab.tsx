@@ -309,14 +309,13 @@ export default function FlowPreviewTab({
         </div>
       )}
 
-      {/* Render area */}
-      <div className="flex-1 overflow-auto p-6">
+      {/* Render area — כשמוצג בתוך Compare/Split (hideToolbar) לא יוצרים סקרול פנימי;
+          הסקרול נשלט ע"י הקונטיינר החיצוני כדי למנוע סקרול מקונן שקוטע עמודים. */}
+      <div className={hideToolbar ? "p-4" : "flex-1 overflow-auto p-6"}>
         <div
           ref={containerRef}
           className={`flow-preview-host mx-auto ${diagnostics ? "flow-diag" : ""}`}
-          style={{
-            minHeight: "100%",
-          }}
+          style={hideToolbar ? undefined : { minHeight: "100%" }}
         />
         <style>{`
           .flow-preview-host .pagedjs_pages {
