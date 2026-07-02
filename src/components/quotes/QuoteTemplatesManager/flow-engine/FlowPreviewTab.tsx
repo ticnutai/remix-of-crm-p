@@ -73,6 +73,18 @@ export default function FlowPreviewTab({
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [renderToken, setRenderToken] = useState(0);
+  const [diagnostics, setDiagnostics] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("flow-preview:diagnostics") === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("flow-preview:diagnostics", diagnostics ? "1" : "0");
+    } catch {}
+  }, [diagnostics]);
 
   const flowDoc = useMemo(() => {
     const doc =
