@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Cloud, Columns2, Eye, FileText, Hash, ImagePlus, Layers, Loader2, Palette, Pencil, Receipt, RotateCcw, Rows3, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
+import { Cloud, Columns2, Eye, FileText, Hash, ImagePlus, Layers, Loader2, Palette, Pencil, Receipt, RotateCcw, Rows3, SlidersHorizontal, Sparkles, SplitSquareHorizontal, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -25,6 +25,7 @@ import type { QuoteTemplate } from "../types";
 import FlowEditor from "./editor/FlowEditor";
 import FlowPreviewTab from "./FlowPreviewTab";
 import FlowCompareView from "./FlowCompareView";
+import LiveSplitView from "./LiveSplitView";
 import { templateToEditableHtml } from "./editor/templateToHtml";
 import { paymentsSignature, syncPaymentsSection } from "./syncPayments";
 import PresetPicker from "./presets/PresetPicker";
@@ -411,10 +412,10 @@ export default function FlowWorkspaceTab({
       return baseHtml;
     }
   });
-  const [internalSubTab, setInternalSubTab] = useState<"edit" | "preview" | "compare">("edit");
-  const activeTab = (subTab ?? internalSubTab) as "edit" | "preview" | "compare";
-  const setActiveTab = (next: "edit" | "preview" | "compare") => {
-    if (next === "compare") setInternalSubTab("compare");
+  const [internalSubTab, setInternalSubTab] = useState<"edit" | "preview" | "compare" | "split">("edit");
+  const activeTab = (subTab ?? internalSubTab) as "edit" | "preview" | "compare" | "split";
+  const setActiveTab = (next: "edit" | "preview" | "compare" | "split") => {
+    if (next === "compare" || next === "split") setInternalSubTab(next);
     else if (onSubTabChange) onSubTabChange(next);
     else setInternalSubTab(next);
   };
@@ -981,6 +982,10 @@ export default function FlowWorkspaceTab({
             <Columns2 className="h-3.5 w-3.5" />
             השוואה
           </TabsTrigger>
+          <TabsTrigger value="split" className="h-7 gap-1 px-2 text-xs" title="פיצול מסך — עריכה + תצוגה חיה מיידית (ללא רינדור מורגש)">
+            <SplitSquareHorizontal className="h-3.5 w-3.5" />
+            פיצול
+          </TabsTrigger>
         </TabsList>
       )}
 
@@ -1214,7 +1219,7 @@ export default function FlowWorkspaceTab({
   return (
     <Tabs
       value={activeTab}
-      onValueChange={(v) => setActiveTab(v as "edit" | "preview" | "compare")}
+      onValueChange={(v) => setActiveTab(v as "edit" | "preview" | "compare" | "split")}
       className="flex h-full flex-col"
     >
       <TabsContent value="edit" className="m-0 flex-1 overflow-hidden">
@@ -1280,6 +1285,31 @@ export default function FlowWorkspaceTab({
           </div>
         </div>
       </TabsContent>
+      <TabsContent value="split" className="m-0 flex-1 overflow-hidden">
+        <div className="flex h-full flex-col">
+          <TooltipProvider delayDuration={250}>
+            <div className="shrink-0 border-b bg-background">
+              <div className="flex max-h-[72px] flex-wrap items-center gap-1 overflow-y-auto px-2 py-1.5">
+                {toolbarActions}
+              </div>
+            </div>
+          </TooltipProvider>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <LiveSplitView
+              template={template}
+              html={html}
+              onChange={handleChange}
+              preset={presetCfg}
+              pageSetup={pageSetup}
+              projectDetails={projectDetails}
+              designSettings={designSettings}
+              onDesignSettingsChange={updateDesignSettings}
+            />
+          </div>
+        </div>
+      </TabsContent>
+
+
 
 
 
