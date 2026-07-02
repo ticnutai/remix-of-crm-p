@@ -434,12 +434,22 @@ export default function FlowWorkspaceTab({
     } catch { /* ignore */ }
   }, [pagedGuidesOn, pagedGuidesStorageKey]);
 
-  const editorScrollRef = useRef<HTMLElement | null>(null);
+  const [editorContentEl, setEditorContentEl] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    // מוצאים את container של תוכן העורך (מתקבל אחרי mount)
-    const el = document.querySelector<HTMLElement>(".flow-editor-content");
-    editorScrollRef.current = el;
-  }, [html, activeTab]);
+    if (activeTab !== "edit") return;
+    // ממתינים עד ש-TipTap ירנדר את .flow-editor-content לתוך ה-DOM
+    let attempts = 0;
+    const tick = () => {
+      const el = document.querySelector<HTMLElement>(".flow-editor-content");
+      if (el) {
+        setEditorContentEl(el);
+        return;
+      }
+      if (attempts++ < 20) window.setTimeout(tick, 100);
+    };
+    tick();
+  }, [activeTab, html]);
+
 
   const previewHtml = useMemo(() => {
     if (!pagedGuidesOn) return "";
