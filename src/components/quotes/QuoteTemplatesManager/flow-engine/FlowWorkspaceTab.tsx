@@ -741,6 +741,19 @@ export default function FlowWorkspaceTab({
         <Trash2 className="h-3.5 w-3.5" />
       </Button>
 
+      <span className="mx-1 h-5 w-px bg-border" />
+      <Button
+        type="button"
+        variant={pageSetup.showPageNumbers ? "secondary" : "outline"}
+        size="sm"
+        className="h-7 gap-1 px-2 text-xs"
+        onClick={() => updatePageSetup({ showPageNumbers: !pageSetup.showPageNumbers })}
+        title={pageSetup.showPageNumbers ? "בטל מיספור עמודים" : "הפעל מיספור עמודים"}
+      >
+        <Hash className="h-3.5 w-3.5" />
+        {pageSetup.showPageNumbers ? "מיספור פעיל" : "מיספור כבוי"}
+      </Button>
+
       <input
         className="h-7 w-14 rounded border bg-background px-1 text-center text-xs"
         type="number"
