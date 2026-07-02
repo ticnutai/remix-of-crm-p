@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Cloud, Eye, FileText, ImagePlus, Layers, Loader2, Palette, Pencil, Receipt, RotateCcw, Rows3, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
+import { Cloud, Eye, FileText, Hash, ImagePlus, Layers, Loader2, Palette, Pencil, Receipt, RotateCcw, Rows3, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -739,6 +739,19 @@ export default function FlowWorkspaceTab({
         title="נקה סטריפ תחתון מכל העמודים"
       >
         <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+
+      <span className="mx-1 h-5 w-px bg-border" />
+      <Button
+        type="button"
+        variant={pageSetup.showPageNumbers ? "secondary" : "outline"}
+        size="sm"
+        className="h-7 gap-1 px-2 text-xs"
+        onClick={() => updatePageSetup({ showPageNumbers: !pageSetup.showPageNumbers })}
+        title={pageSetup.showPageNumbers ? "בטל מיספור עמודים" : "הפעל מיספור עמודים"}
+      >
+        <Hash className="h-3.5 w-3.5" />
+        {pageSetup.showPageNumbers ? "מיספור פעיל" : "מיספור כבוי"}
       </Button>
 
       <input
