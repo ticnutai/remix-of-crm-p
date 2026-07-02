@@ -52,6 +52,8 @@ interface Props {
   onDesignSettingsChange?: (patch: Record<string, any>) => void;
   projectDetails?: ProjectTokenData;
   toolbarActions?: React.ReactNode;
+  /** הסתר את שורת התפריט העליונה — לשימוש בתצוגת השוואה. */
+  hideMenuBar?: boolean;
   /** מדריכי-עמוד מדויקים ע"י Paged.js (מקור אמת יחיד). */
   pagedGuides?: {
     enabled: boolean;
