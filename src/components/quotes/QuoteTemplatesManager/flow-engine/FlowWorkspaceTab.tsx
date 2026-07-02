@@ -31,6 +31,9 @@ import PresetPicker from "./presets/PresetPicker";
 import type { DesignPreset } from "./presets/types";
 import { safeConfig, usePresets } from "./presets/usePresets";
 import { projectToMergeData } from "./projectTokens";
+import { htmlToFlowDoc } from "./editor/htmlToFlowDoc";
+import { renderFlowToHtml } from "./renderer";
+import { usePagedGuides } from "./editor/usePagedGuides";
 import StripDesignerDialog, { type FlowStripDesignState, type StripPosition } from "./StripDesignerDialog";
 import type { FlowPageSetup, FlowPageSizePreset } from "./types";
 
