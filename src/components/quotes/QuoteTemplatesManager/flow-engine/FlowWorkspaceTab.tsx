@@ -297,8 +297,30 @@ export default function FlowWorkspaceTab({
   };
 
   const clearStrip = (position: "header" | "footer") => {
+    // ל-serializer יש נפילות אחורה (stripUrl / strip_url / logoUrl כשה-logoPosition הוא custom-strip),
+    // לכן חייבים לאפס גם אותם — אחרת הסטריפ יחזור בתצוגה המקדימה.
+    const logoIsStrip =
+      designSettings?.logoPosition === "custom-strip" ||
+      designSettings?.logoPosition === "full-width" ||
+      designSettings?.logo_position === "custom-strip" ||
+      designSettings?.logo_position === "full-width";
+
+    const sharedNullify: Record<string, any> = {
+      stripUrl: null,
+      strip_url: null,
+    };
+    if (logoIsStrip) {
+      sharedNullify.logoUrl = null;
+      sharedNullify.logo_url = null;
+      sharedNullify.originalLogoUrl = null;
+      sharedNullify.original_logo_url = null;
+      sharedNullify.logoPosition = null;
+      sharedNullify.logo_position = null;
+    }
+
     if (position === "header") {
       updateDesignSettings({
+        ...sharedNullify,
         headerStripUrl: null,
         header_strip_url: null,
         headerStripDesign: null,
@@ -308,8 +330,11 @@ export default function FlowWorkspaceTab({
       return;
     }
     updateDesignSettings({
+      ...sharedNullify,
       footerStripUrl: null,
       footer_strip_url: null,
+      footerLogoUrl: null,
+      footer_logo_url: null,
       footerStripDesign: null,
       footer_strip_design: null,
       repeatFooterOnAllPages: false,
