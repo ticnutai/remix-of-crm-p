@@ -112,7 +112,11 @@ export default function LiveSplitView(props: Props) {
           <div className="flex h-7 shrink-0 items-center border-b bg-background/60 px-3 text-xs font-medium text-muted-foreground">
             <Pencil className="ml-1 inline h-3 w-3" /> עריכה
           </div>
-          <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+          <div
+            ref={editorPaneRef}
+            className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
+            style={{ zoom: editorZoom } as React.CSSProperties}
+          >
             <FlowEditor
               initialHtml={props.html}
               onChange={props.onChange}
@@ -131,7 +135,7 @@ export default function LiveSplitView(props: Props) {
           <div className="flex h-7 shrink-0 items-center border-b bg-background/60 px-3 text-xs font-medium text-muted-foreground">
             <Eye className="ml-1 inline h-3 w-3" /> תצוגה חיה
           </div>
-          <div className="min-h-0 flex-1 overflow-hidden bg-white">
+          <div ref={previewPaneRef} className="min-h-0 flex-1 overflow-hidden bg-white">
             <iframe
               ref={iframeRef}
               title="live-preview"
