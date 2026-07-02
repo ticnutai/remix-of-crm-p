@@ -165,7 +165,7 @@ export default function FlowCompareView(props: Props) {
           <div className="shrink-0 border-b bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground h-7 flex items-center">
             <Pencil className="ml-1 inline h-3 w-3" /> עורך (Flow Editor)
           </div>
-          <div ref={editorHostRef} className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+          <div ref={editorHostRef} className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto" style={{ zoom: editorZoom } as React.CSSProperties}>
             <FlowEditor
               initialHtml={props.html}
               onChange={props.onChange}
