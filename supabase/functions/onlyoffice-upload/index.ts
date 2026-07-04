@@ -22,11 +22,20 @@ const mimeByExtension: Record<string, string> = {
 };
 
 function safeFileName(name: string) {
-  return name
-    .trim()
+  const trimmed = name.trim();
+  const dot = trimmed.lastIndexOf(".");
+  const base = dot > 0 ? trimmed.slice(0, dot) : trimmed;
+  const ext = dot > 0 ? trimmed.slice(dot + 1).toLowerCase() : "";
+  // Supabase Storage keys must be ASCII. Strip anything that isn't a safe URL char.
+  const asciiBase = base
+    .replace(/[^\x20-\x7E]/g, "") // drop non-ASCII (Hebrew, etc.)
     .replace(/[\\/:*?"<>|#%{}~&]/g, "-")
-    .replace(/\s+/g, " ")
-    .slice(0, 140);
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120);
+  const safeBase = asciiBase || `document-${Date.now()}`;
+  return ext ? `${safeBase}.${ext}` : safeBase;
 }
 
 function base64ToBytes(base64: string) {
