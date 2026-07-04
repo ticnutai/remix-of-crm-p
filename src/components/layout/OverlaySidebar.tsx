@@ -30,6 +30,7 @@ import {
   Palette,
   MapPinned,
   SlidersHorizontal,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -82,6 +83,7 @@ const mainNavItems = [
   { title: "Gmail",                          url: "/gmail",            icon: Mail,            moduleKey: "gmail" },
   { title: "אנשי קשר",                  url: "/contacts",          icon: Users,           moduleKey: "contacts" },
   { title: "קבצים",                     url: "/files",             icon: HardDrive,       moduleKey: "files" },
+  { title: "עורך OnlyOffice",            url: "/onlyoffice-editor", icon: FileText },
   { title: "תכנון & GIS",               url: "/planning-gis",      icon: MapPinned,       moduleKey: "planning-gis" },
   { title: "כלים חכמים",                  url: "/smart-tools",       icon: Bot,             moduleKey: "smart-tools" },
   { title: "פורטל לקוחות",               url: "/portal-management", icon: Users,           moduleKey: "portal-management" },

@@ -88,7 +88,9 @@ function elementToBlock(el: HTMLElement): FlowBlock | FlowBlock[] | null {
       const align = (el.style.textAlign as "right" | "center" | "left") || "right";
       const content = parseInlines(el);
       if (!content.length || content.every((n) => n.type === "text" && !n.text.trim())) {
-        return { type: "spacer", mm: 2 };
+        // שורה ריקה בעורך תופסת שורת טקסט מלאה (<p><br></p>) — משמרים אותו גובה
+        // בתצוגה (&nbsp;), אחרת העימוד נשבר במקומות שונים.
+        return { type: "paragraph", content: [{ type: "raw", html: "&nbsp;" }], align };
       }
       return { type: "paragraph", content, align };
     }

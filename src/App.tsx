@@ -87,6 +87,7 @@ const Calls = lazy(() => import("./pages/Calls"));
 const Tests = lazy(() => import("./pages/Tests"));
 const SmartTools = lazy(() => import("./pages/SmartTools"));
 const DocumentEditorPage = lazy(() => import("./pages/DocumentEditorPage"));
+const OnlyOfficeEditor = lazy(() => import("./pages/OnlyOfficeEditor"));
 const PlanningGIS = lazy(() => import("./pages/PlanningGIS"));
 const PortalManagement = lazy(() => import("./pages/PortalManagement"));
 const Attendance = lazy(() => import("./pages/Attendance"));
@@ -412,6 +413,10 @@ const App = () => {
                               <Route
                                 path="/document-editor"
                                 element={withErrorBoundary(DocumentEditorPage)}
+                              />
+                              <Route
+                                path="/onlyoffice-editor"
+                                element={withErrorBoundary(OnlyOfficeEditor)}
                               />
                               <Route
                                 path="/planning-gis"

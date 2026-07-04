@@ -220,7 +220,15 @@ function ToolButton({
 }
 
 function Sep() {
-  return <div className="mx-0.5 h-5 w-px shrink-0 bg-border" />;
+  return <div className="mx-1 h-6 w-px shrink-0 bg-border/80" />;
+}
+
+function ToolGroup({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="inline-flex h-9 shrink-0 items-center gap-0.5 rounded-lg border border-border/70 bg-muted/20 px-1">
+      {children}
+    </div>
+  );
 }
 
 export default function MenuBar({ editor, fields, onCreateField, toolbarActions }: Props) {
@@ -234,147 +242,148 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
   const renderText = () => (
     <>
       {/* גופן */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-xs hover:bg-muted"
-            title="גופן"
-          >
-            <Type className="h-3.5 w-3.5" />
-            <span>גופן</span>
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-44 p-1" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
-          {FONT_FAMILIES.map((f) => (
+      <ToolGroup>
+        <Popover>
+          <PopoverTrigger asChild>
             <button
-              key={f.value}
               type="button"
-              className="w-full rounded px-2 py-1 text-right text-sm hover:bg-muted"
-              style={{ fontFamily: f.value }}
-              onClick={() => apply((c) => c.setFontFamily(f.value))}
+              className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-xs hover:bg-muted"
+              title="גופן"
             >
-              {f.label}
+              <Type className="h-3.5 w-3.5" />
+              <span>גופן</span>
             </button>
-          ))}
-          <div className="my-1 h-px bg-border" />
-          <button
-            type="button"
-            className="w-full rounded px-2 py-1 text-right text-xs text-muted-foreground hover:bg-muted"
-            onClick={() => apply((c) => c.unsetFontFamily())}
-          >
-            אפס גופן
-          </button>
-        </PopoverContent>
-      </Popover>
-
-      {/* גודל */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-xs hover:bg-muted"
-            title="גודל"
-          >
-            <span className="font-bold">A↕</span>
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-32 p-1" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
-          <div className="grid grid-cols-3 gap-1">
-            {FONT_SIZES.map((s) => (
+          </PopoverTrigger>
+          <PopoverContent className="w-44 p-1" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+            {FONT_FAMILIES.map((f) => (
               <button
-                key={s}
+                key={f.value}
                 type="button"
-                className="rounded border border-border px-1 py-0.5 text-xs hover:bg-muted"
-                onClick={() => apply((c) => c.setFontSize(s))}
+                className="w-full rounded px-2 py-1 text-right text-sm hover:bg-muted"
+                style={{ fontFamily: f.value }}
+                onClick={() => apply((c) => c.setFontFamily(f.value))}
               >
-                {parseInt(s)}
+                {f.label}
               </button>
             ))}
-          </div>
-          <button
-            type="button"
-            className="mt-1 w-full rounded px-2 py-1 text-right text-xs text-muted-foreground hover:bg-muted"
-            onClick={() => apply((c) => c.setFontSize(null))}
-          >
-            אפס
-          </button>
-        </PopoverContent>
-      </Popover>
+            <div className="my-1 h-px bg-border" />
+            <button
+              type="button"
+              className="w-full rounded px-2 py-1 text-right text-xs text-muted-foreground hover:bg-muted"
+              onClick={() => apply((c) => c.unsetFontFamily())}
+            >
+              אפס גופן
+            </button>
+          </PopoverContent>
+        </Popover>
 
-      <Sep />
+        {/* גודל */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-xs hover:bg-muted"
+              title="גודל"
+            >
+              <span className="font-bold">A↕</span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-32 p-1" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <div className="grid grid-cols-3 gap-1">
+              {FONT_SIZES.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className="rounded border border-border px-1 py-0.5 text-xs hover:bg-muted"
+                  onClick={() => apply((c) => c.setFontSize(s))}
+                >
+                  {parseInt(s)}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="mt-1 w-full rounded px-2 py-1 text-right text-xs text-muted-foreground hover:bg-muted"
+              onClick={() => apply((c) => c.setFontSize(null))}
+            >
+              אפס
+            </button>
+          </PopoverContent>
+        </Popover>
+      </ToolGroup>
 
-      <ToolButton
-        active={editor.isActive("bold")}
-        onClick={() => apply((c) => c.toggleBold())}
-        title="מודגש (Ctrl+B)"
-      >
-        <Bold className="h-3.5 w-3.5" />
-      </ToolButton>
-      <ToolButton
-        active={editor.isActive("italic")}
-        onClick={() => apply((c) => c.toggleItalic())}
-        title="נטוי (Ctrl+I)"
-      >
-        <Italic className="h-3.5 w-3.5" />
-      </ToolButton>
-      <ToolButton
-        active={editor.isActive("underline")}
-        onClick={() => apply((c) => c.toggleUnderline())}
-        title="קו תחתון (Ctrl+U)"
-      >
-        <UnderlineIcon className="h-3.5 w-3.5" />
-      </ToolButton>
-      <ToolButton
-        active={editor.isActive("highlight")}
-        onClick={() => apply((c) => c.toggleHighlight())}
-        title="הדגשה"
-      >
-        <Highlighter className="h-3.5 w-3.5" />
-      </ToolButton>
-
-      <Sep />
+      <ToolGroup>
+        <ToolButton
+          active={editor.isActive("bold")}
+          onClick={() => apply((c) => c.toggleBold())}
+          title="מודגש (Ctrl+B)"
+        >
+          <Bold className="h-3.5 w-3.5" />
+        </ToolButton>
+        <ToolButton
+          active={editor.isActive("italic")}
+          onClick={() => apply((c) => c.toggleItalic())}
+          title="נטוי (Ctrl+I)"
+        >
+          <Italic className="h-3.5 w-3.5" />
+        </ToolButton>
+        <ToolButton
+          active={editor.isActive("underline")}
+          onClick={() => apply((c) => c.toggleUnderline())}
+          title="קו תחתון (Ctrl+U)"
+        >
+          <UnderlineIcon className="h-3.5 w-3.5" />
+        </ToolButton>
+        <ToolButton
+          active={editor.isActive("highlight")}
+          onClick={() => apply((c) => c.toggleHighlight())}
+          title="הדגשה"
+        >
+          <Highlighter className="h-3.5 w-3.5" />
+        </ToolButton>
+      </ToolGroup>
 
       {/* צבע (SmartColorPicker) */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md hover:bg-muted"
-            title="צבעים"
-          >
-            <Palette className="h-3.5 w-3.5" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 overflow-hidden" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
-          <SmartColorPicker
-            initialCategory="text"
-            onPick={(color, category) => {
-              if (category === "text") apply((ch) => ch.setGradient(null).setColor(color));
-              else if (category === "highlight") apply((ch) => ch.setHighlight({ color }));
-              else if (category === "underline") apply((ch) => ch.setUnderlineColor(color));
-            }}
-            onClear={(category) => {
-              if (category === "text") apply((ch) => ch.unsetColor());
-              else if (category === "highlight") apply((ch) => ch.unsetHighlight());
-              else if (category === "underline") apply((ch) => ch.setUnderlineColor(null));
-            }}
-          />
-        </PopoverContent>
-      </Popover>
+      <ToolGroup>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md hover:bg-muted"
+              title="צבעים"
+            >
+              <Palette className="h-3.5 w-3.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 overflow-hidden" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <SmartColorPicker
+              initialCategory="text"
+              onPick={(color, category) => {
+                if (category === "text") apply((ch) => ch.setGradient(null).setColor(color));
+                else if (category === "highlight") apply((ch) => ch.setHighlight({ color }));
+                else if (category === "underline") apply((ch) => ch.setUnderlineColor(color));
+              }}
+              onClear={(category) => {
+                if (category === "text") apply((ch) => ch.unsetColor());
+                else if (category === "highlight") apply((ch) => ch.unsetHighlight());
+                else if (category === "underline") apply((ch) => ch.setUnderlineColor(null));
+              }}
+            />
+          </PopoverContent>
+        </Popover>
 
-      {/* גרדיאנט */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md hover:bg-muted"
-            title="גרדיאנט"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-56 p-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+        {/* גרדיאנט */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md hover:bg-muted"
+              title="גרדיאנט"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
           <div className="mb-1 text-[11px] text-muted-foreground">גרדיאנט טקסט</div>
           <div className="grid grid-cols-1 gap-1">
             {GRADIENTS.map((g) => (
@@ -402,277 +411,288 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
           >
             הסר גרדיאנט
           </button>
-        </PopoverContent>
-      </Popover>
+          </PopoverContent>
+        </Popover>
+      </ToolGroup>
 
-      <Sep />
-
-      <ToolButton
-        onClick={() =>
-          apply((c) => c.unsetAllMarks().unsetFontFamily?.().setFontSize?.(null))
-        }
-        title="נקה עיצוב טקסט"
-      >
-        <Eraser className="h-3.5 w-3.5" />
-      </ToolButton>
+      <ToolGroup>
+        <ToolButton
+          onClick={() =>
+            apply((c) => c.unsetAllMarks().unsetFontFamily?.().setFontSize?.(null))
+          }
+          title="נקה עיצוב טקסט"
+        >
+          <Eraser className="h-3.5 w-3.5" />
+        </ToolButton>
+      </ToolGroup>
     </>
   );
 
   const renderParagraph = () => (
     <>
-      <ToolButton
-        active={editor.isActive("heading", { level: 1 })}
-        onClick={() => apply((c) => c.toggleHeading({ level: 1 }))}
-        title="כותרת 1"
-      >
-        <Heading1 className="h-3.5 w-3.5" />
-      </ToolButton>
-      <ToolButton
-        active={editor.isActive("heading", { level: 2 })}
-        onClick={() => apply((c) => c.toggleHeading({ level: 2 }))}
-        title="כותרת 2"
-      >
-        <Heading2 className="h-3.5 w-3.5" />
-      </ToolButton>
-      <ToolButton
-        active={editor.isActive("heading", { level: 3 })}
-        onClick={() => apply((c) => c.toggleHeading({ level: 3 }))}
-        title="כותרת 3"
-      >
-        <Heading3 className="h-3.5 w-3.5" />
-      </ToolButton>
+      <ToolGroup>
+        <ToolButton
+          active={editor.isActive("heading", { level: 1 })}
+          onClick={() => apply((c) => c.toggleHeading({ level: 1 }))}
+          title="כותרת 1"
+        >
+          <Heading1 className="h-3.5 w-3.5" />
+        </ToolButton>
+        <ToolButton
+          active={editor.isActive("heading", { level: 2 })}
+          onClick={() => apply((c) => c.toggleHeading({ level: 2 }))}
+          title="כותרת 2"
+        >
+          <Heading2 className="h-3.5 w-3.5" />
+        </ToolButton>
+        <ToolButton
+          active={editor.isActive("heading", { level: 3 })}
+          onClick={() => apply((c) => c.toggleHeading({ level: 3 }))}
+          title="כותרת 3"
+        >
+          <Heading3 className="h-3.5 w-3.5" />
+        </ToolButton>
+      </ToolGroup>
 
-      <Sep />
+      <ToolGroup>
+        <ToolButton
+          active={editor.isActive({ textAlign: "right" })}
+          onClick={() => apply((c) => c.setTextAlign("right"))}
+          title="יישור לימין"
+        >
+          <AlignRight className="h-3.5 w-3.5" />
+        </ToolButton>
+        <ToolButton
+          active={editor.isActive({ textAlign: "center" })}
+          onClick={() => apply((c) => c.setTextAlign("center"))}
+          title="מרכז"
+        >
+          <AlignCenter className="h-3.5 w-3.5" />
+        </ToolButton>
+        <ToolButton
+          active={editor.isActive({ textAlign: "left" })}
+          onClick={() => apply((c) => c.setTextAlign("left"))}
+          title="יישור לשמאל"
+        >
+          <AlignLeft className="h-3.5 w-3.5" />
+        </ToolButton>
+        <ToolButton
+          active={editor.isActive({ textAlign: "justify" })}
+          onClick={() => apply((c) => c.setTextAlign("justify"))}
+          title="מיושר לשני הצדדים"
+        >
+          <AlignJustify className="h-3.5 w-3.5" />
+        </ToolButton>
+      </ToolGroup>
 
-      <ToolButton
-        active={editor.isActive({ textAlign: "right" })}
-        onClick={() => apply((c) => c.setTextAlign("right"))}
-        title="יישור לימין"
-      >
-        <AlignRight className="h-3.5 w-3.5" />
-      </ToolButton>
-      <ToolButton
-        active={editor.isActive({ textAlign: "center" })}
-        onClick={() => apply((c) => c.setTextAlign("center"))}
-        title="מרכז"
-      >
-        <AlignCenter className="h-3.5 w-3.5" />
-      </ToolButton>
-      <ToolButton
-        active={editor.isActive({ textAlign: "left" })}
-        onClick={() => apply((c) => c.setTextAlign("left"))}
-        title="יישור לשמאל"
-      >
-        <AlignLeft className="h-3.5 w-3.5" />
-      </ToolButton>
-      <ToolButton
-        active={editor.isActive({ textAlign: "justify" })}
-        onClick={() => apply((c) => c.setTextAlign("justify"))}
-        title="מיושר לשני הצדדים"
-      >
-        <AlignJustify className="h-3.5 w-3.5" />
-      </ToolButton>
+      <ToolGroup>
+        <ToolButton
+          active={editor.isActive("bulletList")}
+          onClick={() => apply((c) => c.toggleBulletList())}
+          title="רשימת תבליטים"
+        >
+          <List className="h-3.5 w-3.5" />
+        </ToolButton>
+        <ToolButton
+          active={editor.isActive("orderedList")}
+          onClick={() => apply((c) => c.toggleOrderedList())}
+          title="רשימה ממוספרת"
+        >
+          <ListOrdered className="h-3.5 w-3.5" />
+        </ToolButton>
+      </ToolGroup>
 
-      <Sep />
-
-      <ToolButton
-        active={editor.isActive("bulletList")}
-        onClick={() => apply((c) => c.toggleBulletList())}
-        title="רשימת תבליטים"
-      >
-        <List className="h-3.5 w-3.5" />
-      </ToolButton>
-      <ToolButton
-        active={editor.isActive("orderedList")}
-        onClick={() => apply((c) => c.toggleOrderedList())}
-        title="רשימה ממוספרת"
-      >
-        <ListOrdered className="h-3.5 w-3.5" />
-      </ToolButton>
-
-      <Sep />
-
-      <ToolButton
-        active={editor.isActive("blockquote")}
-        onClick={() => apply((c) => c.toggleBlockquote())}
-        title="ציטוט"
-      >
-        <Quote className="h-3.5 w-3.5" />
-      </ToolButton>
-      <ToolButton
-        active={editor.isActive("flowFrame", { variant: "frame" })}
-        onClick={() => apply((c: any) => c.toggleFlowFrame("frame"))}
-        title="מסגרת סביב הפסקה"
-      >
-        <Square className="h-3.5 w-3.5" />
-      </ToolButton>
-      <ToolButton
-        active={editor.isActive("flowFrame", { variant: "callout" })}
-        onClick={() => apply((c: any) => c.toggleFlowFrame("callout"))}
-        title="הדגשה (Callout)"
-      >
-        <AlertCircle className="h-3.5 w-3.5" />
-      </ToolButton>
+      <ToolGroup>
+        <ToolButton
+          active={editor.isActive("blockquote")}
+          onClick={() => apply((c) => c.toggleBlockquote())}
+          title="ציטוט"
+        >
+          <Quote className="h-3.5 w-3.5" />
+        </ToolButton>
+        <ToolButton
+          active={editor.isActive("flowFrame", { variant: "frame" })}
+          onClick={() => apply((c: any) => c.toggleFlowFrame("frame"))}
+          title="מסגרת סביב הפסקה"
+        >
+          <Square className="h-3.5 w-3.5" />
+        </ToolButton>
+        <ToolButton
+          active={editor.isActive("flowFrame", { variant: "callout" })}
+          onClick={() => apply((c: any) => c.toggleFlowFrame("callout"))}
+          title="הדגשה (Callout)"
+        >
+          <AlertCircle className="h-3.5 w-3.5" />
+        </ToolButton>
+      </ToolGroup>
     </>
   );
 
   const renderInsert = () => (
     <>
-      <ToolButton
-        onClick={() =>
-          (editor.chain().focus() as any)
-            .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-            .run()
-        }
-        title="טבלה (3×3)"
-      >
-        <TableIcon className="h-3.5 w-3.5" />
-      </ToolButton>
+      <ToolGroup>
+        <ToolButton
+          onClick={() =>
+            (editor.chain().focus() as any)
+              .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+              .run()
+          }
+          title="טבלה (3×3)"
+        >
+          <TableIcon className="h-3.5 w-3.5" />
+        </ToolButton>
 
-      <Popover>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-md px-1.5 text-sm transition-colors hover:bg-muted"
-            title="הוסף קו (צבע / עובי / סגנון)"
-          >
-            <Minus className="h-3.5 w-3.5" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-64 p-3 space-y-3" dir="rtl">
-          <div className="text-xs font-medium text-muted-foreground">קו מפריד</div>
-          <DividerInserter editor={editor} />
-        </PopoverContent>
-      </Popover>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-md px-1.5 text-sm transition-colors hover:bg-muted"
+              title="הוסף קו (צבע / עובי / סגנון)"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-64 p-3 space-y-3" dir="rtl">
+            <div className="text-xs font-medium text-muted-foreground">קו מפריד</div>
+            <DividerInserter editor={editor} />
+          </PopoverContent>
+        </Popover>
 
-      <ToolButton
-        onClick={() =>
-          (editor.chain().focus() as any)
-            .insertContent('<hr data-pagebreak="1" class="page-break" />')
-            .run()
-        }
-        title="מעבר עמוד"
-      >
-        <FileText className="h-3.5 w-3.5" />
-      </ToolButton>
+        <ToolButton
+          onClick={() =>
+            (editor.chain().focus() as any)
+              .insertContent('<hr data-pagebreak="1" class="page-break" />')
+              .run()
+          }
+          title="מעבר עמוד"
+        >
+          <FileText className="h-3.5 w-3.5" />
+        </ToolButton>
+      </ToolGroup>
     </>
   );
 
   const renderFields = () => (
     <>
-      <DropdownMenu open={fieldsOpen} onOpenChange={setFieldsOpen}>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-8 shrink-0 gap-1 text-xs"
-            title="הוסף שדה דינמי"
-          >
-            <Tag className="h-3.5 w-3.5" />
-            שדה
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="max-h-80 w-56 overflow-auto">
-          {onCreateField && (
-            <>
-              <DropdownMenuItem
-                onSelect={() => onCreateField()}
-                className="gap-2 text-primary"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span className="text-sm font-medium">צור שדה חדש...</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
-          )}
-          {Object.entries(groups).map(([group, fs], i) => (
-            <React.Fragment key={group}>
-              {i > 0 && <DropdownMenuSeparator />}
-              <DropdownMenuLabel className="text-[11px] text-muted-foreground">
-                {group}
-              </DropdownMenuLabel>
-              {fs.map((f) => (
+      <ToolGroup>
+        <DropdownMenu open={fieldsOpen} onOpenChange={setFieldsOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 shrink-0 gap-1 border-0 bg-transparent px-2 text-xs shadow-none hover:bg-muted"
+              title="הוסף שדה דינמי"
+            >
+              <Tag className="h-3.5 w-3.5" />
+              שדה
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="max-h-80 w-56 overflow-auto">
+            {onCreateField && (
+              <>
                 <DropdownMenuItem
-                  key={f.key}
-                  onSelect={() => {
-                    (editor.chain().focus() as any).insertDynamicField(f.key, f.label).run();
-                  }}
+                  onSelect={() => onCreateField()}
+                  className="gap-2 text-primary"
                 >
-                  <span className="text-sm">{f.label}</span>
-                  <span className="ml-auto text-[10px] text-muted-foreground">{f.key}</span>
+                  <Plus className="h-3.5 w-3.5" />
+                  <span className="text-sm font-medium">צור שדה חדש...</span>
                 </DropdownMenuItem>
-              ))}
-            </React.Fragment>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {Object.entries(groups).map(([group, fs], i) => (
+              <React.Fragment key={group}>
+                {i > 0 && <DropdownMenuSeparator />}
+                <DropdownMenuLabel className="text-[11px] text-muted-foreground">
+                  {group}
+                </DropdownMenuLabel>
+                {fs.map((f) => (
+                  <DropdownMenuItem
+                    key={f.key}
+                    onSelect={() => {
+                      (editor.chain().focus() as any).insertDynamicField(f.key, f.label).run();
+                    }}
+                  >
+                    <span className="text-sm">{f.label}</span>
+                    <span className="ml-auto text-[10px] text-muted-foreground">{f.key}</span>
+                  </DropdownMenuItem>
+                ))}
+              </React.Fragment>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </ToolGroup>
 
-      <Sep />
+      <ToolGroup>
+        <ToolButton
+          disabled={!(editor as any).can?.().undo?.()}
+          onClick={() => (editor.chain().focus() as any).undo().run()}
+          title="בטל (Ctrl+Z)"
+        >
+          <Undo2 className="h-3.5 w-3.5" />
+        </ToolButton>
+        <ToolButton
+          disabled={!(editor as any).can?.().redo?.()}
+          onClick={() => (editor.chain().focus() as any).redo().run()}
+          title="בצע שוב (Ctrl+Y)"
+        >
+          <Redo2 className="h-3.5 w-3.5" />
+        </ToolButton>
+      </ToolGroup>
 
-      <ToolButton
-        disabled={!(editor as any).can?.().undo?.()}
-        onClick={() => (editor.chain().focus() as any).undo().run()}
-        title="בטל (Ctrl+Z)"
-      >
-        <Undo2 className="h-3.5 w-3.5" />
-      </ToolButton>
-      <ToolButton
-        disabled={!(editor as any).can?.().redo?.()}
-        onClick={() => (editor.chain().focus() as any).redo().run()}
-        title="בצע שוב (Ctrl+Y)"
-      >
-        <Redo2 className="h-3.5 w-3.5" />
-      </ToolButton>
-
-      <Sep />
-
-      <ToolButton
-        onClick={() => apply((c) => c.unsetAllMarks().clearNodes())}
-        title="נקה עיצוב מהבחירה"
-      >
-        <Eraser className="h-3.5 w-3.5" />
-      </ToolButton>
+      <ToolGroup>
+        <ToolButton
+          onClick={() => apply((c) => c.unsetAllMarks().clearNodes())}
+          title="נקה עיצוב מהבחירה"
+        >
+          <Eraser className="h-3.5 w-3.5" />
+        </ToolButton>
+      </ToolGroup>
     </>
   );
 
   return (
     <TooltipProvider delayDuration={250}>
       <div className="border-b bg-background" dir="rtl">
-        <div className="grid max-h-[72px] grid-flow-col auto-cols-max grid-rows-2 items-center gap-x-1 gap-y-1 overflow-x-auto overflow-y-hidden px-2 py-1.5">
-          {toolbarActions && (
-            <>
-              {toolbarActions}
-              <Sep />
-            </>
-          )}
+        <div className="flex flex-col gap-1.5 px-2 py-1.5">
+          <div className="no-scrollbar flex min-h-8 items-center gap-1 overflow-x-auto overflow-y-hidden">
+            {toolbarActions && (
+              <div className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-border/70 bg-muted/20 px-1 py-0.5">
+                {toolbarActions}
+              </div>
+            )}
 
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const active = tab === t.key;
-            return (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setTab(t.key)}
-                className={cn(
-                  "inline-flex h-8 shrink-0 items-center gap-1 rounded-md border px-2 text-xs font-medium transition-colors",
-                  active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {t.label}
-              </button>
-            );
-          })}
+            <div className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-muted/50 p-0.5">
+              {TABS.map((t) => {
+                const Icon = t.icon;
+                const active = tab === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setTab(t.key)}
+                    className={cn(
+                      "inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-medium transition-colors",
+                      active
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:bg-background/70 hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-          <Sep />
-          {tab === "text" && renderText()}
-          {tab === "paragraph" && renderParagraph()}
-          {tab === "insert" && renderInsert()}
-          {tab === "fields" && renderFields()}
+          <div className="no-scrollbar flex min-h-9 items-center gap-1.5 overflow-x-auto overflow-y-hidden">
+            {tab === "text" && renderText()}
+            {tab === "paragraph" && renderParagraph()}
+            {tab === "insert" && renderInsert()}
+            {tab === "fields" && renderFields()}
+          </div>
         </div>
       </div>
     </TooltipProvider>

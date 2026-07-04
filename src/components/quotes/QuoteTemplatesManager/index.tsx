@@ -200,6 +200,32 @@ const parseCollapsedFolders = (raw: string | null): Set<string> => {
   return new Set();
 };
 
+const withAbortTimeout = async <T,>(
+  run: (signal: AbortSignal) => Promise<T>,
+  ms: number,
+  message: string,
+): Promise<T> => {
+  const controller = new AbortController();
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    timeoutId = setTimeout(() => controller.abort(message), ms);
+    return await run(controller.signal);
+  } catch (error) {
+    const abortError = error as { name?: string; message?: string };
+    if (
+      controller.signal.aborted ||
+      abortError?.name === "AbortError" ||
+      abortError?.message?.includes("signal is aborted")
+    ) {
+      throw new Error(message);
+    }
+    throw error;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+};
+
 export function QuoteTemplatesManager() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -455,23 +481,43 @@ export function QuoteTemplatesManager() {
   const { data: folders = [] } = useQuery({
     queryKey: ["quote-template-folders"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("quote_template_folders")
-        .select("*")
-        .order("sort_order", { ascending: true });
+      const { data, error } = await withAbortTimeout(
+        (signal) =>
+          (supabase as any)
+            .from("quote_template_folders")
+            .select("*")
+            .order("sort_order", { ascending: true })
+            .abortSignal(signal),
+        8000,
+        "טעינת תיקיות התבניות נמשכת יותר מדי זמן. בדוק חיבור ונסה שוב.",
+      );
       if (error) throw error;
       return (data || []) as QuoteTemplateFolder[];
     },
+    retry: false,
   });
 
   // שליפת תבניות
-  const { data: templates = [], isLoading } = useQuery({
+  const {
+    data: templates = [],
+    isLoading,
+    isError: templatesError,
+    error: templatesLoadError,
+    refetch: refetchTemplates,
+    isFetching: templatesFetching,
+  } = useQuery({
     queryKey: ["quote-templates-advanced"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("quote_templates")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const { data, error } = await withAbortTimeout(
+        (signal) =>
+          (supabase as any)
+            .from("quote_templates")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .abortSignal(signal),
+        8000,
+        "טעינת התבניות נמשכת יותר מדי זמן. בדוק חיבור ונסה שוב.",
+      );
 
       if (error) throw error;
 
@@ -496,6 +542,7 @@ export function QuoteTemplatesManager() {
         folder_id: t.folder_id || null,
       })) as QuoteTemplate[];
     },
+    retry: false,
   });
 
   // === Folder mutations ===
@@ -1415,6 +1462,28 @@ export function QuoteTemplatesManager() {
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#d8ac27] mx-auto" />
         </div>
+      ) : templatesError ? (
+        <Card className="border-destructive/30 bg-destructive/5">
+          <CardContent className="py-12 text-center">
+            <FileText className="h-12 w-12 mx-auto text-destructive/70 mb-4" />
+            <h3 className="text-lg font-medium mb-2">לא ניתן לטעון את התבניות</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              {(templatesLoadError as Error)?.message ||
+                "טעינת התבניות נכשלה. נסה שוב בעוד רגע."}
+            </p>
+            <Button
+              onClick={() => refetchTemplates()}
+              disabled={templatesFetching}
+              variant="outline"
+              className="border-destructive/30 text-destructive hover:bg-destructive/10"
+            >
+              {templatesFetching ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent ml-2" />
+              ) : null}
+              נסה שוב
+            </Button>
+          </CardContent>
+        </Card>
       ) : filteredTemplates.length === 0 && folders.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="py-16 text-center">
