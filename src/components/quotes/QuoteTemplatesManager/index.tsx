@@ -481,7 +481,7 @@ export function QuoteTemplatesManager() {
   const { data: folders = [] } = useQuery({
     queryKey: ["quote-template-folders"],
     queryFn: async () => {
-      const { data, error } = await withAbortTimeout(
+      const { data, error } = await withAbortTimeout<any>(
         (signal) =>
           (supabase as any)
             .from("quote_template_folders")
