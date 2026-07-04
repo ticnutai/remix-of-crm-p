@@ -508,7 +508,7 @@ export function QuoteTemplatesManager() {
   } = useQuery({
     queryKey: ["quote-templates-advanced"],
     queryFn: async () => {
-      const { data, error } = await withAbortTimeout(
+      const { data, error } = await withAbortTimeout<any>(
         (signal) =>
           (supabase as any)
             .from("quote_templates")
