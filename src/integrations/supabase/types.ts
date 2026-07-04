@@ -6140,6 +6140,115 @@ export type Database = {
         }
         Relationships: []
       }
+      onlyoffice_document_versions: {
+        Row: {
+          callback_payload: Json
+          created_at: string
+          document_id: string
+          id: string
+          saved_by: string | null
+          size_bytes: number
+          storage_path: string
+          version: number
+        }
+        Insert: {
+          callback_payload?: Json
+          created_at?: string
+          document_id: string
+          id?: string
+          saved_by?: string | null
+          size_bytes?: number
+          storage_path: string
+          version: number
+        }
+        Update: {
+          callback_payload?: Json
+          created_at?: string
+          document_id?: string
+          id?: string
+          saved_by?: string | null
+          size_bytes?: number
+          storage_path?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onlyoffice_document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "onlyoffice_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onlyoffice_documents: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string
+          document_key: string
+          file_name: string
+          file_type: string
+          id: string
+          last_opened_at: string | null
+          metadata: Json
+          mime_type: string
+          saved_at: string | null
+          size_bytes: number
+          status: string
+          storage_path: string
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by: string
+          document_key: string
+          file_name: string
+          file_type?: string
+          id?: string
+          last_opened_at?: string | null
+          metadata?: Json
+          mime_type?: string
+          saved_at?: string | null
+          size_bytes?: number
+          status?: string
+          storage_path: string
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string
+          document_key?: string
+          file_name?: string
+          file_type?: string
+          id?: string
+          last_opened_at?: string | null
+          metadata?: Json
+          mime_type?: string
+          saved_at?: string | null
+          size_bytes?: number
+          status?: string
+          storage_path?: string
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onlyoffice_documents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_schedules: {
         Row: {
           amount: number
