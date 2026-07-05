@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DocumentEditor } from "@onlyoffice/document-editor-react";
 import {
   AlertCircle,
   Download,
@@ -33,6 +32,87 @@ import {
   OnlyOfficeEditorPayload,
   uploadOnlyOfficeDocument,
 } from "@/services/onlyofficeService";
+
+declare global {
+  interface Window {
+    DocsAPI?: { DocEditor: new (id: string, config: Record<string, unknown>) => { destroyEditor: () => void } };
+  }
+}
+
+let docsApiPromise: Promise<void> | null = null;
+
+function loadDocsApi(documentServerUrl: string) {
+  if (window.DocsAPI) return Promise.resolve();
+  if (!docsApiPromise) {
+    docsApiPromise = new Promise<void>((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = `${documentServerUrl.replace(/\/$/, "")}/web-apps/apps/api/documents/api.js`;
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => {
+        docsApiPromise = null;
+        reject(new Error("לא ניתן לטעון את OnlyOffice API — ודא שה-Document Server רץ"));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return docsApiPromise;
+}
+
+// The ONLYOFFICE script replaces its target div with an iframe, i.e. it
+// mutates DOM that React would otherwise reconcile. To stay StrictMode-safe
+// we give it an inner div created imperatively, so React only ever manages
+// the outer container.
+function OnlyOfficeEditorHost({
+  documentServerUrl,
+  config,
+  onError,
+}: {
+  documentServerUrl: string;
+  config: Record<string, unknown>;
+  onError: (message: string) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let cancelled = false;
+    let editor: { destroyEditor: () => void } | null = null;
+    const mountId = `oo-editor-mount-${Math.random().toString(36).slice(2)}`;
+
+    loadDocsApi(documentServerUrl)
+      .then(() => {
+        if (cancelled || !window.DocsAPI) return;
+        const mount = document.createElement("div");
+        mount.id = mountId;
+        container.appendChild(mount);
+        editor = new window.DocsAPI.DocEditor(mountId, {
+          ...config,
+          events: {
+            ...(config.events as Record<string, unknown> | undefined),
+            onError: (event: unknown) => onError(JSON.stringify(event)),
+          },
+        });
+      })
+      .catch((error: Error) => {
+        if (!cancelled) onError(error.message);
+      });
+
+    return () => {
+      cancelled = true;
+      try {
+        editor?.destroyEditor();
+      } catch {
+        // DocsAPI may already have torn down its own DOM.
+      }
+      container.innerHTML = "";
+    };
+  }, [documentServerUrl, config, onError]);
+
+  return <div ref={containerRef} className="h-full w-full" />;
+}
 
 function formatDate(value?: string | null) {
   if (!value) return "עדיין לא נשמר";
@@ -317,15 +397,11 @@ export default function OnlyOfficeEditor() {
                 </Alert>
               </div>
             ) : editorPayload && selectedDocument ? (
-              <DocumentEditor
+              <OnlyOfficeEditorHost
                 key={editorKey}
-                id={`onlyoffice-editor-${selectedDocument.id}`}
                 documentServerUrl={editorPayload.documentServerUrl}
-                config={editorPayload.config as any}
-                height="100%"
-                width="100%"
-                onLoadComponentError={(_, description) => setEditorError(description)}
-                events_onError={(event) => setEditorError(JSON.stringify(event))}
+                config={editorPayload.config}
+                onError={setEditorError}
               />
             ) : (
               <div className="h-full flex items-center justify-center p-6">
