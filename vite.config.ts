@@ -309,9 +309,22 @@ export default defineConfig(({ mode }) => {
               }
 
               // Heavy document libraries - keep separate for lazy loading
+              // NOTE: docxtemplater + @xmldom/xmldom + pizzip must stay in the
+              // same chunk. Splitting them causes a top-level
+              // "Cannot read properties of undefined (reading 'DOMParser')"
+              // due to cross-chunk initialization order.
+              if (
+                id.includes("docxtemplater") ||
+                id.includes("@xmldom") ||
+                id.includes("xmldom") ||
+                id.includes("pizzip")
+              ) {
+                return "lib-docx";
+              }
               if (id.includes("xlsx")) {
                 return "lib-xlsx";
               }
+
               if (id.includes("jspdf-autotable")) {
                 return "lib-jspdf-table";
               }
