@@ -2209,11 +2209,50 @@ export function ClientStagesBoard({
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [addFolderDialog, setAddFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderMode, setNewFolderMode] = useState<"empty" | "copy">("empty");
+  const [copySourceFolderId, setCopySourceFolderId] = useState<string>("");
   const [editingFolder, setEditingFolder] = useState<{
     id: string;
     name: string;
   } | null>(null);
   const [renameFolderDialog, setRenameFolderDialog] = useState(false);
+
+  // Create a new folder, optionally copying stages+tasks from an existing folder
+  const handleCreateFolderWithOptions = async () => {
+    const name = newFolderName.trim();
+    if (!name) return;
+    const created = await createFolder(name);
+    if (!created) return;
+
+    if (newFolderMode === "copy" && copySourceFolderId) {
+      const sourceStages = allStages
+        .filter((s) => s.folder_id === copySourceFolderId)
+        .sort((a, b) => a.sort_order - b.sort_order);
+
+      for (const src of sourceStages) {
+        const inserted = await addBulkStages(
+          [src.stage_name],
+          src.stage_icon || "Phone",
+          created.id,
+        );
+        const newStage = inserted?.[0];
+        const srcTasks = (src as any).tasks || [];
+        if (newStage && srcTasks.length > 0) {
+          for (const t of srcTasks) {
+            await addTask(newStage.stage_id, t.title);
+          }
+        }
+      }
+    }
+
+    setNewFolderName("");
+    setNewFolderMode("empty");
+    setCopySourceFolderId("");
+    setAddFolderDialog(false);
+    await refreshFolders();
+    await refresh();
+    setSelectedFolderId(created.id);
+  };
 
   // Filter stages by selected folder (no folder = show ALL stages)
   const stages = selectedFolderId
