@@ -21,8 +21,20 @@ export const MultiSelection = Extension.create({
   name: "multiSelection",
 
   addStorage() {
-    return { ranges: [] as ExtraRange[] };
+    return {
+      ranges: [] as ExtraRange[],
+      lastSelection: null as ExtraRange | null,
+    };
   },
+
+  onSelectionUpdate() {
+    const { from, to } = this.editor.state.selection;
+    if (from !== to) {
+      this.storage.lastSelection = { from, to };
+    }
+  },
+
+
 
   addProseMirrorPlugins() {
     const ext = this;
