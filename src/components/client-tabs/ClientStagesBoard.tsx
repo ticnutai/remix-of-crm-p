@@ -5970,7 +5970,7 @@ export function ClientStagesBoard({
               הוסף תיקייה חדשה לארגון השלבים
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <Input
               placeholder="שם התיקייה..."
               value={newFolderName}
@@ -5979,25 +5979,63 @@ export function ClientStagesBoard({
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter" && newFolderName.trim()) {
-                  createFolder(newFolderName.trim());
-                  setNewFolderName("");
-                  setAddFolderDialog(false);
-                  refreshFolders();
+                  handleCreateFolderWithOptions();
                 }
               }}
             />
+
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-right">
+                מה למלא בתיקייה החדשה?
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center justify-end gap-2 cursor-pointer text-sm">
+                  <span>ריקה — אמלא ידנית</span>
+                  <input
+                    type="radio"
+                    name="folder-mode"
+                    checked={newFolderMode === "empty"}
+                    onChange={() => setNewFolderMode("empty")}
+                  />
+                </label>
+                <label className="flex items-center justify-end gap-2 cursor-pointer text-sm">
+                  <span>העתק שלבים מתיקייה קיימת</span>
+                  <input
+                    type="radio"
+                    name="folder-mode"
+                    checked={newFolderMode === "copy"}
+                    onChange={() => setNewFolderMode("copy")}
+                    disabled={folders.length === 0}
+                  />
+                </label>
+              </div>
+
+              {newFolderMode === "copy" && folders.length > 0 && (
+                <select
+                  className="w-full h-9 px-3 rounded-md border bg-background text-right text-sm"
+                  value={copySourceFolderId}
+                  onChange={(e) => setCopySourceFolderId(e.target.value)}
+                  dir="rtl"
+                >
+                  <option value="">בחר תיקייה להעתקה...</option>
+                  {folders.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.folder_name} (
+                      {allStages.filter((s) => s.folder_id === f.id).length}{" "}
+                      שלבים)
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
           <DialogFooter className="flex-row-reverse gap-2">
             <Button
-              onClick={async () => {
-                if (newFolderName.trim()) {
-                  await createFolder(newFolderName.trim());
-                  setNewFolderName("");
-                  setAddFolderDialog(false);
-                  await refreshFolders();
-                }
-              }}
-              disabled={!newFolderName.trim()}
+              onClick={handleCreateFolderWithOptions}
+              disabled={
+                !newFolderName.trim() ||
+                (newFolderMode === "copy" && !copySourceFolderId)
+              }
               className="gap-2"
             >
               <FolderPlus className="h-4 w-4" />
@@ -6008,6 +6046,8 @@ export function ClientStagesBoard({
               onClick={() => {
                 setAddFolderDialog(false);
                 setNewFolderName("");
+                setNewFolderMode("empty");
+                setCopySourceFolderId("");
               }}
             >
               ביטול
