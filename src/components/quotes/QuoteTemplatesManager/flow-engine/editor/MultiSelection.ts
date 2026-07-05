@@ -21,8 +21,20 @@ export const MultiSelection = Extension.create({
   name: "multiSelection",
 
   addStorage() {
-    return { ranges: [] as ExtraRange[] };
+    return {
+      ranges: [] as ExtraRange[],
+      lastSelection: null as ExtraRange | null,
+    };
   },
+
+  onSelectionUpdate() {
+    const { from, to } = this.editor.state.selection;
+    if (from !== to) {
+      this.storage.lastSelection = { from, to };
+    }
+  },
+
+
 
   addProseMirrorPlugins() {
     const ext = this;
@@ -95,12 +107,17 @@ export function getAllSelectionRanges(editor: Editor): ExtraRange[] {
   const sel = editor.state.selection;
   const all = [...extras];
   if (!sel.empty) {
-    // avoid duplicate of current selection
     const dup = extras.some((r) => r.from === sel.from && r.to === sel.to);
     if (!dup) all.push({ from: sel.from, to: sel.to });
+  } else if (extras.length === 0) {
+    // Selection collapsed (e.g., clicking a toolbar button blurred the editor).
+    // Fall back to the last known non-empty selection so bubble toolbar actions still apply.
+    const last = ((editor.storage as any).multiSelection?.lastSelection) as ExtraRange | null;
+    if (last && last.from < last.to) all.push(last);
   }
   return all;
 }
+
 
 export function addExtraRange(editor: Editor, range: ExtraRange) {
   if (range.from >= range.to) return;
