@@ -1,0 +1,17 @@
+import { createClient } from '@supabase/supabase-js';
+import PizZip from 'pizzip';
+const ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhZGV5bWVoaWRjbmR1ZGV5Y25mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4Mzg2ODQsImV4cCI6MjA4NDQxNDY4NH0.8t74NyPPHaWXHGyllAvdjPZ6DfAWM9fsAKopVEVogpM';
+const s = createClient('https://eadeymehidcndudeycnf.supabase.co', ANON);
+const { data: auth } = await s.auth.signInWithPassword({email:'jj1212t@gmail.com',password:'543211'});
+const { data: docs } = await s.from('onlyoffice_documents').select('id,title,storage_path').order('created_at',{ascending:false}).limit(1);
+const doc = docs[0];
+console.log('newest doc:', doc.title);
+const { data: signed } = await s.storage.from('onlyoffice-documents').createSignedUrl(doc.storage_path, 120);
+const buf = await (await fetch(signed.signedUrl)).arrayBuffer();
+const zip = new PizZip(buf);
+const xml = zip.file('word/document.xml').asText();
+const text = xml.replace(/<[^>]+>/g,'');
+console.log('--- merged text (first 400 chars) ---');
+console.log(text.slice(0, 400));
+console.log('--- still has raw placeholders? ---');
+console.log('has {שם_לקוח}:', text.includes('{שם_לקוח}'), '| has אסולין:', text.includes('אסולין'));

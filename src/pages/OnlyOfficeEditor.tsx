@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   Download,
+  FileSignature,
   FileText,
   LayoutTemplate,
   Loader2,
@@ -11,6 +12,7 @@ import {
   RefreshCw,
   Trash2,
   Upload,
+  Wand2,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -36,6 +38,8 @@ import {
   OnlyOfficeEditorPayload,
   uploadOnlyOfficeDocument,
 } from "@/services/onlyofficeService";
+import { createMergeSampleDocument } from "@/services/onlyofficeMergeService";
+import { CreateQuoteFromTemplateDialog } from "@/components/onlyoffice/CreateQuoteFromTemplateDialog";
 import { ToastAction } from "@/components/ui/toast";
 
 declare global {
@@ -140,6 +144,8 @@ export default function OnlyOfficeEditor() {
   const [isUploading, setIsUploading] = useState(false);
   const [editorError, setEditorError] = useState<string | null>(null);
   const [convertingId, setConvertingId] = useState<string | null>(null);
+  const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
+  const [isCreatingSample, setIsCreatingSample] = useState(false);
   const navigate = useNavigate();
 
   const loadDocuments = useCallback(async () => {
@@ -288,6 +294,32 @@ export default function OnlyOfficeEditor() {
     }
   };
 
+  const handleMergedDocumentCreated = async (document: OnlyOfficeDocument) => {
+    setDocuments((prev) => [document, ...prev]);
+    await openDocument(document);
+  };
+
+  const handleCreateSampleTemplate = async () => {
+    setIsCreatingSample(true);
+    try {
+      const document = await createMergeSampleDocument();
+      setDocuments((prev) => [document, ...prev]);
+      await openDocument(document);
+      toast({
+        title: "מסמך הדוגמה נוצר",
+        description: "כל השדות הזמינים מוצגים בו — העתק מהם לתבניות שלך",
+      });
+    } catch (error: any) {
+      toast({
+        title: "שגיאה ביצירת מסמך הדוגמה",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingSample(false);
+    }
+  };
+
   const handleConvertToTemplate = async (document: OnlyOfficeDocument) => {
     setConvertingId(document.id);
     try {
@@ -345,12 +377,28 @@ export default function OnlyOfficeEditor() {
                   העלה
                 </Button>
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-muted-foreground"
+                onClick={handleCreateSampleTemplate}
+                disabled={isCreatingSample}
+                title="יוצר מסמך שמדגים את כל שדות המיזוג ({שם_לקוח}, {סכום_כולל}...) להעתקה לתבניות שלך"
+              >
+                {isCreatingSample ? (
+                  <Loader2 className="h-4 w-4 ml-1 animate-spin" />
+                ) : (
+                  <Wand2 className="h-4 w-4 ml-1" />
+                )}
+                מסמך שדות לדוגמה
+              </Button>
               <input
                 ref={inputRef}
                 type="file"
                 className="hidden"
                 accept=".doc,.docx,.xls,.xlsx,.ppt,.pptx,.pdf"
                 onChange={handleUpload}
+                title="העלאת קובץ Office"
               />
             </div>
           </div>
@@ -437,6 +485,16 @@ export default function OnlyOfficeEditor() {
             </div>
             {selectedDocument && (
               <div className="flex items-center gap-2">
+                {selectedDocument.file_type === "docx" && (
+                  <Button
+                    size="sm"
+                    onClick={() => setIsMergeDialogOpen(true)}
+                    title="ממלא את מצייני המקום שבמסמך בנתוני לקוח והצעה ויוצר מסמך חדש"
+                  >
+                    <FileSignature className="h-4 w-4 ml-1" />
+                    צור הצעה ללקוח
+                  </Button>
+                )}
                 {canConvertToQuoteTemplate(selectedDocument) && (
                   <Button
                     variant="outline"
@@ -516,6 +574,13 @@ export default function OnlyOfficeEditor() {
           </div>
         </section>
       </div>
+
+      <CreateQuoteFromTemplateDialog
+        open={isMergeDialogOpen}
+        onOpenChange={setIsMergeDialogOpen}
+        templateDocument={displayDocument ?? selectedDocument}
+        onCreated={handleMergedDocumentCreated}
+      />
     </AppLayout>
   );
 }
