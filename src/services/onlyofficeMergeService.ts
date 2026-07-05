@@ -357,3 +357,54 @@ export async function listMergeQuotes(clientId: string): Promise<MergeQuote[]> {
   if (error) throw error;
   return (data || []) as MergeQuote[];
 }
+
+export type MergeTemplate = {
+  id: string;
+  name: string;
+};
+
+export async function listMergeTemplates(): Promise<MergeTemplate[]> {
+  const { data, error } = await (supabase as any)
+    .from("quote_templates")
+    .select("id,name")
+    .eq("is_active", true)
+    .order("name")
+    .limit(50);
+  if (error) throw error;
+  return (data || []) as MergeTemplate[];
+}
+
+/**
+ * Loads a quote template and adapts its base price + payment schedule into the
+ * MergeQuote shape, so a template's own pricing can fill an ONLYOFFICE document
+ * without needing an existing quote.
+ */
+export async function loadTemplateAsMergeQuote(templateId: string): Promise<MergeQuote> {
+  const { data, error } = await (supabase as any)
+    .from("quote_templates")
+    .select("id,name,description,base_price,vat_rate,validity_days,payment_schedule,items,notes")
+    .eq("id", templateId)
+    .single();
+  if (error) throw error;
+
+  const base = Number(data.base_price) || 0;
+  const vat = Number(data.vat_rate) || 0;
+  const total = base + (base * vat) / 100;
+  return {
+    id: data.id,
+    quote_number: "",
+    title: data.name || "",
+    description: data.description || "",
+    subtotal: base,
+    total_amount: total,
+    discount_amount: 0,
+    vat_rate: vat,
+    issue_date: new Date().toISOString(),
+    valid_until: data.validity_days
+      ? new Date(Date.now() + data.validity_days * 86400000).toISOString()
+      : null,
+    notes: data.notes || "",
+    payment_schedule: data.payment_schedule,
+    items: data.items,
+  };
+}

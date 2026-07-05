@@ -1,0 +1,10 @@
+import { createClient } from '@supabase/supabase-js';
+const ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhZGV5bWVoaWRjbmR1ZGV5Y25mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4Mzg2ODQsImV4cCI6MjA4NDQxNDY4NH0.8t74NyPPHaWXHGyllAvdjPZ6DfAWM9fsAKopVEVogpM';
+const s = createClient('https://eadeymehidcndudeycnf.supabase.co', ANON);
+await s.auth.signInWithPassword({email:'jj1212t@gmail.com',password:'543211'});
+const { data } = await s.from('quotes').select('quote_number,title,subtotal,total_amount,payment_schedule,items').order('created_at',{ascending:false}).limit(1);
+const q = data[0];
+console.log('quote:', q.quote_number, '|', q.title);
+console.log('subtotal:', q.subtotal, 'total:', q.total_amount);
+console.log('items count:', Array.isArray(q.items)?q.items.length:0);
+console.log('payment_schedule:', JSON.stringify(q.payment_schedule));

@@ -32,6 +32,21 @@ import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { QuoteItems, QuoteItem } from './QuoteItems';
 import { Quote, QuoteFormData } from '@/hooks/useQuotes';
+import { LayoutTemplate } from 'lucide-react';
+
+type QuoteTemplateLite = {
+  id: string;
+  name: string;
+  items: any;
+  base_price: number | null;
+  payment_schedule: any;
+  vat_rate: number | null;
+  validity_days: number | null;
+  description: string | null;
+  notes: string | null;
+};
+
+type PaymentStage = { id?: string; description?: string; percentage?: number; amount?: number; due_date?: string };
 
 const formSchema = z.object({
   client_id: z.string().min(1, 'יש לבחור לקוח'),
@@ -56,6 +71,9 @@ export function QuoteForm({ open, onOpenChange, onSubmit, initialData, isLoading
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [projects, setProjects] = useState<{ id: string; name: string; client_id: string }[]>([]);
   const [items, setItems] = useState<QuoteItem[]>(initialData?.items || []);
+  const [templates, setTemplates] = useState<QuoteTemplateLite[]>([]);
+  const [paymentSchedule, setPaymentSchedule] = useState<PaymentStage[]>([]);
+  const [appliedTemplateId, setAppliedTemplateId] = useState<string>('');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -76,17 +94,67 @@ export function QuoteForm({ open, onOpenChange, onSubmit, initialData, isLoading
 
   useEffect(() => {
     const fetchData = async () => {
-      const [clientsRes, projectsRes] = await Promise.all([
+      const [clientsRes, projectsRes, templatesRes] = await Promise.all([
         supabase.from('clients').select('id, name').order('name'),
         supabase.from('projects').select('id, name, client_id').order('name'),
+        (supabase as any)
+          .from('quote_templates')
+          .select('id, name, items, base_price, payment_schedule, vat_rate, validity_days, description, notes')
+          .eq('is_active', true)
+          .order('name'),
       ]);
-      
+
       if (clientsRes.data) setClients(clientsRes.data);
       if (projectsRes.data) setProjects(projectsRes.data);
+      if (templatesRes.data) setTemplates(templatesRes.data as QuoteTemplateLite[]);
     };
-    
+
     if (open) fetchData();
   }, [open]);
+
+  // Applies a template's items, price, payment stages, VAT and validity to
+  // the form so the user starts from the template instead of a blank quote.
+  const applyTemplate = (templateId: string) => {
+    setAppliedTemplateId(templateId);
+    const template = templates.find((t) => t.id === templateId);
+    if (!template) return;
+
+    const templateItems: QuoteItem[] = Array.isArray(template.items)
+      ? template.items.map((item: any) => ({
+          name: item.name || item.description || '',
+          description: item.description || '',
+          quantity: Number(item.quantity) || 1,
+          unit_price: Number(item.unit_price) || 0,
+          total:
+            Number(item.total) ||
+            (Number(item.unit_price) || 0) * (Number(item.quantity) || 1),
+        }))
+      : [];
+
+    // Templates that only carry a base price (no line items) become a single
+    // line so the quote total still computes correctly.
+    if (templateItems.length === 0 && Number(template.base_price) > 0) {
+      templateItems.push({
+        name: template.name,
+        description: template.description || '',
+        quantity: 1,
+        unit_price: Number(template.base_price),
+        total: Number(template.base_price),
+      });
+    }
+
+    setItems(templateItems);
+    setPaymentSchedule(
+      Array.isArray(template.payment_schedule) ? template.payment_schedule : [],
+    );
+    if (!form.getValues('title')) form.setValue('title', template.name);
+    if (template.description) form.setValue('description', template.description);
+    if (template.notes) form.setValue('notes', template.notes);
+    if (template.vat_rate != null) form.setValue('vat_rate', Number(template.vat_rate));
+    if (template.validity_days) {
+      form.setValue('valid_until', format(addDays(new Date(), template.validity_days), 'yyyy-MM-dd'));
+    }
+  };
 
   useEffect(() => {
     if (initialData) {
@@ -136,8 +204,21 @@ export function QuoteForm({ open, onOpenChange, onSubmit, initialData, isLoading
       notes: values.notes,
       terms_and_conditions: values.terms_and_conditions,
       items,
+      payment_schedule: paymentSchedule,
+      template_id: appliedTemplateId || undefined,
     });
   };
+
+  const paymentPreview = paymentSchedule.map((stage) => {
+    const amount =
+      Number(stage.amount) ||
+      (Number(stage.percentage) || 0) * totalAmount / 100;
+    return {
+      label: stage.description || 'תשלום',
+      detail: stage.percentage ? `${stage.percentage}%` : '',
+      amount,
+    };
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -150,6 +231,28 @@ export function QuoteForm({ open, onOpenChange, onSubmit, initialData, isLoading
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            {/* Start from a template */}
+            {!initialData && templates.length > 0 && (
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                  <LayoutTemplate className="h-4 w-4 text-primary" />
+                  התחל מתבנית (ממלא מחיר, פריטים ולוח תשלומים)
+                </div>
+                <Select value={appliedTemplateId} onValueChange={applyTemplate}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="בחר תבנית או המשך ידנית" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templates.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Client & Project */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
@@ -297,6 +400,22 @@ export function QuoteForm({ open, onOpenChange, onSubmit, initialData, isLoading
                 <span className="text-primary">{formatCurrency(totalAmount)}</span>
               </div>
             </div>
+
+            {/* Payment schedule (from template) */}
+            {paymentPreview.length > 0 && (
+              <div className="rounded-lg border p-4 space-y-2">
+                <div className="text-sm font-medium">לוח תשלומים (מהתבנית)</div>
+                {paymentPreview.map((stage, index) => (
+                  <div key={index} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {index + 1}. {stage.label}
+                      {stage.detail ? ` · ${stage.detail}` : ''}
+                    </span>
+                    <span className="font-medium">{formatCurrency(stage.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Notes & Terms */}
             <div className="grid grid-cols-2 gap-4">

@@ -87,6 +87,10 @@ export interface QuoteFormData {
   valid_until?: string;
   notes?: string;
   terms_and_conditions?: string;
+  /** Payment stages carried over from the chosen template, if any. */
+  payment_schedule?: any[];
+  /** Source template id, kept for traceability. */
+  template_id?: string;
 }
 
 export function useQuotes() {
@@ -153,6 +157,9 @@ export function useQuotes() {
           valid_until: formData.valid_until || null,
           notes: formData.notes,
           terms_and_conditions: formData.terms_and_conditions,
+          payment_schedule: formData.payment_schedule?.length
+            ? JSON.parse(JSON.stringify(formData.payment_schedule))
+            : null,
           created_by: user.id,
           status: 'draft',
           payment_status: 'pending',

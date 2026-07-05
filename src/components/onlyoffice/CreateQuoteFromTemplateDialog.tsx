@@ -26,9 +26,12 @@ import {
   MERGE_FIELDS,
   MergeClient,
   MergeQuote,
+  MergeTemplate,
   generateQuoteDocumentFromTemplate,
   listMergeClients,
   listMergeQuotes,
+  listMergeTemplates,
+  loadTemplateAsMergeQuote,
 } from "@/services/onlyofficeMergeService";
 
 interface Props {
@@ -51,6 +54,9 @@ export function CreateQuoteFromTemplateDialog({
   const [selectedClient, setSelectedClient] = useState<MergeClient | null>(null);
   const [quotes, setQuotes] = useState<MergeQuote[]>([]);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string>("none");
+  const [dataSource, setDataSource] = useState<"quote" | "template">("quote");
+  const [templates, setTemplates] = useState<MergeTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
@@ -81,11 +87,28 @@ export function CreateQuoteFromTemplateDialog({
       );
   }, [selectedClient, toast]);
 
+  useEffect(() => {
+    if (!open) return;
+    listMergeTemplates()
+      .then((next) => {
+        setTemplates(next);
+        if (next.length > 0) setSelectedTemplateId((prev) => prev || next[0].id);
+      })
+      .catch(() => {
+        // Non-fatal — the template source just stays empty.
+      });
+  }, [open]);
+
   const handleGenerate = async () => {
     if (!templateDocument || !selectedClient) return;
     setIsGenerating(true);
     try {
-      const quote = quotes.find((q) => q.id === selectedQuoteId) || null;
+      let quote: MergeQuote | null = null;
+      if (dataSource === "template") {
+        if (selectedTemplateId) quote = await loadTemplateAsMergeQuote(selectedTemplateId);
+      } else {
+        quote = quotes.find((q) => q.id === selectedQuoteId) || null;
+      }
       const document = await generateQuoteDocumentFromTemplate(
         templateDocument,
         selectedClient,
@@ -165,21 +188,55 @@ export function CreateQuoteFromTemplateDialog({
           </ScrollArea>
 
           {selectedClient && (
-            <div className="space-y-1">
-              <div className="text-sm font-medium">הצעת מחיר (לנתוני סכומים ותשלומים)</div>
-              <Select value={selectedQuoteId} onValueChange={setSelectedQuoteId}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">בלי הצעה — רק פרטי לקוח</SelectItem>
-                  {quotes.map((quote) => (
-                    <SelectItem key={quote.id} value={quote.id}>
-                      {quote.quote_number} · {quote.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-2">
+              <div className="text-sm font-medium">מקור נתוני הסכומים והתשלומים</div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={dataSource === "quote" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setDataSource("quote")}
+                >
+                  הצעה קיימת
+                </Button>
+                <Button
+                  type="button"
+                  variant={dataSource === "template" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setDataSource("template")}
+                >
+                  תבנית הצעת מחיר
+                </Button>
+              </div>
+
+              {dataSource === "quote" ? (
+                <Select value={selectedQuoteId} onValueChange={setSelectedQuoteId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">בלי הצעה — רק פרטי לקוח</SelectItem>
+                    {quotes.map((quote) => (
+                      <SelectItem key={quote.id} value={quote.id}>
+                        {quote.quote_number} · {quote.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="בחר תבנית" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templates.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           )}
 
