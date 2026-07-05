@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   Download,
   FileText,
+  LayoutTemplate,
   Loader2,
   Plus,
   Printer,
@@ -21,6 +23,8 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
+  canConvertToQuoteTemplate,
+  convertOnlyOfficeDocumentToQuoteTemplate,
   createBlankOnlyOfficeDocument,
   createOnlyOfficeDownloadUrl,
   deleteOnlyOfficeDocument,
@@ -32,6 +36,7 @@ import {
   OnlyOfficeEditorPayload,
   uploadOnlyOfficeDocument,
 } from "@/services/onlyofficeService";
+import { ToastAction } from "@/components/ui/toast";
 
 declare global {
   interface Window {
@@ -134,6 +139,8 @@ export default function OnlyOfficeEditor() {
   const [isCreating, setIsCreating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [editorError, setEditorError] = useState<string | null>(null);
+  const [convertingId, setConvertingId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const loadDocuments = useCallback(async () => {
     setIsLoadingList(true);
@@ -281,6 +288,31 @@ export default function OnlyOfficeEditor() {
     }
   };
 
+  const handleConvertToTemplate = async (document: OnlyOfficeDocument) => {
+    setConvertingId(document.id);
+    try {
+      const { id, name } = await convertOnlyOfficeDocumentToQuoteTemplate(document);
+      toast({
+        title: "התבנית נוצרה",
+        description: `"${name}" נוספה לתבניות הצעות המחיר`,
+        action: (
+          <ToastAction altText="פתח בתבניות" onClick={() => navigate("/quote-templates")}>
+            פתח בתבניות
+          </ToastAction>
+        ),
+      });
+      return id;
+    } catch (error: any) {
+      toast({
+        title: "שגיאה בהמרה לתבנית",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setConvertingId(null);
+    }
+  };
+
   const editorKey = useMemo(() => {
     if (!selectedDocument || !editorPayload) return "empty";
     return `${selectedDocument.id}-${selectedDocument.document_key}-${selectedDocument.version}`;
@@ -339,11 +371,14 @@ export default function OnlyOfficeEditor() {
                 </div>
               ) : (
                 documents.map((document) => (
-                  <button
+                  <div
                     key={document.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => openDocument(document)}
+                    onKeyDown={(e) => e.key === "Enter" && openDocument(document)}
                     className={cn(
-                      "w-full rounded-md p-3 text-right transition-colors hover:bg-accent",
+                      "group w-full cursor-pointer rounded-md p-3 text-right transition-colors hover:bg-accent",
                       selectedDocument?.id === document.id && "bg-accent",
                     )}
                   >
@@ -360,8 +395,27 @@ export default function OnlyOfficeEditor() {
                           </span>
                         </div>
                       </div>
+                      {canConvertToQuoteTemplate(document) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                          title="הפוך לתבנית הצעת מחיר"
+                          disabled={convertingId === document.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleConvertToTemplate(document);
+                          }}
+                        >
+                          {convertingId === document.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <LayoutTemplate className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
                     </div>
-                  </button>
+                  </div>
                 ))
               )}
             </div>
@@ -383,6 +437,22 @@ export default function OnlyOfficeEditor() {
             </div>
             {selectedDocument && (
               <div className="flex items-center gap-2">
+                {canConvertToQuoteTemplate(selectedDocument) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleConvertToTemplate(displayDocument ?? selectedDocument)}
+                    disabled={convertingId === selectedDocument.id}
+                    title="יוצר תבנית הצעת מחיר מהגרסה השמורה האחרונה של המסמך"
+                  >
+                    {convertingId === selectedDocument.id ? (
+                      <Loader2 className="h-4 w-4 ml-1 animate-spin" />
+                    ) : (
+                      <LayoutTemplate className="h-4 w-4 ml-1" />
+                    )}
+                    לתבנית הצעה
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={() => window.print()}>
                   <Printer className="h-4 w-4 ml-1" />
                   הדפסה

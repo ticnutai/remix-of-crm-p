@@ -203,3 +203,75 @@ export async function createOnlyOfficeDownloadUrl(document: OnlyOfficeDocument) 
   if (error) throw error;
   return data.url as string;
 }
+
+/** File types the quote-template importer can convert. */
+const TEMPLATE_CONVERTIBLE_EXTENSIONS = ["docx", "doc", "pdf"];
+
+export function canConvertToQuoteTemplate(document: OnlyOfficeDocument) {
+  return TEMPLATE_CONVERTIBLE_EXTENSIONS.includes(
+    (document.file_type || "").toLowerCase(),
+  );
+}
+
+/**
+ * Converts the latest saved version of an ONLYOFFICE document into a quote
+ * template, using the same importer pipeline as the templates manager's
+ * file-import button, so the result matches every other imported template.
+ */
+export async function convertOnlyOfficeDocumentToQuoteTemplate(
+  document: OnlyOfficeDocument,
+): Promise<{ id: string; name: string }> {
+  if (!canConvertToQuoteTemplate(document)) {
+    throw new Error("אפשר להמיר לתבנית רק מסמכי Word או PDF");
+  }
+
+  const url = await createOnlyOfficeDownloadUrl(document);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`הורדת המסמך מהענן נכשלה (HTTP ${response.status})`);
+  }
+  const blob = await response.blob();
+  const file = new File([blob], document.file_name, {
+    type: document.mime_type,
+  });
+
+  const { importDocumentToTemplate } = await import(
+    "@/components/quotes/QuoteTemplatesManager/documentImporter"
+  );
+  const { DEFAULT_DESIGN_SETTINGS } = await import(
+    "@/components/quotes/QuoteTemplatesManager/types"
+  );
+  const template = await importDocumentToTemplate(file);
+  if (!template) {
+    throw new Error("לא ניתן היה להמיר את המסמך לתבנית");
+  }
+
+  const name = document.title?.trim() || template.name || "תבנית ממסמך OnlyOffice";
+  const payload = {
+    name,
+    description: `הומר ממסמך OnlyOffice: ${document.title} (גרסה ${document.version})`,
+    category: template.category || "כללי",
+    items: template.items || [],
+    stages: template.stages || [],
+    payment_schedule: template.payment_schedule || [],
+    timeline: template.timeline || [],
+    important_notes: template.important_notes || [],
+    validity_days: template.validity_days || 30,
+    design_settings: template.design_settings || DEFAULT_DESIGN_SETTINGS,
+    show_vat: template.show_vat ?? true,
+    vat_rate: template.vat_rate || 18,
+    is_active: true,
+    html_content: template.html_content || null,
+    base_price: template.base_price || 0,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await (supabase as any)
+    .from("quote_templates")
+    .insert([payload])
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  return { id: data.id as string, name };
+}
