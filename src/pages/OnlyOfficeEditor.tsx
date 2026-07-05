@@ -158,6 +158,29 @@ export default function OnlyOfficeEditor() {
     void loadDocuments();
   }, [loadDocuments]);
 
+  // Saving happens in the background (Document Server → relay → cloud), so
+  // the app only sees the new version/saved_at by re-reading the list. Poll
+  // quietly while a document is open to keep the header and badges fresh.
+  useEffect(() => {
+    if (!selectedDocument) return;
+    const interval = setInterval(async () => {
+      try {
+        setDocuments(await listOnlyOfficeDocuments());
+      } catch {
+        // Silent background refresh; the manual refresh button reports errors.
+      }
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [selectedDocument?.id]);
+
+  // Freshest metadata for the open document (saved_at/version update as
+  // background saves land) without remounting the editor, whose key must
+  // stay tied to the document_key it was opened with.
+  const displayDocument = useMemo(
+    () => documents.find((item) => item.id === selectedDocument?.id) ?? selectedDocument,
+    [documents, selectedDocument],
+  );
+
   const openDocument = useCallback(
     async (document: OnlyOfficeDocument) => {
       setSelectedDocument(document);
@@ -349,11 +372,12 @@ export default function OnlyOfficeEditor() {
           <div className="h-14 px-4 border-b flex items-center justify-between gap-3 shrink-0">
             <div className="min-w-0">
               <div className="font-semibold truncate">
-                {selectedDocument ? selectedDocument.title : "בחר מסמך לעריכה"}
+                {displayDocument ? displayDocument.title : "בחר מסמך לעריכה"}
               </div>
-              {selectedDocument && (
+              {displayDocument && (
                 <div className="text-xs text-muted-foreground truncate">
-                  נשמר: {formatDate(selectedDocument.saved_at)} · עודכן: {formatDate(selectedDocument.updated_at)}
+                  נשמר: {formatDate(displayDocument.saved_at)} · עודכן: {formatDate(displayDocument.updated_at)}
+                  {" · "}גרסה {displayDocument.version}
                 </div>
               )}
             </div>
