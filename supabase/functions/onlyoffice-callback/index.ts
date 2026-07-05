@@ -56,13 +56,22 @@ serve(async (req) => {
     const status = Number(payload.status);
 
     // 2 = ready for saving, 6 = force save. Other statuses are acknowledged.
-    if ((status === 2 || status === 6) && payload.url) {
-      const fileResponse = await fetch(payload.url);
-      if (!fileResponse.ok) {
-        throw new Error(`Could not download saved document: HTTP ${fileResponse.status}`);
+    // The file arrives either as a URL the cloud can fetch, or inlined as
+    // base64 by the local save relay (used when the Document Server runs on
+    // localhost and its URLs are unreachable from the cloud).
+    if ((status === 2 || status === 6) && (payload.fileBase64 || payload.url)) {
+      let bytes: Uint8Array;
+      if (payload.fileBase64) {
+        const binary = atob(String(payload.fileBase64));
+        bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      } else {
+        const fileResponse = await fetch(payload.url);
+        if (!fileResponse.ok) {
+          throw new Error(`Could not download saved document: HTTP ${fileResponse.status}`);
+        }
+        bytes = new Uint8Array(await fileResponse.arrayBuffer());
       }
-
-      const bytes = new Uint8Array(await fileResponse.arrayBuffer());
       const nextVersion = Number(document.version || 1) + 1;
       const fileType = String(document.file_type || "docx").toLowerCase();
 
@@ -83,7 +92,8 @@ serve(async (req) => {
           storage_path: document.storage_path,
           size_bytes: bytes.byteLength,
           saved_by: Array.isArray(payload.users) && payload.users.length ? payload.users[0] : null,
-          callback_payload: payload,
+          // Strip the inlined file content — it does not belong in the DB.
+          callback_payload: { ...payload, fileBase64: undefined },
         });
 
       if (versionError && !String(versionError.message).includes("duplicate")) {

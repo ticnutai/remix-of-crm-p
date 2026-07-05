@@ -9,6 +9,12 @@ const ONLYOFFICE_DOCUMENT_SERVER_URL =
   Deno.env.get("ONLYOFFICE_DOC_SERVER_URL") ||
   "";
 const ONLYOFFICE_JWT_SECRET = Deno.env.get("ONLYOFFICE_JWT_SECRET") || "";
+// Optional override for where the Document Server sends save callbacks.
+// When the Document Server runs on the user's machine (localhost), its
+// download URLs are unreachable from the cloud, so callbacks go to a local
+// save relay instead (scripts/onlyoffice-local-relay.mjs) which inlines the
+// file and forwards to the cloud onlyoffice-callback function.
+const ONLYOFFICE_CALLBACK_URL = Deno.env.get("ONLYOFFICE_CALLBACK_URL") || "";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -122,7 +128,17 @@ serve(async (req) => {
       throw new Error(signedUrlError?.message || "Could not create signed document URL");
     }
 
-    const callbackUrl = `${SUPABASE_URL}/functions/v1/onlyoffice-callback?documentId=${document.id}`;
+    const isLocalDocumentServer = /\/\/(localhost|127\.0\.0\.1)/.test(
+      ONLYOFFICE_DOCUMENT_SERVER_URL,
+    );
+    const callbackBase =
+      ONLYOFFICE_CALLBACK_URL ||
+      (isLocalDocumentServer
+        ? // Docker bridge gateway — how the local Document Server container
+          // reaches the save relay running beside it in WSL.
+          "http://172.17.0.1:9310/onlyoffice-callback"
+        : `${SUPABASE_URL}/functions/v1/onlyoffice-callback`);
+    const callbackUrl = `${callbackBase}?documentId=${document.id}`;
     const fileType = (document.file_type || "docx").toLowerCase() as OfficeFileType;
 
     const config: Record<string, unknown> = {
