@@ -754,7 +754,7 @@ export async function upsertManualEntry(input: ManualEntryInput): Promise<Attend
     .maybeSingle();
   if (findErr) throw findErr;
 
-  const existingRow = existing as
+  const existingRow = (existing as unknown) as
     | { id: string; clock_in: string | null; clock_out: string | null; break_minutes: number | null; day_type: string | null; notes: string | null }
     | null;
 
