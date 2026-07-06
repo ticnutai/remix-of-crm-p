@@ -742,43 +742,62 @@ export function isoToLocalHHMM(iso?: string | null): string {
 
 export async function upsertManualEntry(input: ManualEntryInput): Promise<AttendanceRecord> {
   const dayType: DayType = input.day_type ?? "work";
-  const hasTimes = !!(input.clock_in && input.clock_out);
   const clockInIso = input.clock_in ? combineDateTime(input.date, input.clock_in) : null;
   const clockOutIso = input.clock_out ? combineDateTime(input.date, input.clock_out) : null;
 
-  // Look for an existing record on this date
+  // Look for an existing record on this date — fetch all mergeable fields.
   const { data: existing, error: findErr } = await supabase
     .from("attendance_records" as any)
-    .select("id")
+    .select("id, clock_in, clock_out, break_minutes, day_type, notes")
     .eq("user_id", input.user_id)
     .eq("work_date", input.date)
     .maybeSingle();
   if (findErr) throw findErr;
 
+  const existingRow = existing as
+    | { id: string; clock_in: string | null; clock_out: string | null; break_minutes: number | null; day_type: string | null; notes: string | null }
+    | null;
+
+  // Only overwrite fields the caller explicitly provided.
+  // This prevents a partial save (e.g. only clock_out) from wiping out the
+  // existing clock_in due to a race between silentReload and the next edit.
+  const finalClockInIso =
+    input.clock_in !== undefined ? clockInIso : existingRow?.clock_in ?? null;
+  const finalClockOutIso =
+    input.clock_out !== undefined ? clockOutIso : existingRow?.clock_out ?? null;
+  const finalBreak =
+    input.break_minutes !== undefined
+      ? input.break_minutes
+      : existingRow?.break_minutes ?? 0;
+
   const payload: Record<string, unknown> = {
     user_id: input.user_id,
     work_date: input.date,
-    clock_in: clockInIso ?? new Date(`${input.date}T00:00:00`).toISOString(),
-    clock_out: clockOutIso,
-    break_minutes: input.break_minutes ?? 0,
-    day_type: dayType,
-    notes: input.notes ?? null,
+    // clock_in is NOT NULL — fall back to midnight only when we truly have
+    // nothing (brand-new absent/vacation row with no time at all).
+    clock_in: finalClockInIso ?? new Date(`${input.date}T00:00:00`).toISOString(),
+    clock_out: finalClockOutIso,
+    break_minutes: finalBreak,
+    day_type: input.day_type !== undefined ? dayType : (existingRow?.day_type ?? dayType),
+    notes: input.notes !== undefined ? (input.notes ?? null) : (existingRow?.notes ?? null),
     manual_entry: true,
     is_edited: true,
   };
-  if (hasTimes && clockInIso && clockOutIso) {
+  if (finalClockInIso && finalClockOutIso) {
     payload.duration_minutes = Math.max(
       0,
-      Math.round((new Date(clockOutIso).getTime() - new Date(clockInIso).getTime()) / 60000)
-        - (input.break_minutes ?? 0),
+      Math.round((new Date(finalClockOutIso).getTime() - new Date(finalClockInIso).getTime()) / 60000)
+        - (finalBreak ?? 0),
     );
+  } else {
+    payload.duration_minutes = null;
   }
 
-  if (existing && (existing as any).id) {
+  if (existingRow?.id) {
     const { data, error } = await supabase
       .from("attendance_records" as any)
       .update(payload)
-      .eq("id", (existing as any).id)
+      .eq("id", existingRow.id)
       .select()
       .single();
     if (error) throw error;
