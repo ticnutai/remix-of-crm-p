@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import {
@@ -77,6 +77,7 @@ import {
   Layers,
   BookTemplate,
   Eye,
+  EyeOff,
   Clipboard,
   ClipboardPaste,
   Palette,
@@ -2345,6 +2346,17 @@ export function ClientStagesBoard({
 
   // Show all stages by default
   const [showAllStages, setShowAllStages] = useState(true);
+  const [hideCompletedTasks, setHideCompletedTasks] = useState(() => {
+    try { return localStorage.getItem(`stages-hide-completed-${clientId}`) === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(`stages-hide-completed-${clientId}`, hideCompletedTasks ? '1' : '0'); } catch {}
+  }, [hideCompletedTasks, clientId]);
+  const filterTasks = useCallback(
+    <T extends { completed?: boolean }>(tasks: T[] | undefined | null): T[] =>
+      hideCompletedTasks ? (tasks || []).filter((t) => !t.completed) : (tasks || []),
+    [hideCompletedTasks]
+  );
 
   // Columns count for grid layout (persisted to LS + cloud)
   const [columnsCount, setColumnsCount] = useSyncedSetting<number>({ key: "stages-columns-count", defaultValue: 4 });
@@ -3348,6 +3360,36 @@ export function ClientStagesBoard({
           )}
         </Button>
 
+        {/* Toggle hide completed tasks */}
+        <Button
+          variant={hideCompletedTasks ? "default" : "outline"}
+          size="sm"
+          onClick={() => setHideCompletedTasks((v) => !v)}
+          className="gap-2"
+          title={hideCompletedTasks ? "הצג הושלמו" : "הסתר הושלמו"}
+          style={
+            hideCompletedTasks
+              ? {
+                  backgroundColor: activeStageTheme.progressColor,
+                  color: activeStageTheme.headerTextColor,
+                }
+              : {}
+          }
+        >
+          {hideCompletedTasks ? (
+            <>
+              <Eye className="h-4 w-4" />
+              הצג הושלמו
+            </>
+          ) : (
+            <>
+              <EyeOff className="h-4 w-4" />
+              הסתר הושלמו
+            </>
+          )}
+        </Button>
+
+
         {/* Columns count selector */}
         {showAllStages && (
           <div className="flex items-center gap-1 border rounded-md">
@@ -4056,7 +4098,7 @@ export function ClientStagesBoard({
 
               {/* Tasks List with Drag and Drop */}
               <CardContent className="flex-1 p-3 space-y-2 overflow-y-auto max-h-[500px]">
-                {stage.tasks && stage.tasks.length > 0 ? (
+                {(() => { const visibleTasks = filterTasks(stage.tasks); return visibleTasks.length > 0 ? (
                   <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
@@ -4065,11 +4107,11 @@ export function ClientStagesBoard({
                     }
                   >
                     <SortableContext
-                      items={stage.tasks.map((t) => t.id)}
+                      items={visibleTasks.map((t) => t.id)}
                       strategy={verticalListSortingStrategy}
                     >
                       <div className="space-y-2">
-                        {stage.tasks.map((task, index) => (
+                        {visibleTasks.map((task, index) => (
                           <SortableTaskItem
                             key={task.id}
                             task={task}
@@ -4096,9 +4138,9 @@ export function ClientStagesBoard({
                   </DndContext>
                 ) : (
                   <div className="text-center text-sm text-gray-500 py-8">
-                    אין משימות
+                    {hideCompletedTasks && (stage.tasks?.length || 0) > 0 ? "כל המשימות הושלמו" : "אין משימות"}
                   </div>
-                )}
+                ); })()}
 
                 {/* Add Task Section */}
                 <div className="pt-2 border-t">
@@ -4511,10 +4553,10 @@ export function ClientStagesBoard({
                           }
                         >
                           <SortableContext
-                            items={expandedStageData.tasks.map((t) => t.id)}
+                            items={filterTasks(expandedStageData.tasks).map((t) => t.id)}
                             strategy={verticalListSortingStrategy}
                           >
-                            {expandedStageData.tasks.map((task, index) => (
+                            {filterTasks(expandedStageData.tasks).map((task, index) => (
                               <div
                                 key={task.id}
                                 className="flex items-center gap-2"
@@ -4599,7 +4641,7 @@ export function ClientStagesBoard({
                               </tr>
                             </thead>
                             <tbody>
-                              {expandedStageData.tasks.map((task, index) => (
+                              {filterTasks(expandedStageData.tasks).map((task, index) => (
                                 <tr
                                   key={task.id}
                                   className={cn(
