@@ -4556,7 +4556,7 @@ export function ClientStagesBoard({
                             items={filterTasks(expandedStageData.tasks).map((t) => t.id)}
                             strategy={verticalListSortingStrategy}
                           >
-                            {expandedStageData.tasks.map((task, index) => (
+                            {filterTasks(expandedStageData.tasks).map((task, index) => (
                               <div
                                 key={task.id}
                                 className="flex items-center gap-2"
