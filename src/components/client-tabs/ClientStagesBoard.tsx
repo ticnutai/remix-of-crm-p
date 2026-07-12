@@ -2359,6 +2359,14 @@ export function ClientStagesBoard({
     [hideCompletedTasks]
   );
 
+  // Summary frame: shows incomplete tasks from stages that have been started (at least 1 task done)
+  const [showSummaryFrame, setShowSummaryFrame] = useState(() => {
+    try { return localStorage.getItem(`stages-summary-frame-${clientId}`) === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(`stages-summary-frame-${clientId}`, showSummaryFrame ? '1' : '0'); } catch {}
+  }, [showSummaryFrame, clientId]);
+
   // Columns count for grid layout (persisted to LS + cloud)
   const [columnsCount, setColumnsCount] = useSyncedSetting<number>({ key: "stages-columns-count", defaultValue: 4 });
   const [stageBoardThemesRaw, setStageBoardThemesRaw] = useSyncedSetting<
