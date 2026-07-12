@@ -77,6 +77,7 @@ import {
   Layers,
   BookTemplate,
   Eye,
+  EyeOff,
   Clipboard,
   ClipboardPaste,
   Palette,
