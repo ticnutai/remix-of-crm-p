@@ -4098,7 +4098,7 @@ export function ClientStagesBoard({
 
               {/* Tasks List with Drag and Drop */}
               <CardContent className="flex-1 p-3 space-y-2 overflow-y-auto max-h-[500px]">
-                {stage.tasks && stage.tasks.length > 0 ? (
+                {(() => { const visibleTasks = filterTasks(stage.tasks); return visibleTasks.length > 0 ? (
                   <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
@@ -4107,11 +4107,11 @@ export function ClientStagesBoard({
                     }
                   >
                     <SortableContext
-                      items={stage.tasks.map((t) => t.id)}
+                      items={visibleTasks.map((t) => t.id)}
                       strategy={verticalListSortingStrategy}
                     >
                       <div className="space-y-2">
-                        {stage.tasks.map((task, index) => (
+                        {visibleTasks.map((task, index) => (
                           <SortableTaskItem
                             key={task.id}
                             task={task}
