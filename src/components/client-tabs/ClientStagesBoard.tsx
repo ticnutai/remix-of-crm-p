@@ -3398,6 +3398,28 @@ export function ClientStagesBoard({
           )}
         </Button>
 
+        {/* Toggle summary frame (open tasks from started stages) */}
+        <Button
+          variant={showSummaryFrame ? "default" : "outline"}
+          size="sm"
+          onClick={() => setShowSummaryFrame((v) => !v)}
+          className="gap-2"
+          title="הצג/הסתר מסגרת סיכום משימות פתוחות מהשלבים שהתחלת"
+          style={
+            showSummaryFrame
+              ? {
+                  backgroundColor: activeStageTheme.progressColor,
+                  color: activeStageTheme.headerTextColor,
+                }
+              : {}
+          }
+        >
+          <ListChecks className="h-4 w-4" />
+          סיכום פתוחות
+        </Button>
+
+
+
 
         {/* Columns count selector */}
         {showAllStages && (
