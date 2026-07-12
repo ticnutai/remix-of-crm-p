@@ -4641,7 +4641,7 @@ export function ClientStagesBoard({
                               </tr>
                             </thead>
                             <tbody>
-                              {expandedStageData.tasks.map((task, index) => (
+                              {filterTasks(expandedStageData.tasks).map((task, index) => (
                                 <tr
                                   key={task.id}
                                   className={cn(
