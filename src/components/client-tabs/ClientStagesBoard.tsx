@@ -3360,6 +3360,36 @@ export function ClientStagesBoard({
           )}
         </Button>
 
+        {/* Toggle hide completed tasks */}
+        <Button
+          variant={hideCompletedTasks ? "default" : "outline"}
+          size="sm"
+          onClick={() => setHideCompletedTasks((v) => !v)}
+          className="gap-2"
+          title={hideCompletedTasks ? "הצג הושלמו" : "הסתר הושלמו"}
+          style={
+            hideCompletedTasks
+              ? {
+                  backgroundColor: activeStageTheme.progressColor,
+                  color: activeStageTheme.headerTextColor,
+                }
+              : {}
+          }
+        >
+          {hideCompletedTasks ? (
+            <>
+              <Eye className="h-4 w-4" />
+              הצג הושלמו
+            </>
+          ) : (
+            <>
+              <EyeOff className="h-4 w-4" />
+              הסתר הושלמו
+            </>
+          )}
+        </Button>
+
+
         {/* Columns count selector */}
         {showAllStages && (
           <div className="flex items-center gap-1 border rounded-md">
