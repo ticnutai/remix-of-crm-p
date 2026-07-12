@@ -2346,6 +2346,17 @@ export function ClientStagesBoard({
 
   // Show all stages by default
   const [showAllStages, setShowAllStages] = useState(true);
+  const [hideCompletedTasks, setHideCompletedTasks] = useState(() => {
+    try { return localStorage.getItem(`stages-hide-completed-${clientId}`) === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(`stages-hide-completed-${clientId}`, hideCompletedTasks ? '1' : '0'); } catch {}
+  }, [hideCompletedTasks, clientId]);
+  const filterTasks = useCallback(
+    <T extends { completed?: boolean }>(tasks: T[] | undefined | null): T[] =>
+      hideCompletedTasks ? (tasks || []).filter((t) => !t.completed) : (tasks || []),
+    [hideCompletedTasks]
+  );
 
   // Columns count for grid layout (persisted to LS + cloud)
   const [columnsCount, setColumnsCount] = useSyncedSetting<number>({ key: "stages-columns-count", defaultValue: 4 });
