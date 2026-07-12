@@ -4553,7 +4553,7 @@ export function ClientStagesBoard({
                           }
                         >
                           <SortableContext
-                            items={expandedStageData.tasks.map((t) => t.id)}
+                            items={filterTasks(expandedStageData.tasks).map((t) => t.id)}
                             strategy={verticalListSortingStrategy}
                           >
                             {expandedStageData.tasks.map((task, index) => (
