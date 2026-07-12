@@ -79,6 +79,7 @@ import {
   Eye,
   EyeOff,
   Clipboard,
+  ListChecks,
   ClipboardPaste,
   Palette,
   Type,
