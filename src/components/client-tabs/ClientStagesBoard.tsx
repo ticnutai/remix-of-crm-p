@@ -3527,6 +3527,92 @@ export function ClientStagesBoard({
         )}
         dir="rtl"
       >
+        {showAllStages && showSummaryFrame && (() => {
+          const startedStages = sortedStages.filter((s) => {
+            const tasks = s.tasks || [];
+            const done = tasks.filter((t) => t.completed).length;
+            return done > 0 && done < tasks.length;
+          });
+          const openItems = startedStages.flatMap((s) =>
+            (s.tasks || [])
+              .filter((t) => !t.completed)
+              .map((t) => ({ task: t, stage: s })),
+          );
+          const totalOpen = openItems.length;
+          return (
+            <Card
+              className="relative flex flex-col h-full transition-all duration-300 border-2 border-dashed"
+              style={{
+                borderColor: activeStageTheme.activeBorderColor,
+                backgroundColor: activeStageTheme.activeCardBackgroundColor,
+              }}
+            >
+              <div
+                className="px-3 py-2 rounded-t-lg flex items-center justify-between gap-2"
+                style={{
+                  background: `linear-gradient(135deg, ${activeStageTheme.activeHeaderFromColor}, ${activeStageTheme.activeHeaderToColor})`,
+                  color: activeStageTheme.activeHeaderTextColor,
+                  borderBottom: `1px solid ${activeStageTheme.activeBorderColor}`,
+                }}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <ListChecks className="h-4 w-4 shrink-0" />
+                  <span className="font-semibold truncate">סיכום משימות פתוחות</span>
+                </div>
+                <Badge
+                  variant="secondary"
+                  style={{
+                    backgroundColor: activeStageTheme.activeBadgeBackgroundColor,
+                    color: activeStageTheme.activeBadgeTextColor,
+                  }}
+                >
+                  {totalOpen}
+                </Badge>
+              </div>
+              <CardContent className="flex-1 p-3 overflow-y-auto max-h-[500px]">
+                {totalOpen === 0 ? (
+                  <div className="text-center text-sm text-muted-foreground py-6">
+                    אין משימות פתוחות בשלבים שבתהליך
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {startedStages.map((s) => {
+                      const openInStage = (s.tasks || []).filter((t) => !t.completed);
+                      if (openInStage.length === 0) return null;
+                      const SIcon = getStageIcon(s.stage_icon);
+                      return (
+                        <div key={s.stage_id} className="space-y-1">
+                          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                            <SIcon className="h-3.5 w-3.5" />
+                            <span className="truncate">{s.stage_name}</span>
+                            <span className="opacity-60">({openInStage.length})</span>
+                          </div>
+                          <div className="space-y-1">
+                            {openInStage.map((task) => (
+                              <div
+                                key={task.id}
+                                className="flex items-start gap-2 text-sm p-1.5 rounded hover:bg-muted/50 cursor-pointer"
+                                onClick={() => handleToggleTask(task)}
+                              >
+                                <Checkbox
+                                  checked={false}
+                                  className="mt-0.5 shrink-0"
+                                  onCheckedChange={() => handleToggleTask(task)}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                <span className="flex-1 leading-snug">{task.title}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })()}
         {(showAllStages
           ? sortedStages
           : sortedStages.filter((s) => s.stage_id === "contact")
