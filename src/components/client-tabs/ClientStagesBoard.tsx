@@ -4138,9 +4138,9 @@ export function ClientStagesBoard({
                   </DndContext>
                 ) : (
                   <div className="text-center text-sm text-gray-500 py-8">
-                    אין משימות
+                    {hideCompletedTasks && (stage.tasks?.length || 0) > 0 ? "כל המשימות הושלמו" : "אין משימות"}
                   </div>
-                )}
+                ); })()}
 
                 {/* Add Task Section */}
                 <div className="pt-2 border-t">
