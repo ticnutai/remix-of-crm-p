@@ -195,6 +195,9 @@ serve(async (req) => {
         position,
         hourly_rate: hourly_rate || null,
         is_active: true,
+        approval_status: "approved",
+        approved_by: user.id,
+        approved_at: new Date().toISOString(),
       },
       {
         onConflict: "id",
