@@ -535,6 +535,15 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                 autoFocus
               />
             </div>
+
+            {/* Assignee - who owns this reminder */}
+            <AssigneePicker
+              label="שייך ל..."
+              value={assignedUserId}
+              onChange={(v) => setAssignedUserId(v)}
+              placeholder="בחר משתמש (ברירת מחדל: אני)"
+            />
+            
             
             {/* Remind At — SmartDateTimePicker (date + TimeWheelPicker) */}
             <SmartDateTimePicker
