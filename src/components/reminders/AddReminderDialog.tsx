@@ -396,6 +396,8 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
         send_whatsapp: form.send_whatsapp || selectedTypes.includes('whatsapp'),
         send_sms: form.send_sms || selectedTypes.includes('sms'),
         email_template_id: selectedTemplate,
+        user_id: assignedUserId || user?.id,
+
       };
       
       if (editingReminder) {
