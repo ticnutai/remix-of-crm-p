@@ -272,6 +272,10 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
     if (editingReminder.reminder_type) {
       setSelectedTypes([editingReminder.reminder_type]);
     }
+    if (editingReminder.user_id) {
+      setAssignedUserId(editingReminder.user_id);
+    }
+
   }, [open, editingReminder]);
 
   const toggleReminderType = (type: string) => {
@@ -396,6 +400,8 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
         send_whatsapp: form.send_whatsapp || selectedTypes.includes('whatsapp'),
         send_sms: form.send_sms || selectedTypes.includes('sms'),
         email_template_id: selectedTemplate,
+        user_id: assignedUserId || user?.id,
+
       };
       
       if (editingReminder) {
@@ -535,6 +541,15 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                 autoFocus
               />
             </div>
+
+            {/* Assignee - who owns this reminder */}
+            <AssigneePicker
+              label="שייך ל..."
+              value={assignedUserId}
+              onChange={(v) => setAssignedUserId(v)}
+              placeholder="בחר משתמש (ברירת מחדל: אני)"
+            />
+            
             
             {/* Remind At — SmartDateTimePicker (date + TimeWheelPicker) */}
             <SmartDateTimePicker
