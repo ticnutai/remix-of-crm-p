@@ -272,6 +272,10 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
     if (editingReminder.reminder_type) {
       setSelectedTypes([editingReminder.reminder_type]);
     }
+    if (editingReminder.user_id) {
+      setAssignedUserId(editingReminder.user_id);
+    }
+
   }, [open, editingReminder]);
 
   const toggleReminderType = (type: string) => {
