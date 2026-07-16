@@ -705,6 +705,12 @@ const TasksAndMeetings = () => {
     await updateTask(taskId, { status: newStatus });
   };
 
+  const handleToggleMeetingComplete = async (meeting: Meeting) => {
+    await updateMeeting(meeting.id, {
+      status: meeting.status === "completed" ? "scheduled" : "completed",
+    });
+  };
+
   const handleEditMeeting = (meeting: Meeting) => {
     setEditingMeeting(meeting);
     setMeetingDialogOpen(true);
@@ -1115,7 +1121,11 @@ const TasksAndMeetings = () => {
                     sortedTasksForAllColumn.tasks.slice(0, 20).map((task, index) => (
                       <div
                         key={task.id}
-                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
+                        className={`flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right ${
+                          selectedTaskIds.includes(task.id)
+                            ? "bg-primary/15 ring-1 ring-primary/40"
+                            : ""
+                        }`}
                         onMouseLeave={() => {
                           setHoveredTaskId(null);
                           queuePreviewClose();
@@ -1134,11 +1144,6 @@ const TasksAndMeetings = () => {
                         }
                         onTouchEnd={handleTouchEnd}
                         onTouchMove={handleTouchEnd}
-                        onClick={() => {
-                          if (selectionMode.tasks) {
-                            toggleTaskSelection(task.id);
-                          }
-                        }}
                       >
                         {showTinyTaskNumbers && (
                           <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full border border-primary/30 bg-primary/10 text-primary text-[10px] leading-[18px] text-center font-medium">
@@ -1149,7 +1154,7 @@ const TasksAndMeetings = () => {
                           className={`shrink-0 h-4 w-4 rounded border-2 flex items-center justify-center transition-colors ${
                             task.status === "completed"
                               ? "bg-green-500 border-green-500 text-white opacity-100"
-                              : "border-muted-foreground/40 hover:border-primary opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                              : `border-muted-foreground/40 hover:border-primary ${selectionMode.tasks ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`
                           }`}
                           onClick={(event) => {
                             event.stopPropagation();
@@ -1162,13 +1167,8 @@ const TasksAndMeetings = () => {
                         </button>
                         <div
                           className="flex-1 min-w-0 text-right cursor-pointer"
-                          onClick={() => {
-                            if (selectionMode.tasks) {
-                              toggleTaskSelection(task.id);
-                              return;
-                            }
-                            handleEditTask(task);
-                          }}
+                          onClick={() => handleToggleComplete(task)}
+                          title="לחץ לסימון כבוצע"
                         >
                           <p className={`text-xs font-medium truncate ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
                             {task.title}
@@ -1193,7 +1193,11 @@ const TasksAndMeetings = () => {
                         </div>
                         <button
                           type="button"
-                          className={`shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 ${
+                          className={`shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors ${
+                            selectionMode.tasks || selectedTaskIds.includes(task.id)
+                              ? "opacity-100"
+                              : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                          } ${
                             selectedTaskIds.includes(task.id)
                               ? "bg-primary border-primary text-primary-foreground"
                               : "border-muted-foreground/40"
@@ -1213,7 +1217,7 @@ const TasksAndMeetings = () => {
                           )}
                         </button>
                         <button
-                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                          className={`shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-opacity ${selectionMode.tasks ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`}
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.tasks) handleEditTask(task);
@@ -1223,7 +1227,7 @@ const TasksAndMeetings = () => {
                           <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
                         <button
-                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                          className={`shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-opacity ${selectionMode.tasks ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`}
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.tasks) handleDeleteTask(task.id);
@@ -1233,7 +1237,7 @@ const TasksAndMeetings = () => {
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </button>
                         <button
-                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                          className={`shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-opacity ${selectionMode.tasks ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`}
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.tasks) {
@@ -1393,7 +1397,11 @@ const TasksAndMeetings = () => {
                     sortedTasksForAllColumn.meetings.slice(0, 20).map((meeting, index) => (
                       <div
                         key={meeting.id}
-                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
+                        className={`flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right ${
+                          selectedMeetingIds.includes(meeting.id)
+                            ? "bg-blue-500/15 ring-1 ring-blue-500/40"
+                            : ""
+                        }`}
                         onMouseEnter={(event) => {
                           setHoveredMeetingId(meeting.id);
                           if (!selectionMode.meetings && columnHoverPreviewEnabled.meetings) {
@@ -1412,15 +1420,14 @@ const TasksAndMeetings = () => {
                         }
                         onTouchEnd={handleTouchEnd}
                         onTouchMove={handleTouchEnd}
-                        onClick={() => {
-                          if (selectionMode.meetings) {
-                            toggleMeetingSelection(meeting.id);
-                          }
-                        }}
                       >
                         <button
                           type="button"
-                          className={`shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 ${
+                          className={`shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors ${
+                            selectionMode.meetings || selectedMeetingIds.includes(meeting.id)
+                              ? "opacity-100"
+                              : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                          } ${
                             selectedMeetingIds.includes(meeting.id)
                               ? "bg-blue-500 border-blue-500 text-white"
                               : "border-muted-foreground/40"
@@ -1446,15 +1453,10 @@ const TasksAndMeetings = () => {
                         )}
                         <div
                           className="flex-1 min-w-0 text-right cursor-pointer"
-                          onClick={() => {
-                            if (selectionMode.meetings) {
-                              toggleMeetingSelection(meeting.id);
-                              return;
-                            }
-                            handleEditMeeting(meeting);
-                          }}
+                          onClick={() => handleToggleMeetingComplete(meeting)}
+                          title="לחץ לסימון כהושלם"
                         >
-                          <p className="text-xs font-medium truncate">{meeting.title}</p>
+                          <p className={`text-xs font-medium truncate ${meeting.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{meeting.title}</p>
                           {hoveredMeetingId === meeting.id && meeting.created_at && (() => {
                             const days = (Date.now() - new Date(meeting.created_at).getTime()) / 86400000;
                             const color = days < 7 ? "text-green-600" : days < 14 ? "text-amber-500" : "text-red-500";
@@ -1469,7 +1471,7 @@ const TasksAndMeetings = () => {
                           </p>
                         </div>
                         <button
-                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                          className={`shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-opacity ${selectionMode.meetings ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`}
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.meetings) handleEditMeeting(meeting);
@@ -1479,7 +1481,7 @@ const TasksAndMeetings = () => {
                           <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
                         <button
-                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                          className={`shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-opacity ${selectionMode.meetings ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`}
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.meetings) handleDeleteMeeting(meeting.id);
@@ -1489,7 +1491,7 @@ const TasksAndMeetings = () => {
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </button>
                         <button
-                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                          className={`shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-opacity ${selectionMode.meetings ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`}
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.meetings) {
@@ -1648,7 +1650,11 @@ const TasksAndMeetings = () => {
                     sortedTasksForAllColumn.reminders.slice(0, 20).map((reminder, index) => (
                       <div
                         key={reminder.id}
-                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
+                        className={`flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right ${
+                          selectedReminderIds.includes(reminder.id)
+                            ? "bg-amber-500/15 ring-1 ring-amber-500/40"
+                            : ""
+                        }`}
                         onMouseEnter={(event) => {
                           setHoveredReminderId(reminder.id);
                           if (!selectionMode.reminders && columnHoverPreviewEnabled.reminders) {
@@ -1667,15 +1673,14 @@ const TasksAndMeetings = () => {
                         }
                         onTouchEnd={handleTouchEnd}
                         onTouchMove={handleTouchEnd}
-                        onClick={() => {
-                          if (selectionMode.reminders) {
-                            toggleReminderSelection(reminder.id);
-                          }
-                        }}
                       >
                         <button
                           type="button"
-                          className={`shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 ${
+                          className={`shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors ${
+                            selectionMode.reminders || selectedReminderIds.includes(reminder.id)
+                              ? "opacity-100"
+                              : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                          } ${
                             selectedReminderIds.includes(reminder.id)
                               ? "bg-amber-500 border-amber-500 text-white"
                               : "border-muted-foreground/40"
@@ -1702,12 +1707,9 @@ const TasksAndMeetings = () => {
                         <div
                           className="flex-1 min-w-0 text-right cursor-pointer"
                           onClick={() => {
-                            if (selectionMode.reminders) {
-                              toggleReminderSelection(reminder.id);
-                              return;
-                            }
-                            setActiveTab("reminders");
+                            if (!reminder.is_dismissed) dismissReminder(reminder.id);
                           }}
+                          title="לחץ לסימון כטופל"
                         >
                           <p className={`text-xs font-medium truncate ${reminder.is_dismissed ? "line-through text-muted-foreground" : ""}`}>
                             {reminder.title}
@@ -1726,7 +1728,7 @@ const TasksAndMeetings = () => {
                           </p>
                         </div>
                         <button
-                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                          className={`shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-opacity ${selectionMode.reminders ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`}
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.reminders) {
@@ -1739,7 +1741,7 @@ const TasksAndMeetings = () => {
                           <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
                         <button
-                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                          className={`shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-opacity ${selectionMode.reminders ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`}
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.reminders) {
@@ -1751,7 +1753,7 @@ const TasksAndMeetings = () => {
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </button>
                         <button
-                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                          className={`shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-opacity ${selectionMode.reminders ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`}
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.reminders) {

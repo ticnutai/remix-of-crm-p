@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 const LS_PREFIX = "synced::";
+const SYNCED_SETTING_EVENT = "synced-setting-change";
 const cloudSaveTimers = new Map<string, number>();
 
 interface UseSyncedSettingOptions<T> {
@@ -33,6 +34,11 @@ function readLocal<T>(key: string, fallback: T): T {
 function writeLocal<T>(key: string, val: T) {
   try {
     localStorage.setItem(LS_PREFIX + key, JSON.stringify(val));
+    window.dispatchEvent(
+      new CustomEvent(SYNCED_SETTING_EVENT, {
+        detail: { key, value: val },
+      }),
+    );
   } catch {
     /* quota / private mode */
   }
@@ -60,6 +66,23 @@ export function useSyncedSetting<T>({
   const valueRef = useRef(value);
   valueRef.current = value;
   const skipNextWriteRef = useRef(false);
+
+  // Keep multiple hook instances with the same key in sync in the current
+  // browser tab. The native `storage` event only fires in other tabs, so
+  // without this event a filter control could update while its data view kept
+  // using the previous value.
+  useEffect(() => {
+    const handleSettingChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ key: string; value: T }>).detail;
+      if (!detail || detail.key !== key) return;
+      setValueState(detail.value);
+    };
+
+    window.addEventListener(SYNCED_SETTING_EVENT, handleSettingChange);
+    return () => {
+      window.removeEventListener(SYNCED_SETTING_EVENT, handleSettingChange);
+    };
+  }, [key]);
 
   // Cloud → state once after login (or when key changes)
   useEffect(() => {
