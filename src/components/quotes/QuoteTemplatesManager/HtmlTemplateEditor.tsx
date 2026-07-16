@@ -8446,6 +8446,44 @@ ${tbAt('footer')}
             payment_schedule: schedule,
             created_by: user.id,
           });
+
+          // Ensure every linked payment step has a matching task in the
+          // client's stage — auto-create the task if it doesn't exist so the
+          // amount badge is guaranteed to render on the board.
+          try {
+            const { data: cStages } = await (supabase as any)
+              .from("client_stages")
+              .select("id, stage_name")
+              .eq("client_id", clientId);
+            const stagesByName = new Map<string, string>();
+            for (const st of cStages || []) {
+              stagesByName.set((st.stage_name || "").trim().toLowerCase(), st.id);
+            }
+            for (const step of schedule) {
+              const sName = (step?.templateStageName || "").trim();
+              const tName = (step?.templateTaskName || "").trim();
+              if (!sName || !tName) continue;
+              const stageId = stagesByName.get(sName.toLowerCase());
+              if (!stageId) continue;
+              const { data: existing } = await (supabase as any)
+                .from("client_stage_tasks")
+                .select("id, title")
+                .eq("stage_id", stageId);
+              const has = (existing || []).some(
+                (t: any) => (t.title || "").trim().toLowerCase() === tName.toLowerCase(),
+              );
+              if (!has) {
+                await (supabase as any).from("client_stage_tasks").insert({
+                  stage_id: stageId,
+                  title: tName,
+                  is_completed: false,
+                  created_by: user.id,
+                });
+              }
+            }
+          } catch (taskErr) {
+            console.error("Ensure payment tasks failed:", taskErr);
+          }
         } catch (payErr) {
           console.error("Payment sync failed:", payErr);
         }
