@@ -3490,8 +3490,8 @@ function PaymentStepEditor({
                 autoFocus
               />
             </div>
-            <ScrollArea className="max-h-[55vh] rounded-lg border">
-              <div className="space-y-2 p-3">
+            <ScrollArea className="h-[55vh] min-h-0 rounded-lg border">
+              <div className="space-y-2 p-3 pb-6">
                 {visiblePaymentAssignmentOptions.length === 0 ? (
                   <div className="py-8 text-center text-sm text-muted-foreground">
                     לא נמצאו משימות הכוללות את המילה „תשלום”
