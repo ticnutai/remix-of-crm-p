@@ -2922,15 +2922,10 @@ function PaymentStepEditor({
   );
 
   const openAssignmentDialog = useCallback(() => {
-    const preferredTab = hasQuoteAssignment
-      ? "quote-template"
-      : hasStageAssignment
-        ? "stage-template"
-        : lastUsedSourceTab;
-    setIsExpanded(true);
-    setAssignmentSourceTab(preferredTab);
+    setAssignmentSearch("");
+    setAssignmentSourceTab("all");
     setAssignmentDialogOpen(true);
-  }, [hasQuoteAssignment, hasStageAssignment, lastUsedSourceTab]);
+  }, []);
 
   const activeStageTemplateForDialog = useMemo(
     () => {
@@ -3062,6 +3057,31 @@ function PaymentStepEditor({
         .includes(normalizedAssignmentSearch),
     );
   }, [quoteTemplateItemsPool, normalizedAssignmentSearch]);
+
+  const paymentAssignmentOptions = useMemo(
+    () => [
+      ...templateStages.flatMap((stage) =>
+        (stage.tasks || [])
+          .filter((task) => task.title.includes("תשלום"))
+          .map((task) => ({
+            source: "stage_template" as const,
+            stage,
+            task,
+            stageName: stage.stage_name,
+          })),
+      ),
+    ],
+    [templateStages],
+  );
+
+  const visiblePaymentAssignmentOptions = useMemo(() => {
+    if (!normalizedAssignmentSearch) return paymentAssignmentOptions;
+    return paymentAssignmentOptions.filter((option) =>
+      `${option.task.title} ${option.stageName}`
+        .toLowerCase()
+        .includes(normalizedAssignmentSearch),
+    );
+  }, [normalizedAssignmentSearch, paymentAssignmentOptions]);
 
   const assignFromStageTemplate = (
     stage: StageTemplateStageOption,
@@ -3448,13 +3468,65 @@ function PaymentStepEditor({
 
       <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
         <DialogContent
-          className="max-w-6xl"
+          className="max-w-2xl"
           contentClassName="overflow-x-visible"
           dir="rtl"
         >
           <DialogHeader>
-            <DialogTitle>שיוך מהיר לשלב תשלום</DialogTitle>
+            <DialogTitle>בחר משימת תשלום לשיוך</DialogTitle>
           </DialogHeader>
+
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              מוצגות רק משימות ששמן מכיל את המילה „תשלום”. הבחירה נשמרת מיד.
+            </p>
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={assignmentSearch}
+                onChange={(event) => setAssignmentSearch(event.target.value)}
+                placeholder="חיפוש במשימות תשלום..."
+                className="pr-9"
+                autoFocus
+              />
+            </div>
+            <ScrollArea className="max-h-[55vh] rounded-lg border">
+              <div className="space-y-2 p-3">
+                {visiblePaymentAssignmentOptions.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    לא נמצאו משימות הכוללות את המילה „תשלום”
+                  </div>
+                ) : (
+                  visiblePaymentAssignmentOptions.map((option) => {
+                    const key = `${option.source}:${option.stage.id}:${option.task.id}`;
+                    const selected = step.templateTaskId === option.task.id;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          assignFromStageTemplate(option.stage, option.task);
+                        }}
+                        className={`flex w-full items-center justify-between gap-3 rounded-lg border p-3 text-right transition-colors ${
+                          selected
+                            ? "border-primary bg-primary/10"
+                            : "border-input bg-background hover:border-primary/50 hover:bg-primary/5"
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <div className="font-medium text-foreground">{option.task.title}</div>
+                          <div className="mt-1 text-xs text-muted-foreground">שלב: {option.stageName}</div>
+                        </div>
+                        <Badge variant="outline" className="shrink-0 text-[10px]">
+                          משימת שלב
+                        </Badge>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </ScrollArea>
+          </div>
 
           <Tabs
             value={assignmentSourceTab}
@@ -3463,7 +3535,7 @@ function PaymentStepEditor({
               setAssignmentSourceTab(sourceTab);
               rememberSourceTab(sourceTab);
             }}
-            className="space-y-3"
+            className="hidden"
           >
             <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
               <TabsList className="grid grid-cols-3 w-full md:w-auto md:min-w-[460px] gap-2 bg-transparent h-auto p-0">
