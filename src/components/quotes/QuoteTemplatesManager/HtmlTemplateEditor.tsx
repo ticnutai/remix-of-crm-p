@@ -8390,11 +8390,75 @@ ${tbAt('footer')}
         }
       }
 
+      // Sync payment schedule → client_payment_stages + a signed saved_quote
+      // so live payment badges appear on the linked stage tasks.
+      const schedule: any[] = Array.isArray(editedTemplate.payment_schedule)
+        ? (editedTemplate.payment_schedule as any[])
+        : [];
+      let paymentsAdded = 0;
+      if (schedule.length > 0) {
+        try {
+          const { data: maxRow } = await (supabase as any)
+            .from("client_payment_stages")
+            .select("stage_number")
+            .eq("client_id", clientId)
+            .order("stage_number", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          let nextNumber = (maxRow?.stage_number || 0) + 1;
+          const quoteTag = `הצעה ${editedTemplate.name || ""}`.trim();
+          const rows = schedule
+            .filter((s: any) => Number(s?.percentage) > 0)
+            .map((s: any) => {
+              const pct = Number(s?.percentage) || 0;
+              const amount = basePrice > 0
+                ? Math.round((basePrice * pct) / 100 * 100) / 100
+                : Math.round((totalWithVat * pct) / 100 * 100) / 100;
+              const vr = s?.useCustomVat ? Number(s?.customVat) || vatRate : vatRate;
+              const baseDesc = s?.templateTaskName || s?.description || `תשלום ${pct}%`;
+              return {
+                client_id: clientId,
+                stage_name: baseDesc,
+                stage_number: nextNumber++,
+                description: `${baseDesc} [${quoteTag}]`,
+                amount,
+                vat_rate: vr,
+                created_by: user.id,
+              };
+            });
+          if (rows.length > 0) {
+            const { error: payErr } = await (supabase as any)
+              .from("client_payment_stages")
+              .insert(rows);
+            if (payErr) console.error("Payment stages insert failed:", payErr);
+            else paymentsAdded = rows.length;
+          }
+
+          // Signed saved_quote so TaskPaymentBadge can render live amounts
+          // per linked stage task (uses templateStageName/templateTaskName).
+          await (supabase as any).from("saved_quotes").insert({
+            client_id: clientId,
+            title: editedTemplate.name || "הצעת מחיר",
+            status: "signed",
+            base_price: basePrice,
+            vat_rate: vatRate,
+            total_with_vat: totalWithVat,
+            payment_schedule: schedule,
+            created_by: user.id,
+          });
+        } catch (payErr) {
+          console.error("Payment sync failed:", payErr);
+        }
+      }
+
       setShowCreateClientDialog(false);
+      const parts: string[] = [];
+      if (stagesAdded > 0) parts.push(`${stagesAdded} שלבים`);
+      if (paymentsAdded > 0) parts.push(`${paymentsAdded} שלבי תשלום`);
       toast({
         title: "✅ תיק לקוח נוצר בהצלחה!",
-        description: stagesAdded > 0
-          ? `${projectDetails.clientName || "לקוח"} - נוספו ${stagesAdded} שלבים מהתבנית`
+        description: parts.length > 0
+          ? `${projectDetails.clientName || "לקוח"} — נוספו ${parts.join(" + ")}`
           : `${projectDetails.clientName || "לקוח"} - כולל חוזה וכל הפרטים`,
       });
 
