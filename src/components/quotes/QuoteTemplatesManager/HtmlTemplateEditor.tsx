@@ -6009,15 +6009,6 @@ export function HtmlTemplateEditor({
             }
           }
 
-          if (resolvedProjectDetails.clientId && persistedQuoteId) {
-            await syncQuotePaymentLinksToClientTasks({
-              clientId: resolvedProjectDetails.clientId,
-              quoteId: persistedQuoteId,
-              basePrice,
-              schedule: paymentSchedulePayload,
-            });
-          }
-
           if (
             resolvedProjectDetails.clientId &&
             resolvedProjectDetails.stageTemplateId
@@ -6045,6 +6036,19 @@ export function HtmlTemplateEditor({
             } catch (syncError) {
               console.error("Could not sync client stages from quote save:", syncError);
             }
+          }
+
+          // Payment links must be applied only after the stage template has
+          // created/replaced the client's actual tasks. Running this before
+          // syncClientStagesFromTemplate silently found zero matching tasks,
+          // and a template replacement could also delete links just written.
+          if (resolvedProjectDetails.clientId && persistedQuoteId) {
+            await syncQuotePaymentLinksToClientTasks({
+              clientId: resolvedProjectDetails.clientId,
+              quoteId: persistedQuoteId,
+              basePrice,
+              schedule: paymentSchedulePayload,
+            });
           }
         }
       } catch (sqErr) {
