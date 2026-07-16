@@ -16,6 +16,9 @@ export interface TaskPaymentInfo {
   percentage: number;
   /** Title of the signed quote this amount came from. */
   quoteTitle: string;
+  quoteId: string;
+  quoteStatus: string;
+  vatRate: number;
 }
 
 interface RawPaymentStep {
@@ -23,6 +26,8 @@ interface RawPaymentStep {
   linkSource?: string;
   templateStageName?: string | null;
   templateTaskName?: string | null;
+  quoteTemplateStageName?: string | null;
+  quoteTemplateItemText?: string | null;
 }
 
 // Quotes that were explicitly terminated must not contribute a fallback value.
@@ -39,19 +44,31 @@ export function paymentTaskKey(
 }
 
 const EMPTY_MAP: Map<string, TaskPaymentInfo> = new Map();
+export const LATEST_CLIENT_QUOTE_KEY = "__latest_client_quote__";
 
 export function buildPaymentMap(rows: any[]): Map<string, TaskPaymentInfo> {
   const map = new Map<string, TaskPaymentInfo>();
+  const latestQuote = rows[0];
+  if (latestQuote?.id) {
+    map.set(LATEST_CLIENT_QUOTE_KEY, {
+      amount: Number(latestQuote.total_with_vat) || Number(latestQuote.base_price) || 0,
+      percentage: 100,
+      quoteTitle: latestQuote.title || "הצעת מחיר",
+      quoteId: latestQuote.id,
+      quoteStatus: String(latestQuote.status || "draft").toLowerCase(),
+      vatRate: Number(latestQuote.vat_rate) || 18,
+    });
+  }
   // rows are ordered newest-first; first write per key wins (latest quote).
   for (const row of rows) {
-    const total = Number(row?.base_price) || Number(row?.total_with_vat) || 0;
+    const total = Number(row?.total_with_vat) || Number(row?.base_price) || 0;
     const schedule: RawPaymentStep[] = Array.isArray(row?.payment_schedule)
       ? row.payment_schedule
       : [];
 
     for (const step of schedule) {
-      const stageName = step?.templateStageName;
-      const taskName = step?.templateTaskName;
+      const stageName = step?.templateStageName || step?.quoteTemplateStageName;
+      const taskName = step?.templateTaskName || step?.quoteTemplateItemText;
       // Only stage-template links target board tasks (quote-template links
       // point at items inside the quote itself, not the work board).
       if (!stageName || !taskName) continue;
@@ -66,6 +83,9 @@ export function buildPaymentMap(rows: any[]): Map<string, TaskPaymentInfo> {
         amount: Math.round((total * pct) / 100),
         percentage: pct,
         quoteTitle: row?.title || "הצעת מחיר",
+        quoteId: row?.id,
+        quoteStatus: String(row?.status || "draft").toLowerCase(),
+        vatRate: Number(row?.vat_rate) || 18,
       });
     }
   }
@@ -86,7 +106,7 @@ export function useClientPaymentLinks(
     queryFn: async () => {
       const { data: rows, error } = await (supabase as any)
         .from("saved_quotes")
-        .select("id, title, status, base_price, total_with_vat, payment_schedule, updated_at")
+        .select("id, title, status, base_price, total_with_vat, vat_rate, payment_schedule, updated_at")
         .eq("client_id", clientId)
         .not("status", "in", `(${TERMINAL_STATUSES.join(",")})`)
         .order("updated_at", { ascending: false });

@@ -811,6 +811,8 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
                 taskTitle={task.title}
                 paymentAmount={task.payment_amount}
                 paymentPercentage={task.payment_percentage}
+                paymentQuoteId={task.payment_quote_id}
+                taskId={task.id}
                 className="mt-1"
               />
               {isTimerTab && task.auto_timer_days && !isTimerTabActive && (
@@ -1688,6 +1690,8 @@ function SortableExpandedTaskItem({
           taskTitle={task.title}
           paymentAmount={task.payment_amount}
           paymentPercentage={task.payment_percentage}
+          paymentQuoteId={task.payment_quote_id}
+          taskId={task.id}
           className="mt-1"
         />
         {isTimerTab && task.auto_timer_days && !isTimerTabActive && (

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSyncedSetting } from '@/hooks/useSyncedSetting';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -110,6 +110,7 @@ const contractStatusConfig: Record<string, { label: string; color: string; icon:
 
 export default function Quotes() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Quotes hooks and state
   const { quotes, isLoading: quotesLoading, stats: quotesStats, createQuote, updateQuote, deleteQuote, sendQuote, addPayment, convertToInvoice } = useQuotes();
@@ -289,6 +290,18 @@ export default function Quotes() {
   });
 
   const [activeTab, setActiveTab] = useSyncedSetting<string>({ key: "quotes-active-tab", defaultValue: "quotes" });
+
+  useEffect(() => {
+    const quoteId = searchParams.get("openSavedQuote");
+    if (!quoteId || savedQuotesLoading || editingSavedQuoteInEditor) return;
+    const quote = savedQuotes.find((item: any) => item.id === quoteId);
+    if (!quote) return;
+    setActiveTab("saved-quotes");
+    setEditingSavedQuoteInEditor(quote);
+    const next = new URLSearchParams(searchParams);
+    next.delete("openSavedQuote");
+    setSearchParams(next, { replace: true });
+  }, [editingSavedQuoteInEditor, savedQuotes, savedQuotesLoading, searchParams, setActiveTab, setSearchParams]);
   
   // Quotes state
   const [searchTerm, setSearchTerm] = useSyncedSetting<string>({ key: "quotes-search", defaultValue: "" });
