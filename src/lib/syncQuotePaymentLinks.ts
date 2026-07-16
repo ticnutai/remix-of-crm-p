@@ -5,9 +5,15 @@ export interface LinkedPaymentStep {
   percentage?: number | string | null;
   templateStageName?: string | null;
   templateTaskName?: string | null;
+  quoteTemplateStageName?: string | null;
+  quoteTemplateItemText?: string | null;
 }
 
 const normalized = (value: unknown) => String(value ?? "").trim().toLowerCase();
+const linkedStageName = (step: LinkedPaymentStep) =>
+  step.templateStageName || step.quoteTemplateStageName;
+const linkedTaskName = (step: LinkedPaymentStep) =>
+  step.templateTaskName || step.quoteTemplateItemText;
 
 /** Persist the current quote payment assignment on the actual client tasks. */
 export async function syncQuotePaymentLinksToClientTasks({
@@ -23,8 +29,7 @@ export async function syncQuotePaymentLinksToClientTasks({
 }): Promise<number> {
   const linkedSteps = schedule.filter(
     (step) =>
-      normalized(step.templateStageName) &&
-      normalized(step.templateTaskName) &&
+      normalized(linkedTaskName(step)) &&
       Number(step.percentage) > 0,
   );
   if (!linkedSteps.length || basePrice <= 0) return 0;
@@ -49,12 +54,19 @@ export async function syncQuotePaymentLinksToClientTasks({
 
   let updated = 0;
   for (const step of linkedSteps) {
-    const stageIds = stageIdsByName.get(normalized(step.templateStageName)) || [];
-    const task = (tasks || []).find(
-      (candidate: any) =>
-        stageIds.includes(candidate.stage_id) &&
-        normalized(candidate.title) === normalized(step.templateTaskName),
+    const normalizedTaskName = normalized(linkedTaskName(step));
+    const stageIds = stageIdsByName.get(normalized(linkedStageName(step))) || [];
+    const titleMatches = (tasks || []).filter(
+      (candidate: any) => normalized(candidate.title) === normalizedTaskName,
     );
+    // Prefer the explicit stage assignment. Older/new-client flows sometimes
+    // persisted only the selected task name; that is still safe when the title
+    // identifies exactly one task in the client's board.
+    const task = stageIds.length
+      ? titleMatches.find((candidate: any) => stageIds.includes(candidate.stage_id))
+      : titleMatches.length === 1
+        ? titleMatches[0]
+        : undefined;
     if (!task) continue;
 
     const percentage = Number(step.percentage);

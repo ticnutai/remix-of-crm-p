@@ -6046,7 +6046,7 @@ export function HtmlTemplateEditor({
             await syncQuotePaymentLinksToClientTasks({
               clientId: resolvedProjectDetails.clientId,
               quoteId: persistedQuoteId,
-              basePrice,
+              basePrice: totalWithVat,
               schedule: paymentSchedulePayload,
             });
           }
@@ -8423,6 +8423,10 @@ ${tbAt('footer')}
         templateStageName: step.templateStageName || null,
         templateTaskId: step.templateTaskId || null,
         templateTaskName: step.templateTaskName || null,
+        quoteTemplateStageId: step.quoteTemplateStageId || null,
+        quoteTemplateStageName: step.quoteTemplateStageName || null,
+        quoteTemplateItemId: step.quoteTemplateItemId || null,
+        quoteTemplateItemText: step.quoteTemplateItemText || null,
         triggerMode: step.triggerMode || "manual",
         triggerDate: step.triggerDate || null,
       }));
@@ -8442,11 +8446,9 @@ ${tbAt('footer')}
             .filter((s: any) => Number(s?.percentage) > 0)
             .map((s: any) => {
               const pct = Number(s?.percentage) || 0;
-              const amount = basePrice > 0
-                ? Math.round((basePrice * pct) / 100 * 100) / 100
-                : Math.round((totalWithVat * pct) / 100 * 100) / 100;
+              const amount = Math.round((totalWithVat * pct) / 100 * 100) / 100;
               const vr = s?.useCustomVat ? Number(s?.customVat) || vatRate : vatRate;
-              const baseDesc = s?.templateTaskName || s?.description || `תשלום ${pct}%`;
+              const baseDesc = s?.templateTaskName || s?.quoteTemplateItemText || s?.description || `תשלום ${pct}%`;
               return {
                 client_id: clientId,
                 stage_name: baseDesc,
@@ -8483,7 +8485,7 @@ ${tbAt('footer')}
           await syncQuotePaymentLinksToClientTasks({
             clientId,
             quoteId: linkedQuote.id,
-            basePrice,
+            basePrice: totalWithVat,
             schedule,
           });
         } catch (payErr) {
