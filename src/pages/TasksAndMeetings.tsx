@@ -65,7 +65,6 @@ import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
 import { DedupToggleButton } from "@/components/DedupToggleButton";
-import { ScopeToggle, ViewScope } from "@/components/shared/ScopeToggle";
 import { UserFilterMenu, useUserFilter } from "@/components/shared/UserFilterMenu";
 import { usePermissions } from "@/hooks/usePermissions";
 import { format } from "date-fns";
@@ -156,8 +155,6 @@ const TasksAndMeetings = () => {
   const [sortBy, setSortBy] = useSyncedSetting<SortField>({ key: "tasks-sort-by", defaultValue: "event_date" });
   const [sortOrder, setSortOrder] = useSyncedSetting<SortOrder>({ key: "tasks-sort-order", defaultValue: "desc" });
   const { isAdmin } = usePermissions();
-  const [viewScope, setViewScope] = useSyncedSetting<ViewScope>({ key: "tasks-meetings-scope", defaultValue: "all" });
-  const effectiveScope: ViewScope = isAdmin ? viewScope : "mine";
   const userFilter = useUserFilter();
 
 
@@ -259,7 +256,7 @@ const TasksAndMeetings = () => {
 
   // Filter tasks
   const filteredTasks = tasks.filter((task) => {
-    if (effectiveScope === "mine" && !ownsTask(task)) return false;
+    if (!isAdmin && !ownsTask(task)) return false;
     if (isAdmin && !userFilter.matches(task, "tasks")) return false;
     const matchesSearch =
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -278,7 +275,7 @@ const TasksAndMeetings = () => {
 
   // Filter meetings
   const filteredMeetings = meetings.filter((meeting) => {
-    if (effectiveScope === "mine" && !ownsMeeting(meeting)) return false;
+    if (!isAdmin && !ownsMeeting(meeting)) return false;
     if (isAdmin && !userFilter.matches(meeting, "meetings")) return false;
     return (
       meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -288,7 +285,7 @@ const TasksAndMeetings = () => {
 
   // Filter reminders by scope (used inside RemindersTabContent below)
   const scopedReminders = reminders.filter((r) => {
-    if (effectiveScope === "mine" && !ownsReminder(r)) return false;
+    if (!isAdmin && !ownsReminder(r)) return false;
     if (isAdmin && !userFilter.matches(r, "reminders")) return false;
     return true;
   });
@@ -455,11 +452,17 @@ const TasksAndMeetings = () => {
         );
       }
 
+      if (config.field === "created") {
+        const cA = new Date(a.created_at).getTime();
+        const cB = new Date(b.created_at).getTime();
+        return (cA - cB) * direction;
+      }
+
       const timeA = new Date(a.start_time).getTime();
       const timeB = new Date(b.start_time).getTime();
       return (timeA - timeB) * direction;
     }),
-    reminders: [...reminders].sort((a, b) => {
+    reminders: [...scopedReminders].sort((a, b) => {
       const config = columnSortConfig.reminders;
       const direction = config.order === "asc" ? 1 : -1;
 
@@ -482,6 +485,12 @@ const TasksAndMeetings = () => {
         const rankA = isAOverdue ? 0 : a.is_dismissed ? 2 : 1;
         const rankB = isBOverdue ? 0 : b.is_dismissed ? 2 : 1;
         return (rankA - rankB) * direction;
+      }
+
+      if (config.field === "created") {
+        const cA = new Date(a.created_at).getTime();
+        const cB = new Date(b.created_at).getTime();
+        return (cA - cB) * direction;
       }
 
       const timeA = new Date(a.remind_at).getTime();
@@ -725,8 +734,25 @@ const TasksAndMeetings = () => {
   const handleCreateTask = async (task: TaskInsert) => {
     if (editingTask) {
       await updateTask(editingTask.id, task);
+      return { ...editingTask, ...task } as Task;
     } else {
-      await createTask(task);
+      const createdTask = await createTask(task);
+      // Make the task the user just created immediately discoverable in both
+      // the compact "all" column and the full tasks tab. The compact column
+      // only renders 20 rows, so a due-date sort can otherwise hide a
+      // successfully-created task outside the visible window.
+      setColumnSortConfig((prev) => ({
+        ...prev,
+        tasks: { field: "created", order: "desc" },
+      }));
+      setSortBy("created_at");
+      setSortOrder("desc");
+      setStatusFilter("all");
+      setPriorityFilter("all");
+      setSearchQuery("");
+      setTaskDialogOpen(false);
+      setEditingTask(null);
+      return createdTask;
     }
     setTaskDialogOpen(false);
     setEditingTask(null);
@@ -832,7 +858,7 @@ const TasksAndMeetings = () => {
         </div>
 
         {/* Stats */}
-        <TasksStatsHeader tasks={tasks} meetings={meetings} />
+        <TasksStatsHeader tasks={filteredTasks} meetings={filteredMeetings} />
 
         {/* Main Tabs */}
         <Tabs
@@ -849,11 +875,11 @@ const TasksAndMeetings = () => {
               </TabsTrigger>
               <TabsTrigger value="tasks" className="gap-2">
                 <CheckSquare className="h-4 w-4" />
-                משימות ({tasks.length})
+                משימות ({filteredTasks.length})
               </TabsTrigger>
               <TabsTrigger value="meetings" className="gap-2">
                 <Calendar className="h-4 w-4" />
-                פגישות ({meetings.length})
+                פגישות ({filteredMeetings.length})
               </TabsTrigger>
               <TabsTrigger value="reminders" className="gap-2">
                 <Bell className="h-4 w-4" />
@@ -865,10 +891,7 @@ const TasksAndMeetings = () => {
               <TasksViewToggle view={taskView} onViewChange={setTaskView} />
             )}
             {isAdmin && (
-              <div className="flex items-center gap-2">
-                <ScopeToggle scope={viewScope} onChange={setViewScope} />
-                <UserFilterMenu align="end" />
-              </div>
+              <UserFilterMenu align="end" showLabel />
             )}
           </div>
 
@@ -978,7 +1001,7 @@ const TasksAndMeetings = () => {
                       }
                       onClick={() => setShowTinyTaskNumbers((prev) => !prev)}
                     >
-                      {tasks.length}
+                      {filteredTasks.length}
                     </button>
                   </div>
                   <div className="flex items-center gap-1">
@@ -1231,10 +1254,10 @@ const TasksAndMeetings = () => {
                     ))
                   )}
                 </div>
-                {tasks.length > 20 && (
+                {filteredTasks.length > 20 && (
                   <div className="border-t px-3 py-2">
                     <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setActiveTab("tasks")}>
-                      הצג את כל {tasks.length} המשימות
+                      הצג את כל {filteredTasks.length} המשימות
                     </Button>
                   </div>
                 )}
@@ -1256,7 +1279,7 @@ const TasksAndMeetings = () => {
                       title={showTinyMeetingNumbers ? "הסתר מספרים" : "הצג מספר קטן ליד כל פגישה"}
                       onClick={() => setShowTinyMeetingNumbers((prev) => !prev)}
                     >
-                      {meetings.length}
+                      {filteredMeetings.length}
                     </button>
                   </div>
                   <div className="flex items-center gap-1">
@@ -1280,6 +1303,7 @@ const TasksAndMeetings = () => {
                         <SelectItem value="name">שם</SelectItem>
                         <SelectItem value="user">משתמש</SelectItem>
                         <SelectItem value="priority" disabled>עדיפות</SelectItem>
+                        <SelectItem value="created">יצירה</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
@@ -1482,10 +1506,10 @@ const TasksAndMeetings = () => {
                     ))
                   )}
                 </div>
-                {meetings.length > 20 && (
+                {filteredMeetings.length > 20 && (
                   <div className="border-t px-3 py-2">
                     <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setActiveTab("meetings")}>
-                      הצג את כל {meetings.length} הפגישות
+                      הצג את כל {filteredMeetings.length} הפגישות
                     </Button>
                   </div>
                 )}
@@ -1507,7 +1531,7 @@ const TasksAndMeetings = () => {
                       title={showTinyReminderNumbers ? "הסתר מספרים" : "הצג מספר קטן ליד כל תזכורת"}
                       onClick={() => setShowTinyReminderNumbers((prev) => !prev)}
                     >
-                      {reminders.length}
+                      {scopedReminders.length}
                     </button>
                   </div>
                   <div className="flex items-center gap-1">
@@ -1531,6 +1555,7 @@ const TasksAndMeetings = () => {
                         <SelectItem value="name">שם</SelectItem>
                         <SelectItem value="user">משתמש</SelectItem>
                         <SelectItem value="priority">עדיפות</SelectItem>
+                        <SelectItem value="created">יצירה</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
@@ -1617,7 +1642,7 @@ const TasksAndMeetings = () => {
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
                     </div>
-                  ) : reminders.length === 0 ? (
+                  ) : scopedReminders.length === 0 ? (
                     <p className="text-center text-xs text-muted-foreground py-8">אין תזכורות</p>
                   ) : (
                     sortedTasksForAllColumn.reminders.slice(0, 20).map((reminder, index) => (
@@ -1748,10 +1773,10 @@ const TasksAndMeetings = () => {
                     ))
                   )}
                 </div>
-                {reminders.length > 20 && (
+                {scopedReminders.length > 20 && (
                   <div className="border-t px-3 py-2">
                     <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setActiveTab("reminders")}>
-                      הצג את כל {reminders.length} התזכורות
+                      הצג את כל {scopedReminders.length} התזכורות
                     </Button>
                   </div>
                 )}

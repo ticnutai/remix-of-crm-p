@@ -1,6 +1,6 @@
 // QuickAddTask - Quick Add Task Dialog for Sidebar
 import React, { useState, useEffect, forwardRef } from "react";
-import { TaskInsert } from "@/hooks/useTasksOptimized";
+import { Task, TaskInsert } from "@/hooks/useTasksOptimized";
 import { FloatingDialog } from "@/components/ui/FloatingDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,11 @@ import {
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { NotificationOptions } from "./NotificationOptions";
-import { InlineReminderSection } from "@/components/reminders/InlineReminderSection";
+import {
+  InlineReminderConfig,
+  InlineReminderSection,
+} from "@/components/reminders/InlineReminderSection";
+import { useReminders } from "@/hooks/useReminders";
 import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
 import { SmartDateTimePicker } from "@/components/ui/SmartDateTimePicker";
 import { AssigneePicker } from "@/components/shared/AssigneePicker";
@@ -94,7 +98,7 @@ interface Client {
 interface QuickAddTaskProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (task: TaskInsert) => Promise<void>;
+  onSubmit: (task: TaskInsert) => Promise<Task | void>;
   clients?: Client[];
   isEditing?: boolean;
   initialData?: {
@@ -113,6 +117,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
   ) {
     const { themeId, theme, setThemeId } = useDialogTheme();
     const { user } = useAuth();
+    const { createReminder } = useReminders();
     const sidebarColors = getSidebarColors(theme);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [title, setTitle] = useState("");
@@ -128,6 +133,8 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
     const [clientSearch, setClientSearch] = useState("");
     const [dueDateText, setDueDateText] = useState("");
     const [dateError, setDateError] = useState<string | null>(null);
+    const [reminderConfig, setReminderConfig] =
+      useState<InlineReminderConfig | null>(null);
 
     // Default assigned_to = current user
     useEffect(() => {
@@ -194,6 +201,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
       setDateError(null);
       setClientIds([]);
       setIsPrivate(false);
+      setReminderConfig(null);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -202,7 +210,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
 
       setIsSubmitting(true);
       try {
-        await onSubmit({
+        const createdTask = await onSubmit({
           title: title.trim(),
           description: description.trim() || null,
           priority,
@@ -223,6 +231,14 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
           is_private: isPrivate,
           assigned_to: assignedTo,
         });
+
+        if (reminderConfig && createdTask?.id) {
+          await createReminder({
+            ...reminderConfig,
+            entity_type: "task",
+            entity_id: createdTask.id,
+          });
+        }
         resetForm();
         onOpenChange(false);
       } finally {
@@ -557,6 +573,8 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                 entityTitle={title}
                 entityDate={dueDate}
                 entityDescription={description}
+                submitMode="deferred"
+                onReminderConfigChange={setReminderConfig}
               />
 
               {/* Notification Options */}

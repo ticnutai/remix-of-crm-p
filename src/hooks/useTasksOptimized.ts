@@ -137,10 +137,11 @@ export function useTasksOptimized() {
     onMutate: async (newTask) => {
       await queryClient.cancelQueries({ queryKey: TASKS_QUERY_KEY });
       const previousTasks = queryClient.getQueryData<Task[]>(TASKS_QUERY_KEY);
+      const optimisticId = `temp-${Date.now()}`;
 
       // Optimistically add the task
       const optimisticTask: Task = {
-        id: `temp-${Date.now()}`,
+        id: optimisticId,
         ...newTask,
         description: newTask.description ?? null,
         status: newTask.status ?? "pending",
@@ -161,7 +162,7 @@ export function useTasksOptimized() {
         ...old,
       ]);
 
-      return { previousTasks };
+      return { previousTasks, optimisticId };
     },
     onError: (err, _newTask, context) => {
       // Rollback on error
@@ -173,7 +174,15 @@ export function useTasksOptimized() {
         `שגיאה ביצירת המשימה: ${err instanceof Error ? err.message : "שגיאה לא ידועה"}`,
       );
     },
-    onSuccess: (data) => {
+    onSuccess: (data, _newTask, context) => {
+      // Replace the temporary row immediately. Relying only on invalidation can
+      // briefly remove a newly-created task while the refetch is still running.
+      queryClient.setQueryData<Task[]>(TASKS_QUERY_KEY, (current = []) => {
+        const withoutOptimistic = context?.optimisticId
+          ? current.filter((task) => task.id !== context.optimisticId)
+          : current;
+        return [data, ...withoutOptimistic.filter((task) => task.id !== data.id)];
+      });
       toast.success(`משימה נוצרה: ${data.title}`);
       pushAction({
         type: 'create_task',

@@ -734,7 +734,7 @@ export function InlineReminderSection({
       ) : (
         <div className="flex items-center justify-between gap-2 text-[11px]">
           <span style={{ color: `${sidebarColors.goldLight}CC` }}>
-            התזכורת תישמר אוטומטית יחד עם הפגישה
+            התזכורת תישמר אוטומטית יחד עם {entityType === "task" ? "המשימה" : "הפגישה"}
           </span>
           <Button
             type="button"

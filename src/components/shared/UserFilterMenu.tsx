@@ -49,12 +49,14 @@ export function useUserFilter() {
     if (!targetId) return true;
     const createdBy = item?.created_by || item?.user_id || null;
     const assignedTo = item?.assigned_to || null;
+    const attendees = Array.isArray(item?.attendees) ? item.attendees : [];
+    const isAssigned = assignedTo === targetId || attendees.includes(targetId);
 
     if (entity === "reminders") return createdBy === targetId;
 
     if (scope === "created_by") return createdBy === targetId;
-    if (scope === "assigned_to") return assignedTo === targetId;
-    return createdBy === targetId || assignedTo === targetId;
+    if (scope === "assigned_to") return isAssigned;
+    return createdBy === targetId || isAssigned;
   };
 
   return { value, setValue, scope, setScope, matches, targetId };
@@ -62,9 +64,10 @@ export function useUserFilter() {
 
 interface Props {
   align?: "start" | "end" | "center";
+  showLabel?: boolean;
 }
 
-export function UserFilterMenu({ align = "end" }: Props) {
+export function UserFilterMenu({ align = "end", showLabel = false }: Props) {
   const { user } = useAuth();
   const { members } = useTeamMembers();
   const { value, setValue, scope, setScope } = useUserFilter();
@@ -97,12 +100,15 @@ export function UserFilterMenu({ align = "end" }: Props) {
       <DropdownMenuTrigger asChild>
         <Button
           size="sm"
-          variant="ghost"
-          className="h-8 w-8 p-0 hover:bg-primary/10 relative"
+          variant={showLabel ? "outline" : "ghost"}
+          className={showLabel
+            ? "h-8 gap-1.5 px-3 hover:bg-primary/10 relative"
+            : "h-8 w-8 p-0 hover:bg-primary/10 relative"}
           title={`סינון לפי משתמש: ${label}`}
           style={active ? { color: "#d8ac27" } : undefined}
         >
           <Icon className="h-4 w-4" />
+          {showLabel && <span className="text-xs max-w-40 truncate">{label}</span>}
           {active && (
             <span
               className="absolute top-0.5 left-0.5 h-1.5 w-1.5 rounded-full ring-1 ring-background"

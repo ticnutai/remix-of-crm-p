@@ -262,7 +262,7 @@ export function SidebarTasksMeetings({ isCollapsed = false }: SidebarTasksMeetin
   };
   
   const handleCreateTask = async (task: TaskInsert) => {
-    await createTask(task);
+    return createTask(task);
   };
   
   const handleCreateMeeting = async (meeting: MeetingInsert) => {
