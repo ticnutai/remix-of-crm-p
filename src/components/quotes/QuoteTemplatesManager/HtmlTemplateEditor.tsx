@@ -5901,6 +5901,7 @@ export function HtmlTemplateEditor({
 
       const templatePayload = {
         ...editedTemplate,
+        is_active: updateTemplate ? true : editedTemplate.is_active,
         payment_schedule: paymentSchedulePayload,
         design_settings: designSettings as any,
         text_boxes: textBoxes,
@@ -6094,6 +6095,73 @@ export function HtmlTemplateEditor({
     pricingTiers,
     onSave,
     toast,
+  ]);
+
+  const handleSaveDraftAndClose = useCallback(async () => {
+    if (template.id) {
+      onClose();
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const paymentSchedulePayload = paymentSteps.map((s) => ({
+        id: s.id,
+        percentage: s.percentage,
+        description: s.description || s.name,
+        vatRate: s.vatRate,
+        useCustomVat: s.useCustomVat,
+        linkSource: s.linkSource || "stage_template",
+        templateStageId: s.templateStageId || null,
+        templateStageName: s.templateStageName || null,
+        templateTaskId: s.templateTaskId || null,
+        templateTaskName: s.templateTaskName || null,
+        quoteTemplateStageId: s.quoteTemplateStageId || null,
+        quoteTemplateStageName: s.quoteTemplateStageName || null,
+        quoteTemplateItemId: s.quoteTemplateItemId || null,
+        quoteTemplateItemText: s.quoteTemplateItemText || null,
+        triggerMode: s.triggerMode || "manual",
+        triggerDate: s.triggerDate || null,
+      }));
+      await onSave({
+        ...editedTemplate,
+        name: editedTemplate.name?.trim() || `טיוטת הצעה ${new Date().toLocaleDateString("he-IL")}`,
+        is_active: false,
+        payment_schedule: paymentSchedulePayload as any,
+        design_settings: designSettings as any,
+        text_boxes: textBoxes,
+        upgrades,
+        pricing_tiers: pricingTiers,
+        project_details: {
+          projectType: projectDetails.projectType,
+          stageTemplateId: projectDetails.stageTemplateId,
+        } as any,
+      });
+      await clearDraft();
+      toast({ title: "הטיוטה נשמרה", description: "אפשר להמשיך אותה מרשימת הטיוטות" });
+      onClose();
+    } catch (error: any) {
+      toast({
+        title: "שמירת הטיוטה נכשלה",
+        description: error?.message || "נסה שוב",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [
+    clearDraft,
+    designSettings,
+    editedTemplate,
+    onClose,
+    onSave,
+    paymentSteps,
+    pricingTiers,
+    projectDetails.projectType,
+    projectDetails.stageTemplateId,
+    template.id,
+    textBoxes,
+    toast,
+    upgrades,
   ]);
 
   const generateHtmlContent = useCallback(() => {
@@ -14911,7 +14979,7 @@ ${tbAt('footer')}
               )}
             </div>
             <div className="flex gap-1.5 flex-wrap justify-end">
-              <Button variant="outline" size="sm" onClick={onClose}>
+              <Button variant="outline" size="sm" onClick={handleSaveDraftAndClose} disabled={isSaving}>
                 סגור
               </Button>
 
@@ -15028,7 +15096,7 @@ ${tbAt('footer')}
                     disabled={isSaving}
                     className="border-[#DAA520] text-[#DAA520] hover:bg-[#DAA520]/10"
                   >
-                    <Save className="h-4 w-4 ml-1" />
+                    <BookTemplate className="h-4 w-4 ml-1" />
                     שמור + עדכן תבנית
                   </Button>
                 </>
@@ -15044,7 +15112,7 @@ ${tbAt('footer')}
                   ) : (
                     <Save className="h-4 w-4 ml-1" />
                   )}
-                  {isSaving ? "שומר..." : "שמור בענן ☁️"}
+                  {isSaving ? "שומר..." : "שמור כתבנית"}
                 </Button>
               )}
               <Button

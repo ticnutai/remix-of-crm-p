@@ -239,6 +239,7 @@ export function QuoteTemplatesManager() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [templateStatusFilter, setTemplateStatusFilter] = useState<"active" | "drafts" | "all">("active");
   const [previewTemplate, setPreviewTemplate] = useState<QuoteTemplate | null>(
     null,
   );
@@ -903,13 +904,16 @@ export function QuoteTemplatesManager() {
 
   // סינון
   const filteredTemplates = templates.filter((t) => {
+    const matchStatus =
+      templateStatusFilter === "all" ||
+      (templateStatusFilter === "drafts" ? t.is_active === false : t.is_active !== false);
     const matchCategory =
       selectedCategory === "all" || t.category === selectedCategory;
     const matchSearch =
       !searchQuery ||
       t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (t.description || "").toLowerCase().includes(searchQuery.toLowerCase());
-    return matchCategory && matchSearch;
+    return matchStatus && matchCategory && matchSearch;
   });
 
   // Group templates by folder
@@ -1194,6 +1198,9 @@ export function QuoteTemplatesManager() {
                   }
                 >
                   {template.name}
+                  {template.is_active === false && (
+                    <Badge variant="secondary" className="mr-2 text-[10px]">טיוטה</Badge>
+                  )}
                 </CardTitle>
               )}
 
@@ -1433,6 +1440,32 @@ export function QuoteTemplatesManager() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3" dir="rtl">
+        <div className="flex items-center gap-1 rounded-md border p-1 bg-muted/30">
+          <Button
+            type="button"
+            size="sm"
+            variant={templateStatusFilter === "active" ? "default" : "ghost"}
+            onClick={() => setTemplateStatusFilter("active")}
+          >
+            תבניות ({templates.filter((t) => t.is_active !== false).length})
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={templateStatusFilter === "drafts" ? "default" : "ghost"}
+            onClick={() => setTemplateStatusFilter("drafts")}
+          >
+            טיוטות ({templates.filter((t) => t.is_active === false).length})
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={templateStatusFilter === "all" ? "default" : "ghost"}
+            onClick={() => setTemplateStatusFilter("all")}
+          >
+            הכל
+          </Button>
+        </div>
         <div className="relative flex-1">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
