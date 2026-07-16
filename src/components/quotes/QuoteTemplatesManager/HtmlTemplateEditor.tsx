@@ -183,6 +183,7 @@ import { useCloudPreferences } from "@/hooks/useCloudPreferences";
 import { useQuoteDraftAutosave } from "@/hooks/useQuoteDraftAutosave";
 import { supabase } from "@/integrations/supabase/client";
 import { syncClientStagesFromTemplate } from "@/lib/clientStageTemplateSync";
+import { syncQuotePaymentLinksToClientTasks } from "@/lib/syncQuotePaymentLinks";
 import companyHeaderImg from "@/assets/company-header.png";
 import {
   DesignTemplatesSelector,
@@ -5972,6 +5973,7 @@ export function HtmlTemplateEditor({
             notes: editedTemplate.notes || "",
           };
 
+          let persistedQuoteId: string | null = savedQuoteId || null;
           if (savedQuoteId) {
             // Editing an existing saved_quote directly — update by ID
             await (supabase as any)
@@ -5991,15 +5993,29 @@ export function HtmlTemplateEditor({
             const { data: existing } = await existingQuery.maybeSingle();
 
             if (existing?.id) {
+              persistedQuoteId = existing.id;
               await (supabase as any)
                 .from("saved_quotes")
                 .update(savedQuoteData)
                 .eq("id", existing.id);
             } else {
-              await (supabase as any)
+              const { data: insertedQuote, error: insertQuoteError } = await (supabase as any)
                 .from("saved_quotes")
-                .insert(savedQuoteData);
+                .insert(savedQuoteData)
+                .select("id")
+                .single();
+              if (insertQuoteError) throw insertQuoteError;
+              persistedQuoteId = insertedQuote.id;
             }
+          }
+
+          if (resolvedProjectDetails.clientId && persistedQuoteId) {
+            await syncQuotePaymentLinksToClientTasks({
+              clientId: resolvedProjectDetails.clientId,
+              quoteId: persistedQuoteId,
+              basePrice,
+              schedule: paymentSchedulePayload,
+            });
           }
 
           if (
@@ -8392,9 +8408,20 @@ ${tbAt('footer')}
 
       // Sync payment schedule → client_payment_stages + a signed saved_quote
       // so live payment badges appear on the linked stage tasks.
-      const schedule: any[] = Array.isArray(editedTemplate.payment_schedule)
-        ? (editedTemplate.payment_schedule as any[])
-        : [];
+      const schedule: any[] = paymentSteps.map((step) => ({
+        id: step.id,
+        percentage: step.percentage,
+        description: step.description || step.name,
+        vatRate: step.vatRate,
+        useCustomVat: step.useCustomVat,
+        linkSource: step.linkSource || "stage_template",
+        templateStageId: step.templateStageId || null,
+        templateStageName: step.templateStageName || null,
+        templateTaskId: step.templateTaskId || null,
+        templateTaskName: step.templateTaskName || null,
+        triggerMode: step.triggerMode || "manual",
+        triggerDate: step.triggerDate || null,
+      }));
       let paymentsAdded = 0;
       if (schedule.length > 0) {
         try {
@@ -8436,7 +8463,8 @@ ${tbAt('footer')}
 
           // Signed saved_quote so TaskPaymentBadge can render live amounts
           // per linked stage task (uses templateStageName/templateTaskName).
-          await (supabase as any).from("saved_quotes").insert({
+          const { data: linkedQuote, error: linkedQuoteError } = await (supabase as any).from("saved_quotes").insert({
+            user_id: user.id,
             client_id: clientId,
             title: editedTemplate.name || "הצעת מחיר",
             status: "signed",
@@ -8445,45 +8473,15 @@ ${tbAt('footer')}
             total_with_vat: totalWithVat,
             payment_schedule: schedule,
             created_by: user.id,
-          });
+          }).select("id").single();
+          if (linkedQuoteError) throw linkedQuoteError;
 
-          // Ensure every linked payment step has a matching task in the
-          // client's stage — auto-create the task if it doesn't exist so the
-          // amount badge is guaranteed to render on the board.
-          try {
-            const { data: cStages } = await (supabase as any)
-              .from("client_stages")
-              .select("id, stage_name")
-              .eq("client_id", clientId);
-            const stagesByName = new Map<string, string>();
-            for (const st of cStages || []) {
-              stagesByName.set((st.stage_name || "").trim().toLowerCase(), st.id);
-            }
-            for (const step of schedule) {
-              const sName = (step?.templateStageName || "").trim();
-              const tName = (step?.templateTaskName || "").trim();
-              if (!sName || !tName) continue;
-              const stageId = stagesByName.get(sName.toLowerCase());
-              if (!stageId) continue;
-              const { data: existing } = await (supabase as any)
-                .from("client_stage_tasks")
-                .select("id, title")
-                .eq("stage_id", stageId);
-              const has = (existing || []).some(
-                (t: any) => (t.title || "").trim().toLowerCase() === tName.toLowerCase(),
-              );
-              if (!has) {
-                await (supabase as any).from("client_stage_tasks").insert({
-                  stage_id: stageId,
-                  title: tName,
-                  is_completed: false,
-                  created_by: user.id,
-                });
-              }
-            }
-          } catch (taskErr) {
-            console.error("Ensure payment tasks failed:", taskErr);
-          }
+          await syncQuotePaymentLinksToClientTasks({
+            clientId,
+            quoteId: linkedQuote.id,
+            basePrice,
+            schedule,
+          });
         } catch (payErr) {
           console.error("Payment sync failed:", payErr);
         }

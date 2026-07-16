@@ -32,6 +32,8 @@
     "test:sidebar:integration": "playwright test tests/sidebar/index.test.ts",
     "test:sidebar:coverage": "playwright test tests/sidebar --coverage",
     "test:sidebar:watch": "playwright test tests/sidebar --watch",
+    "android:device-owner:build": "cmd /c android-device-owner\\scripts\\build-debug.bat",
+    "android:device-owner:provision": "cmd /c android-device-owner\\scripts\\install-and-provision.bat",
     "sync:push": "pwsh -File sync-push.ps1",
     "sync:pull": "pwsh -File sync-pull.ps1",
     "sync:full": "pwsh -File sync-full.ps1",

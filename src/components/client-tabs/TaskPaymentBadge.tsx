@@ -16,6 +16,8 @@ interface TaskPaymentBadgeProps {
   stageName: string | null | undefined;
   taskTitle: string | null | undefined;
   className?: string;
+  paymentAmount?: number | null;
+  paymentPercentage?: number | null;
 }
 
 /**
@@ -29,9 +31,18 @@ export function TaskPaymentBadge({
   stageName,
   taskTitle,
   className,
+  paymentAmount,
+  paymentPercentage,
 }: TaskPaymentBadgeProps) {
   const map = useClientPaymentLinks(clientId);
-  const info = map.get(paymentTaskKey(stageName, taskTitle));
+  const legacyInfo = map.get(paymentTaskKey(stageName, taskTitle));
+  const info = Number(paymentAmount) > 0
+    ? {
+        amount: Number(paymentAmount),
+        percentage: Number(paymentPercentage) || 0,
+        quoteTitle: "הצעת המחיר המשויכת",
+      }
+    : legacyInfo;
   if (!info) return null;
 
   return (

@@ -25,8 +25,8 @@ interface RawPaymentStep {
   templateTaskName?: string | null;
 }
 
-// Statuses that count as "signed" — only these contribute live amounts.
-const SIGNED_STATUSES = ["signed", "converted"];
+// Quotes that were explicitly terminated must not contribute a fallback value.
+const TERMINAL_STATUSES = ["rejected", "expired", "cancelled"];
 
 /** Build a stable lookup key from a stage name + task title. */
 export function paymentTaskKey(
@@ -40,11 +40,11 @@ export function paymentTaskKey(
 
 const EMPTY_MAP: Map<string, TaskPaymentInfo> = new Map();
 
-function buildPaymentMap(rows: any[]): Map<string, TaskPaymentInfo> {
+export function buildPaymentMap(rows: any[]): Map<string, TaskPaymentInfo> {
   const map = new Map<string, TaskPaymentInfo>();
   // rows are ordered newest-first; first write per key wins (latest quote).
   for (const row of rows) {
-    const total = Number(row?.total_with_vat) || 0;
+    const total = Number(row?.base_price) || Number(row?.total_with_vat) || 0;
     const schedule: RawPaymentStep[] = Array.isArray(row?.payment_schedule)
       ? row.payment_schedule
       : [];
@@ -86,9 +86,9 @@ export function useClientPaymentLinks(
     queryFn: async () => {
       const { data: rows, error } = await (supabase as any)
         .from("saved_quotes")
-        .select("id, title, status, total_with_vat, payment_schedule, updated_at")
+        .select("id, title, status, base_price, total_with_vat, payment_schedule, updated_at")
         .eq("client_id", clientId)
-        .in("status", SIGNED_STATUSES)
+        .not("status", "in", `(${TERMINAL_STATUSES.join(",")})`)
         .order("updated_at", { ascending: false });
 
       if (error) throw error;

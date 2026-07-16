@@ -23,6 +23,10 @@ export interface ClientStageTask {
   started_at?: string | null;
   target_working_days?: number | null;
   timer_display_style?: number;
+  payment_amount?: number | null;
+  payment_percentage?: number | null;
+  payment_quote_id?: string | null;
+  payment_step_id?: string | null;
 }
 
 export interface ClientStage {

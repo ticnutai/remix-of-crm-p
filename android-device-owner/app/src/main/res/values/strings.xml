@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">Android Site Blocker</string>
+    <string name="device_admin_description">Managed site and device blocker</string>
+    <string name="device_admin_explanation">Required to manage this Android device and apply blocker policies.</string>
+    <string name="admin_enabled">Device admin enabled</string>
+    <string name="admin_disabled">Device admin disabled</string>
+    <string name="status_template">Admin active: %1$s\nDevice owner: %2$s\nOwner component:\n%3$s</string>
+    <string name="crm_url_hint">CRM URL</string>
+    <string name="save_crm_url">Save CRM URL</string>
+    <string name="open_crm">Open CRM</string>
+    <string name="request_admin">Request device admin</string>
+    <string name="apply_policies">Apply Device Owner policies</string>
+    <string name="clear_policies">Clear baseline policies</string>
+    <string name="start_lock_task">Start lock task mode</string>
+    <string name="open_settings">Open app settings</string>
+    <string name="device_owner_required">This action requires Device Owner mode.</string>
+    <string name="policies_applied">Policies applied</string>
+    <string name="policies_cleared">Policies cleared</string>
+    <string name="crm_url_saved">CRM URL saved</string>
+    <string name="provisioning_note">Provision on a reset device with: adb shell dpm set-device-owner com.ncrm.deviceowner/.DeviceOwnerReceiver</string>
+</resources>

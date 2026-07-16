@@ -1712,9 +1712,13 @@ export default function Clients() {
 
       setClients((prev) => prev.filter((c) => c.id !== clientId));
       toast({ title: "הלקוח נמחק בהצלחה" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting client:", error);
-      toast({ title: "שגיאה במחיקת הלקוח", variant: "destructive" });
+      toast({
+        title: "שגיאה במחיקת הלקוח",
+        description: error?.message || "לא ניתן למחוק את הלקוח",
+        variant: "destructive",
+      });
     }
   };
 
@@ -1729,9 +1733,13 @@ export default function Clients() {
       if (error) throw error;
       setClients((prev) => prev.filter((c) => c.id !== clientId));
       toast({ title: "הלקוח נמחק בהצלחה" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting client:", error);
-      toast({ title: "שגיאה במחיקת הלקוח", variant: "destructive" });
+      toast({
+        title: "שגיאה במחיקת הלקוח",
+        description: error?.message || "לא ניתן למחוק את הלקוח",
+        variant: "destructive",
+      });
     }
   };
 
