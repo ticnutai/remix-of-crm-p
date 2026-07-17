@@ -3426,6 +3426,34 @@ export function ClientStagesBoard({
           סיכום פתוחות
         </Button>
 
+        {/* Sync payment tasks from signed quotes */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          title="סנכרן משימות תשלום מהצעות חתומות (יוצר משימות חסרות ומחבר סכומים)"
+          onClick={async () => {
+            try {
+              const { syncPaymentTasksForClient } = await import("@/lib/syncPaymentTasksForClient");
+              const r = await syncPaymentTasksForClient(clientId);
+              await refresh();
+              toast({
+                title: "✅ סנכרון תשלומים הושלם",
+                description: `נוצרו ${r.tasksCreated} משימות • חוברו ${r.tasksLinked} סכומים • ${r.quotesProcessed} הצעות`,
+              });
+            } catch (e: any) {
+              toast({
+                title: "שגיאה בסנכרון",
+                description: e?.message || "נסה שוב",
+                variant: "destructive",
+              });
+            }
+          }}
+        >
+          <Wallet className="h-4 w-4" />
+          סנכרן תשלומים
+        </Button>
+
 
 
 
