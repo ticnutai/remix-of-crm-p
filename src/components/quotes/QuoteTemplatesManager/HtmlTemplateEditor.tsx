@@ -12,6 +12,7 @@ import { createPortal } from "react-dom";
 import { PreviewIframe, type InlineEditPayload } from "./PreviewIframe";
 import { FrameDesignPanel } from "./FrameDesignPanel";
 import PagesPreviewTab from "./PagesPreviewTab";
+import { createQuoteDocx } from "./wordExport";
 import FlowWorkspaceTab from "./flow-engine/FlowWorkspaceTab";
 import {
   DEFAULT_FRAME_SETTINGS,
@@ -6864,6 +6865,7 @@ export function HtmlTemplateEditor({
   // repeat header/footer strips on every page. Reliable across all templates
   // (Paged.js polyfill was abandoned — it failed silently on complex docs).
   const [pagedPageCount, setPagedPageCount] = useState<number | null>(null);
+  const [exportPaginationCss, setExportPaginationCss] = useState("");
   const [pagedRendering, setPagedRendering] = useState(false);
 
   const openPrintPreview = useCallback(() => {
@@ -7038,6 +7040,25 @@ export function HtmlTemplateEditor({
         console.warn('Could not convert logo to base64:', e);
       }
     }
+    const exportLayoutCss = `
+      *,*::before,*::after{box-sizing:border-box!important;}
+      html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important;}
+      .container,.content,.print-page-shell,.project-details,.stage-card,.summary-card,
+      table,thead,tbody,tfoot,tr,td,th,section,article,div{max-width:100%!important;}
+      .container,.print-page-shell{width:100%!important;margin:0!important;}
+      img,svg,canvas,video{max-width:100%!important;height:auto;}
+      table{width:100%!important;table-layout:fixed!important;border-collapse:collapse!important;}
+      td,th,p,li,[data-editable]{overflow-wrap:anywhere!important;word-break:break-word;}
+      .pricing-tiers,.upgrades{grid-template-columns:minmax(0,1fr)!important;}
+      .pricing-tiers>*,.upgrades>*,.payments>*{min-width:0!important;max-width:100%!important;}
+      @media print{
+        html,body{margin:0!important;padding:0!important;}
+        [data-drag-strip]{display:none!important;}
+        .content{max-width:100%!important;}
+      }
+      ${exportPaginationCss}
+    `;
+    html = html.replace("</head>", `<style data-export-layout>${exportLayoutCss}</style></head>`);
     return html;
   };
 
@@ -7213,33 +7234,55 @@ ${tbAt('footer')}
 </html>`;
   };
 
+  const generateWordBlob = async (): Promise<Blob> => {
+      const tier = pricingTiers.find((t: any) => t.name === selectedTier) ?? pricingTiers[0];
+      const logoDataUrl = designSettings.logoUrl
+        ? await convertImageToBase64(designSettings.logoUrl)
+        : undefined;
+      const frame = { ...DEFAULT_FRAME_SETTINGS, ...(designSettings.frameDesign || {}) };
+      const pageDimensions = getPageDimensions(frame.pageSize);
+      return createQuoteDocx({
+        title: editedTemplate.name || "הצעת מחיר",
+        description: editedTemplate.description || "",
+        companyName: designSettings.companyName,
+        companyAddress: designSettings.companyAddress,
+        companyPhone: designSettings.companyPhone,
+        companyEmail: designSettings.companyEmail,
+        primaryColor: designSettings.primaryColor,
+        logoDataUrl: logoDataUrl?.startsWith("data:") ? logoDataUrl : undefined,
+        pageSize: {
+          orientation: frame.pageSize?.orientation,
+          widthMm: pageDimensions.widthMm,
+          heightMm: pageDimensions.heightMm,
+        },
+        projectDetails,
+        stages: (editedTemplate.stages || []).map((stage: any) => ({
+          ...stage,
+          name: applyProjectDetailsTokens(stage.name || "", projectDetails),
+          items: (stage.items || []).map((item: any) => ({
+            ...item,
+            text: applyProjectDetailsTokens(item.text || "", projectDetails),
+          })),
+        })),
+        paymentSteps,
+        textBoxes: textBoxes.map((box) => ({
+          ...box,
+          title: applyProjectDetailsTokens(box.title || "", projectDetails),
+          content: applyProjectDetailsTokens(box.content || "", projectDetails),
+        })),
+        basePrice: Number(tier?.price ?? editedTemplate.base_price ?? 0),
+        vatRate: Number(editedTemplate.vat_rate ?? globalDefaultVat),
+      });
+  };
+
   const handleExportWord = async () => {
     toast({ title: 'מכין קובץ Word...' });
     try {
-      // Use the SAME HTML as PDF export so the designed layout is preserved.
-      const designedHtml = await generateExportHtml();
-      // Wrap with Word-specific MSO meta so Word opens it in print layout
-      // matching the on-screen design.
-      const msoWrapped = designedHtml.includes('urn:schemas-microsoft-com:office:word')
-        ? designedHtml
-        : designedHtml.replace(
-            '<head>',
-            `<head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<!--[if gte mso 9]><xml>
-<w:WordDocument>
-  <w:View>Print</w:View>
-  <w:Zoom>100</w:Zoom>
-  <w:DoNotOptimizeForBrowser/>
-</w:WordDocument>
-</xml><![endif]-->
-<style>@page { size: 21cm 29.7cm; margin: 1.5cm; } body { direction: rtl; }</style>`
-          );
-      const blob = new Blob(['\uFEFF', msoWrapped], { type: 'application/msword' });
+      const blob = await generateWordBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${editedTemplate.name || 'הצעת-מחיר'}.doc`;
+      a.download = `${(editedTemplate.name || 'הצעת-מחיר').replace(/[\\/:*?"<>|]/g, '-')}.docx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -7253,13 +7296,25 @@ ${tbAt('footer')}
 
   const handleExportPdf = async () => {
     const html = await generateExportHtml();
-    const printWindow = window.open("", "_blank");
+    const printWindow = window.open("", "_blank", "width=900,height=1200");
     if (printWindow) {
+      printWindow.document.open();
       printWindow.document.write(html);
       printWindow.document.close();
-      setTimeout(() => {
+      const printWhenReady = async () => {
+        try {
+          await printWindow.document.fonts?.ready;
+          await Promise.all(Array.from(printWindow.document.images).map((image) =>
+            image.complete ? Promise.resolve() : new Promise<void>((resolve) => {
+              image.onload = () => resolve();
+              image.onerror = () => resolve();
+            }),
+          ));
+        } catch { /* print with available resources */ }
+        printWindow.focus();
         printWindow.print();
-      }, 500);
+      };
+      setTimeout(printWhenReady, 250);
     }
     toast({ title: "מייצא PDF", description: "חלון הדפסה נפתח" });
   };
@@ -15021,6 +15076,11 @@ ${tbAt('footer')}
               html={debouncedPreviewHtml}
               onExportPdf={handleExportPdf}
               onExportWord={handleExportWord}
+              onPaginationCssChange={setExportPaginationCss}
+              pageSize={{
+                ...DEFAULT_FRAME_SETTINGS.pageSize,
+                ...(designSettings.frameDesign?.pageSize || {}),
+              }}
               onJumpToEditor={(path) => {
                 // Switch to interactive preview tab where data-editable elements
                 // are clickable. Future enhancement: scroll to the specific path.
@@ -15541,6 +15601,7 @@ ${tbAt('footer')}
           totalPrice={editedTemplate.base_price || 35000}
           generateExportHtml={generateExportHtml}
           generateWordHtml={generateWordHtml}
+          generateWordBlob={generateWordBlob}
         />
     </>
   );
@@ -15593,6 +15654,7 @@ function WhatsAppDialog({
   totalPrice,
   generateExportHtml,
   generateWordHtml,
+  generateWordBlob,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -15602,6 +15664,7 @@ function WhatsAppDialog({
   totalPrice: number;
   generateExportHtml?: () => Promise<string>;
   generateWordHtml?: () => Promise<string>;
+  generateWordBlob?: () => Promise<Blob>;
 }) {
   const [phone, setPhone] = useState(clientPhone);
   const [messageType, setMessageType] = useState<
@@ -15659,21 +15722,10 @@ function WhatsAppDialog({
         type: "text/html;charset=utf-8",
       });
     }
-    if (attachFormat === "word" && generateExportHtml) {
-      // Use the designed HTML (same as PDF) for Word attachments so the
-      // exported file matches the user's design.
-      const designed = await generateExportHtml();
-      const html = designed.includes('urn:schemas-microsoft-com:office:word')
-        ? designed
-        : designed.replace(
-            '<head>',
-            `<head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->
-<style>@page { size: 21cm 29.7cm; margin: 1.5cm; } body { direction: rtl; }</style>`
-          );
-      return new window.File(["\ufeff" + html], `${safeName}.doc`, {
-        type: "application/msword",
+    if (attachFormat === "word" && generateWordBlob) {
+      const blob = await generateWordBlob();
+      return new window.File([blob], `${safeName}.docx`, {
+        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       });
     }
 

@@ -33,7 +33,6 @@ export async function syncPaymentTasksForClient(
     .not("status", "in", `(${TERMINAL.join(",")})`)
     .order("updated_at", { ascending: false });
   if (qErr) throw qErr;
-  if (!quotes?.length) return result;
 
   const { data: stages, error: sErr } = await (supabase as any)
     .from("client_stages")
@@ -64,7 +63,7 @@ export async function syncPaymentTasksForClient(
     );
   }
 
-  for (const quote of quotes) {
+  for (const quote of quotes || []) {
     const schedule = Array.isArray(quote?.payment_schedule)
       ? quote.payment_schedule
       : [];
@@ -113,6 +112,57 @@ export async function syncPaymentTasksForClient(
     } catch (e) {
       console.error("[syncPaymentTasksForClient] link failed", e);
     }
+  }
+
+  // Client files created by older/fallback quote flows may have payment rows
+  // without a saved_quote. Link those rows by title only when the title is
+  // unique on this client's board, so we never attach money ambiguously.
+  const { data: paymentRows, error: paymentRowsError } = await (supabase as any)
+    .from("client_payment_stages")
+    .select("id, stage_name, amount, vat_rate, stage_number, created_at")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false })
+    .order("stage_number", { ascending: false });
+  if (paymentRowsError) throw paymentRowsError;
+
+  const tasksByTitle = new Map<string, any[]>();
+  for (const task of tasks || []) {
+    const key = norm(task.title);
+    tasksByTitle.set(key, [...(tasksByTitle.get(key) || []), task]);
+  }
+  const totalNet = (paymentRows || []).reduce(
+    (sum: number, payment: any) => sum + (Number(payment.amount) || 0),
+    0,
+  );
+  const handledTitles = new Set<string>();
+
+  for (const payment of paymentRows || []) {
+    const title = norm(payment.stage_name);
+    if (!title || handledTitles.has(title)) continue;
+    handledTitles.add(title);
+    const titleMatches = tasksByTitle.get(title) || [];
+    if (titleMatches.length !== 1) continue;
+
+    const task = titleMatches[0];
+    const netAmount = Number(payment.amount) || 0;
+    const vatRate = Number(payment.vat_rate) || 0;
+    const grossAmount = Math.round(netAmount * (1 + vatRate / 100) * 100) / 100;
+    const percentage = totalNet > 0
+      ? Math.round((netAmount * 100 / totalNet) * 1000) / 1000
+      : null;
+    const { data: updatedTask, error: updateError } = await (supabase as any)
+      .from("client_stage_tasks")
+      .update({
+        payment_amount: grossAmount,
+        payment_percentage: percentage,
+        payment_step_id: `client_payment_stage:${payment.id}`,
+      })
+      .eq("id", task.id)
+      .is("payment_amount", null)
+      .select("id")
+      .maybeSingle();
+    if (updateError) throw updateError;
+    if (updatedTask) result.tasksLinked += 1;
   }
 
   return result;
