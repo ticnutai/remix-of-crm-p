@@ -2518,6 +2518,10 @@ export type Database = {
           created_at: string
           id: string
           is_bold: boolean | null
+          payment_amount: number | null
+          payment_percentage: number | null
+          payment_quote_id: string | null
+          payment_step_id: string | null
           sort_order: number
           stage_id: string
           started_at: string | null
@@ -2537,6 +2541,10 @@ export type Database = {
           created_at?: string
           id?: string
           is_bold?: boolean | null
+          payment_amount?: number | null
+          payment_percentage?: number | null
+          payment_quote_id?: string | null
+          payment_step_id?: string | null
           sort_order?: number
           stage_id: string
           started_at?: string | null
@@ -2556,6 +2564,10 @@ export type Database = {
           created_at?: string
           id?: string
           is_bold?: boolean | null
+          payment_amount?: number | null
+          payment_percentage?: number | null
+          payment_quote_id?: string | null
+          payment_step_id?: string | null
           sort_order?: number
           stage_id?: string
           started_at?: string | null
@@ -2572,6 +2584,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_stage_tasks_payment_quote_id_fkey"
+            columns: ["payment_quote_id"]
+            isOneToOne: false
+            referencedRelation: "saved_quotes"
             referencedColumns: ["id"]
           },
         ]
