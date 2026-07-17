@@ -96,7 +96,9 @@ import {
   LayoutGrid,
   List,
   Table,
+  Wallet,
 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import { TaskTitleWithConsultants } from "@/components/consultants/TaskTitleWithConsultants";
 import { format, parseISO } from "date-fns";
 import { he } from "date-fns/locale";
