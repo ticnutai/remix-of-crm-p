@@ -18,10 +18,12 @@ import {
   getCachedMonthRecords,
   isoToLocalHHMM,
   listMonthRecords,
+  listMyRecords,
   lockMonth,
   summarizeMonth,
   upsertManualEntry,
 } from "@/lib/attendance";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BigTimePicker } from "@/components/ui/BigTimePicker";
@@ -43,6 +45,8 @@ import {
 import {
   AlertTriangle,
   Calendar as CalIcon,
+  CalendarDays,
+  CalendarRange,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -68,6 +72,27 @@ import {
 import { Label } from "@/components/ui/label";
 
 const DOW = ["א'", "ב'", "ג'", "ד'", "ה'", "ו'", "ש'"];
+type TimesheetView = "month" | "week" | "day";
+
+const localYmd = (date: Date) => {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
+const startOfLocalDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+const endOfLocalDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+
+const daysBetween = (from: Date, to: Date): DayCell[] => {
+  const result: DayCell[] = [];
+  for (const cursor = startOfLocalDay(from); cursor <= to; cursor.setDate(cursor.getDate() + 1)) {
+    result.push({
+      date: localYmd(cursor),
+      weekday: cursor.getDay(),
+      isWeekend: cursor.getDay() === 5 || cursor.getDay() === 6,
+    } as DayCell);
+  }
+  return result;
+};
 
 interface MonthlyTimesheetProps {
   userId: string;
@@ -87,6 +112,11 @@ export function MonthlyTimesheet({ userId, employeeName, isManager, focusDate }:
 
   const [year, setYear] = useState(parsedFocusDate?.getFullYear() ?? today.getFullYear());
   const [month0, setMonth0] = useState(parsedFocusDate?.getMonth() ?? today.getMonth());
+  const [viewMode, setViewMode] = useSyncedSetting<TimesheetView>({
+    key: "attendance-timesheet-view",
+    defaultValue: "month",
+  });
+  const [anchorDate, setAnchorDate] = useState(parsedFocusDate ?? today);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [autoFillOpen, setAutoFillOpen] = useState(false);
@@ -119,16 +149,52 @@ export function MonthlyTimesheet({ userId, employeeName, isManager, focusDate }:
 
   const monthLabel = `${month0 + 1}/${year}`;
 
+  const visibleRange = useMemo(() => {
+    if (viewMode === "month") {
+      return {
+        from: new Date(year, month0, 1),
+        to: new Date(year, month0 + 1, 0, 23, 59, 59, 999),
+      };
+    }
+    if (viewMode === "day") {
+      return { from: startOfLocalDay(anchorDate), to: endOfLocalDay(anchorDate) };
+    }
+    const from = startOfLocalDay(anchorDate);
+    from.setDate(from.getDate() - from.getDay());
+    const to = endOfLocalDay(from);
+    to.setDate(to.getDate() + 6);
+    return { from, to };
+  }, [viewMode, year, month0, anchorDate]);
+
+  const periodLabel = useMemo(() => {
+    if (viewMode === "month") return monthLabel;
+    if (viewMode === "day") return visibleRange.from.toLocaleDateString("he-IL");
+    return `${visibleRange.from.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })}–${visibleRange.to.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "numeric" })}`;
+  }, [viewMode, monthLabel, visibleRange]);
+
   useEffect(() => {
     if (!parsedFocusDate) return;
     setYear(parsedFocusDate.getFullYear());
     setMonth0(parsedFocusDate.getMonth());
+    setAnchorDate(parsedFocusDate);
   }, [parsedFocusDate]);
 
   // Full reload — shows spinner only when we don't have a local cache yet.
   // If we have cached records (from localStorage) we render those instantly
   // and refresh from the cloud silently in the background.
   const reload = async () => {
+    if (viewMode !== "month") {
+      setLoading(true);
+      try {
+        const recs = await listMyRecords(userId, visibleRange.from.toISOString(), visibleRange.to.toISOString());
+        setRecords(recs);
+      } catch (e: any) {
+        toast.error(e?.message ?? "שגיאה בטעינה");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     const cached = getCachedMonthRecords(userId, year, month0);
     if (cached && cached.length > 0) {
       setRecords(cached);
@@ -154,28 +220,59 @@ export function MonthlyTimesheet({ userId, employeeName, isManager, focusDate }:
   // table never disappears. Use after per-row saves/deletes.
   const silentReload = async () => {
     try {
-      const recs = await listMonthRecords(userId, year, month0);
+      const recs = viewMode === "month"
+        ? await listMonthRecords(userId, year, month0)
+        : await listMyRecords(userId, visibleRange.from.toISOString(), visibleRange.to.toISOString());
       setRecords(recs);
     } catch { /* ignore — user sees saved data already */ }
   };
 
-  useEffect(() => { void reload(); }, [userId, year, month0]);
+  useEffect(() => { void reload(); }, [userId, year, month0, viewMode, visibleRange.from.getTime(), visibleRange.to.getTime()]);
 
   const cells: DayCell[] = useMemo(() => {
-    return attachRecordsToDays(buildMonthDays(year, month0), records);
-  }, [year, month0, records]);
+    const days = viewMode === "month"
+      ? buildMonthDays(year, month0)
+      : daysBetween(visibleRange.from, visibleRange.to);
+    return attachRecordsToDays(days, records);
+  }, [viewMode, year, month0, visibleRange, records]);
 
   const summary: MonthSummary = useMemo(() => summarizeMonth(records), [records]);
 
   const goPrev = () => {
+    if (viewMode !== "month") {
+      const next = new Date(anchorDate);
+      next.setDate(next.getDate() - (viewMode === "week" ? 7 : 1));
+      setAnchorDate(next);
+      setYear(next.getFullYear()); setMonth0(next.getMonth());
+      return;
+    }
     const d = new Date(year, month0 - 1, 1);
     setYear(d.getFullYear()); setMonth0(d.getMonth());
   };
   const goNext = () => {
+    if (viewMode !== "month") {
+      const next = new Date(anchorDate);
+      next.setDate(next.getDate() + (viewMode === "week" ? 7 : 1));
+      setAnchorDate(next);
+      setYear(next.getFullYear()); setMonth0(next.getMonth());
+      return;
+    }
     const d = new Date(year, month0 + 1, 1);
     setYear(d.getFullYear()); setMonth0(d.getMonth());
   };
-  const goToday = () => { setYear(today.getFullYear()); setMonth0(today.getMonth()); };
+  const goToday = () => {
+    const current = new Date();
+    setAnchorDate(current);
+    setYear(current.getFullYear()); setMonth0(current.getMonth());
+  };
+
+  const changeView = (nextView: TimesheetView) => {
+    if (nextView !== "month") {
+      const currentMonth = year === today.getFullYear() && month0 === today.getMonth();
+      setAnchorDate(currentMonth ? new Date() : new Date(year, month0, 1));
+    }
+    setViewMode(nextView);
+  };
 
   const handleSaveCell = async (
     cell: DayCell,
@@ -253,7 +350,7 @@ export function MonthlyTimesheet({ userId, employeeName, isManager, focusDate }:
           </Button>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border bg-muted/30">
             <CalIcon className="h-4 w-4 text-muted-foreground" />
-            <span className="font-semibold tabular-nums">{monthLabel}</span>
+            <span className="font-semibold tabular-nums">{periodLabel}</span>
           </div>
           <Button variant="outline" size="sm" onClick={goNext}>
             <ChevronLeft className="h-4 w-4" />
@@ -264,18 +361,33 @@ export function MonthlyTimesheet({ userId, employeeName, isManager, focusDate }:
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setAutoFillOpen(true)}>
-            <Sparkles className="h-4 w-4 ml-1" />
-            מילוי אוטומטי
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleCopyPrev}>
-            <Copy className="h-4 w-4 ml-1" />
-            העתק חודש קודם
-          </Button>
+          <div className="inline-flex rounded-md border bg-background p-0.5" aria-label="מצב תצוגה">
+            <Button variant={viewMode === "month" ? "secondary" : "ghost"} size="sm" onClick={() => changeView("month")}>
+              <CalIcon className="h-4 w-4 ml-1" /> חודש
+            </Button>
+            <Button variant={viewMode === "week" ? "secondary" : "ghost"} size="sm" onClick={() => changeView("week")}>
+              <CalendarRange className="h-4 w-4 ml-1" /> שבוע
+            </Button>
+            <Button variant={viewMode === "day" ? "secondary" : "ghost"} size="sm" onClick={() => changeView("day")}>
+              <CalendarDays className="h-4 w-4 ml-1" /> יום
+            </Button>
+          </div>
+          {viewMode === "month" && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setAutoFillOpen(true)}>
+                <Sparkles className="h-4 w-4 ml-1" />
+                מילוי אוטומטי
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleCopyPrev}>
+                <Copy className="h-4 w-4 ml-1" />
+                העתק חודש קודם
+              </Button>
+            </>
+          )}
           <Button
             variant="outline"
             size="sm"
-            onClick={() => exportPayrollCsv(records, monthLabel.replace("/", "-"), employeeName)}
+            onClick={() => exportPayrollCsv(records, periodLabel.replaceAll("/", "-"), employeeName)}
           >
             <Download className="h-4 w-4 ml-1" />
             CSV שכר
@@ -283,12 +395,12 @@ export function MonthlyTimesheet({ userId, employeeName, isManager, focusDate }:
           <Button
             variant="outline"
             size="sm"
-            onClick={() => exportTimesheetPdf(records, monthLabel.replace("/", "-"), employeeName, false)}
+            onClick={() => exportTimesheetPdf(records, periodLabel.replaceAll("/", "-"), employeeName, false)}
           >
             <Download className="h-4 w-4 ml-1" />
             PDF
           </Button>
-          {isManager && (
+          {isManager && viewMode === "month" && (
             <>
               <Button
                 variant="outline"
