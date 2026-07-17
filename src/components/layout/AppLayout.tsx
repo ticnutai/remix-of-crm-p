@@ -17,61 +17,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { isWorkday } from '@/hooks/useIsraeliWorkdays';
 // loadGesturesConfig removed for debug
 import { useCustomTables } from '@/hooks/useCustomTables';
+import { usePermissions } from '@/hooks/usePermissions';
 import { cn } from '@/lib/utils';
 import {
-  LayoutDashboard,
-  Users,
-  Calendar,
-  Settings,
-  Database,
-  History,
-  HelpCircle,
   Building2,
-  UserCog,
-  Clock,
   Table,
-  Bell,
-  FileSpreadsheet,
-  Wallet,
   X,
-  Mail,
-  HardDrive,
-  Bot,
-  MapPinned,
   AlertTriangle,
-  FileText,
 } from 'lucide-react';
-
-// Navigation items for mobile
-const mainNavItems = [
-  { title: 'לוח בקרה', url: '/', icon: LayoutDashboard },
-  { title: 'היום שלי', url: '/my-day', icon: Calendar },
-  { title: 'לקוחות', url: '/clients', icon: Users },
-  { title: 'טבלת לקוחות', url: '/datatable-pro', icon: Table },
-  { title: 'עובדים', url: '/employees', icon: UserCog },
-  { title: 'לוגי זמן', url: '/time-logs', icon: Clock },
-  { title: 'ניתוח זמנים', url: '/time-analytics', icon: Clock },
-  { title: 'משימות, פגישות ותזכורות', url: '/tasks-meetings', icon: Calendar },
-  { title: 'הצעות מחיר', url: '/quotes', icon: FileSpreadsheet },
-  { title: 'הצעות מחיר PRO', url: '/quotes-pro', icon: FileSpreadsheet },
-  { title: 'כספים', url: '/finance', icon: Wallet },
-  { title: 'תשלומים', url: '/payments', icon: Wallet },
-  { title: 'דוחות', url: '/reports', icon: FileSpreadsheet },
-  { title: 'לוח שנה', url: '/calendar', icon: Calendar },
-  { title: 'Gmail', url: '/gmail', icon: Mail },
-  { title: '📁 קבצים', url: '/files', icon: HardDrive },
-  { title: 'עורך OnlyOffice', url: '/onlyoffice-editor', icon: FileText },
-  { title: 'תכנון & GIS', url: '/planning-gis', icon: MapPinned },
-  { title: 'כלים חכמים', url: '/smart-tools', icon: Bot },
-  { title: '🏢 פורטל לקוחות', url: '/portal-management', icon: Users },
-];
-
-const systemNavItems = [
-  { title: 'גיבויים וייבוא', url: '/backups', icon: Database },
-  { title: 'היסטוריה', url: '/history', icon: History },
-  { title: 'הגדרות', url: '/settings', icon: Settings },
-  { title: 'עזרה', url: '/help', icon: HelpCircle },
-];
+import { mainNavItems, systemNavItems, type NavigationItem } from './navigationItems';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -85,7 +39,13 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isLoading: authLoading, isAdmin, isManager, isSuperManager } = useAuth();
+  const { can: canPerm, loading: permsLoading, isAdmin: isAdminPerm } = usePermissions();
   const { tables } = useCustomTables();
+
+  const visibleMobileItems = useCallback((items: NavigationItem[]) => items.filter((item) => {
+    if (item.adminOnly && !isAdmin) return false;
+    return permsLoading || isAdmin || !item.moduleKey || isAdminPerm || canPerm(item.moduleKey, 'view');
+  }), [canPerm, isAdmin, isAdminPerm, permsLoading]);
 
   const [missingHoursAlertOpen, setMissingHoursAlertOpen] = useState(false);
   const [missingHoursAlert, setMissingHoursAlert] = useState<{
@@ -315,7 +275,7 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
                 <div>
                   <p className="text-[10px] font-medium text-muted-foreground/70 mb-2 px-2 text-right">ניווט ראשי</p>
                   <div className="space-y-0.5">
-                    {mainNavItems.map((item) => (
+                    {visibleMobileItems(mainNavItems).map((item) => (
                       <button
                         key={item.title}
                         onClick={() => handleNavClick(item.url)}
@@ -367,7 +327,7 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
                 <div>
                   <p className="text-[10px] font-medium text-muted-foreground/70 mb-2 px-2 text-right">מערכת</p>
                   <div className="space-y-0.5">
-                    {systemNavItems.map((item) => (
+                    {visibleMobileItems(systemNavItems).map((item) => (
                       <button
                         key={item.title}
                         onClick={() => handleNavClick(item.url)}

@@ -49,6 +49,7 @@ export const MODULES: ModuleDef[] = [
   { key: "calendar",           label: "לוח שנה",                     url: "/calendar",            group: "משימות" },
   // ---- Finance ----
   { key: "quotes",             label: "הצעות מחיר",                  url: "/quotes",              group: "כספים" },
+  { key: "quotes-pro",         label: "הצעות מחיר PRO",              url: "/quotes-pro",          group: "כספים" },
   { key: "finance",            label: "כספים",                       url: "/finance",             group: "כספים", adminOnly: true },
   { key: "payments",           label: "תשלומים",                     url: "/payments",            group: "כספים" },
   { key: "reports",            label: "דוחות",                       url: "/reports",             group: "כספים" },
