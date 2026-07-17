@@ -232,11 +232,11 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
           assigned_to: assignedTo,
         });
 
-        if (reminderConfig && createdTask?.id) {
+        if (reminderConfig && createdTask && (createdTask as any)?.id) {
           await createReminder({
             ...reminderConfig,
             entity_type: "task",
-            entity_id: createdTask.id,
+            entity_id: (createdTask as any).id,
           });
         }
         resetForm();
