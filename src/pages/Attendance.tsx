@@ -150,7 +150,7 @@ export default function Attendance() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto p-4 max-w-5xl space-y-4" dir="rtl">
+      <div className="container mx-auto p-3 md:p-4 max-w-5xl space-y-4" dir="rtl">
         <h1 className="text-2xl font-bold">נוכחות יומית</h1>
         <p className="text-muted-foreground">
           {profile?.full_name ?? user?.email} — דיווח שעות עבודה
