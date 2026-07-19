@@ -2392,11 +2392,16 @@ export type Database = {
           description: string | null
           id: string
           is_paid: boolean | null
+          linked_stage_id: string | null
+          linked_task_id: string | null
           notes: string | null
           paid_amount: number | null
           paid_by: string | null
           paid_date: string | null
           payment_method: string | null
+          payment_step_id: string | null
+          percentage: number | null
+          quote_id: string | null
           payment_reference: string | null
           stage_name: string
           stage_number: number
@@ -2412,11 +2417,16 @@ export type Database = {
           description?: string | null
           id?: string
           is_paid?: boolean | null
+          linked_stage_id?: string | null
+          linked_task_id?: string | null
           notes?: string | null
           paid_amount?: number | null
           paid_by?: string | null
           paid_date?: string | null
           payment_method?: string | null
+          payment_step_id?: string | null
+          percentage?: number | null
+          quote_id?: string | null
           payment_reference?: string | null
           stage_name: string
           stage_number?: number
@@ -2432,18 +2442,38 @@ export type Database = {
           description?: string | null
           id?: string
           is_paid?: boolean | null
+          linked_stage_id?: string | null
+          linked_task_id?: string | null
           notes?: string | null
           paid_amount?: number | null
           paid_by?: string | null
           paid_date?: string | null
           payment_method?: string | null
+          payment_step_id?: string | null
+          percentage?: number | null
+          quote_id?: string | null
           payment_reference?: string | null
           stage_name?: string
           stage_number?: number
           updated_at?: string | null
           vat_rate?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "client_payment_stages_linked_task_id_fkey"
+            columns: ["linked_task_id"]
+            isOneToOne: false
+            referencedRelation: "client_stage_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_payment_stages_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "saved_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       client_portal_tokens: {
         Row: {
@@ -3333,6 +3363,7 @@ export type Database = {
           payment_terms: string | null
           project_id: string | null
           quote_id: string | null
+          saved_quote_id: string | null
           signature_data: string | null
           signed_by_client: string | null
           signed_by_company: string | null
@@ -3369,6 +3400,7 @@ export type Database = {
           payment_terms?: string | null
           project_id?: string | null
           quote_id?: string | null
+          saved_quote_id?: string | null
           signature_data?: string | null
           signed_by_client?: string | null
           signed_by_company?: string | null
@@ -3405,6 +3437,7 @@ export type Database = {
           payment_terms?: string | null
           project_id?: string | null
           quote_id?: string | null
+          saved_quote_id?: string | null
           signature_data?: string | null
           signed_by_client?: string | null
           signed_by_company?: string | null
@@ -9212,6 +9245,10 @@ export type Database = {
           p_start_date: string
         }
         Returns: string
+      }
+      create_client_file_from_quote: {
+        Args: { p_request: Json }
+        Returns: Json
       }
       create_employee_user: {
         Args: {

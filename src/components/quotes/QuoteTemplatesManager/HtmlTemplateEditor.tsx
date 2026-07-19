@@ -185,6 +185,12 @@ import { useQuoteDraftAutosave } from "@/hooks/useQuoteDraftAutosave";
 import { supabase } from "@/integrations/supabase/client";
 import { syncClientStagesFromTemplate } from "@/lib/clientStageTemplateSync";
 import { syncQuotePaymentLinksToClientTasks } from "@/lib/syncQuotePaymentLinks";
+import { resolveQuoteBasePrice } from "@/lib/quotePricing";
+import {
+  buildAtomicQuoteClientRequest,
+  isExpiredAuthError,
+  type AtomicQuoteClientResult,
+} from "@/lib/quoteClientCreation";
 import companyHeaderImg from "@/assets/company-header.png";
 import {
   DesignTemplatesSelector,
@@ -5972,6 +5978,12 @@ export function HtmlTemplateEditor({
         stageTemplateId: resolvedProjectDetails.stageTemplateId,
       };
 
+      const effectiveBasePrice = resolveQuoteBasePrice({
+        basePrice: editedTemplate.base_price,
+        pricingTiers,
+        selectedTier,
+      });
+
       const templatePayload = {
         ...editedTemplate,
         is_active: updateTemplate ? true : editedTemplate.is_active,
@@ -5980,7 +5992,7 @@ export function HtmlTemplateEditor({
         text_boxes: textBoxes,
         upgrades: upgrades,
         project_details: cleanProjectDetails,
-        base_price: editedTemplate.base_price || 0,
+        base_price: effectiveBasePrice,
         pricing_tiers: pricingTiers,
       };
 
@@ -6023,7 +6035,7 @@ export function HtmlTemplateEditor({
               null;
           }
 
-          const basePrice = editedTemplate.base_price || 0;
+          const basePrice = effectiveBasePrice;
           const vatRate = (editedTemplate.vat_rate ?? globalDefaultVat);
           const totalWithVat = Math.round(basePrice * (1 + vatRate / 100));
 
@@ -6166,6 +6178,7 @@ export function HtmlTemplateEditor({
     projectDetails,
     allClients,
     pricingTiers,
+    selectedTier,
     onSave,
     toast,
   ]);
@@ -7951,9 +7964,11 @@ ${tbAt('footer')}
   );
   // המחיר הפעיל: עדיפות לחבילה הנבחרת בטאב "תוכן" -> סיכום ההצעה
   const selectedTierObj = (pricingTiers as any[]).find((t) => t?.name === selectedTier);
-  const basePrice = (selectedTierObj && Number(selectedTierObj.price) > 0)
-    ? Number(selectedTierObj.price)
-    : (editedTemplate.base_price || 35000);
+  const basePrice = resolveQuoteBasePrice({
+    basePrice: editedTemplate.base_price,
+    pricingTiers,
+    selectedTier,
+  });
 
   // סנכרון אוטומטי - המחיר של החבילה הנבחרת נשמר ב-base_price כדי שיישמר ויעבור הלאה (חוזה/חתימה)
   useEffect(() => {
@@ -8071,6 +8086,7 @@ ${tbAt('footer')}
   const [showSMSDialog, setShowSMSDialog] = useState(false);
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
   const [showCreateClientDialog, setShowCreateClientDialog] = useState(false);
+  const createClientOperationKeyRef = useRef<string | null>(null);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
 
   const [calculationResult, setCalculationResult] =
@@ -8509,109 +8525,30 @@ ${tbAt('footer')}
     setIsCreatingClient(true);
     try {
       const { supabase } = await import("@/integrations/supabase/client");
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("לא מחובר");
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error("AUTH_SESSION_EXPIRED");
 
-      let clientId = linkExisting;
-
-      if (!clientId) {
-        // Create new client with all project details
-        if (!projectDetails.clientName?.trim()) {
-          toast({ title: "חסר שם לקוח", description: "הזן שם לקוח בפרטי הפרויקט", variant: "destructive" });
-          setIsCreatingClient(false);
-          return;
-        }
-
-        const { data: newClient, error: clientError } = await (supabase as any)
-          .from("clients")
-          .insert({
-            name: projectDetails.clientName,
-            gush: projectDetails.gush || null,
-            helka: projectDetails.helka || null,
-            migrash: projectDetails.migrash || null,
-            taba: projectDetails.taba || null,
-            address: projectDetails.address || null,
-            phone: (projectDetails as any).phone || null,
-            email: (projectDetails as any).email || null,
-            user_id: user.id,
-            created_by: user.id,
-            source: "הצעת מחיר",
-            status: "active",
-            notes: `סטטוס ליד: הצעת מחיר (טרם נסגר)\nנוצר מהצעת מחיר: ${editedTemplate.name}\nסוג פרויקט: ${projectDetails.projectType || "לא צוין"}`,
-          })
-          .select("id")
-          .single();
-
-        if (clientError) throw clientError;
-        clientId = newClient.id;
-      } else {
-        // Update existing client with project details
-        const updateData: any = {};
-        if (projectDetails.gush) updateData.gush = projectDetails.gush;
-        if (projectDetails.helka) updateData.helka = projectDetails.helka;
-        if (projectDetails.migrash) updateData.migrash = projectDetails.migrash;
-        if (projectDetails.taba) updateData.taba = projectDetails.taba;
-        if (projectDetails.address) updateData.address = projectDetails.address;
-        
-        if (Object.keys(updateData).length > 0) {
-          await (supabase as any).from("clients").update(updateData).eq("id", clientId);
-        }
-      }
-
-      // Create contract from the quote
-      const basePrice = editedTemplate.base_price || 0;
-      const vatRate = (editedTemplate.vat_rate ?? globalDefaultVat);
-      const totalWithVat = Math.round(basePrice * (1 + vatRate / 100));
-
-      // Generate contract number
-      const year = new Date().getFullYear();
-      const { count } = await (supabase as any)
-        .from("contracts")
-        .select("id", { count: "exact", head: true });
-      const contractNumber = `C${year}-${String((count || 0) + 1).padStart(4, "0")}`;
-
-      const { error: contractError } = await (supabase as any)
-        .from("contracts")
-        .insert({
-          contract_number: contractNumber,
-          client_id: clientId,
-          title: editedTemplate.name || "חוזה מהצעת מחיר",
-          description: editedTemplate.description || "",
-          contract_type: "fixed_price",
-          contract_value: totalWithVat,
-          start_date: new Date().toISOString().split("T")[0],
-          signed_date: new Date().toISOString().split("T")[0],
-          payment_terms: editedTemplate.terms || "",
-          terms_and_conditions: editedTemplate.notes || "",
-          notes: `נוצר מהצעת מחיר: ${editedTemplate.name}\nמחיר בסיס: ₪${basePrice.toLocaleString()}\nמע״מ ${vatRate}%: ₪${Math.round(basePrice * vatRate / 100).toLocaleString()}\nסה״כ: ₪${totalWithVat.toLocaleString()}`,
-          created_by: user.id,
-          status: "active",
+      if (!linkExisting && !projectDetails.clientName?.trim()) {
+        toast({
+          title: "חסר שם לקוח",
+          description: "הזן שם לקוח בפרטי הפרויקט",
+          variant: "destructive",
         });
-
-      if (contractError) throw contractError;
-
-      // Sync stages from template if one is linked
-      let stagesAdded = 0;
-      if (projectDetails.stageTemplateId) {
-        try {
-          const syncResult = await syncClientStagesFromTemplate({
-            clientId,
-            templateId: projectDetails.stageTemplateId,
-            clearAllOnTemplateChange: false,
-          });
-          stagesAdded = syncResult.addedStages;
-        } catch (stageErr) {
-          console.error("Stage sync failed:", stageErr);
-        }
+        return;
       }
 
-      // Sync payment schedule → client_payment_stages + a signed saved_quote
-      // so live payment badges appear on the linked stage tasks.
-      const schedule: any[] = paymentSteps.map((step) => ({
+      const basePrice = resolveQuoteBasePrice({
+        basePrice: editedTemplate.base_price,
+        pricingTiers,
+        selectedTier,
+      });
+      const vatRate = editedTemplate.vat_rate ?? globalDefaultVat;
+      const schedule = paymentSteps.map((step) => ({
         id: step.id,
-        percentage: step.percentage,
+        percentage: Number(step.percentage) || 0,
         description: step.description || step.name,
         vatRate: step.vatRate,
+        customVat: (step as any).customVat,
         useCustomVat: step.useCustomVat,
         linkSource: step.linkSource || "stage_template",
         templateStageId: step.templateStageId || null,
@@ -8625,87 +8562,87 @@ ${tbAt('footer')}
         triggerMode: step.triggerMode || "manual",
         triggerDate: step.triggerDate || null,
       }));
-      let paymentsAdded = 0;
-      if (schedule.length > 0) {
-        try {
-          const { data: maxRow } = await (supabase as any)
-            .from("client_payment_stages")
-            .select("stage_number")
-            .eq("client_id", clientId)
-            .order("stage_number", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          let nextNumber = (maxRow?.stage_number || 0) + 1;
-          const quoteTag = `הצעה ${editedTemplate.name || ""}`.trim();
-          const rows = schedule
-            .filter((s: any) => Number(s?.percentage) > 0)
-            .map((s: any) => {
-              const pct = Number(s?.percentage) || 0;
-              const amount = Math.round((totalWithVat * pct) / 100 * 100) / 100;
-              const vr = s?.useCustomVat ? Number(s?.customVat) || vatRate : vatRate;
-              const baseDesc = s?.templateTaskName || s?.quoteTemplateItemText || s?.description || `תשלום ${pct}%`;
-              return {
-                client_id: clientId,
-                stage_name: baseDesc,
-                stage_number: nextNumber++,
-                description: `${baseDesc} [${quoteTag}]`,
-                amount,
-                vat_rate: vr,
-                created_by: user.id,
-              };
-            });
-          if (rows.length > 0) {
-            const { error: payErr } = await (supabase as any)
-              .from("client_payment_stages")
-              .insert(rows);
-            if (payErr) console.error("Payment stages insert failed:", payErr);
-            else paymentsAdded = rows.length;
-          }
 
-          // Signed saved_quote so TaskPaymentBadge can render live amounts
-          // per linked stage task (uses templateStageName/templateTaskName).
-          const { data: linkedQuote, error: linkedQuoteError } = await (supabase as any).from("saved_quotes").insert({
-            user_id: user.id,
-            client_id: clientId,
-            title: editedTemplate.name || "הצעת מחיר",
-            status: "signed",
-            base_price: basePrice,
-            vat_rate: vatRate,
-            total_with_vat: totalWithVat,
-            payment_schedule: schedule,
-            created_by: user.id,
-          }).select("id").single();
-          if (linkedQuoteError) throw linkedQuoteError;
-
-          await syncQuotePaymentLinksToClientTasks({
-            clientId,
-            quoteId: linkedQuote.id,
-            basePrice: totalWithVat,
-            schedule,
-          });
-        } catch (payErr) {
-          console.error("Payment sync failed:", payErr);
-        }
-      }
-
-      setShowCreateClientDialog(false);
-      const parts: string[] = [];
-      if (stagesAdded > 0) parts.push(`${stagesAdded} שלבים`);
-      if (paymentsAdded > 0) parts.push(`${paymentsAdded} שלבי תשלום`);
-      toast({
-        title: "✅ תיק לקוח נוצר בהצלחה!",
-        description: parts.length > 0
-          ? `${projectDetails.clientName || "לקוח"} — נוספו ${parts.join(" + ")}`
-          : `${projectDetails.clientName || "לקוח"} - כולל חוזה וכל הפרטים`,
+      const operationKey = createClientOperationKeyRef.current || crypto.randomUUID();
+      createClientOperationKeyRef.current = operationKey;
+      const request = buildAtomicQuoteClientRequest({
+        idempotencyKey: operationKey,
+        existingClientId: linkExisting,
+        client: {
+          name: projectDetails.clientName?.trim(),
+          gush: projectDetails.gush || null,
+          helka: projectDetails.helka || null,
+          migrash: projectDetails.migrash || null,
+          taba: projectDetails.taba || null,
+          address: projectDetails.address || null,
+          phone: (projectDetails as any).phone || null,
+          email: (projectDetails as any).email || null,
+          notes: `סטטוס ליד: הצעת מחיר (טרם נסגר)\nנוצר מהצעת מחיר: ${editedTemplate.name}\nסוג פרויקט: ${projectDetails.projectType || "לא צוין"}`,
+        },
+        quote: {
+          template_id: editedTemplate.id || null,
+          title: editedTemplate.name || "הצעת מחיר",
+          description: editedTemplate.description || "",
+          base_price: basePrice,
+          vat_rate: vatRate,
+          template_data: editedTemplate,
+          project_details: projectDetails,
+          design_settings: designSettings,
+          text_boxes: textBoxes,
+          upgrades,
+          pricing_tiers: pricingTiers,
+          notes: editedTemplate.notes || "",
+          payment_terms: editedTemplate.terms || "",
+          terms_and_conditions: editedTemplate.notes || "",
+        },
+        stageTemplateId: projectDetails.stageTemplateId || null,
+        paymentSchedule: schedule,
       });
 
-      // Open client profile in new tab
-      window.open(`/clients/${clientId}`, "_blank");
+      const { data, error } = await (supabase as any).rpc(
+        "create_client_file_from_quote",
+        { p_request: request },
+      );
+      if (error) throw error;
+
+      const result = data as AtomicQuoteClientResult;
+      if (!result?.client_id) throw new Error("INVALID_ATOMIC_CREATION_RESULT");
+
+      setShowCreateClientDialog(false);
+      createClientOperationKeyRef.current = null;
+      const details = [
+        result.stages_added > 0 ? `${result.stages_added} שלבים` : null,
+        result.tasks_added > 0 ? `${result.tasks_added} משימות` : null,
+        result.payments_added > 0 ? `${result.payments_added} תשלומים` : null,
+        result.payments_linked > 0 ? `${result.payments_linked} שיוכים למשימות` : null,
+      ].filter(Boolean);
+      toast({
+        title: result.idempotent_replay
+          ? "תיק הלקוח כבר נוצר"
+          : "✅ תיק לקוח נוצר בהצלחה!",
+        description: details.length
+          ? details.join(" · ")
+          : `${projectDetails.clientName || "הלקוח"} — ההצעה והחוזה נשמרו`,
+      });
+      window.open(`/clients/${result.client_id}`, "_blank");
     } catch (err: any) {
-      console.error("Create client file error:", err);
+      console.error("Atomic client file creation error:", err);
+      if (isExpiredAuthError(err)) {
+        setShowCreateClientDialog(false);
+        toast({
+          title: "ההתחברות פגה",
+          description: "יש להתחבר מחדש. הטיוטה נשמרה ותוכל להמשיך לאחר ההתחברות.",
+          variant: "destructive",
+        });
+        const returnTo = `${window.location.pathname}${window.location.search}`;
+        window.setTimeout(() => {
+          window.location.assign(`/auth?returnTo=${encodeURIComponent(returnTo)}`);
+        }, 900);
+        return;
+      }
       toast({
         title: "שגיאה ביצירת תיק לקוח",
-        description: err?.message || "נסה שוב",
+        description: err?.message || "לא נשמר מידע חלקי. אפשר לנסות שוב בבטחה.",
         variant: "destructive",
       });
     } finally {
@@ -15266,7 +15203,10 @@ ${tbAt('footer')}
               <Button
                 className="bg-blue-600 hover:bg-blue-700 text-white"
                 size="sm"
-                onClick={() => setShowCreateClientDialog(true)}
+                onClick={() => {
+                  createClientOperationKeyRef.current = crypto.randomUUID();
+                  setShowCreateClientDialog(true);
+                }}
                 disabled={isCreatingClient}
               >
                 {isCreatingClient ? (
@@ -15281,7 +15221,13 @@ ${tbAt('footer')}
         </div>
 
         {/* Create Client File Dialog */}
-        <Dialog open={showCreateClientDialog} onOpenChange={setShowCreateClientDialog}>
+        <Dialog
+          open={showCreateClientDialog}
+          onOpenChange={(open) => {
+            setShowCreateClientDialog(open);
+            if (!open && !isCreatingClient) createClientOperationKeyRef.current = null;
+          }}
+        >
           <DialogContent className="max-w-md" dir="rtl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -15305,7 +15251,11 @@ ${tbAt('footer')}
                     {projectDetails.projectType && <li>🏗️ סוג: {projectDetails.projectType}</li>}
                   </ul>
                   <p className="mt-2">📝 <strong>חוזה</strong> על סך ₪{(() => {
-                    const bp = editedTemplate.base_price || 0;
+                    const bp = resolveQuoteBasePrice({
+                      basePrice: editedTemplate.base_price,
+                      pricingTiers,
+                      selectedTier,
+                    });
                     const vr = (editedTemplate.vat_rate ?? globalDefaultVat);
                     return Math.round(bp * (1 + vr / 100)).toLocaleString();
                   })()} (כולל מע״מ)</p>

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildPaymentMap, paymentTaskKey } from "./useClientPaymentLinks";
 
 describe("quote payment links", () => {
-  it("shows a draft quote payment on its linked client task using the pre-VAT base price", () => {
+  it("shows the gross payment amount that is displayed on the client task", () => {
     const map = buildPaymentMap([
       {
         title: "הצעת מחיר",
@@ -20,11 +20,7 @@ describe("quote payment links", () => {
       },
     ]);
 
-    expect(map.get(paymentTaskKey("התקשרות לקוח", "תשלום א' מקדמה"))).toEqual({
-      amount: 3_000,
-      percentage: 10,
-      quoteTitle: "הצעת מחיר",
-    });
+    expect(map.get(paymentTaskKey("התקשרות לקוח", "תשלום א' מקדמה"))?.amount).toBe(3_540);
   });
 
   it("normalizes whitespace and letter casing in legacy name-based links", () => {

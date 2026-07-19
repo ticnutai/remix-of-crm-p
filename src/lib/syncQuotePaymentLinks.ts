@@ -7,6 +7,8 @@ export interface LinkedPaymentStep {
   templateTaskName?: string | null;
   quoteTemplateStageName?: string | null;
   quoteTemplateItemText?: string | null;
+  templateStageId?: string | null;
+  quoteTemplateStageId?: string | null;
 }
 
 const normalized = (value: unknown) => String(value ?? "").trim().toLowerCase();
@@ -23,7 +25,7 @@ export async function syncQuotePaymentLinksToClientTasks({
   schedule,
 }: {
   clientId: string;
-  quoteId: string;
+  quoteId?: string | null;
   basePrice: number;
   schedule: LinkedPaymentStep[];
 }): Promise<number> {
@@ -55,7 +57,17 @@ export async function syncQuotePaymentLinksToClientTasks({
   let updated = 0;
   for (const step of linkedSteps) {
     const normalizedTaskName = normalized(linkedTaskName(step));
-    const stageIds = stageIdsByName.get(normalized(linkedStageName(step))) || [];
+    const linkedStageId = step.templateStageId || step.quoteTemplateStageId;
+    const stageIdsBySourceId = linkedStageId
+      ? (stages || [])
+          .filter((stage: any) =>
+            String(stage.stage_id || "").endsWith(`_${linkedStageId}`),
+          )
+          .map((stage: any) => stage.stage_id)
+      : [];
+    const stageIds = stageIdsBySourceId.length
+      ? stageIdsBySourceId
+      : stageIdsByName.get(normalized(linkedStageName(step))) || [];
     const titleMatches = (tasks || []).filter(
       (candidate: any) => normalized(candidate.title) === normalizedTaskName,
     );
@@ -70,14 +82,16 @@ export async function syncQuotePaymentLinksToClientTasks({
     if (!task) continue;
 
     const percentage = Number(step.percentage);
+    const updatePayload: Record<string, unknown> = {
+      payment_amount: Math.round(basePrice * percentage) / 100,
+      payment_percentage: percentage,
+      payment_step_id: step.id || null,
+    };
+    if (quoteId) updatePayload.payment_quote_id = quoteId;
+
     const { error } = await (supabase as any)
       .from("client_stage_tasks")
-      .update({
-        payment_amount: Math.round(basePrice * percentage) / 100,
-        payment_percentage: percentage,
-        payment_quote_id: quoteId,
-        payment_step_id: step.id || null,
-      })
+      .update(updatePayload)
       .eq("id", task.id);
     if (error) throw error;
     updated += 1;

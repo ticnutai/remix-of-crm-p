@@ -2204,6 +2204,7 @@ export function ClientStagesBoard({
   } = useClientStages(clientId);
 
   const autoTemplateSyncAttemptRef = useRef<string | null>(null);
+  const autoPaymentSyncAttemptRef = useRef<string | null>(null);
 
   // Folder system
   const {
@@ -2311,6 +2312,41 @@ export function ClientStagesBoard({
     allStages,
     syncTemplateFromProject,
   ]);
+
+  // Keep payment links self-healing when stages/tasks are first loaded or a
+  // template replacement recreates them. The signature changes only for
+  // structural task changes, so refreshing payment fields does not loop.
+  useEffect(() => {
+    if (!clientId || loading || allStages.length === 0) return;
+
+    const taskSignature = allStages
+      .flatMap((stage) =>
+        (stage.tasks || []).map((task) => `${stage.stage_id}:${task.id}`),
+      )
+      .sort()
+      .join("|");
+    const syncKey = `${clientId}:${taskSignature}`;
+    if (autoPaymentSyncAttemptRef.current === syncKey) return;
+    autoPaymentSyncAttemptRef.current = syncKey;
+
+    let cancelled = false;
+    void import("@/lib/syncPaymentTasksForClient")
+      .then(({ syncPaymentTasksForClient }) =>
+        syncPaymentTasksForClient(clientId),
+      )
+      .then((result) => {
+        if (!cancelled && (result.tasksCreated > 0 || result.tasksLinked > 0)) {
+          return refresh();
+        }
+      })
+      .catch((error) => {
+        console.error("[ClientStagesBoard] automatic payment sync failed", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId, loading, allStages, refresh]);
 
   const [addingTask, setAddingTask] = useState<{
     stageId: string;
