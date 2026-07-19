@@ -434,43 +434,64 @@ export function MonthlyTimesheet({ userId, employeeName, isManager, focusDate }:
         />
       </div>
 
-      {/* Table */}
+      {/* Table — desktop / Cards — mobile */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">גיליון נוכחות {resolvedName ? `— ${resolvedName}` : ""}</CardTitle>
         </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-xs">
-              <tr>
-                <th className="p-2 text-right">תאריך</th>
-                <th className="p-2 text-right">יום</th>
-                <th className="p-2 text-right">סוג</th>
-                <th className="p-2 text-right">כניסה</th>
-                <th className="p-2 text-right">יציאה</th>
-                <th className="p-2 text-right">הפסקה (דק׳)</th>
-                <th className="p-2 text-right">סה״כ</th>
-                <th className="p-2 text-right">הערות</th>
-                <th className="p-2 text-right w-[140px]">פעולות</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">טוען...</td></tr>
-              )}
-              {!loading && cells.map(cell => (
-                <DayRow
-                  key={cell.date}
-                  cell={cell}
-                  onSave={(p) => handleSaveCell(cell, p)}
-                  onDelete={() => handleDelete(cell.record?.id)}
-                  onApprove={(v) => handleApprove(cell.record?.id, v)}
-                  isManager={isManager}
-                  isFocusTarget={focusDate === cell.date}
-                />
-              ))}
-            </tbody>
-          </table>
+        <CardContent className="p-0">
+          {/* Desktop / tablet: table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-xs">
+                <tr>
+                  <th className="p-2 text-right">תאריך</th>
+                  <th className="p-2 text-right">יום</th>
+                  <th className="p-2 text-right">סוג</th>
+                  <th className="p-2 text-right">כניסה</th>
+                  <th className="p-2 text-right">יציאה</th>
+                  <th className="p-2 text-right">הפסקה (דק׳)</th>
+                  <th className="p-2 text-right">סה״כ</th>
+                  <th className="p-2 text-right">הערות</th>
+                  <th className="p-2 text-right w-[140px]">פעולות</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading && (
+                  <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">טוען...</td></tr>
+                )}
+                {!loading && cells.map(cell => (
+                  <DayRow
+                    key={cell.date}
+                    cell={cell}
+                    onSave={(p) => handleSaveCell(cell, p)}
+                    onDelete={() => handleDelete(cell.record?.id)}
+                    onApprove={(v) => handleApprove(cell.record?.id, v)}
+                    isManager={isManager}
+                    isFocusTarget={focusDate === cell.date}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile: cards */}
+          <div className="md:hidden divide-y">
+            {loading && (
+              <div className="p-6 text-center text-sm text-muted-foreground">טוען...</div>
+            )}
+            {!loading && cells.map(cell => (
+              <DayCard
+                key={cell.date}
+                cell={cell}
+                onSave={(p) => handleSaveCell(cell, p)}
+                onDelete={() => handleDelete(cell.record?.id)}
+                onApprove={(v) => handleApprove(cell.record?.id, v)}
+                isManager={isManager}
+                isFocusTarget={focusDate === cell.date}
+              />
+            ))}
+          </div>
         </CardContent>
       </Card>
 
