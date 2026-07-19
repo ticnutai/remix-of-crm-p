@@ -434,43 +434,64 @@ export function MonthlyTimesheet({ userId, employeeName, isManager, focusDate }:
         />
       </div>
 
-      {/* Table */}
+      {/* Table — desktop / Cards — mobile */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">גיליון נוכחות {resolvedName ? `— ${resolvedName}` : ""}</CardTitle>
         </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-xs">
-              <tr>
-                <th className="p-2 text-right">תאריך</th>
-                <th className="p-2 text-right">יום</th>
-                <th className="p-2 text-right">סוג</th>
-                <th className="p-2 text-right">כניסה</th>
-                <th className="p-2 text-right">יציאה</th>
-                <th className="p-2 text-right">הפסקה (דק׳)</th>
-                <th className="p-2 text-right">סה״כ</th>
-                <th className="p-2 text-right">הערות</th>
-                <th className="p-2 text-right w-[140px]">פעולות</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">טוען...</td></tr>
-              )}
-              {!loading && cells.map(cell => (
-                <DayRow
-                  key={cell.date}
-                  cell={cell}
-                  onSave={(p) => handleSaveCell(cell, p)}
-                  onDelete={() => handleDelete(cell.record?.id)}
-                  onApprove={(v) => handleApprove(cell.record?.id, v)}
-                  isManager={isManager}
-                  isFocusTarget={focusDate === cell.date}
-                />
-              ))}
-            </tbody>
-          </table>
+        <CardContent className="p-0">
+          {/* Desktop / tablet: table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-xs">
+                <tr>
+                  <th className="p-2 text-right">תאריך</th>
+                  <th className="p-2 text-right">יום</th>
+                  <th className="p-2 text-right">סוג</th>
+                  <th className="p-2 text-right">כניסה</th>
+                  <th className="p-2 text-right">יציאה</th>
+                  <th className="p-2 text-right">הפסקה (דק׳)</th>
+                  <th className="p-2 text-right">סה״כ</th>
+                  <th className="p-2 text-right">הערות</th>
+                  <th className="p-2 text-right w-[140px]">פעולות</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading && (
+                  <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">טוען...</td></tr>
+                )}
+                {!loading && cells.map(cell => (
+                  <DayRow
+                    key={cell.date}
+                    cell={cell}
+                    onSave={(p) => handleSaveCell(cell, p)}
+                    onDelete={() => handleDelete(cell.record?.id)}
+                    onApprove={(v) => handleApprove(cell.record?.id, v)}
+                    isManager={isManager}
+                    isFocusTarget={focusDate === cell.date}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile: cards */}
+          <div className="md:hidden divide-y">
+            {loading && (
+              <div className="p-6 text-center text-sm text-muted-foreground">טוען...</div>
+            )}
+            {!loading && cells.map(cell => (
+              <DayCard
+                key={cell.date}
+                cell={cell}
+                onSave={(p) => handleSaveCell(cell, p)}
+                onDelete={() => handleDelete(cell.record?.id)}
+                onApprove={(v) => handleApprove(cell.record?.id, v)}
+                isManager={isManager}
+                isFocusTarget={focusDate === cell.date}
+              />
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -702,6 +723,175 @@ const DayRow = React.memo(function DayRow({ cell, onSave, onDelete, onApprove, i
         </div>
       </td>
     </tr>
+  );
+});
+
+interface DayCardProps extends DayRowProps {}
+
+const DayCard = React.memo(function DayCard({ cell, onSave, onDelete, onApprove, isManager, isFocusTarget }: DayCardProps) {
+  const r = cell.record;
+  const [ci, setCi] = useState(isoToLocalHHMM(r?.clock_in));
+  const [co, setCo] = useState(isoToLocalHHMM(r?.clock_out));
+  const [br, setBr] = useState<number>(r?.break_minutes ?? 0);
+  const [dt, setDt] = useState<DayType>((r?.day_type as DayType) ?? (cell.isWeekend ? "absent" : "work"));
+  const [notes, setNotes] = useState(r?.notes ?? "");
+  const [expanded, setExpanded] = useState(false);
+
+  const focusCount = React.useRef(0);
+  const onFocusField = () => { focusCount.current += 1; };
+  const onBlurField = (save: () => void) => () => {
+    focusCount.current = Math.max(0, focusCount.current - 1);
+    save();
+  };
+
+  useEffect(() => {
+    if (focusCount.current > 0) return;
+    setCi(isoToLocalHHMM(r?.clock_in));
+    setCo(isoToLocalHHMM(r?.clock_out));
+    setBr(r?.break_minutes ?? 0);
+    setDt((r?.day_type as DayType) ?? (cell.isWeekend ? "absent" : "work"));
+    setNotes(r?.notes ?? "");
+  }, [r?.id, r?.clock_in, r?.clock_out, r?.break_minutes, r?.day_type, r?.notes, cell.isWeekend]);
+
+  const total = useMemo(() => {
+    if (!ci || !co) return 0;
+    const [h1, m1] = ci.split(":").map(Number);
+    const [h2, m2] = co.split(":").map(Number);
+    const diff = (h2 * 60 + m2) - (h1 * 60 + m1) - (br || 0);
+    return Math.max(0, diff);
+  }, [ci, co, br]);
+
+  const locked = !!r?.locked;
+  const approved = !!r?.approved_at;
+  const dateObj = new Date(cell.date);
+  const isToday = cell.date === new Date().toISOString().slice(0, 10);
+  const cardRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (isToday || isFocusTarget) {
+      const t = setTimeout(() => cardRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 200);
+      return () => clearTimeout(t);
+    }
+  }, [isToday, isFocusTarget]);
+
+  const commit = () => {
+    onSave({ clock_in: ci || undefined, clock_out: co || undefined, break_minutes: br, day_type: dt, notes });
+  };
+
+  const cardClass = [
+    "p-3 space-y-2 transition-colors",
+    cell.isWeekend ? "bg-muted/20" : "",
+    isToday ? "bg-amber-100/70 dark:bg-amber-900/30 ring-2 ring-amber-400 ring-inset" : "",
+    isFocusTarget && !isToday ? "bg-red-50 ring-2 ring-red-300 ring-inset" : "",
+    approved && !isToday ? "bg-emerald-50/40" : "",
+  ].filter(Boolean).join(" ");
+
+  const isWorking = dt === "work" || dt === "wfh";
+
+  return (
+    <div ref={cardRef} className={cardClass}>
+      {/* Header row: date + total + type */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="text-base font-semibold tabular-nums">
+            {dateObj.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })}
+          </div>
+          <div className="text-xs text-muted-foreground">{DOW[cell.weekday]}</div>
+          {isToday && <Badge className="bg-amber-500 hover:bg-amber-500 text-white text-[10px] h-5 px-1.5">היום</Badge>}
+          {locked && <Lock className="h-3.5 w-3.5 text-zinc-500" />}
+          {approved && <Check className="h-3.5 w-3.5 text-emerald-600" />}
+        </div>
+        <div className="text-left">
+          {total > 0 ? (
+            <div className={`text-lg font-bold tabular-nums ${total > 510 ? "text-amber-600" : ""}`}>
+              {formatMinutes(total)}
+            </div>
+          ) : (
+            <Badge variant="outline" className={DAY_TYPE_COLORS[dt]}>
+              {DAY_TYPE_LABELS[dt]}
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      {/* Type + times */}
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <Label className="text-[10px] text-muted-foreground">סוג</Label>
+          <Select value={dt} onValueChange={(v: DayType) => { setDt(v); onSave({ day_type: v }); }} disabled={locked}>
+            <SelectTrigger className="h-10 text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {Object.entries(DAY_TYPE_LABELS).map(([k, label]) => (
+                <SelectItem key={k} value={k}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">כניסה</Label>
+          <BigTimePicker
+            className="h-10"
+            value={ci}
+            onChange={(v) => { setCi(v); onSave({ clock_in: v || undefined }); }}
+            disabled={locked || !isWorking}
+          />
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">יציאה</Label>
+          <BigTimePicker
+            className="h-10"
+            value={co}
+            onChange={(v) => { setCo(v); onSave({ clock_out: v || undefined }); }}
+            disabled={locked || !isWorking}
+          />
+        </div>
+      </div>
+
+      {/* Expandable extra */}
+      {expanded && (
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Label className="text-[10px] text-muted-foreground">הפסקה (דק׳)</Label>
+            <Input
+              type="number" min={0} max={300} className="h-10"
+              value={br} onChange={e => setBr(Number(e.target.value || 0))}
+              onFocus={onFocusField} onBlur={onBlurField(commit)}
+              disabled={locked || !isWorking}
+            />
+          </div>
+          <div>
+            <Label className="text-[10px] text-muted-foreground">הערה</Label>
+            <Input
+              className="h-10"
+              value={notes} onChange={e => setNotes(e.target.value)}
+              onFocus={onFocusField} onBlur={onBlurField(commit)}
+              disabled={locked}
+              placeholder="—"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Actions row */}
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setExpanded(v => !v)}>
+          {expanded ? "פחות" : "הפסקה / הערה"}
+        </Button>
+        <div className="flex items-center gap-1">
+          {ci && co && co < ci && <AlertTriangle className="h-4 w-4 text-amber-500" />}
+          {isManager && r?.id && (
+            <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => onApprove(!approved)} title={approved ? "בטל אישור" : "אשר"}>
+              {approved ? <RotateCcw className="h-4 w-4" /> : <Check className="h-4 w-4 text-emerald-600" />}
+            </Button>
+          )}
+          {r?.id && !locked && (
+            <Button size="icon" variant="ghost" className="h-9 w-9" onClick={onDelete} title="מחק">
+              <Trash2 className="h-4 w-4 text-rose-500" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 });
 
