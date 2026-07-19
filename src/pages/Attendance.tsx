@@ -257,7 +257,8 @@ export default function Attendance() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-right">
@@ -299,6 +300,39 @@ export default function Attendance() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y -mx-6">
+              {loading && <div className="p-4 text-center text-sm text-muted-foreground">טוען...</div>}
+              {!loading && records.length === 0 && (
+                <div className="p-4 text-center text-sm text-muted-foreground">אין רישומים בחודש זה</div>
+              )}
+              {records.map(r => (
+                <div key={r.id} className="px-4 py-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="font-semibold text-sm tabular-nums">{formatDate(r.clock_in)}</div>
+                    <div className="text-base font-bold tabular-nums">
+                      {r.clock_out ? formatMinutes(r.duration_minutes ?? 0) : <Badge variant="outline">פתוח</Badge>}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="tabular-nums">
+                      {formatTime(r.clock_in)} — {r.clock_out ? formatTime(r.clock_out) : "…"}
+                    </div>
+                    <div>הפסקה: {formatMinutes(r.break_minutes ?? 0)}</div>
+                  </div>
+                  {r.notes && <div className="text-xs text-foreground/80 truncate">{r.notes}</div>}
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    {r.is_edited && <Badge variant="secondary" className="text-[10px]">נערך</Badge>}
+                    {r.clock_out && (
+                      <Button variant="ghost" size="sm" className="h-8" onClick={() => setEditing(r)}>
+                        <Edit2 className="h-3.5 w-3.5 ml-1" /> ערוך
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
