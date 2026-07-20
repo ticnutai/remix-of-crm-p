@@ -60,7 +60,7 @@ const dataUrlToImage = (dataUrl?: string): ImageRun | null => {
   const binary = atob(match[2]);
   const data = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) data[i] = binary.charCodeAt(i);
-  return new ImageRun({ data, type: type as "png" | "jpg" | "jpeg" | "gif" | "bmp", transformation: { width: 520, height: 105 } });
+  return new ImageRun({ data, type: (type === "jpeg" ? "jpg" : type) as "png" | "jpg" | "gif" | "bmp", transformation: { width: 520, height: 105 } });
 };
 
 const cell = (text: string, width: number, bold = false, shade?: string, textColor?: string) => new TableCell({
@@ -147,12 +147,12 @@ export async function createQuoteDocx(input: WordExportInput): Promise<Blob> {
     title: input.title,
     numbering: { config: [{ reference: "rtl-bullets", levels: [{ level: 0, format: LevelFormat.BULLET, text: "•", alignment: AlignmentType.RIGHT, style: { paragraph: { indent: { right: 420, hanging: 220 } } } }] }] },
     styles: {
-      default: { document: { run: { font: "Arial", size: 22, rightToLeft: true }, paragraph: { bidirectional: true, alignment: AlignmentType.RIGHT, spacing: { line: 300 } } } },
+      default: { document: { run: { font: "Arial", size: 22, rightToLeft: true }, paragraph: { bidirectional: true, alignment: AlignmentType.RIGHT, spacing: { line: 300 } } as any } },
       paragraphStyles: [
-        { id: "Title", name: "Title", basedOn: "Normal", next: "Normal", quickFormat: true, run: { font: "Arial", size: 36, bold: true, color: primary, rightToLeft: true }, paragraph: { bidirectional: true, alignment: AlignmentType.RIGHT, spacing: { after: 180 }, outlineLevel: 0 } },
-        { id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true, run: { font: "Arial", size: 30, bold: true, color: primary, rightToLeft: true }, paragraph: { bidirectional: true, alignment: AlignmentType.RIGHT, spacing: { before: 220, after: 120 }, outlineLevel: 0 } },
-        { id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal", quickFormat: true, run: { font: "Arial", size: 27, bold: true, color: primary, rightToLeft: true }, paragraph: { bidirectional: true, alignment: AlignmentType.RIGHT, spacing: { before: 180, after: 100 }, outlineLevel: 1 } },
-        { id: "Heading3", name: "Heading 3", basedOn: "Normal", next: "Normal", quickFormat: true, run: { font: "Arial", size: 24, bold: true, color: primary, rightToLeft: true }, paragraph: { bidirectional: true, alignment: AlignmentType.RIGHT, spacing: { before: 140, after: 80 }, outlineLevel: 2 } },
+        { id: "Title", name: "Title", basedOn: "Normal", next: "Normal", quickFormat: true, run: { font: "Arial", size: 36, bold: true, color: primary, rightToLeft: true }, paragraph: { bidirectional: true, alignment: AlignmentType.RIGHT, spacing: { after: 180 }, outlineLevel: 0 } as any },
+        { id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true, run: { font: "Arial", size: 30, bold: true, color: primary, rightToLeft: true }, paragraph: { bidirectional: true, alignment: AlignmentType.RIGHT, spacing: { before: 220, after: 120 }, outlineLevel: 0 } as any },
+        { id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal", quickFormat: true, run: { font: "Arial", size: 27, bold: true, color: primary, rightToLeft: true }, paragraph: { bidirectional: true, alignment: AlignmentType.RIGHT, spacing: { before: 180, after: 100 }, outlineLevel: 1 } as any },
+        { id: "Heading3", name: "Heading 3", basedOn: "Normal", next: "Normal", quickFormat: true, run: { font: "Arial", size: 24, bold: true, color: primary, rightToLeft: true }, paragraph: { bidirectional: true, alignment: AlignmentType.RIGHT, spacing: { before: 140, after: 80 }, outlineLevel: 2 } as any },
       ],
     },
     sections: [{
@@ -162,7 +162,7 @@ export async function createQuoteDocx(input: WordExportInput): Promise<Blob> {
           margin: { top: mmToTwip(15), right: mmToTwip(15), bottom: mmToTwip(17), left: mmToTwip(15), header: mmToTwip(7), footer: mmToTwip(7) },
         },
         bidi: true,
-      },
+      } as any,
       headers: { default: new Header({ children: [new Paragraph({ bidirectional: true, alignment: AlignmentType.RIGHT, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: primary, space: 4 } }, children: [new TextRun({ text: input.companyName || "", bold: true, size: 18, color: primary, rightToLeft: true })] })] }) },
       footers: { default: new Footer({ children: [new Paragraph({ bidirectional: true, alignment: AlignmentType.RIGHT, tabStops: [{ type: "right" as never, position: 9000 }], children: [new TextRun({ text: `${footerText}   |   עמוד `, size: 16, color: "666666", rightToLeft: true }), new TextRun({ children: [PageNumber.CURRENT], size: 16, color: "666666" })] })] }) },
       children,

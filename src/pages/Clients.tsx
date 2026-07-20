@@ -1473,8 +1473,8 @@ export default function Clients() {
       return () => window.cancelIdleCallback(idleId);
     }
 
-    const timeoutId = window.setTimeout(loadSecondaryData, 0);
-    return () => window.clearTimeout(timeoutId);
+    const timeoutId = setTimeout(loadSecondaryData, 0);
+    return () => clearTimeout(timeoutId);
   }, [fetchClients, fetchFilterData, fetchCategoriesAndTags]);
 
   // Check for duplicate clients

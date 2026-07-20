@@ -7268,7 +7268,7 @@ ${tbAt('footer')}
           widthMm: pageDimensions.widthMm,
           heightMm: pageDimensions.heightMm,
         },
-        projectDetails,
+        projectDetails: projectDetails as unknown as Record<string, string>,
         stages: (editedTemplate.stages || []).map((stage: any) => ({
           ...stage,
           name: applyProjectDetailsTokens(stage.name || "", projectDetails),
