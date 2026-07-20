@@ -19,6 +19,7 @@ import {
   projectToMergeData,
   type ProjectTokenData,
 } from "./projectTokens";
+import { resolveFlowStripSettings } from "./stripSettings";
 
 export type MergeData = Record<string, string | number | undefined | null>;
 
@@ -139,7 +140,7 @@ function pushFieldOrText(out: FlowInline[], text: string) {
     return;
   }
   // במצב placeholder — סורקים גם טוקני [עברית] והופכים אותם לשדות דינמיים
-  const re = /\[([^\[\]\n]+)\]/g;
+  const re = /\[([^\n[\]]+)\]/g;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
@@ -239,41 +240,20 @@ export function serializeTemplate(
   data = mergedData;
   const ds: any = { ...(template.design_settings || {}), ...(opts?.designSettings || {}) };
   const contact = ds.contact_info || ds.contactInfo || {};
-  const logoUrl = firstValue(ds.logoUrl, ds.logo_url, ds.logoURL, ds.originalLogoUrl, ds.original_logo_url);
-  const logoPosition = firstValue(ds.logoPosition, ds.logo_position);
-  const isStripLogo = logoPosition === "custom-strip" || logoPosition === "full-width";
-  const headerStripUrl = firstValue(
-    ds.headerStripUrl,
-    ds.header_strip_url,
-    ds.stripUrl,
-    ds.strip_url,
-    isStripLogo ? logoUrl : undefined,
-  );
-  const footerStripUrl = firstValue(
-    ds.footerStripUrl,
-    ds.footer_strip_url,
-    ds.footerLogoUrl,
-    ds.footer_logo_url,
-    isStripLogo ? logoUrl : undefined,
-  );
-  const headerStripWidthPercent = Number(firstValue(ds.headerStripWidthPercent, ds.header_strip_width_percent));
-  const footerStripWidthPercent = Number(firstValue(ds.footerStripWidthPercent, ds.footer_strip_width_percent));
-  const headerStripHeightPx = Number(ds.headerStripHeight);
-  const footerStripHeightPx = Number(ds.footerStripHeight);
-  const headerStripContentGapPx = Number(firstValue(ds.headerStripContentGapPx, ds.header_content_gap_px));
-  const footerStripContentGapPx = Number(firstValue(ds.footerStripContentGapPx, ds.footer_content_gap_px));
+  const strips = resolveFlowStripSettings(ds);
+  const { logoUrl, headerUrl: headerStripUrl, footerUrl: footerStripUrl } = strips;
 
   const branding: FlowBranding = {
     logoUrl,
     headerStripUrl,
     footerStripUrl,
-    stripBgColor: firstValue(ds.stripBgColor, ds.strip_bg_color, "#ffffff"),
-    headerStripHeight: Math.max(0, Number.isFinite(headerStripHeightPx) ? Math.round(headerStripHeightPx) : 150),
-    footerStripHeight: Math.max(0, Number.isFinite(footerStripHeightPx) ? Math.round(footerStripHeightPx) : 90),
-    headerStripWidthPercent: Number.isFinite(headerStripWidthPercent) ? Math.round(headerStripWidthPercent) : 100,
-    footerStripWidthPercent: Number.isFinite(footerStripWidthPercent) ? Math.round(footerStripWidthPercent) : 100,
-    headerStripContentGapPx: Math.max(0, Number.isFinite(headerStripContentGapPx) ? Math.round(headerStripContentGapPx) : 18),
-    footerStripContentGapPx: Math.max(0, Number.isFinite(footerStripContentGapPx) ? Math.round(footerStripContentGapPx) : 18),
+    stripBgColor: strips.backgroundColor,
+    headerStripHeight: strips.headerHeightPx,
+    footerStripHeight: strips.footerHeightPx,
+    headerStripWidthPercent: strips.headerWidthPercent,
+    footerStripWidthPercent: strips.footerWidthPercent,
+    headerStripContentGapPx: strips.headerContentGapPx,
+    footerStripContentGapPx: strips.footerContentGapPx,
     companyName: firstValue(ds.companyName, ds.company_name, ""),
     companySubtitle: firstValue(ds.companySubtitle, ds.company_subtitle, ""),
     contactLine: [contact.phone, contact.email, contact.address].filter(Boolean).join("  |  "),
@@ -464,11 +444,9 @@ export function serializeTemplate(
       }
     }
 
-    sections.push({
-      id: "payments",
-      keepTogether: true,
-      blocks: paymentBlocks,
-    });
+    // לוח תשלומים עשוי להיות ארוך מעמוד A4. אסור לסמן את כל המקטע כבלתי
+    // ניתן לפיצול; הכותרת והשורות עצמן מוגנות ב-CSS, והטבלה נשברת בין שורות.
+    sections.push({ id: "payments", blocks: paymentBlocks });
   }
 
 
@@ -476,7 +454,6 @@ export function serializeTemplate(
   if (template.timeline && template.timeline.length) {
     sections.push({
       id: "timeline",
-      keepTogether: true,
       blocks: [
         {
           type: "heading",
@@ -501,7 +478,6 @@ export function serializeTemplate(
   if (template.important_notes && template.important_notes.length) {
     sections.push({
       id: "notes",
-      keepTogether: true,
       blocks: [
         {
           type: "heading",

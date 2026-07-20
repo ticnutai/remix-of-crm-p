@@ -4,6 +4,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
@@ -36,7 +37,7 @@ import { htmlToFlowDoc } from "./editor/htmlToFlowDoc";
 import { renderFlowToHtml } from "./renderer";
 import { usePagedGuides } from "./editor/usePagedGuides";
 import StripDesignerDialog, { type FlowStripDesignState, type StripPosition } from "./StripDesignerDialog";
-import type { FlowPageSetup, FlowPageSizePreset } from "./types";
+import type { FlowPageSetup } from "./types";
 
 interface Props {
   template: QuoteTemplate;
@@ -65,16 +66,6 @@ const DEFAULT_PAGE_SETUP: FlowPageSetup = {
   showPageNumbers: true,
 };
 
-const PAGE_OPTIONS: Array<{ value: FlowPageSizePreset; label: string }> = [
-  { value: "none", label: "ללא חלוקה" },
-  { value: "A4", label: "A4" },
-  { value: "A3", label: "A3" },
-  { value: "A5", label: "A5" },
-  { value: "Letter", label: "Letter" },
-  { value: "Legal", label: "Legal" },
-  { value: "custom", label: "מותאם" },
-];
-
 function boundedNumber(value: unknown, fallback: number, min = 0, max = Number.POSITIVE_INFINITY) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return fallback;
@@ -88,13 +79,13 @@ function looseNumber(value: unknown, fallback: number) {
 
 function knownLogoSources(settings?: any, position?: StripPosition) {
   return [
-    settings?.logoUrl,
-    settings?.logo_url,
-    settings?.logoURL,
-    settings?.originalLogoUrl,
-    settings?.original_logo_url,
-    settings?.stripUrl,
-    settings?.strip_url,
+    position === "header" ? settings?.logoUrl : undefined,
+    position === "header" ? settings?.logo_url : undefined,
+    position === "header" ? settings?.logoURL : undefined,
+    position === "header" ? settings?.originalLogoUrl : undefined,
+    position === "header" ? settings?.original_logo_url : undefined,
+    position === "header" ? settings?.stripUrl : undefined,
+    position === "header" ? settings?.strip_url : undefined,
     position === "header" ? settings?.headerStripUrl : undefined,
     position === "header" ? settings?.header_strip_url : undefined,
     position === "footer" ? settings?.footerStripUrl : undefined,
@@ -104,21 +95,33 @@ function knownLogoSources(settings?: any, position?: StripPosition) {
   ].filter((value): value is string => typeof value === "string" && value.length > 0);
 }
 
-function shouldReplaceLogoSrc(src: string, sources: string[]) {
+function shouldReplaceLogoSrc(src: string, sources: string[], position: StripPosition) {
   if (sources.includes(src)) return true;
+  if (position === "footer") return false;
   const lower = src.toLowerCase();
   return lower.includes("company-header") || lower.includes("logo") || lower.includes("header-strip");
 }
 
-function replaceLogoImagesInHtml(html: string, nextLogoUrl: string, sources: string[]) {
+function replaceLogoImagesInHtml(
+  html: string,
+  nextLogoUrl: string,
+  sources: string[],
+  position: StripPosition,
+) {
   if (!html || !nextLogoUrl) return html;
   return html.replace(/(<img\b[^>]*\bsrc=["'])([^"']+)(["'][^>]*>)/gi, (match, prefix, src, suffix) => {
-    if (!shouldReplaceLogoSrc(String(src), sources)) return match;
+    if (!shouldReplaceLogoSrc(String(src), sources, position)) return match;
     return `${prefix}${nextLogoUrl}${suffix}`;
   });
 }
 
 function logoReplacementPatch(logoUrl: string, position: StripPosition) {
+  if (position === "footer") {
+    return {
+      footerLogoUrl: logoUrl,
+      footer_logo_url: logoUrl,
+    };
+  }
   const patch: Record<string, any> = {
     logoUrl,
     logo_url: logoUrl,
@@ -126,24 +129,36 @@ function logoReplacementPatch(logoUrl: string, position: StripPosition) {
     original_logo_url: logoUrl,
     showLogo: true,
   };
-  if (position === "footer") {
-    patch.footerLogoUrl = logoUrl;
-    patch.footer_logo_url = logoUrl;
-  }
   return patch;
 }
 
-function loadPageSetup(templateId?: string): FlowPageSetup {
+function normalizeA4PageSetup(value?: Partial<FlowPageSetup> | null): FlowPageSetup {
+  const margin = value?.marginMm || DEFAULT_PAGE_SETUP.marginMm;
+  return {
+    ...DEFAULT_PAGE_SETUP,
+    ...value,
+    size: "A4",
+    orientation: value?.orientation === "landscape" ? "landscape" : "portrait",
+    customSizeMm: { width: 210, height: 297 },
+    marginMm: {
+      top: boundedNumber(margin.top, 32, 12, 60),
+      right: boundedNumber(margin.right, 18, 8, 35),
+      bottom: boundedNumber(margin.bottom, 28, 12, 60),
+      left: boundedNumber(margin.left, 18, 8, 35),
+    },
+    showPageNumbers: value?.showPageNumbers !== false,
+  };
+}
+
+function loadPageSetup(templateId?: string, designSettings?: any): FlowPageSetup {
+  const savedInTemplate = designSettings?.flowPageSetup || designSettings?.flow_page_setup;
+  if (savedInTemplate && typeof savedInTemplate === "object") {
+    return normalizeA4PageSetup(savedInTemplate);
+  }
   try {
     const raw = localStorage.getItem(pageKey(templateId));
     if (!raw) return DEFAULT_PAGE_SETUP;
-    const parsed = JSON.parse(raw);
-    return {
-      ...DEFAULT_PAGE_SETUP,
-      ...parsed,
-      marginMm: { ...DEFAULT_PAGE_SETUP.marginMm, ...(parsed.marginMm || {}) },
-      customSizeMm: { ...DEFAULT_PAGE_SETUP.customSizeMm, ...(parsed.customSizeMm || {}) },
-    };
+    return normalizeA4PageSetup(JSON.parse(raw));
   } catch {
     return DEFAULT_PAGE_SETUP;
   }
@@ -159,6 +174,8 @@ export default function FlowWorkspaceTab({
   onSubTabChange,
   hideInternalSubTabs,
 }: Props) {
+  const designSettingsRef = useRef(designSettings);
+  designSettingsRef.current = designSettings;
   // toggle: שמירת עיצוב מקורי מהתבנית (off = הזרימה הקיימת, on = שכבה 1)
   const [preserveStyles, setPreserveStyles] = useState<boolean>(() => {
     try {
@@ -194,7 +211,9 @@ export default function FlowWorkspaceTab({
     [presets, selectedPresetId],
   );
   const presetCfg = selectedPreset ? safeConfig(selectedPreset) : undefined;
-  const [pageSetup, setPageSetup] = useState<FlowPageSetup>(() => loadPageSetup(template.id));
+  const [pageSetup, setPageSetup] = useState<FlowPageSetup>(() =>
+    loadPageSetup(template.id, designSettings),
+  );
   const headerStripInputRef = useRef<HTMLInputElement | null>(null);
   const footerStripInputRef = useRef<HTMLInputElement | null>(null);
   const [designerPosition, setDesignerPosition] = useState<StripPosition | null>(null);
@@ -224,17 +243,22 @@ export default function FlowWorkspaceTab({
 
   const updatePageSetup = (patch: Partial<FlowPageSetup>) => {
     setPageSetup((prev) => {
-      const next: FlowPageSetup = {
+      const next = normalizeA4PageSetup({
         ...prev,
         ...patch,
         marginMm: { ...prev.marginMm, ...(patch.marginMm || {}) },
         customSizeMm: { ...prev.customSizeMm, ...(patch.customSizeMm || {}) },
-      };
+      });
       try {
         localStorage.setItem(pageKey(template.id), JSON.stringify(next));
       } catch {
         /* ignore */
       }
+      onDesignSettingsChange?.((settings: any) => ({
+        ...(settings || {}),
+        flowPageSetup: next,
+        flow_page_setup: next,
+      }));
       return next;
     });
   };
@@ -246,7 +270,7 @@ export default function FlowWorkspaceTab({
   const replaceLogoEverywhere = (nextLogoUrl: string, position: StripPosition) => {
     const sources = knownLogoSources(designSettings, position);
     setHtml((prev) => {
-      const next = replaceLogoImagesInHtml(prev, nextLogoUrl, sources);
+      const next = replaceLogoImagesInHtml(prev, nextLogoUrl, sources, position);
       if (next !== prev) {
         try {
           localStorage.setItem(storageKey(template.id), next);
@@ -297,30 +321,26 @@ export default function FlowWorkspaceTab({
   };
 
   const clearStrip = (position: "header" | "footer") => {
-    // ל-serializer יש נפילות אחורה (stripUrl / strip_url / logoUrl כשה-logoPosition הוא custom-strip),
-    // לכן חייבים לאפס גם אותם — אחרת הסטריפ יחזור בתצוגה המקדימה.
     const logoIsStrip =
       designSettings?.logoPosition === "custom-strip" ||
       designSettings?.logoPosition === "full-width" ||
       designSettings?.logo_position === "custom-strip" ||
       designSettings?.logo_position === "full-width";
 
-    const sharedNullify: Record<string, any> = {
-      stripUrl: null,
-      strip_url: null,
-    };
-    if (logoIsStrip) {
-      sharedNullify.logoUrl = null;
-      sharedNullify.logo_url = null;
-      sharedNullify.originalLogoUrl = null;
-      sharedNullify.original_logo_url = null;
-      sharedNullify.logoPosition = null;
-      sharedNullify.logo_position = null;
-    }
-
     if (position === "header") {
       updateDesignSettings({
-        ...sharedNullify,
+        stripUrl: null,
+        strip_url: null,
+        ...(logoIsStrip
+          ? {
+              logoUrl: null,
+              logo_url: null,
+              originalLogoUrl: null,
+              original_logo_url: null,
+              logoPosition: null,
+              logo_position: null,
+            }
+          : {}),
         headerStripUrl: null,
         header_strip_url: null,
         headerStripDesign: null,
@@ -330,7 +350,6 @@ export default function FlowWorkspaceTab({
       return;
     }
     updateDesignSettings({
-      ...sharedNullify,
       footerStripUrl: null,
       footer_strip_url: null,
       footerLogoUrl: null,
@@ -406,7 +425,7 @@ export default function FlowWorkspaceTab({
       setSelectedPresetId(null);
     }
 
-    setPageSetup(loadPageSetup(template.id));
+    setPageSetup(loadPageSetup(template.id, designSettingsRef.current));
     try {
       const v = localStorage.getItem(paymentsLayoutKey(template.id));
       setPaymentsLayoutState(v === "table" || v === "both" ? v : "list");
@@ -917,66 +936,18 @@ export default function FlowWorkspaceTab({
   const renderPageBlock = () => (
     <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-2 py-1">
       <Label className="whitespace-nowrap text-xs font-medium">גודל דף</Label>
+      <Badge variant="secondary" className="h-7 px-2 text-xs">A4 · 210×297 מ״מ</Badge>
       <select
         className="h-7 rounded border bg-background px-2 text-xs"
-        value={pageSetup.size}
-        onChange={(e) => updatePageSetup({ size: e.target.value as FlowPageSizePreset })}
-        title="גודל הדף של הצעת המחיר ב-Flow V2"
+        value={pageSetup.orientation || "portrait"}
+        onChange={(e) =>
+          updatePageSetup({ orientation: e.target.value as FlowPageSetup["orientation"] })
+        }
+        title="כיוון דף A4"
       >
-        {PAGE_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
+        <option value="portrait">לאורך</option>
+        <option value="landscape">לרוחב</option>
       </select>
-      {pageSetup.size !== "custom" && pageSetup.size !== "none" ? (
-        <select
-          className="h-7 rounded border bg-background px-2 text-xs"
-          value={pageSetup.orientation || "portrait"}
-          onChange={(e) =>
-            updatePageSetup({ orientation: e.target.value as FlowPageSetup["orientation"] })
-          }
-          title="כיוון הדף"
-        >
-          <option value="portrait">לאורך</option>
-          <option value="landscape">לרוחב</option>
-        </select>
-      ) : pageSetup.size === "custom" ? (
-        <div className="flex items-center gap-1" dir="ltr">
-          <input
-            className="h-7 w-14 rounded border bg-background px-1 text-center text-xs"
-            type="number"
-            min={50}
-            value={pageSetup.customSizeMm?.width || 210}
-            onChange={(e) =>
-              updatePageSetup({
-                customSizeMm: {
-                  ...(pageSetup.customSizeMm || DEFAULT_PAGE_SETUP.customSizeMm),
-                  width: Number(e.target.value) || 210,
-                },
-              })
-            }
-            title="רוחב במילימטרים"
-          />
-          <span className="text-xs text-muted-foreground">×</span>
-          <input
-            className="h-7 w-14 rounded border bg-background px-1 text-center text-xs"
-            type="number"
-            min={50}
-            value={pageSetup.customSizeMm?.height || 297}
-            onChange={(e) =>
-              updatePageSetup({
-                customSizeMm: {
-                  ...(pageSetup.customSizeMm || DEFAULT_PAGE_SETUP.customSizeMm),
-                  height: Number(e.target.value) || 297,
-                },
-              })
-            }
-            title="גובה במילימטרים"
-          />
-          <span className="text-[10px] text-muted-foreground">mm</span>
-        </div>
-      ) : null}
     </div>
   );
 

@@ -9,6 +9,7 @@
 import type { FlowBlock, FlowDocument, FlowInline } from "./types";
 import type { DesignPresetConfig } from "./presets/types";
 import { buildPresetExtraCss } from "./presets/presetExtras";
+import { clampFlowNumber, FLOW_STRIP_LIMITS } from "./stripSettings";
 
 const PX_TO_MM = 25.4 / 96;
 
@@ -167,18 +168,55 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   const m = page.marginMm;
   const hasHeaderStrip = Boolean(branding.headerStripUrl);
   const hasFooterStrip = Boolean(branding.footerStripUrl);
-  const headerStripHeightPx = Number(branding.headerStripHeight);
-  const footerStripHeightPx = Number(branding.footerStripHeight);
+  const headerStripHeightPx = hasHeaderStrip
+    ? clampFlowNumber(
+        branding.headerStripHeight,
+        FLOW_STRIP_LIMITS.headerHeightPx.fallback,
+        FLOW_STRIP_LIMITS.headerHeightPx.min,
+        FLOW_STRIP_LIMITS.headerHeightPx.max,
+      )
+    : 0;
+  const footerStripHeightPx = hasFooterStrip
+    ? clampFlowNumber(
+        branding.footerStripHeight,
+        FLOW_STRIP_LIMITS.footerHeightPx.fallback,
+        FLOW_STRIP_LIMITS.footerHeightPx.min,
+        FLOW_STRIP_LIMITS.footerHeightPx.max,
+      )
+    : 0;
   const headerStripMm = pxToMm(headerStripHeightPx, 150);
   const footerStripMm = pxToMm(footerStripHeightPx, 90);
-  const headerContentGapMm = hasHeaderStrip ? pxToMm(Number(branding.headerStripContentGapPx), 18) : 0;
-  const footerContentGapMm = hasFooterStrip ? pxToMm(Number(branding.footerStripContentGapPx), 18) : 0;
-  const headerStripWidthValue = Number(branding.headerStripWidthPercent);
-  const footerStripWidthValue = Number(branding.footerStripWidthPercent);
-  const headerStripWidthPercent = Math.round(Number.isFinite(headerStripWidthValue) ? headerStripWidthValue : 100);
-  const footerStripWidthPercent = Math.round(Number.isFinite(footerStripWidthValue) ? footerStripWidthValue : 100);
+  const headerContentGapPx = clampFlowNumber(
+    branding.headerStripContentGapPx,
+    FLOW_STRIP_LIMITS.contentGapPx.fallback,
+    FLOW_STRIP_LIMITS.contentGapPx.min,
+    FLOW_STRIP_LIMITS.contentGapPx.max,
+  );
+  const footerContentGapPx = clampFlowNumber(
+    branding.footerStripContentGapPx,
+    FLOW_STRIP_LIMITS.contentGapPx.fallback,
+    FLOW_STRIP_LIMITS.contentGapPx.min,
+    FLOW_STRIP_LIMITS.contentGapPx.max,
+  );
+  const headerContentGapMm = hasHeaderStrip ? pxToMm(headerContentGapPx, 18) : 0;
+  const footerContentGapMm = hasFooterStrip ? pxToMm(footerContentGapPx, 18) : 0;
+  const headerStripWidthPercent = clampFlowNumber(
+    branding.headerStripWidthPercent,
+    FLOW_STRIP_LIMITS.widthPercent.fallback,
+    FLOW_STRIP_LIMITS.widthPercent.min,
+    FLOW_STRIP_LIMITS.widthPercent.max,
+  );
+  const footerStripWidthPercent = clampFlowNumber(
+    branding.footerStripWidthPercent,
+    FLOW_STRIP_LIMITS.widthPercent.fallback,
+    FLOW_STRIP_LIMITS.widthPercent.min,
+    FLOW_STRIP_LIMITS.widthPercent.max,
+  );
   const topMargin = hasHeaderStrip ? headerStripMm + headerContentGapMm : m.top;
-  const bottomMargin = hasFooterStrip ? footerStripMm + footerContentGapMm : m.bottom;
+  const pageNumberReserveMm = page.showPageNumbers && hasFooterStrip ? 7 : 0;
+  const bottomMargin = hasFooterStrip
+    ? footerStripMm + footerContentGapMm + pageNumberReserveMm
+    : m.bottom;
   const stripBgColor = branding.stripBgColor || "#ffffff";
 
   const sectionsHtml = sections
@@ -220,11 +258,11 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     @bottom-center { content: element(runFooter); }
   }
   ${page.showPageNumbers ? `
-  .pagedjs_page { position: relative; }
-  .pagedjs_page::after {
+  .pagedjs_sheet { position: relative; }
+  .pagedjs_sheet::after {
     content: "עמוד " attr(data-page-number);
     position: absolute;
-    bottom: 4mm;
+    bottom: ${mmCss(hasFooterStrip ? footerStripMm + 2 : 4)}mm;
     right: 6mm;
     z-index: 9999;
     display: inline-flex;
@@ -321,7 +359,8 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     margin: 0; padding: 0;
     font-family: ${branding.fontFamily};
     color: #1a1a1a;
-    direction: ltr;
+    direction: rtl;
+    text-align: right;
     font-size: 11pt;
     line-height: 1.55;
     /* קריטי: שומר על צבעים, רקעים וגרדיאנטים בהדפסה ל-PDF */
@@ -366,19 +405,39 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     padding-left: ${m.left}mm;
     padding-right: ${m.right}mm;
   }
+  .flow-doc *,
+  .flow-doc *::before,
+  .flow-doc *::after {
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+  .flow-doc img,
+  .flow-doc svg,
+  .flow-doc canvas,
+  .flow-doc video {
+    display: block;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  .flow-doc pre,
+  .flow-doc code {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
 
   .flow-h { color: ${branding.primaryColor}; margin: 4mm 0 2mm; break-after: avoid; }
   .flow-h1 { font-size: 20pt; padding-bottom: 2mm; }
   .flow-h2 { font-size: 14pt; }
   .flow-h3 { font-size: 12pt; }
 
-  .flow-p { margin: 0 0 2mm; orphans: 3; widows: 3; }
-  .flow-list { margin: 0 0 3mm; padding-inline-start: 6mm; }
+  .flow-p { margin: 0 0 2mm; orphans: 3; widows: 3; direction: rtl; text-align: right; }
+  .flow-list { margin: 0 0 3mm; padding-inline-start: 6mm; direction: rtl; text-align: right; }
   .flow-list li { margin-bottom: 1mm; }
 
-  .flow-table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; }
+  .flow-table { width: 100% !important; max-width: 100% !important; table-layout: fixed; border-collapse: collapse; margin: 2mm 0 4mm; direction: rtl; }
   .flow-table th, .flow-table td {
     border: 1px solid #ddd; padding: 2mm 3mm; text-align: right; font-size: 10pt;
+    overflow-wrap: anywhere; word-break: normal;
   }
   .flow-table th { background: ${branding.primaryColor}; color: #fff; }
   .flow-table.breakable { break-inside: auto; }

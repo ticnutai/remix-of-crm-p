@@ -4786,7 +4786,7 @@ export function HtmlTemplateEditor({
   const [flowSubTab, setFlowSubTab] = useState<"edit" | "preview" | "split" | "compare">(() => {
     try {
       const v = localStorage.getItem(FLOW_SUB_TAB_LS_KEY);
-      if (v === "preview" || v === "split" || v === "compare") return v;
+      if (v === "preview" || v === "split") return v;
       return "edit";
     } catch {
       return "edit";
@@ -4818,7 +4818,7 @@ export function HtmlTemplateEditor({
 
 
   // Top tabs configuration (order + visibility) — persisted
-  const TABS_CFG_LS_KEY = "lov-html-editor-tabs-cfg-v1";
+  const TABS_CFG_LS_KEY = "lov-html-editor-tabs-cfg-v2";
   type EditorTabKey =
     | "flow-v2"
     | "project"
@@ -4827,10 +4827,7 @@ export function HtmlTemplateEditor({
     | "design"
     | "logo-strip"
     | "text-boxes"
-    | "tools"
-    | "preview"
-    | "split"
-    | "pages";
+    | "tools";
   const DEFAULT_TAB_ORDER: EditorTabKey[] = [
     "flow-v2",
     "project",
@@ -4840,9 +4837,6 @@ export function HtmlTemplateEditor({
     "logo-strip",
     "text-boxes",
     "tools",
-    "preview",
-    "split",
-    "pages",
   ];
   const TAB_META: Record<
     EditorTabKey,
@@ -4856,9 +4850,6 @@ export function HtmlTemplateEditor({
     "logo-strip": { label: "לוגו", shortLabel: "לוגו", icon: Crop, activeClass: "data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700" },
     "text-boxes": { label: "טקסט", shortLabel: "טקסט", icon: Type, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
     tools: { label: "כלים", shortLabel: "כלים", icon: Wrench, activeClass: "data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700" },
-    preview: { label: "תצוגה מקדימה", shortLabel: "תצוגה", icon: Eye, activeClass: "data-[state=active]:bg-green-100 data-[state=active]:text-green-700" },
-    split: { label: "עריכה + תצוגה", shortLabel: "פיצול", icon: Columns, activeClass: "data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700" },
-    pages: { label: "תצוגת דפים", shortLabel: "דפים", icon: Layers, activeClass: "data-[state=active]:bg-[#162C58]/10 data-[state=active]:text-[#162C58]" },
   };
 
   const [tabConfig, setTabConfig] = useState<
@@ -5295,7 +5286,13 @@ export function HtmlTemplateEditor({
         if (Array.isArray(data.pricingTiers)) setPricingTiers(data.pricingTiers);
         if (data.projectDetails) setProjectDetails(data.projectDetails);
         if (typeof data.selectedTier === "string") setSelectedTier(data.selectedTier);
-        if (typeof data.activeTab === "string") setActiveTab(data.activeTab);
+        if (typeof data.activeTab === "string") {
+          setActiveTab(
+            data.activeTab === "preview" || data.activeTab === "split" || data.activeTab === "pages"
+              ? "flow-v2"
+              : data.activeTab,
+          );
+        }
         toast({
           title: source === "cloud" ? "טיוטה שוחזרה מהענן" : "טיוטה שוחזרה",
           description: "הצעת המחיר שוחזרה למצב שבו עזבת אותה",
@@ -9255,10 +9252,10 @@ ${tbAt('footer')}
             </div>
           </div>
 
-          {/* Second row: Flow sub-tabs (visible only when Flow is active) */}
+          {/* מקור אמת יחיד לעריכה/תצוגה/הדפסה: מנוע Flow A4. */}
           {activeTab === "flow-v2" && (
-            <div className="hidden md:flex border-b bg-emerald-50/40 px-6 items-center gap-1.5 h-10">
-              <span className="text-[11px] font-medium text-emerald-700/80 ml-1">Flow:</span>
+            <div className="flex min-h-10 shrink-0 items-center gap-1.5 overflow-x-auto border-b bg-emerald-50/40 px-2 md:px-6">
+              <span className="whitespace-nowrap text-[11px] font-medium text-emerald-700/80 ml-1">עימוד A4:</span>
               <button
                 type="button"
                 onClick={() => setFlowSubTab("edit")}
@@ -9298,20 +9295,6 @@ ${tbAt('footer')}
               >
                 <SplitSquareHorizontal className="h-3.5 w-3.5" />
                 פיצול
-              </button>
-              <button
-                type="button"
-                onClick={() => setFlowSubTab("compare")}
-                title="השוואת עריכה מול תצוגה + זיהוי פערי שבירות עמוד"
-                className={cn(
-                  "inline-flex items-center gap-1 px-2 h-7 rounded-md text-xs font-medium transition-colors",
-                  flowSubTab === "compare"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "text-muted-foreground hover:bg-muted",
-                )}
-              >
-                <Columns2 className="h-3.5 w-3.5" />
-                השוואה
               </button>
             </div>
           )}

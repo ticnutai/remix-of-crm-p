@@ -37,6 +37,7 @@ import { MultiSelection, addExtraRange, clearExtraRanges, getExtraRanges } from 
 import { PaymentsBlock } from "./PaymentsBlock";
 import { FlowFrame } from "./FlowFrameNode";
 import { injectEditorFlowIds } from "./usePagedGuides";
+import { resolveFlowStripSettings } from "../stripSettings";
 
 import type { DesignPresetConfig } from "../presets/types";
 import { buildPresetExtraCss } from "../presets/presetExtras";
@@ -73,7 +74,6 @@ const PAGE_SIZES_MM: Record<string, { width: number; height: number }> = {
 
 const MM_TO_PX = 96 / 25.4;
 const DEFAULT_PAGE_GAP_PX = 18;
-const DEFAULT_STRIP_CONTENT_GAP_PX = 18;
 const DEFAULT_MARGIN_MM = { top: 32, right: 18, bottom: 28, left: 18 };
 
 function mmToPx(mm: number) {
@@ -134,45 +134,20 @@ function numberValue(value: unknown, fallback: number, min = 0, max = Number.POS
   return Math.max(min, Math.min(max, Math.round(numeric)));
 }
 
-function looseNumber(value: unknown, fallback: number) {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? Math.round(numeric) : fallback;
-}
-
 function getStripSettings(templateDesignSettings?: any, designSettings?: any) {
   const ds = { ...(templateDesignSettings || {}), ...(designSettings || {}) };
-  const logoUrl = firstValue(ds.logoUrl, ds.logo_url, ds.logoURL, ds.originalLogoUrl, ds.original_logo_url);
-  const logoPosition = firstValue(ds.logoPosition, ds.logo_position);
-  const isStripLogo = logoPosition === "custom-strip" || logoPosition === "full-width";
-  const headerUrl = firstValue(ds.headerStripUrl, ds.header_strip_url, ds.stripUrl, ds.strip_url, isStripLogo ? logoUrl : undefined);
-  const footerUrl = firstValue(ds.footerStripUrl, ds.footer_strip_url, ds.footerLogoUrl, ds.footer_logo_url, isStripLogo ? logoUrl : undefined);
+  const strips = resolveFlowStripSettings(ds);
 
   return {
-    headerUrl,
-    footerUrl,
-    bgColor: firstValue(ds.stripBgColor, ds.strip_bg_color, "#ffffff") || "#ffffff",
-    headerHeight: Math.max(0, looseNumber(ds.headerStripHeight, 150)),
-    footerHeight: Math.max(0, looseNumber(ds.footerStripHeight, 90)),
-    headerWidthPercent: looseNumber(
-      firstValue(ds.headerStripWidthPercent, ds.header_strip_width_percent),
-      100,
-    ),
-    footerWidthPercent: looseNumber(
-      firstValue(ds.footerStripWidthPercent, ds.footer_strip_width_percent),
-      100,
-    ),
-    headerContentGap: numberValue(
-      firstValue(ds.headerStripContentGapPx, ds.header_content_gap_px),
-      DEFAULT_STRIP_CONTENT_GAP_PX,
-      0,
-      240,
-    ),
-    footerContentGap: numberValue(
-      firstValue(ds.footerStripContentGapPx, ds.footer_content_gap_px),
-      DEFAULT_STRIP_CONTENT_GAP_PX,
-      0,
-      240,
-    ),
+    headerUrl: strips.headerUrl,
+    footerUrl: strips.footerUrl,
+    bgColor: strips.backgroundColor,
+    headerHeight: strips.headerHeightPx,
+    footerHeight: strips.footerHeightPx,
+    headerWidthPercent: strips.headerWidthPercent,
+    footerWidthPercent: strips.footerWidthPercent,
+    headerContentGap: strips.headerContentGapPx,
+    footerContentGap: strips.footerContentGapPx,
     pageGap: numberValue(
       firstValue(ds.flowPageGapPx, ds.flow_page_gap_px),
       DEFAULT_PAGE_GAP_PX,

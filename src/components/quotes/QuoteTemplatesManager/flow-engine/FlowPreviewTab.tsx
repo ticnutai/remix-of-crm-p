@@ -13,6 +13,7 @@ import { htmlToFlowDoc } from "./editor/htmlToFlowDoc";
 import { projectToMergeData } from "./projectTokens";
 import type { DesignPresetConfig } from "./presets/types";
 import type { FlowPageSetup } from "./types";
+import { resolveFlowPageMetrics } from "./pageMetrics";
 
 interface FlowPreviewTabProps {
   template: QuoteTemplate;
@@ -61,6 +62,36 @@ function splitPagedDocument(html: string) {
   };
 }
 
+async function waitForFlowAssets(html: string) {
+  const fontReady = document.fonts?.ready || Promise.resolve();
+  if (typeof DOMParser === "undefined") {
+    await fontReady;
+    return;
+  }
+
+  const parsed = new DOMParser().parseFromString(html, "text/html");
+  const sources = Array.from(parsed.images)
+    .map((image) => image.getAttribute("src"))
+    .filter((source): source is string => Boolean(source));
+  const imageReady = Promise.all(
+    Array.from(new Set(sources)).map(
+      (source) =>
+        new Promise<void>((resolve) => {
+          const image = new Image();
+          image.onload = () => resolve();
+          image.onerror = () => resolve();
+          image.src = source;
+          if (image.complete) resolve();
+        }),
+    ),
+  );
+
+  await Promise.race([
+    Promise.all([fontReady, imageReady]),
+    new Promise((resolve) => window.setTimeout(resolve, 5_000)),
+  ]);
+}
+
 export default function FlowPreviewTab({
   template,
   mergeData,
@@ -73,6 +104,7 @@ export default function FlowPreviewTab({
 }: FlowPreviewTabProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [rendering, setRendering] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [renderToken, setRenderToken] = useState(0);
@@ -86,7 +118,9 @@ export default function FlowPreviewTab({
   useEffect(() => {
     try {
       localStorage.setItem("flow-preview:diagnostics", diagnostics ? "1" : "0");
-    } catch {}
+    } catch {
+      // localStorage may be unavailable in private/embedded browser contexts.
+    }
   }, [diagnostics]);
 
   const flowDoc = useMemo(() => {
@@ -121,6 +155,10 @@ export default function FlowPreviewTab({
 
     (async () => {
       try {
+        // תמונות ופונטים משנים גבהים. מעמדים רק אחרי שהם מוכנים כדי שהתצוגה
+        // וה-PDF ישתמשו באותן שבירות עמוד בדיוק.
+        await waitForFlowAssets(html);
+        if (cancelled) return;
         // dynamic import כדי לא להעמיס bundle ראשי
         const mod: any = await import("pagedjs");
         if (cancelled) return;
@@ -130,7 +168,16 @@ export default function FlowPreviewTab({
         const pagedDocument = splitPagedDocument(html);
         const flow = await previewer.preview(pagedDocument.content, pagedDocument.stylesheets, target);
         if (cancelled) return;
-        setPageCount(flow?.total ?? target.querySelectorAll(".pagedjs_page").length);
+        const renderedPages = Array.from(
+          target.querySelectorAll<HTMLElement>(".pagedjs_page"),
+        );
+        renderedPages.forEach((page, index) => {
+          const sheet = page.querySelector<HTMLElement>(".pagedjs_sheet");
+          if (sheet) {
+            sheet.dataset.pageNumber = page.dataset.pageNumber || String(index + 1);
+          }
+        });
+        setPageCount(flow?.total ?? renderedPages.length);
       } catch (err: any) {
         if (!cancelled) setError(err?.message || String(err));
       } finally {
@@ -144,116 +191,124 @@ export default function FlowPreviewTab({
   }, [html, renderToken]);
 
   const handlePrint = async () => {
-    // משתמשים בתוצר ה-Paged.js שכבר עומד מול המשתמש (containerRef).
-    // מעתיקים את אותו DOM ל-iframe נסתר כדי לא לפתוח about:blank בדפדפן הפנימי.
     const target = containerRef.current;
-    if (!target || !target.querySelector(".pagedjs_page")) {
+    const pages = target
+      ? Array.from(target.querySelectorAll<HTMLElement>(".pagedjs_page"))
+      : [];
+    if (!target || pages.length === 0) {
       window.alert("התצוגה עוד לא הסתיימה לטעון. נסה שוב בעוד רגע.");
       return;
     }
-    const printPageSize =
-      flowDoc.page.size === "custom"
-        ? `${Math.max(50, flowDoc.page.customSizeMm?.width || 210)}mm ${Math.max(
-            50,
-            flowDoc.page.customSizeMm?.height || 297,
-          )}mm`
-        : `${flowDoc.page.size}${flowDoc.page.orientation === "landscape" ? " landscape" : ""}`;
-    const pagedStyles = Array.from(
-      document.querySelectorAll<HTMLStyleElement>("style[data-pagedjs-inserted-styles]"),
-    )
-      .map((style) => style.textContent || "")
-      .filter(Boolean)
-      .join("\n");
-    const printDoc = `<!doctype html>
-<html dir="rtl" lang="he">
-<head>
-<meta charset="utf-8" />
-<title>${flowDoc.title.replace(/</g, "&lt;")}</title>
-<style>
-  ${pagedStyles}
-  @page { size: ${printPageSize}; margin: 0; }
-  html, body { margin: 0; padding: 0; background: #fff;
-    -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  *, *::before, *::after { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .pagedjs_pages { display: block; }
-  .pagedjs_page {
-    display: block !important;
-    box-shadow: none !important;
-    margin: 0 !important;
-    page-break-after: always;
-    break-after: page;
-  }
-  .pagedjs_page:last-child { page-break-after: auto; break-after: auto; }
-  /* paged.js מציב .pagedjs_pagebox עם רוחב/גובה דף — נשמור עליהם */
-  @media print {
-    body { background: #fff; }
-    .pagedjs_pages { gap: 0 !important; }
-  }
-</style>
-</head>
-<body>${target.innerHTML}</body>
-</html>`;
-    const iframe = document.createElement("iframe");
-    iframe.title = "Flow print preview";
-    iframe.setAttribute("aria-hidden", "true");
-    Object.assign(iframe.style, {
-      position: "fixed",
-      left: "-10000px",
-      top: "0",
-      width: "1px",
-      height: "1px",
-      border: "0",
-      opacity: "0",
-      pointerEvents: "none",
-    });
-    document.body.appendChild(iframe);
-
-    const printWindow = iframe.contentWindow;
-    const printDocument = iframe.contentDocument || printWindow?.document;
-    if (!printWindow || !printDocument) {
-      iframe.remove();
-      window.alert("לא ניתן לפתוח את מערכת ההדפסה בדפדפן הזה.");
-      return;
-    }
-
-    const cleanup = () => {
-      window.setTimeout(() => iframe.remove(), 500);
-    };
-    printWindow.addEventListener("afterprint", cleanup, { once: true });
-
-    printDocument.open();
-    printDocument.write(printDoc);
-    printDocument.close();
-
-    const waitForImages = Promise.all(
-      Array.from(printDocument.images).map(
-        (img) =>
-          new Promise<void>((resolve) => {
-            if (img.complete) return resolve();
-            img.onload = () => resolve();
-            img.onerror = () => resolve();
-          }),
-      ),
-    );
-    const waitForFonts = printDocument.fonts?.ready || Promise.resolve();
-    await Promise.race([
-      Promise.all([waitForImages, waitForFonts]),
-      new Promise((resolve) => window.setTimeout(resolve, 2500)),
-    ]);
-
-    if (!printDocument.querySelector(".pagedjs_page")) {
-      cleanup();
-      window.alert("התצוגה להדפסה לא נטענה. נסה לרענן את התצוגה המקדימה.");
-      return;
-    }
-
+    setPrinting(true);
     try {
+      const html2canvasModule = await import("html2canvas");
+      const html2canvas = html2canvasModule.default;
+      await (document.fonts?.ready || Promise.resolve());
+      const pageImages: string[] = [];
+      for (const [pageIndex, page] of pages.entries()) {
+        // Capture the physical sheet rather than the outer Paged.js wrapper.
+        // Left/even pages can be offset inside that wrapper; capturing it caused
+        // their running header to be cropped from the exported PDF.
+        const captureTarget =
+          page.querySelector<HTMLElement>(".pagedjs_sheet") || page;
+        const previousId = captureTarget.id;
+        const captureId = `flow-print-page-${pageIndex + 1}-${Date.now()}`;
+        captureTarget.id = captureId;
+        captureTarget.dataset.pageNumber = String(pageIndex + 1);
+        try {
+          const canvas = await html2canvas(captureTarget, {
+            backgroundColor: "#ffffff",
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            width: captureTarget.offsetWidth,
+            height: captureTarget.offsetHeight,
+            onclone: (clonedDocument) => {
+              const clonedPage = clonedDocument.getElementById(captureId);
+              if (!clonedPage) return;
+              clonedPage.dataset.pageNumber = String(pageIndex + 1);
+              clonedPage.style.boxShadow = "none";
+              clonedPage.style.margin = "0";
+              // Paged.js duplicates running elements with the same data-ref.
+              // html2canvas can otherwise resolve the even page to a sibling's
+              // running element and omit its header/footer from the bitmap.
+              clonedPage
+                .querySelectorAll<HTMLElement>(".running-header, .running-footer")
+                .forEach((element) => {
+                  element.style.position = "static";
+                  element.style.display = element.classList.contains("strip")
+                    ? "block"
+                    : element.style.display;
+                });
+            },
+          });
+          pageImages.push(canvas.toDataURL("image/png"));
+        } finally {
+          if (previousId) captureTarget.id = previousId;
+          else captureTarget.removeAttribute("id");
+        }
+      }
+
+      const printMetrics = resolveFlowPageMetrics(flowDoc.page);
+      const printPageSize = `${printMetrics.widthMm}mm ${printMetrics.heightMm}mm`;
+      const title = flowDoc.title.replace(/[<>]/g, "");
+      const printDoc = `<!doctype html>
+<html dir="rtl" lang="he"><head><meta charset="utf-8" />
+<title>${title}</title>
+<style>
+@page { size: ${printPageSize}; margin: 0; }
+html, body { margin: 0; padding: 0; background: #fff; }
+.print-page {
+  display: block; width: ${printMetrics.widthMm}mm; height: ${printMetrics.heightMm}mm;
+  margin: 0; padding: 0; overflow: hidden; break-after: page; page-break-after: always;
+}
+.print-page:last-child { break-after: auto; page-break-after: auto; }
+.print-page img { display: block; width: 100%; height: 100%; object-fit: fill; margin: 0; }
+</style></head><body>
+${pageImages.map((src, index) => `<section class="print-page"><img src="${src}" alt="עמוד ${index + 1}" /></section>`).join("\n")}
+</body></html>`;
+
+      const iframe = document.createElement("iframe");
+      iframe.title = "Flow exact A4 print";
+      iframe.setAttribute("aria-hidden", "true");
+      Object.assign(iframe.style, {
+        position: "fixed",
+        left: "-10000px",
+        top: "0",
+        width: "1px",
+        height: "1px",
+        border: "0",
+        opacity: "0",
+        pointerEvents: "none",
+      });
+      document.body.appendChild(iframe);
+      const printWindow = iframe.contentWindow;
+      const printDocument = iframe.contentDocument || printWindow?.document;
+      if (!printWindow || !printDocument) throw new Error("print iframe unavailable");
+
+      const cleanup = () => window.setTimeout(() => iframe.remove(), 500);
+      printWindow.addEventListener("afterprint", cleanup, { once: true });
+      printDocument.open();
+      printDocument.write(printDoc);
+      printDocument.close();
+      await Promise.all(
+        Array.from(printDocument.images).map(
+          (image) =>
+            new Promise<void>((resolve) => {
+              if (image.complete) return resolve();
+              image.onload = () => resolve();
+              image.onerror = () => resolve();
+            }),
+        ),
+      );
       printWindow.focus();
       printWindow.print();
       window.setTimeout(cleanup, 30000);
-    } catch {
-      cleanup();
-      window.alert("לא ניתן לפתוח את חלון ההדפסה בדפדפן הזה.");
+    } catch (error) {
+      console.error("[flow-print] exact A4 print failed", error);
+      window.alert("לא ניתן להכין את מסמך ה-A4 להדפסה. נסה לרענן את התצוגה.");
+    } finally {
+      setPrinting(false);
     }
   };
 
@@ -302,9 +357,9 @@ export default function FlowPreviewTab({
               <RefreshCw className="ml-1 h-3.5 w-3.5" />
               רענן
             </Button>
-            <Button type="button" variant="default" size="sm" onClick={handlePrint}>
-              <Printer className="ml-1 h-3.5 w-3.5" />
-              הדפסה / PDF
+            <Button type="button" variant="default" size="sm" onClick={handlePrint} disabled={printing || rendering}>
+              {printing ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : <Printer className="ml-1 h-3.5 w-3.5" />}
+              {printing ? "מכין A4..." : "הדפסה / PDF מדויק"}
             </Button>
           </div>
         </div>
