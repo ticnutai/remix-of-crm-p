@@ -60,7 +60,7 @@ const dataUrlToImage = (dataUrl?: string): ImageRun | null => {
   const binary = atob(match[2]);
   const data = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) data[i] = binary.charCodeAt(i);
-  return new ImageRun({ data, type: type as "png" | "jpg" | "jpeg" | "gif" | "bmp", transformation: { width: 520, height: 105 } });
+  return new ImageRun({ data, type: (type === "jpeg" ? "jpg" : type) as "png" | "jpg" | "gif" | "bmp", transformation: { width: 520, height: 105 } });
 };
 
 const cell = (text: string, width: number, bold = false, shade?: string, textColor?: string) => new TableCell({
