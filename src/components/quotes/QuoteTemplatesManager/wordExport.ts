@@ -162,7 +162,7 @@ export async function createQuoteDocx(input: WordExportInput): Promise<Blob> {
           margin: { top: mmToTwip(15), right: mmToTwip(15), bottom: mmToTwip(17), left: mmToTwip(15), header: mmToTwip(7), footer: mmToTwip(7) },
         },
         bidi: true,
-      },
+      } as any,
       headers: { default: new Header({ children: [new Paragraph({ bidirectional: true, alignment: AlignmentType.RIGHT, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: primary, space: 4 } }, children: [new TextRun({ text: input.companyName || "", bold: true, size: 18, color: primary, rightToLeft: true })] })] }) },
       footers: { default: new Footer({ children: [new Paragraph({ bidirectional: true, alignment: AlignmentType.RIGHT, tabStops: [{ type: "right" as never, position: 9000 }], children: [new TextRun({ text: `${footerText}   |   עמוד `, size: 16, color: "666666", rightToLeft: true }), new TextRun({ children: [PageNumber.CURRENT], size: 16, color: "666666" })] })] }) },
       children,
