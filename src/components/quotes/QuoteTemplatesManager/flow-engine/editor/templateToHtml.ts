@@ -80,12 +80,21 @@ function blockToHtml(block: FlowBlock): string {
   }
 }
 
-export function flowDocToEditableHtml(doc: FlowDocument): string {
+export function flowDocToEditableHtml(
+  doc: FlowDocument,
+  opts?: { lockComputedSections?: boolean },
+): string {
   return doc.sections
     .map((s) => {
       const inner = s.blocks.map(blockToHtml).join("");
       if (s.id === "payments" && inner) {
-        return `<div data-payments-block="1" class="payments-block">${inner}</div>`;
+        const protectedAttrs = opts?.lockComputedSections
+          ? ' data-flow-protected="1" contenteditable="false"'
+          : "";
+        return `<div data-payments-block="1" class="payments-block"${protectedAttrs}>${inner}</div>`;
+      }
+      if (opts?.lockComputedSections && ["items", "pricing-tiers", "upgrades"].includes(s.id) && inner) {
+        return `<div data-computed-block="${esc(s.id)}" data-flow-protected="1" contenteditable="false" class="computed-block">${inner}</div>`;
       }
       return inner;
     })
@@ -98,5 +107,5 @@ export function templateToEditableHtml(
   opts?: SerializeOptions,
 ): string {
   const doc = serializeTemplate(template, undefined, opts);
-  return flowDocToEditableHtml(doc);
+  return flowDocToEditableHtml(doc, { lockComputedSections: opts?.lockComputedSections });
 }

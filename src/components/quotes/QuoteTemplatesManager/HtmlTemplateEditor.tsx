@@ -15,6 +15,12 @@ import PagesPreviewTab from "./PagesPreviewTab";
 import { createQuoteDocx } from "./wordExport";
 import FlowWorkspaceTab from "./flow-engine/FlowWorkspaceTab";
 import {
+  buildUnifiedTemplate,
+  normalizeLegacyPaymentSteps,
+  stripLegacyFlowOverrides,
+  toPaymentSchedule,
+} from "./flow-engine/unifiedTemplate";
+import {
   DEFAULT_FRAME_SETTINGS,
   borderToCss,
   backgroundToBodyCss,
@@ -566,7 +572,7 @@ function applyProjectDetailsTokens(content: string, pd: any): string {
     .join("|");
 
   // 1) Bracket tokens: [גוש] / [תב"ע] / [תב״ע] -> value (or empty)
-  let out = content.replace(/\[([^\[\]\n]+)\]/g, (full, raw) => {
+  let out = content.replace(/\[([^\]\n]+)\]/g, (full, raw) => {
     const key = String(raw).trim();
     const v = lookup(key);
     return v !== undefined ? (v ?? "") : full;
@@ -779,7 +785,7 @@ function FieldWithOptions({
       const recent = saved.filter(h => now - h.timestamp < hours48);
       // Clean up expired entries
       if (recent.length !== saved.length) {
-        try { localStorage.setItem(historyKey, JSON.stringify(recent)); } catch {}
+        try { localStorage.setItem(historyKey, JSON.stringify(recent)); } catch { /* Storage can be unavailable in private mode. */ }
       }
       return recent.map(h => h.value);
     } catch {
@@ -796,7 +802,7 @@ function FieldWithOptions({
   const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    try { localStorage.setItem(storageKey, JSON.stringify(options)); } catch {}
+    try { localStorage.setItem(storageKey, JSON.stringify(options)); } catch { /* Storage can be unavailable in private mode. */ }
   }, [options, storageKey]);
 
   useEffect(() => {
@@ -821,7 +827,7 @@ function FieldWithOptions({
         const trimmed = filtered.slice(0, 20);
         localStorage.setItem(historyKey, JSON.stringify(trimmed));
         setHistory(trimmed.map(h => h.value));
-      } catch {}
+      } catch { /* History persistence is best effort. */ }
       
       // Also save to database for cloud persistence
       (async () => {
@@ -836,7 +842,7 @@ function FieldWithOptions({
             used_at: new Date().toISOString(),
             use_count: 1,
           }, { onConflict: "user_id,field_key,field_value" });
-        } catch {}
+        } catch { /* Cloud history persistence is best effort. */ }
       })();
     }, 1500);
     return () => { if (saveToHistoryRef.current) clearTimeout(saveToHistoryRef.current); };
@@ -865,7 +871,7 @@ function FieldWithOptions({
             return merged.slice(0, 20);
           });
         }
-      } catch {}
+      } catch { /* Cloud history is optional. */ }
     })();
   }, [fieldKey]);
 
@@ -4238,7 +4244,7 @@ function TextBoxEditor({
                             />
                             <button
                               className="w-4 h-4 bg-red-100 hover:bg-red-500 text-red-500 hover:text-white rounded text-[9px] flex items-center justify-center transition-colors"
-                              onClick={() => { onRemoveCustomColor && onRemoveCustomColor(c); if (activeCustomColor === c) setActiveCustomColor(null); }}
+                              onClick={() => { onRemoveCustomColor?.(c); if (activeCustomColor === c) setActiveCustomColor(null); }}
                               title="מחק"
                             >×</button>
                           </div>
@@ -4782,19 +4788,15 @@ export function HtmlTemplateEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("flow-v2");
-  const FLOW_SUB_TAB_LS_KEY = "qt-editor-flow-sub-tab";
-  const [flowSubTab, setFlowSubTab] = useState<"edit" | "preview" | "split" | "compare">(() => {
-    try {
-      const v = localStorage.getItem(FLOW_SUB_TAB_LS_KEY);
-      if (v === "preview" || v === "split") return v;
-      return "edit";
-    } catch {
-      return "edit";
+  const exactA4PrintRef = useRef<(() => Promise<void>) | null>(null);
+  const pendingExactA4PrintRef = useRef(false);
+  const registerExactA4Print = useCallback((handler: (() => Promise<void>) | null) => {
+    exactA4PrintRef.current = handler;
+    if (handler && pendingExactA4PrintRef.current) {
+      pendingExactA4PrintRef.current = false;
+      window.setTimeout(() => void handler(), 0);
     }
-  });
-  useEffect(() => {
-    try { localStorage.setItem(FLOW_SUB_TAB_LS_KEY, flowSubTab); } catch { /* ignore */ }
-  }, [flowSubTab]);
+  }, []);
   const TAB_DISPLAY_MODE_LS_KEY = "qt-editor-tab-display-mode";
   type TabDisplayMode = "full" | "iconsOnly" | "stacked" | "twoRows";
   const [tabDisplayMode, setTabDisplayMode] = useState<TabDisplayMode>(() => {
@@ -4842,7 +4844,7 @@ export function HtmlTemplateEditor({
     EditorTabKey,
     { label: string; shortLabel: string; icon: any; activeClass: string }
   > = {
-    "flow-v2": { label: "עורך המסמך", shortLabel: "מסמך", icon: Sparkles, activeClass: "data-[state=active]:bg-emerald-100 data-[state=active]:text-emerald-700 font-bold" },
+    "flow-v2": { label: "מסמך A4", shortLabel: "מסמך", icon: Sparkles, activeClass: "data-[state=active]:bg-emerald-100 data-[state=active]:text-emerald-700 font-bold" },
     project: { label: "פרטי פרויקט", shortLabel: "פרטים", icon: User, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
     content: { label: "תוכן", shortLabel: "תוכן", icon: FileText, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
     payments: { label: "תשלומים", shortLabel: "תשלום", icon: CreditCard, activeClass: "data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]" },
@@ -4951,7 +4953,7 @@ export function HtmlTemplateEditor({
   const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>(() => {
     const saved = template.payment_schedule;
     if (saved && Array.isArray(saved) && saved.length > 0) {
-      return saved.map((s: any) => ({
+      return normalizeLegacyPaymentSteps(saved as any[], template.vat_rate ?? globalDefaultVat).map((s: any) => ({
         id: s.id || Date.now().toString(),
         name: s.description || s.name || "",
         percentage: s.percentage || 0,
@@ -4982,7 +4984,7 @@ export function HtmlTemplateEditor({
   const [designSettings, setDesignSettings] = useState<DesignSettings>(() => {
     const ds = template.design_settings as any;
     if (ds && ds.primaryColor) {
-      const settings = ds as DesignSettings;
+      const settings = stripLegacyFlowOverrides(ds) as DesignSettings;
       if (settings.logoPosition === "custom-strip" && !settings.logoUrl) {
         return { ...settings, logoUrl: companyHeaderImg };
       }
@@ -5034,13 +5036,13 @@ export function HtmlTemplateEditor({
     try {
       const raw = localStorage.getItem(CUSTOM_TEMPLATES_LS_KEY);
       if (raw) return JSON.parse(raw) as CustomTextBoxTemplate[];
-    } catch {}
+    } catch { /* Ignore malformed legacy local data. */ }
     return [];
   });
   useEffect(() => {
     try {
       localStorage.setItem(CUSTOM_TEMPLATES_LS_KEY, JSON.stringify(customTextBoxTemplates));
-    } catch {}
+    } catch { /* Local template persistence is best effort. */ }
   }, [customTextBoxTemplates]);
   const saveTextBoxAsTemplate = useCallback((textBox: TextBox) => {
     const label = textBox.title?.trim() || textBox.content?.trim().slice(0, 20) || "תבנית";
@@ -5066,13 +5068,13 @@ export function HtmlTemplateEditor({
     try {
       const raw = localStorage.getItem(CUSTOM_COLORS_LS_KEY);
       if (raw) return JSON.parse(raw) as string[];
-    } catch {}
+    } catch { /* Ignore malformed legacy local data. */ }
     return [];
   });
   useEffect(() => {
     try {
       localStorage.setItem(CUSTOM_COLORS_LS_KEY, JSON.stringify(customColors));
-    } catch {}
+    } catch { /* Local color persistence is best effort. */ }
   }, [customColors]);
   const addCustomColor = useCallback((color: string) => {
     if (!color) return;
@@ -5247,7 +5249,7 @@ export function HtmlTemplateEditor({
         await (supabase as any)
           .from("quote_templates")
           .update({
-            design_settings: designSettings as any,
+            design_settings: stripLegacyFlowOverrides(designSettings) as any,
             updated_at: new Date().toISOString(),
           })
           .eq("id", template.id);
@@ -5279,8 +5281,10 @@ export function HtmlTemplateEditor({
       if (!data || typeof data !== "object") return;
       try {
         if (data.editedTemplate) setEditedTemplate(data.editedTemplate);
-        if (Array.isArray(data.paymentSteps)) setPaymentSteps(data.paymentSteps);
-        if (data.designSettings) setDesignSettings(data.designSettings);
+        if (Array.isArray(data.paymentSteps)) {
+          setPaymentSteps(normalizeLegacyPaymentSteps(data.paymentSteps, editedTemplate.vat_rate ?? globalDefaultVat));
+        }
+        if (data.designSettings) setDesignSettings(stripLegacyFlowOverrides(data.designSettings));
         if (Array.isArray(data.textBoxes)) setTextBoxes(data.textBoxes);
         if (Array.isArray(data.upgrades)) setUpgrades(data.upgrades);
         if (Array.isArray(data.pricingTiers)) setPricingTiers(data.pricingTiers);
@@ -5821,7 +5825,7 @@ export function HtmlTemplateEditor({
     const saved = template.payment_schedule;
     if (saved && Array.isArray(saved) && saved.length > 0) {
       setPaymentSteps(
-        saved.map((s: any) => ({
+        normalizeLegacyPaymentSteps(saved as any[], template.vat_rate ?? globalDefaultVat).map((s: any) => ({
           id: s.id || Date.now().toString(),
           name: s.description || s.name || "",
           percentage: s.percentage || 0,
@@ -5844,7 +5848,7 @@ export function HtmlTemplateEditor({
       );
     }
     const ds = template.design_settings as any;
-    if (ds && ds.primaryColor) setDesignSettings(ds as DesignSettings);
+    if (ds && ds.primaryColor) setDesignSettings(stripLegacyFlowOverrides(ds) as DesignSettings);
     const tb = (template as any).text_boxes;
     if (tb && Array.isArray(tb) && tb.length > 0) setTextBoxes(tb);
     const ug = (template as any).upgrades;
@@ -5950,24 +5954,7 @@ export function HtmlTemplateEditor({
         console.warn("Could not auto-link client on save:", linkErr);
       }
 
-      const paymentSchedulePayload = paymentSteps.map((s) => ({
-        id: s.id,
-        percentage: s.percentage,
-        description: s.description || s.name,
-        vatRate: s.vatRate,
-        useCustomVat: s.useCustomVat,
-        linkSource: s.linkSource || "stage_template",
-        templateStageId: s.templateStageId || null,
-        templateStageName: s.templateStageName || null,
-        templateTaskId: s.templateTaskId || null,
-        templateTaskName: s.templateTaskName || null,
-        quoteTemplateStageId: s.quoteTemplateStageId || null,
-        quoteTemplateStageName: s.quoteTemplateStageName || null,
-        quoteTemplateItemId: s.quoteTemplateItemId || null,
-        quoteTemplateItemText: s.quoteTemplateItemText || null,
-        triggerMode: s.triggerMode || "manual",
-        triggerDate: s.triggerDate || null,
-      }));
+      const paymentSchedulePayload = toPaymentSchedule(paymentSteps);
 
       // Template-level project_details (no personal/client data — keeps template reusable)
       const cleanProjectDetails = {
@@ -5985,7 +5972,7 @@ export function HtmlTemplateEditor({
         ...editedTemplate,
         is_active: updateTemplate ? true : editedTemplate.is_active,
         payment_schedule: paymentSchedulePayload,
-        design_settings: designSettings as any,
+        design_settings: stripLegacyFlowOverrides(designSettings) as any,
         text_boxes: textBoxes,
         upgrades: upgrades,
         project_details: cleanProjectDetails,
@@ -6049,7 +6036,7 @@ export function HtmlTemplateEditor({
             template_data: quotePayload as any,
             project_details: resolvedProjectDetails as any,
             payment_schedule: quotePayload.payment_schedule as any,
-            design_settings: designSettings as any,
+            design_settings: stripLegacyFlowOverrides(designSettings) as any,
             text_boxes: textBoxes as any,
             upgrades: upgrades as any,
             pricing_tiers: pricingTiers as any,
@@ -6210,7 +6197,7 @@ export function HtmlTemplateEditor({
         name: editedTemplate.name?.trim() || `טיוטת הצעה ${new Date().toLocaleDateString("he-IL")}`,
         is_active: false,
         payment_schedule: paymentSchedulePayload as any,
-        design_settings: designSettings as any,
+        design_settings: stripLegacyFlowOverrides(designSettings) as any,
         text_boxes: textBoxes,
         upgrades,
         pricing_tiers: pricingTiers,
@@ -6909,7 +6896,7 @@ export function HtmlTemplateEditor({
         if (document.readyState === 'complete') setTimeout(reportPages, 400);
         else window.addEventListener('load', function(){ setTimeout(reportPages, 400); });
       })();
-    <\/script>`;
+    </script>`;
     const html = debouncedPreviewHtml.replace(
       "</body>",
       `${measureScript}</body>`
@@ -7305,28 +7292,16 @@ ${tbAt('footer')}
   };
 
   const handleExportPdf = async () => {
-    const html = await generateExportHtml();
-    const printWindow = window.open("", "_blank", "width=900,height=1200");
-    if (printWindow) {
-      printWindow.document.open();
-      printWindow.document.write(html);
-      printWindow.document.close();
-      const printWhenReady = async () => {
-        try {
-          await printWindow.document.fonts?.ready;
-          await Promise.all(Array.from(printWindow.document.images).map((image) =>
-            image.complete ? Promise.resolve() : new Promise<void>((resolve) => {
-              image.onload = () => resolve();
-              image.onerror = () => resolve();
-            }),
-          ));
-        } catch { /* print with available resources */ }
-        printWindow.focus();
-        printWindow.print();
-      };
-      setTimeout(printWhenReady, 250);
+    if (exactA4PrintRef.current) {
+      await exactA4PrintRef.current();
+      return;
     }
-    toast({ title: "מייצא PDF", description: "חלון הדפסה נפתח" });
+    pendingExactA4PrintRef.current = true;
+    setActiveTab("flow-v2");
+    toast({
+      title: "מכין מסמך A4 מדויק",
+      description: "המסמך יעומד ואז חלון ההדפסה ייפתח אוטומטית",
+    });
   };
 
   const handleExportHtml = async () => {
@@ -7966,6 +7941,19 @@ ${tbAt('footer')}
     pricingTiers,
     selectedTier,
   });
+  const unifiedDocumentTemplate = useMemo(
+    () => buildUnifiedTemplate({
+      template: editedTemplate,
+      paymentSteps,
+      designSettings: designSettings as any,
+      textBoxes,
+      upgrades,
+      pricingTiers,
+      selectedTier,
+      basePrice,
+    }),
+    [editedTemplate, paymentSteps, designSettings, textBoxes, upgrades, pricingTiers, selectedTier, basePrice],
+  );
 
   // סנכרון אוטומטי - המחיר של החבילה הנבחרת נשמר ב-base_price כדי שיישמר ויעבור הלאה (חוזה/חתימה)
   useEffect(() => {
@@ -8344,10 +8332,12 @@ ${tbAt('footer')}
         stages: version.data.stages,
         base_price: version.data.basePrice || prev.base_price,
       }));
-    if (version.data.paymentSteps) setPaymentSteps(version.data.paymentSteps);
+    if (version.data.paymentSteps) {
+      setPaymentSteps(normalizeLegacyPaymentSteps(version.data.paymentSteps, editedTemplate.vat_rate ?? globalDefaultVat));
+    }
     if (version.data.textBoxes) setTextBoxes(version.data.textBoxes);
     if (version.data.designSettings)
-      setDesignSettings(version.data.designSettings);
+      setDesignSettings(stripLegacyFlowOverrides(version.data.designSettings));
     if (version.data.upgrades) setUpgrades(version.data.upgrades);
     if (version.data.pricingTiers) setPricingTiers(version.data.pricingTiers);
     if (version.data.projectDetails)
@@ -8584,7 +8574,7 @@ ${tbAt('footer')}
           vat_rate: vatRate,
           template_data: editedTemplate,
           project_details: projectDetails,
-          design_settings: designSettings,
+          design_settings: stripLegacyFlowOverrides(designSettings),
           text_boxes: textBoxes,
           upgrades,
           pricing_tiers: pricingTiers,
@@ -9032,17 +9022,25 @@ ${tbAt('footer')}
                     <span className="text-base opacity-80">₪</span>
                     <Input
                       type="number"
-                      value={editedTemplate.base_price || 35000}
-                      onChange={(e) =>
-                        setEditedTemplate({
-                          ...editedTemplate,
-                          base_price: parseInt(e.target.value) || 0,
-                        })
-                      }
+                      value={basePrice}
+                      onChange={(e) => {
+                        const nextPrice = parseInt(e.target.value) || 0;
+                        setEditedTemplate((prev) => ({
+                          ...prev,
+                          base_price: nextPrice,
+                        }));
+                        if (selectedTierObj) {
+                          setPricingTiers((prev) => prev.map((tier) =>
+                            tier.name === selectedTier
+                              ? { ...tier, price: nextPrice }
+                              : tier,
+                          ));
+                        }
+                      }}
                       className="text-3xl font-bold bg-transparent border-0 text-white p-0 h-auto focus-visible:ring-0 w-32 text-left"
                     />
                     {designSettings.vatDisplayMode !== "plus-vat" ? (
-                      <span className="text-base opacity-80">כולל מע״מ</span>
+                      <span className="text-base opacity-80">לפני מע״מ</span>
                     ) : (
                       <span className="text-base opacity-80">+ מע״מ</span>
                     )}
@@ -9254,48 +9252,9 @@ ${tbAt('footer')}
 
           {/* מקור אמת יחיד לעריכה/תצוגה/הדפסה: מנוע Flow A4. */}
           {activeTab === "flow-v2" && (
-            <div className="flex min-h-10 shrink-0 items-center gap-1.5 overflow-x-auto border-b bg-emerald-50/40 px-2 md:px-6">
-              <span className="whitespace-nowrap text-[11px] font-medium text-emerald-700/80 ml-1">עימוד A4:</span>
-              <button
-                type="button"
-                onClick={() => setFlowSubTab("edit")}
-                className={cn(
-                  "inline-flex items-center gap-1 px-2 h-7 rounded-md text-xs font-medium transition-colors",
-                  flowSubTab === "edit"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "text-muted-foreground hover:bg-muted",
-                )}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                עריכה
-              </button>
-              <button
-                type="button"
-                onClick={() => setFlowSubTab("preview")}
-                className={cn(
-                  "inline-flex items-center gap-1 px-2 h-7 rounded-md text-xs font-medium transition-colors",
-                  flowSubTab === "preview"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "text-muted-foreground hover:bg-muted",
-                )}
-              >
-                <Eye className="h-3.5 w-3.5" />
-                תצוגה מקדימה
-              </button>
-              <button
-                type="button"
-                onClick={() => setFlowSubTab("split")}
-                title="פיצול מסך — עורך + תצוגה חיה מיידית"
-                className={cn(
-                  "inline-flex items-center gap-1 px-2 h-7 rounded-md text-xs font-medium transition-colors",
-                  flowSubTab === "split"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "text-muted-foreground hover:bg-muted",
-                )}
-              >
-                <SplitSquareHorizontal className="h-3.5 w-3.5" />
-                פיצול
-              </button>
+            <div className="flex min-h-10 shrink-0 items-center gap-2 border-b bg-emerald-50/40 px-2 text-xs text-emerald-800 md:px-6">
+              <FileText className="h-4 w-4" />
+              <span>מסמך A4 חי — טקסט חופשי ניתן לעריכה ישירה; מחירים, תשלומים ולוגואים מתעדכנים מהטאבים הייעודיים.</span>
             </div>
           )}
 
@@ -14980,13 +14939,14 @@ ${tbAt('footer')}
           {/* Flow V2 - isolated document editor */}
           <TabsContent value="flow-v2" className="flex-1 m-0 overflow-hidden">
             <FlowWorkspaceTab
-              template={editedTemplate}
+              template={unifiedDocumentTemplate}
               projectDetails={projectDetails}
               designSettings={designSettings}
               onDesignSettingsChange={setDesignSettings}
-              subTab={flowSubTab}
-              onSubTabChange={setFlowSubTab}
+              subTab="preview"
               hideInternalSubTabs
+              structuredMode
+              onPrintReady={registerExactA4Print}
             />
           </TabsContent>
 

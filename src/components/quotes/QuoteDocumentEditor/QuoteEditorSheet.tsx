@@ -97,7 +97,7 @@ export function QuoteEditorSheet({
         // Clear local autosave draft after successful cloud save
         try {
           window.localStorage.removeItem(`quote-draft-${originalQuoteId}`);
-        } catch {}
+        } catch { /* Local draft cleanup is best effort. */ }
         toast({ title: 'נשמר בהצלחה', description: 'הצעת המחיר עודכנה' });
         onSaved?.();
       } else {

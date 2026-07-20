@@ -37,7 +37,7 @@ export const MultiSelection = Extension.create({
 
 
   addProseMirrorPlugins() {
-    const ext = this;
+    const extensionStorage = this.storage;
     return [
       new Plugin({
         key: multiSelectionKey,
@@ -70,7 +70,7 @@ export const MultiSelection = Extension.create({
             }
 
             // sync storage so consumers can read synchronously
-            ext.storage.ranges = ranges;
+            extensionStorage.ranges = ranges;
 
             const decos = ranges.map((r) =>
               Decoration.inline(r.from, r.to, { class: "flow-multi-sel" }),

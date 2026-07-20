@@ -147,7 +147,7 @@ export function useQuoteDocument(initialData?: Partial<QuoteDocumentData>) {
           key,
           JSON.stringify({ savedAt: Date.now(), data: document })
         );
-      } catch {}
+      } catch { /* Local autosave can be unavailable in private mode. */ }
     }, 1500);
     return () => {
       if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
@@ -274,7 +274,7 @@ export function useQuoteDocument(initialData?: Partial<QuoteDocumentData>) {
           return;
         }
       }
-    } catch {}
+    } catch { /* Ignore malformed or unavailable local drafts. */ }
     setDocument(documentData);
     setOriginalQuoteId(quote.id);
     setIsDirty(false);

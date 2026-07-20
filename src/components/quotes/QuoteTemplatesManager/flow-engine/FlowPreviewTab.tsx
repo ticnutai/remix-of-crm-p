@@ -2,7 +2,7 @@
 // טאב נקי, מבודד לחלוטין. אין שימוש ב-PreviewIframe / paged-engine / safe masks.
 // משתמש ישירות ב-Paged.js Previewer על HTML זורם שמיוצר ע"י renderer.ts.
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Printer, RefreshCw, Sparkles, Ruler } from "lucide-react";
@@ -26,6 +26,7 @@ interface FlowPreviewTabProps {
   pageSetup?: FlowPageSetup;
   /** הסתר את שורת הכלים העליונה — לשימוש בתצוגת השוואה. */
   hideToolbar?: boolean;
+  onPrintReady?: (handler: (() => Promise<void>) | null) => void;
 }
 
 function splitPagedDocument(html: string) {
@@ -101,6 +102,7 @@ export default function FlowPreviewTab({
   designSettings,
   pageSetup,
   hideToolbar,
+  onPrintReady,
 }: FlowPreviewTabProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [rendering, setRendering] = useState(false);
@@ -190,7 +192,7 @@ export default function FlowPreviewTab({
     };
   }, [html, renderToken]);
 
-  const handlePrint = async () => {
+  const handlePrint = useCallback(async () => {
     const target = containerRef.current;
     const pages = target
       ? Array.from(target.querySelectorAll<HTMLElement>(".pagedjs_page"))
@@ -310,7 +312,12 @@ ${pageImages.map((src, index) => `<section class="print-page"><img src="${src}" 
     } finally {
       setPrinting(false);
     }
-  };
+  }, [flowDoc.page, flowDoc.title]);
+
+  useEffect(() => {
+    onPrintReady?.(handlePrint);
+    return () => onPrintReady?.(null);
+  }, [handlePrint, onPrintReady]);
 
   return (
     <div className={`flex flex-col bg-muted/30 ${hideToolbar ? "" : "h-full"}`}>
@@ -321,7 +328,7 @@ ${pageImages.map((src, index) => `<section class="print-page"><img src="${src}" 
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium">תצוגה מקדימה (Flow V2) — לקריאה והדפסה בלבד</span>
-            <Badge variant="outline" className="h-5 text-[10px]">העריכה מתבצעת בטאבים האחרים</Badge>
+            <Badge variant="outline" className="h-5 text-[10px]">לעריכה עברו למצב עריכת מסמך</Badge>
             {rendering ? (
               <Badge variant="secondary" className="h-5 text-[10px]">
                 <Loader2 className="ml-1 h-3 w-3 animate-spin" /> מעמד...

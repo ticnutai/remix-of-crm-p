@@ -78,7 +78,7 @@ export function QuoteDocumentEditor() {
         });
         try {
           window.localStorage.removeItem(`quote-draft-${originalQuoteId}`);
-        } catch {}
+        } catch { /* Local draft cleanup is best effort. */ }
       } else {
         toast({
           title: "שים לב",

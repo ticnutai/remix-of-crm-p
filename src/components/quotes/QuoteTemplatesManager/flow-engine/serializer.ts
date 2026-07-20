@@ -2,9 +2,8 @@
 // קלט: QuoteTemplate הקיים (ללא שינוי) + mergeData אופציונלי.
 // פלט: FlowDocument זורם יחיד.
 //
-// כל ההיגיון של "תיבות / שדות / מיקומים" מהעורך הישן נעלם כאן —
-// אנחנו מתעלמים מ-text_boxes ומ-html_content וקוראים רק את הנתונים המובנים:
-// stages, items, payment_schedule, timeline, terms, notes, important_notes.
+// מקור האמת הוא הנתונים המובנים בלבד. html_content וטיוטות HTML ישנות אינן
+// גוברות עליהם; גם תיבות טקסט, שדרוגים וחבילות מחיר מסורלזים מכאן.
 
 import type { QuoteTemplate, TemplateStage } from "../types";
 import type {
@@ -38,6 +37,8 @@ export interface SerializeOptions {
   keepFieldsAsPlaceholders?: boolean;
   /** תצורת תצוגת לוח התשלומים: רשימה (ברירת מחדל) / טבלה / גם וגם. */
   paymentsLayout?: "list" | "table" | "both";
+  /** Wrap calculated price/payment sections as protected nodes in the A4 editor. */
+  lockComputedSections?: boolean;
 }
 
 // מיפוי טוקנים בעברית (מסוגריים מרובעים) למפתחות שדה דינמי.
@@ -263,6 +264,37 @@ export function serializeTemplate(
   };
 
   const sections: FlowSection[] = [];
+  const appendTextBoxes = (position: string) => {
+    const boxes = ((template as any).text_boxes || []).filter((box: any) => box?.position === position);
+    boxes.forEach((box: any, index: number) => {
+      const palette: Record<string, { bg: string; border: string }> = {
+        default: { bg: "#ffffff", border: "#d1d5db" },
+        highlight: { bg: "#fffbeb", border: "#d8ac27" },
+        warning: { bg: "#fff7ed", border: "#f97316" },
+        info: { bg: "#eff6ff", border: "#3b82f6" },
+      };
+      const colors = palette[box.style] || palette.default;
+      const style = [
+        `background:${esc(String(box.customBg || colors.bg))}`,
+        `border:${Math.max(1, Number(box.borderWidth) || 1)}px solid ${esc(String(box.customBorder || colors.border))}`,
+        `color:${esc(String(box.customTextColor || "#1f2937"))}`,
+        `font-size:${Math.max(10, Number(box.fontSize) || 16)}px`,
+        `font-family:${esc(String(box.fontFamily || branding.fontFamily))}`,
+        `text-align:${box.textAlign || "right"}`,
+        `line-height:${Number(box.lineHeight) || 1.6}`,
+        box.isBold ? "font-weight:700" : "",
+        box.isItalic ? "font-style:italic" : "",
+        box.isUnderline ? "text-decoration:underline" : "",
+      ].filter(Boolean).join(";");
+      const title = box.title ? `<strong class="flow-text-box-title">${esc(String(box.title))}</strong>` : "";
+      const content = esc(String(box.content || "")).replace(/\n/g, "<br />");
+      sections.push({
+        id: `text-box-${position}-${box.id || index}`,
+        keepTogether: true,
+        blocks: [{ type: "raw", html: `<aside class="flow-text-box" style="${style}">${title}${content}</aside>` }],
+      });
+    });
+  };
 
   // 1. כותרת ראשית
   sections.push({
@@ -285,6 +317,8 @@ export function serializeTemplate(
       { type: "spacer", mm: 4 },
     ],
   });
+  appendTextBoxes("header");
+  appendTextBoxes("before-stages");
 
   // 2. שלבי עבודה
   const stageBlocks: FlowBlock[] = [];
@@ -301,6 +335,7 @@ export function serializeTemplate(
   if (stageBlocks.length) {
     sections.push({ id: "stages", blocks: stageBlocks });
   }
+  appendTextBoxes("after-stages");
 
   // 3. פריטים (טבלה זורמת, ניתנת לחיתוך בין עמודים)
   if (template.items && template.items.length) {
@@ -327,6 +362,46 @@ export function serializeTemplate(
       ],
     });
   }
+
+  const pricingTiers = ((template as any).pricing_tiers || []) as any[];
+  if (pricingTiers.length) {
+    const selected = (template as any).selected_tier;
+    sections.push({
+      id: "pricing-tiers",
+      blocks: [
+        { type: "heading", level: 2, content: [{ type: "text", text: "חבילות מחיר" }] },
+        {
+          type: "table",
+          headers: ["חבילה", "מחיר", "בחירה"],
+          rows: pricingTiers.map((tier) => [
+            String(tier.name || ""),
+            `₪${Number(tier.price || 0).toLocaleString("he-IL")}`,
+            tier.name === selected ? "נבחרה" : "",
+          ]),
+          breakable: true,
+        },
+      ],
+    });
+  }
+
+  const upgrades = ((template as any).upgrades || []).filter((upgrade: any) => upgrade?.enabled !== false);
+  if (upgrades.length) {
+    sections.push({
+      id: "upgrades",
+      blocks: [
+        { type: "heading", level: 2, content: [{ type: "text", text: "תוספות ושדרוגים" }] },
+        {
+          type: "list",
+          items: upgrades.map((upgrade: any) => [
+            { type: "text", text: String(upgrade.name || ""), bold: true },
+            { type: "text", text: ` — ₪${Number(upgrade.price || 0).toLocaleString("he-IL")}` },
+          ]),
+        },
+      ],
+    });
+  }
+
+  appendTextBoxes("before-payments");
 
   // 4. לוח תשלומים — כולל סכומי כסף ומע״מ פר שלב
   if (template.payment_schedule && template.payment_schedule.length) {
@@ -448,6 +523,7 @@ export function serializeTemplate(
     // ניתן לפיצול; הכותרת והשורות עצמן מוגנות ב-CSS, והטבלה נשברת בין שורות.
     sections.push({ id: "payments", blocks: paymentBlocks });
   }
+  appendTextBoxes("after-payments");
 
 
   // 5. לוח זמנים
@@ -511,6 +587,7 @@ export function serializeTemplate(
       ],
     });
   }
+  appendTextBoxes("footer");
 
   return {
     title: template.name || "הצעת מחיר",

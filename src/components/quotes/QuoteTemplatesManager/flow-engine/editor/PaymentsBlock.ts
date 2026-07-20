@@ -12,15 +12,27 @@ export const PaymentsBlock = Node.create({
   draggable: true,
   isolating: true,
 
+  addAttributes() {
+    return {
+      protected: {
+        default: false,
+        parseHTML: (element) => element.getAttribute("data-flow-protected") === "1",
+      },
+    };
+  },
+
   parseHTML() {
     return [{ tag: "div[data-payments-block]" }];
   },
 
   renderHTML({ HTMLAttributes }) {
+    const isProtected = Boolean(HTMLAttributes.protected);
+    const { protected: _protected, ...rest } = HTMLAttributes;
     return [
       "div",
-      mergeAttributes(HTMLAttributes, {
+      mergeAttributes(rest, {
         "data-payments-block": "1",
+        ...(isProtected ? { "data-flow-protected": "1", contenteditable: "false" } : {}),
         class: "payments-block",
       }),
       0,

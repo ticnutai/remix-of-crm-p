@@ -36,6 +36,7 @@ import CreateFieldDialog from "./CreateFieldDialog";
 import { MultiSelection, addExtraRange, clearExtraRanges, getExtraRanges } from "./MultiSelection";
 import { PaymentsBlock } from "./PaymentsBlock";
 import { FlowFrame } from "./FlowFrameNode";
+import { ComputedBlock } from "./ComputedBlock";
 import { injectEditorFlowIds } from "./usePagedGuides";
 import { resolveFlowStripSettings } from "../stripSettings";
 
@@ -371,6 +372,7 @@ export default function FlowEditor({
       DynamicField,
       MultiSelection,
       PaymentsBlock,
+      ComputedBlock,
       FlowFrame,
       Placeholder.configure({ placeholder: "התחל לכתוב..." }),
       PaginationPlus.configure(paginationOptions),
@@ -786,6 +788,35 @@ export default function FlowEditor({
           border-color: hsl(var(--primary));
           background: hsl(var(--primary) / 0.05);
         }
+        .flow-editor-content [data-flow-protected="1"] {
+          position: relative;
+          cursor: default;
+          border: 1px dashed hsl(var(--primary) / 0.35);
+          border-radius: 8px;
+          padding: 0.65rem;
+          background: hsl(var(--muted) / 0.22);
+        }
+        .flow-editor-content [data-flow-protected="1"]::after {
+          content: "מחושב אוטומטית · לעריכה בטאבים הייעודיים";
+          position: absolute;
+          top: 4px;
+          left: 6px;
+          border-radius: 999px;
+          background: hsl(var(--background) / 0.94);
+          color: hsl(var(--muted-foreground));
+          padding: 2px 7px;
+          font: 10px/1.4 Heebo, Arial, sans-serif;
+          pointer-events: none;
+        }
+        .flow-editor-content [data-flow-protected="1"] table {
+          width: 100%;
+          max-width: 100%;
+          table-layout: fixed;
+        }
+        .flow-editor-content p { orphans: 3; widows: 3; }
+        .flow-editor-content h1,
+        .flow-editor-content h2,
+        .flow-editor-content h3 { break-after: avoid; }
         .flow-editor-shell-paged {
           position: relative;
           width: var(--flow-editor-page-width);

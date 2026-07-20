@@ -29,6 +29,7 @@ import FlowCompareView from "./FlowCompareView";
 import LiveSplitView from "./LiveSplitView";
 import { templateToEditableHtml } from "./editor/templateToHtml";
 import { paymentsSignature, syncPaymentsSection } from "./syncPayments";
+import { structuredSectionsSignature, syncStructuredSections } from "./syncStructuredSections";
 import PresetPicker from "./presets/PresetPicker";
 import type { DesignPreset } from "./presets/types";
 import { safeConfig, usePresets } from "./presets/usePresets";
@@ -50,9 +51,14 @@ interface Props {
   onSubTabChange?: (next: "edit" | "preview" | "split" | "compare") => void;
   /** אם true — אל תראה את ה-TabsList הפנימי (ההורה מציג שורה משלו). */
   hideInternalSubTabs?: boolean;
+  /** Structured editor fields are the only source of truth; disables the legacy HTML draft editor. */
+  structuredMode?: boolean;
+  /** Registers the exact A4 print action so the parent export button uses this same renderer. */
+  onPrintReady?: (handler: (() => Promise<void>) | null) => void;
 }
 
 const storageKey = (id?: string) => `flow-edit:${id || "untitled"}:v2`;
+const structuredStorageKey = (id?: string) => `flow-edit:${id || "untitled"}:structured-v1`;
 const styleKey = (id?: string) => `flow-edit:${id || "untitled"}:preserveStyles`;
 const paymentsLayoutKey = (id?: string) => `flow-edit:${id || "untitled"}:paymentsLayout`;
 type PaymentsLayout = "list" | "table" | "both";
@@ -173,6 +179,8 @@ export default function FlowWorkspaceTab({
   subTab,
   onSubTabChange,
   hideInternalSubTabs,
+  structuredMode = false,
+  onPrintReady,
 }: Props) {
   const designSettingsRef = useRef(designSettings);
   designSettingsRef.current = designSettings;
@@ -435,30 +443,54 @@ export default function FlowWorkspaceTab({
   }, [template.id]);
 
   const baseHtml = useMemo(() => {
-    const override =
-      (template as any)?.design_settings?.flowV2OverrideHtml ||
-      (template as any)?.flowV2OverrideHtml ||
-      null;
-    if (typeof override === "string" && override.trim()) return override;
-    return templateToEditableHtml(template, {
+    const generated = templateToEditableHtml(template, {
       preserveItemStyling: preserveStyles,
       projectDetails,
       keepFieldsAsPlaceholders: true,
       paymentsLayout,
+      lockComputedSections: structuredMode,
     });
-  }, [template, preserveStyles, projectDetails, paymentsLayout]);
+    if (structuredMode) {
+      const structuredOverride =
+        designSettings?.flowStructuredEditableHtml ||
+        designSettings?.flow_structured_editable_html ||
+        (template as any)?.design_settings?.flowStructuredEditableHtml ||
+        (template as any)?.design_settings?.flow_structured_editable_html;
+      if (typeof structuredOverride === "string" && structuredOverride.trim()) {
+        return syncStructuredSections(structuredOverride, template, {
+          preserveItemStyling: preserveStyles,
+          projectDetails,
+          paymentsLayout,
+        });
+      }
+      return generated;
+    }
+    const override =
+      (template as any)?.design_settings?.flowV2OverrideHtml ||
+      (template as any)?.flowV2OverrideHtml ||
+      null;
+    return typeof override === "string" && override.trim() ? override : generated;
+  }, [template, designSettings, preserveStyles, projectDetails, paymentsLayout, structuredMode]);
 
   const [html, setHtml] = useState<string>(() => {
     try {
-      const saved = localStorage.getItem(storageKey(template.id));
+      const saved = localStorage.getItem(
+        structuredMode ? structuredStorageKey(template.id) : storageKey(template.id),
+      );
       return saved || baseHtml;
     } catch {
       return baseHtml;
     }
   });
-  const [internalSubTab, setInternalSubTab] = useState<"edit" | "preview" | "compare" | "split">("edit");
-  const activeTab = (subTab ?? internalSubTab) as "edit" | "preview" | "compare" | "split";
+  const [internalSubTab, setInternalSubTab] = useState<"edit" | "preview" | "compare" | "split">(
+    structuredMode ? "preview" : "edit",
+  );
+  const activeTab = (structuredMode ? internalSubTab : (subTab ?? internalSubTab)) as "edit" | "preview" | "compare" | "split";
   const setActiveTab = (next: "edit" | "preview" | "compare" | "split") => {
+    if (structuredMode) {
+      if (next === "edit" || next === "preview") setInternalSubTab(next);
+      return;
+    }
     if (onSubTabChange) onSubTabChange(next);
     else setInternalSubTab(next);
   };
@@ -473,10 +505,11 @@ export default function FlowWorkspaceTab({
     }
   });
   useEffect(() => {
+    if (structuredMode) return;
     try {
       localStorage.setItem(pagedGuidesStorageKey, pagedGuidesOn ? "1" : "0");
     } catch { /* ignore */ }
-  }, [pagedGuidesOn, pagedGuidesStorageKey]);
+  }, [pagedGuidesOn, pagedGuidesStorageKey, structuredMode]);
 
   const [editorContentEl, setEditorContentEl] = useState<HTMLElement | null>(null);
   useEffect(() => {
@@ -515,13 +548,45 @@ export default function FlowWorkspaceTab({
 
   // אם החליפו תבנית — טען טיוטה שמורה או תוכן בסיס
   useEffect(() => {
+    if (structuredMode) {
+      try {
+        const saved = localStorage.getItem(structuredStorageKey(template.id));
+        setHtml(saved ? syncStructuredSections(saved, template, {
+          preserveItemStyling: preserveStyles,
+          projectDetails,
+          paymentsLayout,
+        }) : baseHtml);
+      } catch {
+        setHtml(baseHtml);
+      }
+      return;
+    }
     try {
       const saved = localStorage.getItem(storageKey(template.id));
       setHtml(saved || baseHtml);
     } catch {
       setHtml(baseHtml);
     }
-  }, [template.id, baseHtml]);
+  }, [template.id, baseHtml, structuredMode, preserveStyles, projectDetails, paymentsLayout, template]);
+
+  const structuredSig = useMemo(
+    () => structuredSectionsSignature(template) + `|${paymentsLayout}`,
+    [template, paymentsLayout],
+  );
+  const prevStructuredSigRef = useRef("");
+  useEffect(() => {
+    if (!structuredMode || prevStructuredSigRef.current === structuredSig) return;
+    prevStructuredSigRef.current = structuredSig;
+    setHtml((current) => {
+      const next = syncStructuredSections(current || baseHtml, template, {
+        preserveItemStyling: preserveStyles,
+        projectDetails,
+        paymentsLayout,
+      });
+      try { localStorage.setItem(structuredStorageKey(template.id), next); } catch { /* best effort */ }
+      return next;
+    });
+  }, [structuredMode, structuredSig, baseHtml, template, preserveStyles, projectDetails, paymentsLayout]);
 
   // ===== סנכרון אוטומטי של "לוח תשלומים" מטאב "תוכן" לעורך =====
   // ברגע שמשתמש משנה את לוח התשלומים / מחיר בסיס / מע״מ בטאב תוכן —
@@ -532,6 +597,7 @@ export default function FlowWorkspaceTab({
   );
   const prevPaySigRef = useRef<string>("");
   useEffect(() => {
+    if (structuredMode) return;
     if (prevPaySigRef.current === paySig) return;
     prevPaySigRef.current = paySig;
     setHtml((prev) => {
@@ -548,25 +614,54 @@ export default function FlowWorkspaceTab({
       }
       return next;
     });
-  }, [paySig, template, preserveStyles, projectDetails, paymentsLayout]);
+  }, [paySig, template, preserveStyles, projectDetails, paymentsLayout, structuredMode]);
 
   const handleChange = (next: string) => {
     setHtml(next);
     try {
-      localStorage.setItem(storageKey(template.id), next);
+      localStorage.setItem(
+        structuredMode ? structuredStorageKey(template.id) : storageKey(template.id),
+        next,
+      );
     } catch {
       /* quota / private mode */
+    }
+    if (structuredMode && onDesignSettingsChange) {
+      onDesignSettingsChange((previous: any) => ({
+        ...(previous || {}),
+        flowStructuredEditableHtml: next,
+        flow_structured_editable_html: next,
+      }));
     }
   };
 
   const handleReset = () => {
     if (!window.confirm("לאפס את העריכה לתוכן המקורי של התבנית?")) return;
     try {
-      localStorage.removeItem(storageKey(template.id));
+      localStorage.removeItem(
+        structuredMode ? structuredStorageKey(template.id) : storageKey(template.id),
+      );
     } catch {
       /* ignore */
     }
-    setHtml(baseHtml);
+    if (structuredMode && onDesignSettingsChange) {
+      onDesignSettingsChange((previous: any) => {
+        const next = { ...(previous || {}) };
+        delete next.flowStructuredEditableHtml;
+        delete next.flow_structured_editable_html;
+        return next;
+      });
+    }
+    const resetHtml = structuredMode
+      ? templateToEditableHtml(template, {
+          preserveItemStyling: preserveStyles,
+          projectDetails,
+          keepFieldsAsPlaceholders: true,
+          paymentsLayout,
+          lockComputedSections: true,
+        })
+      : baseHtml;
+    setHtml(resetHtml);
   };
 
   const setPaymentsLayout = (value: PaymentsLayout) => {
@@ -582,7 +677,9 @@ export default function FlowWorkspaceTab({
     // החלפת מצב משכתבת את ה-base וגם את הטיוטה — לכן מאשרים אם יש שינויים
     const hasDraft = (() => {
       try {
-        return !!localStorage.getItem(storageKey(template.id));
+        return !!localStorage.getItem(
+          structuredMode ? structuredStorageKey(template.id) : storageKey(template.id),
+        );
       } catch {
         return false;
       }
@@ -598,9 +695,27 @@ export default function FlowWorkspaceTab({
     setPreserveStyles(value);
     try {
       localStorage.setItem(styleKey(template.id), value ? "1" : "0");
-      localStorage.removeItem(storageKey(template.id));
+      localStorage.removeItem(
+        structuredMode ? structuredStorageKey(template.id) : storageKey(template.id),
+      );
     } catch {
       /* ignore */
+    }
+    if (structuredMode) {
+      const nextHtml = templateToEditableHtml(template, {
+        preserveItemStyling: value,
+        projectDetails,
+        keepFieldsAsPlaceholders: true,
+        paymentsLayout,
+        lockComputedSections: true,
+      });
+      setHtml(nextHtml);
+      onDesignSettingsChange?.((previous: any) => {
+        const next = { ...(previous || {}) };
+        delete next.flowStructuredEditableHtml;
+        delete next.flow_structured_editable_html;
+        return next;
+      });
     }
   };
 
@@ -956,31 +1071,42 @@ export default function FlowWorkspaceTab({
     <>
       <div className="flex shrink-0 items-center gap-1 pl-1">
         <Sparkles className="h-3.5 w-3.5 text-primary" />
-        <span className="text-xs font-medium">Flow</span>
+        <span className="text-xs font-medium">{structuredMode ? "מסמך A4 חי" : "Flow"}</span>
       </div>
+
+      {structuredMode && (
+        <>
+          <Badge variant="outline" className="h-6 shrink-0 text-[10px] text-emerald-700">
+            מקור הנתונים: תוכן, תשלומים ועיצוב
+          </Badge>
+          <Badge variant="secondary" className="h-6 shrink-0 text-[10px]">
+            שמירה אוטומטית
+          </Badge>
+        </>
+      )}
 
       {workspaceActions}
 
       {workspaceActions && <span className="h-5 w-px shrink-0 bg-border" />}
 
-      {!hideInternalSubTabs && (
+      {(!hideInternalSubTabs || structuredMode) && (
         <TabsList className="!h-8 !min-h-0 !w-auto shrink-0 p-0.5">
           <TabsTrigger value="edit" className="h-7 gap-1 px-2 text-xs">
             <Pencil className="h-3.5 w-3.5" />
-            עריכה
+            {structuredMode ? "עריכת מסמך" : "עריכה"}
           </TabsTrigger>
           <TabsTrigger value="preview" className="h-7 gap-1 px-2 text-xs">
             <Eye className="h-3.5 w-3.5" />
-            תצוגה
+            {structuredMode ? "תצוגת A4" : "תצוגה"}
           </TabsTrigger>
-          <TabsTrigger value="compare" className="h-7 gap-1 px-2 text-xs" title="השוואת עריכה מול תצוגה + זיהוי פערי שבירת עמודים">
+          {!structuredMode && <TabsTrigger value="compare" className="h-7 gap-1 px-2 text-xs" title="השוואת עריכה מול תצוגה + זיהוי פערי שבירת עמודים">
             <Columns2 className="h-3.5 w-3.5" />
             השוואה
-          </TabsTrigger>
-          <TabsTrigger value="split" className="h-7 gap-1 px-2 text-xs" title="פיצול מסך — עריכה + תצוגה חיה מיידית (ללא רינדור מורגש)">
+          </TabsTrigger>}
+          {!structuredMode && <TabsTrigger value="split" className="h-7 gap-1 px-2 text-xs" title="פיצול מסך — עריכה + תצוגה חיה מיידית (ללא רינדור מורגש)">
             <SplitSquareHorizontal className="h-3.5 w-3.5" />
             פיצול
-          </TabsTrigger>
+          </TabsTrigger>}
         </TabsList>
       )}
 
@@ -992,7 +1118,7 @@ export default function FlowWorkspaceTab({
               variant={pagedGuidesOn ? "default" : "outline"}
               size="sm"
               onClick={() => setPagedGuidesOn((v) => !v)}
-              className="h-8 shrink-0 gap-1 px-2 text-xs"
+              className={`${structuredMode ? "hidden" : ""} h-8 shrink-0 gap-1 px-2 text-xs`}
             >
               <Columns2 className="h-3.5 w-3.5" />
               PDF מדויק
@@ -1022,7 +1148,7 @@ export default function FlowWorkspaceTab({
             size="sm"
             disabled={cloudSaving}
             title="שמור את ההצעה — בחר אם לעדכן גם את התבנית"
-            className="h-8 shrink-0 gap-1 px-2 text-xs"
+            className={`${structuredMode ? "hidden" : ""} h-8 shrink-0 gap-1 px-2 text-xs`}
           >
             {cloudSaving ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1253,6 +1379,7 @@ export default function FlowWorkspaceTab({
               projectDetails={projectDetails}
               designSettings={designSettings}
               pageSetup={pageSetup}
+              onPrintReady={onPrintReady}
             />
           </div>
         </div>

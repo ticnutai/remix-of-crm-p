@@ -51,11 +51,23 @@ describe("renderFlowToHtml", () => {
   });
 
   it("constrains imported content to the printable A4 width", () => {
-    const html = renderFlowToHtml(documentFixture());
+    const fixture = documentFixture();
+    fixture.sections.push({
+      id: "costs",
+      blocks: [{
+        type: "table",
+        headers: ["תיאור", "כמות", "יחידה", "מחיר ליח׳", "סה״כ"],
+        rows: [["תיאור ארוך מאוד של שירות", "1", "יח׳", "42,000", "42,000"]],
+      }],
+    });
+    const html = renderFlowToHtml(fixture);
 
     expect(html).toContain(".flow-doc *");
     expect(html).toContain("max-width: 100% !important");
     expect(html).toContain("table-layout: fixed");
     expect(html).toContain("overflow-wrap: anywhere");
+    expect(html).toContain('<col style="width:46.000%" />');
+    expect(html).toContain('<col style="width:15.000%" />');
+    expect(html).toContain("overflow-x: hidden");
   });
 });

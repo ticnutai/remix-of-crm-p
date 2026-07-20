@@ -62,6 +62,16 @@ function renderInlines(nodes: FlowInline[]): string {
   return nodes.map(renderInline).join("");
 }
 
+function tableColumnWidths(columnCount: number): number[] {
+  if (columnCount <= 1) return [100];
+  if (columnCount === 2) return [65, 35];
+  if (columnCount === 3) return [44, 28, 28];
+  if (columnCount === 5) return [46, 12, 12, 15, 15];
+  const firstColumn = 40;
+  const remaining = (100 - firstColumn) / (columnCount - 1);
+  return [firstColumn, ...Array.from({ length: columnCount - 1 }, () => remaining)];
+}
+
 function renderBlock(block: FlowBlock): string {
   switch (block.type) {
     case "heading": {
@@ -78,6 +88,10 @@ function renderBlock(block: FlowBlock): string {
       return `<${tag} class="flow-list">${items}</${tag}>`;
     }
     case "table": {
+      const columnCount = Math.max(block.headers.length, ...block.rows.map((row) => row.length));
+      const columns = tableColumnWidths(columnCount)
+        .map((width) => `<col style="width:${width.toFixed(3)}%" />`)
+        .join("");
       const head = `<thead><tr>${block.headers.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead>`;
       const body = `<tbody>${block.rows
         .map(
@@ -86,7 +100,7 @@ function renderBlock(block: FlowBlock): string {
         )
         .join("")}</tbody>`;
       const klass = block.breakable ? "flow-table breakable" : "flow-table";
-      return `<table class="${klass}">${head}${body}</table>`;
+      return `<table class="${klass}"><colgroup>${columns}</colgroup>${head}${body}</table>`;
     }
     case "spacer":
       return `<div class="flow-spacer" style="height:${block.mm}mm"></div>`;
@@ -402,6 +416,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   .flow-doc {
     direction: rtl;
     text-align: right;
+    overflow-x: hidden;
     padding-left: ${m.left}mm;
     padding-right: ${m.right}mm;
   }
@@ -434,10 +449,15 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   .flow-list { margin: 0 0 3mm; padding-inline-start: 6mm; direction: rtl; text-align: right; }
   .flow-list li { margin-bottom: 1mm; }
 
-  .flow-table { width: 100% !important; max-width: 100% !important; table-layout: fixed; border-collapse: collapse; margin: 2mm 0 4mm; direction: rtl; }
+  .flow-table {
+    width: 100% !important; max-width: 100% !important; min-width: 0 !important;
+    table-layout: fixed; border-collapse: collapse; border-spacing: 0;
+    margin: 2mm 0 4mm; margin-inline: 0; direction: rtl;
+  }
   .flow-table th, .flow-table td {
-    border: 1px solid #ddd; padding: 2mm 3mm; text-align: right; font-size: 10pt;
-    overflow-wrap: anywhere; word-break: normal;
+    min-width: 0; max-width: none; overflow: hidden;
+    border: 1px solid #ddd; padding: 1.8mm 1.5mm; text-align: right; font-size: 9pt;
+    white-space: normal; overflow-wrap: anywhere; word-break: break-word;
   }
   .flow-table th { background: ${branding.primaryColor}; color: #fff; }
   .flow-table.breakable { break-inside: auto; }

@@ -59,7 +59,7 @@ export function applyProjectTokens(content: string, pd?: ProjectTokenData): stri
     )
     .join("|");
 
-  let out = content.replace(/\[([^\[\]\n]+)\]/g, (full, raw) => {
+  let out = content.replace(/\[([^\]\n]+)\]/g, (full, raw) => {
     const v = lookup(String(raw).trim());
     return v !== undefined ? v : full;
   });

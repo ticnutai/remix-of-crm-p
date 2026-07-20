@@ -131,7 +131,7 @@ function extractItemsFromText(text: string): ExtractedItem[] {
       if (price > 0 && price < 10000000) {
         const description = trimmedLine
           .replace(pricePattern, "")
-          .replace(/^\d+[\.\)]\s*/, "")
+          .replace(/^\d+[.)]\s*/, "")
           .trim();
 
         if (description.length > 2) {

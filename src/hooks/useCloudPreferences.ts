@@ -128,7 +128,6 @@ const SYNC_KEYS = [
   // Quote template editor — tabs order/visibility & display mode
   "lov-html-editor-tabs-cfg-v1",
   "qt-editor-tab-display-mode",
-  "qt-editor-flow-sub-tab",
   "qt-flow-bubble-toolbar-cfg-v1",
 ] as const;
 
