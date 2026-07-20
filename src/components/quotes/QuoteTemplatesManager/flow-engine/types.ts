@@ -2,6 +2,8 @@
 // מסמך זורם יחיד שמתקבל מ-serializer ומוזן ל-renderer.
 // אין כאן מושג של "תיבות" או "מיקומים" — רק רצף בלוקים.
 
+import type { FrameDesignSettings } from "../frameStyles";
+
 export type FlowInline =
   | { type: "text"; text: string; bold?: boolean; italic?: boolean; color?: string }
   | { type: "field"; key: string; fallback?: string } // {{customer.name}} → רץ דרך merger
@@ -42,12 +44,16 @@ export interface FlowBranding {
   footerStripWidthPercent?: number;
   headerStripContentGapPx?: number;
   footerStripContentGapPx?: number;
+  showLogo?: boolean;
+  showFooter?: boolean;
   companyName: string;
   companySubtitle?: string;
   contactLine?: string; // טלפון | מייל | כתובת
   primaryColor: string; // navy
   accentColor: string; // gold
   fontFamily: string;
+  baseFontSizePx?: number;
+  frameDesign?: FrameDesignSettings;
 }
 
 export type FlowPageSizePreset = "none" | "A4" | "A3" | "A5" | "Letter" | "Legal" | "custom";

@@ -10027,17 +10027,25 @@ ${tbAt('footer')}
               <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b shadow-sm" dir="rtl">
                 <div className="max-w-6xl mx-auto px-4 md:px-6 py-3 flex items-center gap-2 overflow-x-auto">
                   <span className="text-xs font-semibold text-gray-500 ml-2 shrink-0">קפיצה לקטגוריה:</span>
-                  {[
-                    { id: "design-logo", label: "לוגו וסטריפ", icon: "🖼️" },
+                  {([
+                    { id: "design-logo", label: "לוגו וסטריפ", icon: "🖼️", tab: "logo-strip" },
                     { id: "design-themes", label: "ערכות צבעים", icon: "🎨" },
                     { id: "design-colors", label: "צבעים מותאמים", icon: "🎯" },
                     { id: "design-3d", label: "אפקטי 3D", icon: "✨" },
                     { id: "design-typography", label: "טיפוגרפיה", icon: "🔤" },
                     { id: "design-frame", label: "מסגרת ופריסה", icon: "🧱" },
-                  ].map((s) => (
+                  ] as Array<{ id: string; label: string; icon: string; tab?: string }>).map((s) => (
                     <button
                       key={s.id}
-                      onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                      onClick={() => {
+                        if (s.tab === "logo-strip") {
+                          setLogoSubTab("upper");
+                          setLogoStripMode("logo");
+                          setActiveTab("logo-strip");
+                          return;
+                        }
+                        document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
                       className="shrink-0 px-3 py-1.5 text-xs font-medium rounded-full border border-gray-200 hover:border-[#d8ac27] hover:bg-[#d8ac27]/10 hover:text-[#B8860B] transition-colors text-gray-700 flex items-center gap-1.5"
                     >
                       <span>{s.icon}</span>
@@ -10048,7 +10056,7 @@ ${tbAt('footer')}
               </div>
               <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 max-w-6xl mx-auto" dir="rtl">
                 {/* 1. Logo with AI Generation */}
-                <div id="design-logo" className="bg-white rounded-xl border p-6 shadow-sm scroll-mt-24">
+                <div id="design-logo" className="hidden" aria-hidden="true">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[11px] font-bold text-[#B8860B] bg-[#d8ac27]/10 px-2 py-0.5 rounded-full">1 / 6</span>
                     <span className="text-xs text-gray-400">לוגו, סטריפ ראש מסמך</span>
@@ -10545,7 +10553,7 @@ ${tbAt('footer')}
                 {/* 2. Color Themes */}
                 <div id="design-themes" className="bg-white rounded-xl border p-6 shadow-sm scroll-mt-24">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-bold text-[#B8860B] bg-[#d8ac27]/10 px-2 py-0.5 rounded-full">2 / 6</span>
+                    <span className="text-[11px] font-bold text-[#B8860B] bg-[#d8ac27]/10 px-2 py-0.5 rounded-full">1 / 5</span>
                     <span className="text-xs text-gray-400">פלטות צבעים מוכנות לבחירה מהירה</span>
                   </div>
                   <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
@@ -10591,7 +10599,7 @@ ${tbAt('footer')}
                 {/* 3. Custom Colors */}
                 <div id="design-colors" className="bg-white rounded-xl border p-6 shadow-sm scroll-mt-24">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-bold text-[#B8860B] bg-[#d8ac27]/10 px-2 py-0.5 rounded-full">3 / 6</span>
+                    <span className="text-[11px] font-bold text-[#B8860B] bg-[#d8ac27]/10 px-2 py-0.5 rounded-full">2 / 5</span>
                     <span className="text-xs text-gray-400">בחירת צבעים ידנית + רקע כותרת</span>
                   </div>
                   <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
@@ -10662,7 +10670,7 @@ ${tbAt('footer')}
                 {/* 4. 3D Effects */}
                 <div id="design-3d" className="bg-white rounded-xl border p-6 shadow-sm scroll-mt-24">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-bold text-[#B8860B] bg-[#d8ac27]/10 px-2 py-0.5 rounded-full">4 / 6</span>
+                    <span className="text-[11px] font-bold text-[#B8860B] bg-[#d8ac27]/10 px-2 py-0.5 rounded-full">3 / 5</span>
                     <span className="text-xs text-gray-400">צללים, גרדיאנט והגבהה</span>
                   </div>
                   <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
@@ -10740,7 +10748,7 @@ ${tbAt('footer')}
                 {/* 5. Typography */}
                 <div id="design-typography" className="bg-white rounded-xl border p-6 shadow-sm scroll-mt-24">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-bold text-[#B8860B] bg-[#d8ac27]/10 px-2 py-0.5 rounded-full">5 / 6</span>
+                    <span className="text-[11px] font-bold text-[#B8860B] bg-[#d8ac27]/10 px-2 py-0.5 rounded-full">4 / 5</span>
                     <span className="text-xs text-gray-400">גופן, גודל ועיגול פינות</span>
                   </div>
                   <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
@@ -10825,12 +10833,13 @@ ${tbAt('footer')}
                 {/* 6. Frame Design Panel - מסגרות, רקע, כותרות, header/footer */}
                 <div id="design-frame" className="bg-white rounded-xl border p-6 shadow-sm scroll-mt-24">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-[11px] font-bold text-[#B8860B] bg-[#d8ac27]/10 px-2 py-0.5 rounded-full">6 / 6</span>
-                    <span className="text-xs text-gray-400">מסגרות, רקע, header/footer קבועים</span>
+                    <span className="text-[11px] font-bold text-[#B8860B] bg-[#d8ac27]/10 px-2 py-0.5 rounded-full">5 / 5</span>
+                    <span className="text-xs text-gray-400">מסגרת עמוד, רקע וכותרות למסמך A4</span>
                   </div>
                   <FrameDesignPanel
                     value={designSettings.frameDesign || DEFAULT_FRAME_SETTINGS}
                     onChange={(v) => setDesignSettings({ ...designSettings, frameDesign: v })}
+                    flowMode
                   />
                 </div>
               </div>
@@ -10925,6 +10934,18 @@ ${tbAt('footer')}
                     <FileText className="h-4 w-4 text-[#B8860B]" />
                     חזרה על לוגו / כותרת בכל עמוד
                   </h3>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm font-medium">הצג לוגו / סטריפ במסמך</Label>
+                      <p className="text-xs text-gray-500 mt-0.5">מתג ראשי לתמונת הלוגו ולסטריפ העליון</p>
+                    </div>
+                    <Switch
+                      checked={designSettings.showLogo !== false}
+                      onCheckedChange={(v) =>
+                        setDesignSettings((prev) => ({ ...prev, showLogo: v }))
+                      }
+                    />
+                  </div>
                   <div className="flex items-center justify-between">
                     <div>
                       <Label className="text-sm font-medium">לוגו / סטריפ עליון בכל עמוד</Label>

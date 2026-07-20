@@ -66,4 +66,29 @@ describe("serializeTemplate A4 flow", () => {
       "payments",
     ]));
   });
+
+  it("uses the visible logo-tab switches and company fields as the A4 source", () => {
+    const doc = serializeTemplate({
+      id: "template-4",
+      name: "הצעה",
+      stages: [],
+      items: [],
+      payment_schedule: [],
+      design_settings: {
+        logoUrl: "hidden-logo.png",
+        logoPosition: "custom-strip",
+        footerStripUrl: "hidden-footer.png",
+        showLogo: false,
+        repeatFooterOnAllPages: false,
+        companyPhone: "050-1234567",
+      },
+    } as any);
+
+    expect(doc.branding.showLogo).toBe(false);
+    expect(doc.branding.logoUrl).toBeUndefined();
+    expect(doc.branding.headerStripUrl).toBeUndefined();
+    expect(doc.branding.showFooter).toBe(false);
+    expect(doc.branding.footerStripUrl).toBeUndefined();
+    expect(doc.branding.contactLine).toBe("");
+  });
 });

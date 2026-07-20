@@ -85,4 +85,39 @@ describe("renderFlowToHtml", () => {
 
     expect(html).toContain("margin: 38.35mm 0mm 34.35mm 0mm");
   });
+
+  it("applies the unified design-tab frame, background and typography to A4", () => {
+    const fixture = documentFixture();
+    fixture.branding.baseFontSizePx = 19;
+    fixture.branding.frameDesign = {
+      documentBorder: {
+        style: "solid",
+        width: 3,
+        color: "#123456",
+        radius: 8,
+        padding: 24,
+        shadow: "none",
+      },
+      background: { type: "solid", color1: "#fafafa" },
+      sectionTitle: { style: "gold-underline", barColor: "#abcdef", textColor: "#111111" },
+    };
+
+    const html = renderFlowToHtml(fixture);
+
+    expect(html).toContain("font-size: 19px");
+    expect(html).toContain("Unified design-tab appearance");
+    expect(html).toContain("border: 3px solid #123456");
+    expect(html).toContain("background: #fafafa");
+    expect(html).toContain("border-bottom:2px solid #abcdef");
+  });
+
+  it("removes the running footer when it is disabled in the logo tab", () => {
+    const fixture = documentFixture();
+    fixture.branding.showFooter = false;
+
+    const html = renderFlowToHtml(fixture);
+
+    expect(html).toContain("@bottom-center { content: none; }");
+    expect(html).not.toContain('<div class="running-footer');
+  });
 });

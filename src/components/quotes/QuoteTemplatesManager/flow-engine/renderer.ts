@@ -10,6 +10,13 @@ import type { FlowBlock, FlowDocument, FlowInline } from "./types";
 import type { DesignPresetConfig } from "./presets/types";
 import { buildPresetExtraCss } from "./presets/presetExtras";
 import { clampFlowNumber, FLOW_STRIP_LIMITS } from "./stripSettings";
+import {
+  backgroundToBodyCss,
+  borderToCss,
+  DEFAULT_FRAME_SETTINGS,
+  DEFAULT_SECTION_TITLE,
+} from "../frameStyles";
+import type { FrameDesignSettings, SectionTitleConfig } from "../frameStyles";
 
 const PX_TO_MM = 25.4 / 96;
 
@@ -60,6 +67,48 @@ function renderInline(node: FlowInline): string {
 
 function renderInlines(nodes: FlowInline[]): string {
   return nodes.map(renderInline).join("");
+}
+
+function sectionTitleCss(config?: SectionTitleConfig) {
+  const title = { ...DEFAULT_SECTION_TITLE, ...(config || {}) };
+  const base = `color:${title.textColor};`;
+  switch (title.style) {
+    case "gold-bar":
+      return `${base}border-right:4px solid ${title.barColor};padding-right:12px;`;
+    case "gold-underline":
+      return `${base}border-bottom:2px solid ${title.barColor};padding-bottom:6px;`;
+    case "filled":
+      return `background:${title.barColor};color:${title.textColor === "#162C58" ? "#fff" : title.textColor};padding:8px 12px;border-radius:6px;`;
+    case "boxed":
+      return `${base}border:2px solid ${title.barColor};padding:7px 12px;border-radius:4px;`;
+    default:
+      return base;
+  }
+}
+
+function frameDesignCss(frameDesign?: FrameDesignSettings) {
+  if (!frameDesign) return "";
+  const frame = { ...DEFAULT_FRAME_SETTINGS, ...frameDesign };
+  const borderCss = borderToCss(frame.documentBorder)
+    .replace(/padding\s*:[^;]+;/gi, "")
+    .trim();
+  return `
+  /* ===== Unified design-tab appearance ===== */
+  .pagedjs_pagebox {
+    position: relative;
+    ${backgroundToBodyCss(frame.background)}
+  }
+  .pagedjs_pagebox::before {
+    content: "";
+    position: absolute;
+    inset: 4mm;
+    z-index: 20;
+    pointer-events: none;
+    box-sizing: border-box;
+    ${borderCss}
+  }
+  .flow-h2 { ${sectionTitleCss(frame.sectionTitle)} }
+  `;
 }
 
 function tableColumnWidths(columnCount: number): number[] {
@@ -181,7 +230,8 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     : origBranding;
   const m = page.marginMm;
   const hasHeaderStrip = Boolean(branding.headerStripUrl);
-  const hasFooterStrip = Boolean(branding.footerStripUrl);
+  const showFooter = branding.showFooter !== false;
+  const hasFooterStrip = showFooter && Boolean(branding.footerStripUrl);
   const headerStripHeightPx = hasHeaderStrip
     ? clampFlowNumber(
         branding.headerStripHeight,
@@ -234,7 +284,9 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
           (headerContentGapPx - FLOW_STRIP_LIMITS.contentGapPx.fallback) * PX_TO_MM,
       );
   const pageNumberReserveMm = page.showPageNumbers && hasFooterStrip ? 7 : 0;
-  const bottomMargin = hasFooterStrip
+  const bottomMargin = !showFooter
+    ? m.bottom
+    : hasFooterStrip
     ? footerStripMm + footerContentGapMm + pageNumberReserveMm
     : Math.max(
         0,
@@ -242,6 +294,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
           (footerContentGapPx - FLOW_STRIP_LIMITS.contentGapPx.fallback) * PX_TO_MM,
       );
   const stripBgColor = branding.stripBgColor || "#ffffff";
+  const baseFontSizePx = clampFlowNumber(branding.baseFontSizePx, 16, 10, 28);
 
   const sectionsHtml = sections
     .map((sec) => {
@@ -261,12 +314,12 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
       </div>`}
     </div>`;
 
-  const footerHtml = `
+  const footerHtml = showFooter ? `
     <div class="running-footer ${hasFooterStrip ? "strip" : ""}">
       ${hasFooterStrip
         ? `<img class="strip-img" src="${esc(branding.footerStripUrl || "")}" alt="footer strip" />`
         : `<div class="rf-line">${esc(branding.contactLine || "")}</div>`}
-    </div>`;
+    </div>` : "";
 
   return `<!doctype html>
 <html dir="rtl" lang="he" class="${hasHeaderStrip ? "flow-has-header-strip" : ""} ${hasFooterStrip ? "flow-has-footer-strip" : ""}">
@@ -279,7 +332,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     size: ${pageSizeCss(page)};
     margin: ${mmCss(topMargin)}mm 0mm ${mmCss(bottomMargin)}mm 0mm;
     @top-center { content: element(runHeader); }
-    @bottom-center { content: element(runFooter); }
+    @bottom-center { content: ${showFooter ? "element(runFooter)" : "none"}; }
   }
   ${page.showPageNumbers ? `
   .pagedjs_sheet { position: relative; }
@@ -388,7 +441,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     color: #1a1a1a;
     direction: rtl;
     text-align: right;
-    font-size: 11pt;
+    font-size: ${baseFontSizePx}px;
     line-height: 1.55;
     /* קריטי: שומר על צבעים, רקעים וגרדיאנטים בהדפסה ל-PDF */
     -webkit-print-color-adjust: exact;
@@ -522,6 +575,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     background: ${branding.accentColor}22; color: ${branding.primaryColor};
     font-size: 0.92em;
   }
+  ${frameDesignCss(branding.frameDesign)}
   ${preset ? `
   /* ===== Design Preset override ===== */
   body { font-family: ${preset.fonts.body}; font-size: ${preset.fonts.size}; line-height: ${preset.spacing.lineHeight}; color: ${preset.colors.text}; }

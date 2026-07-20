@@ -451,9 +451,11 @@ function PageSizeEditor({
 export interface FrameDesignPanelProps {
   value: FrameDesignSettings;
   onChange: (v: FrameDesignSettings) => void;
+  /** In the A4 template editor, page size and header/footer are managed elsewhere. */
+  flowMode?: boolean;
 }
 
-export function FrameDesignPanel({ value, onChange }: FrameDesignPanelProps) {
+export function FrameDesignPanel({ value, onChange, flowMode = false }: FrameDesignPanelProps) {
   const v: FrameDesignSettings = { ...DEFAULT_FRAME_SETTINGS, ...(value || {}) };
   const set = (patch: Partial<FrameDesignSettings>) => onChange({ ...v, ...patch });
   const applyBorderToAll = (b: BorderConfig) => set({ documentBorder: b, stageBorder: b, summaryBorder: b });
@@ -462,24 +464,31 @@ export function FrameDesignPanel({ value, onChange }: FrameDesignPanelProps) {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Sparkles className="h-5 w-5 text-primary" />
-        <h3 className="text-lg font-bold">מסגרות, רקע וכותרות</h3>
+        <h3 className="text-lg font-bold">
+          {flowMode ? "מסגרת עמוד, רקע וכותרות" : "מסגרות, רקע וכותרות"}
+        </h3>
       </div>
 
       {/* גודל עמוד — מעל ה-Tabs כי זה הגדרת יסוד */}
-      <PageSizeEditor value={v.pageSize} onChange={(p) => set({ pageSize: p })} />
+      {!flowMode && <PageSizeEditor value={v.pageSize} onChange={(p) => set({ pageSize: p })} />}
 
       <Tabs defaultValue="borders" className="w-full">
-        <TabsList className="w-full grid grid-cols-4">
+        <TabsList className={`w-full grid ${flowMode ? "grid-cols-3" : "grid-cols-4"}`}>
           <TabsTrigger value="borders" className="text-xs"><Frame className="h-3.5 w-3.5 ml-1" />מסגרות</TabsTrigger>
           <TabsTrigger value="bg" className="text-xs"><Layers className="h-3.5 w-3.5 ml-1" />רקע</TabsTrigger>
           <TabsTrigger value="titles" className="text-xs"><TypeIcon className="h-3.5 w-3.5 ml-1" />כותרות</TabsTrigger>
-          <TabsTrigger value="bars" className="text-xs"><PanelTop className="h-3.5 w-3.5 ml-1" />Header/Footer</TabsTrigger>
+          {!flowMode && <TabsTrigger value="bars" className="text-xs"><PanelTop className="h-3.5 w-3.5 ml-1" />Header/Footer</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="borders" className="mt-4 space-y-4">
-          <BorderEditor label="מסגרת ראשית להצעה" value={v.documentBorder} onChange={(b) => set({ documentBorder: b })} onApplyToAll={applyBorderToAll} />
-          <BorderEditor label="מסגרת לכל שלב" value={v.stageBorder} onChange={(b) => set({ stageBorder: b })} />
-          <BorderEditor label="מסגרת לסיכום מחיר" value={v.summaryBorder} onChange={(b) => set({ summaryBorder: b })} />
+          <BorderEditor
+            label={flowMode ? "מסגרת עמוד A4" : "מסגרת ראשית להצעה"}
+            value={v.documentBorder}
+            onChange={(b) => set({ documentBorder: b })}
+            onApplyToAll={flowMode ? undefined : applyBorderToAll}
+          />
+          {!flowMode && <BorderEditor label="מסגרת לכל שלב" value={v.stageBorder} onChange={(b) => set({ stageBorder: b })} />}
+          {!flowMode && <BorderEditor label="מסגרת לסיכום מחיר" value={v.summaryBorder} onChange={(b) => set({ summaryBorder: b })} />}
         </TabsContent>
 
         <TabsContent value="bg" className="mt-4">
@@ -490,10 +499,12 @@ export function FrameDesignPanel({ value, onChange }: FrameDesignPanelProps) {
           <SectionTitleEditor value={v.sectionTitle} onChange={(c) => set({ sectionTitle: c })} />
         </TabsContent>
 
-        <TabsContent value="bars" className="mt-4 space-y-4">
-          <FixedBarEditor label="כותרת עליונה קבועה" icon={<PanelTop className="h-4 w-4" />} value={v.fixedHeader} onChange={(h) => set({ fixedHeader: h })} />
-          <FixedBarEditor label="כותרת תחתונה קבועה (Footer)" icon={<PanelBottom className="h-4 w-4" />} value={v.fixedFooter} onChange={(f) => set({ fixedFooter: f })} isFooter />
-        </TabsContent>
+        {!flowMode && (
+          <TabsContent value="bars" className="mt-4 space-y-4">
+            <FixedBarEditor label="כותרת עליונה קבועה" icon={<PanelTop className="h-4 w-4" />} value={v.fixedHeader} onChange={(h) => set({ fixedHeader: h })} />
+            <FixedBarEditor label="כותרת תחתונה קבועה (Footer)" icon={<PanelBottom className="h-4 w-4" />} value={v.fixedFooter} onChange={(f) => set({ fixedFooter: f })} isFooter />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

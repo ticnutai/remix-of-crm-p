@@ -243,11 +243,16 @@ export function serializeTemplate(
   const contact = ds.contact_info || ds.contactInfo || {};
   const strips = resolveFlowStripSettings(ds);
   const { logoUrl, headerUrl: headerStripUrl, footerUrl: footerStripUrl } = strips;
+  const showLogo = ds.showLogo !== false && ds.show_logo !== false;
+  const showFooter = ds.repeatFooterOnAllPages !== false && ds.repeat_footer_on_all_pages !== false;
+  const companyPhone = firstValue(contact.phone, ds.companyPhone, ds.company_phone);
+  const companyEmail = firstValue(contact.email, ds.companyEmail, ds.company_email);
+  const companyAddress = firstValue(contact.address, ds.companyAddress, ds.company_address);
 
   const branding: FlowBranding = {
-    logoUrl,
-    headerStripUrl,
-    footerStripUrl,
+    logoUrl: showLogo ? logoUrl : undefined,
+    headerStripUrl: showLogo ? headerStripUrl : undefined,
+    footerStripUrl: showFooter ? footerStripUrl : undefined,
     stripBgColor: strips.backgroundColor,
     headerStripHeight: strips.headerHeightPx,
     footerStripHeight: strips.footerHeightPx,
@@ -255,12 +260,18 @@ export function serializeTemplate(
     footerStripWidthPercent: strips.footerWidthPercent,
     headerStripContentGapPx: strips.headerContentGapPx,
     footerStripContentGapPx: strips.footerContentGapPx,
+    showLogo,
+    showFooter,
     companyName: firstValue(ds.companyName, ds.company_name, ""),
     companySubtitle: firstValue(ds.companySubtitle, ds.company_subtitle, ""),
-    contactLine: [contact.phone, contact.email, contact.address].filter(Boolean).join("  |  "),
+    contactLine: showFooter
+      ? [companyPhone, companyEmail, companyAddress].filter(Boolean).join("  |  ")
+      : "",
     primaryColor: firstValue(ds.secondaryColor, ds.secondary_color, "#162C58"),
     accentColor: firstValue(ds.primaryColor, ds.primary_color, ds.accentColor, ds.accent_color, "#d8ac27"),
-    fontFamily: "Heebo, Arial, sans-serif",
+    fontFamily: firstValue(ds.fontFamily, ds.font_family, "Heebo, Arial, sans-serif"),
+    baseFontSizePx: Number(firstValue(ds.fontSize, ds.font_size, 16)) || 16,
+    frameDesign: firstValue(ds.frameDesign, ds.frame_design),
   };
 
   const sections: FlowSection[] = [];
