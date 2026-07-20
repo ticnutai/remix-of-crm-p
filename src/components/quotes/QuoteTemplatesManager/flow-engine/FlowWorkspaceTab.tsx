@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Cloud, Columns2, Eye, FileText, Hash, ImagePlus, Layers, Loader2, Palette, Pencil, Receipt, RotateCcw, Rows3, SlidersHorizontal, Sparkles, SplitSquareHorizontal, Trash2 } from "lucide-react";
+import { Cloud, Columns2, Eye, FileText, GripHorizontal, Hash, ImagePlus, Layers, Loader2, Palette, Pencil, Receipt, RotateCcw, Rows3, SlidersHorizontal, Sparkles, SplitSquareHorizontal, Trash2, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -39,6 +39,7 @@ import { renderFlowToHtml } from "./renderer";
 import { usePagedGuides } from "./editor/usePagedGuides";
 import StripDesignerDialog, { type FlowStripDesignState, type StripPosition } from "./StripDesignerDialog";
 import type { FlowPageSetup } from "./types";
+import { FLOW_STRIP_LIMITS } from "./stripSettings";
 
 interface Props {
   template: QuoteTemplate;
@@ -64,6 +65,28 @@ const paymentsLayoutKey = (id?: string) => `flow-edit:${id || "untitled"}:paymen
 type PaymentsLayout = "list" | "table" | "both";
 const presetKey = (id?: string) => `flow-edit:${id || "untitled"}:presetId`;
 const pageKey = (id?: string) => `flow-edit:${id || "untitled"}:pageSetup`;
+const spacingPanelPositionKey = (id?: string) =>
+  `flow-edit:${id || "untitled"}:spacingPanelPosition`;
+
+interface FloatingPanelPosition {
+  x: number;
+  y: number;
+}
+
+function defaultSpacingPanelPosition(): FloatingPanelPosition {
+  if (typeof window === "undefined") return { x: 24, y: 96 };
+  return { x: Math.max(12, window.innerWidth - 444), y: 96 };
+}
+
+function loadSpacingPanelPosition(templateId?: string): FloatingPanelPosition {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(spacingPanelPositionKey(templateId)) || "null");
+    if (Number.isFinite(parsed?.x) && Number.isFinite(parsed?.y)) {
+      return { x: parsed.x, y: parsed.y };
+    }
+  } catch { /* Use the default position when storage is unavailable or malformed. */ }
+  return defaultSpacingPanelPosition();
+}
 const DEFAULT_PAGE_SETUP: FlowPageSetup = {
   size: "A4",
   orientation: "portrait",
@@ -225,15 +248,27 @@ export default function FlowWorkspaceTab({
   const headerStripInputRef = useRef<HTMLInputElement | null>(null);
   const footerStripInputRef = useRef<HTMLInputElement | null>(null);
   const [designerPosition, setDesignerPosition] = useState<StripPosition | null>(null);
+  const spacingPanelRef = useRef<HTMLDivElement | null>(null);
+  const [spacingPanelOpen, setSpacingPanelOpen] = useState(false);
+  const [spacingPanelPosition, setSpacingPanelPosition] = useState<FloatingPanelPosition>(() =>
+    loadSpacingPanelPosition(template.id),
+  );
+  const [spacingPanelDrag, setSpacingPanelDrag] = useState<{
+    pointerId: number;
+    offsetX: number;
+    offsetY: number;
+  } | null>(null);
   const headerContentGapPx = boundedNumber(
     designSettings?.headerStripContentGapPx ?? designSettings?.header_content_gap_px,
     18,
     0,
+    FLOW_STRIP_LIMITS.contentGapPx.max,
   );
   const footerContentGapPx = boundedNumber(
     designSettings?.footerStripContentGapPx ?? designSettings?.footer_content_gap_px,
     18,
     0,
+    FLOW_STRIP_LIMITS.contentGapPx.max,
   );
   const flowPageGapPx = boundedNumber(
     designSettings?.flowPageGapPx ?? designSettings?.flow_page_gap_px,
@@ -248,6 +283,41 @@ export default function FlowWorkspaceTab({
     designSettings?.footerStripWidthPercent ?? designSettings?.footer_strip_width_percent,
     100,
   );
+
+  const clampSpacingPanelPosition = (position: FloatingPanelPosition) => {
+    if (typeof window === "undefined") return position;
+    const panelWidth = spacingPanelRef.current?.offsetWidth || 420;
+    const panelHeight = spacingPanelRef.current?.offsetHeight || 520;
+    return {
+      x: Math.max(8, Math.min(position.x, Math.max(8, window.innerWidth - panelWidth - 8))),
+      y: Math.max(8, Math.min(position.y, Math.max(8, window.innerHeight - panelHeight - 8))),
+    };
+  };
+
+  useEffect(() => {
+    if (!spacingPanelOpen) return;
+    const frame = window.requestAnimationFrame(() => {
+      setSpacingPanelPosition((current) => clampSpacingPanelPosition(current));
+    });
+    const handleResize = () => {
+      setSpacingPanelPosition((current) => clampSpacingPanelPosition(current));
+    };
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [spacingPanelOpen]);
+
+  useEffect(() => {
+    if (!spacingPanelOpen) return;
+    try {
+      localStorage.setItem(
+        spacingPanelPositionKey(template.id),
+        JSON.stringify(spacingPanelPosition),
+      );
+    } catch { /* Floating panel position persistence is best effort. */ }
+  }, [spacingPanelOpen, spacingPanelPosition, template.id]);
 
   const updatePageSetup = (patch: Partial<FlowPageSetup>) => {
     setPageSetup((prev) => {
@@ -998,53 +1068,6 @@ export default function FlowWorkspaceTab({
         onChange={(e) => updateDesignSettings({ stripBgColor: e.target.value })}
         title="צבע רקע מאחורי הסטריפים"
       />
-      <span className="mx-1 h-5 w-px bg-border" />
-      <Label className="whitespace-nowrap text-xs font-medium">גבולות כתיבה</Label>
-      <input
-        className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
-        type="number"
-        min={0}
-        value={headerContentGapPx}
-        onChange={(e) => {
-          const next = boundedNumber(e.target.value, 18, 0);
-          updateDesignSettings({
-            headerStripContentGapPx: next,
-            header_content_gap_px: next,
-          });
-        }}
-        title="רווח כתיבה מתחת לסטריפ העליון בפיקסלים"
-      />
-      <span className="text-[10px] text-muted-foreground">מתחת לעליון</span>
-      <input
-        className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
-        type="number"
-        min={0}
-        value={footerContentGapPx}
-        onChange={(e) => {
-          const next = boundedNumber(e.target.value, 18, 0);
-          updateDesignSettings({
-            footerStripContentGapPx: next,
-            footer_content_gap_px: next,
-          });
-        }}
-        title="רווח כתיבה מעל הסטריפ התחתון בפיקסלים"
-      />
-      <span className="text-[10px] text-muted-foreground">מעל תחתון</span>
-      <input
-        className="h-7 w-12 rounded border bg-background px-1 text-center text-xs"
-        type="number"
-        min={0}
-        value={flowPageGapPx}
-        onChange={(e) => {
-          const next = boundedNumber(e.target.value, 18, 0);
-          updateDesignSettings({
-            flowPageGapPx: next,
-            flow_page_gap_px: next,
-          });
-        }}
-        title="רווח חזותי בין הדפים בפיקסלים"
-      />
-      <span className="text-[10px] text-muted-foreground">בין דפים</span>
     </div>
   );
 
@@ -1065,6 +1088,102 @@ export default function FlowWorkspaceTab({
       </select>
     </div>
   );
+
+  const renderSpacingBlock = () => {
+    const gapMax = FLOW_STRIP_LIMITS.contentGapPx.max;
+    const updateHeaderGap = (value: unknown) => {
+      const next = boundedNumber(value, 18, 0, gapMax);
+      updateDesignSettings({
+        headerStripContentGapPx: next,
+        header_content_gap_px: next,
+      });
+    };
+    const updateFooterGap = (value: unknown) => {
+      const next = boundedNumber(value, 18, 0, gapMax);
+      updateDesignSettings({
+        footerStripContentGapPx: next,
+        footer_content_gap_px: next,
+      });
+    };
+    const updatePageGap = (value: unknown) => {
+      const next = boundedNumber(value, 18, 0, gapMax);
+      updateDesignSettings({
+        flowPageGapPx: next,
+        flow_page_gap_px: next,
+      });
+    };
+    const controls = [
+      {
+        label: "מרווח מתחת ללוגו העליון",
+        help: "קובע היכן יתחיל הטקסט מתחת לכותרת העליונה",
+        value: headerContentGapPx,
+        update: updateHeaderGap,
+      },
+      {
+        label: "מרווח מעל הלוגו התחתון",
+        help: "שומר את סוף הטקסט במרחק מהכותרת התחתונה",
+        value: footerContentGapPx,
+        update: updateFooterGap,
+      },
+      {
+        label: "מרווח בין הדפים בתצוגת העריכה",
+        help: "משפיע רק על המרחק החזותי בין הדפים בעורך",
+        value: flowPageGapPx,
+        update: updatePageGap,
+      },
+    ];
+
+    return (
+      <div className="space-y-4">
+        {controls.map((control) => (
+          <div key={control.label} className="space-y-1.5 rounded-md border bg-muted/30 p-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Label className="text-xs font-medium">{control.label}</Label>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">{control.help}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <input
+                  aria-label={control.label}
+                  className="h-8 w-16 rounded border bg-background px-1 text-center text-xs"
+                  type="number"
+                  min={0}
+                  max={gapMax}
+                  value={control.value}
+                  onChange={(event) => control.update(event.target.value)}
+                />
+                <span className="text-[10px] text-muted-foreground">px</span>
+              </div>
+            </div>
+            <input
+              aria-label={`${control.label} — מחוון`}
+              className="h-2 w-full cursor-pointer accent-primary"
+              type="range"
+              min={0}
+              max={gapMax}
+              step={2}
+              value={control.value}
+              onChange={(event) => control.update(event.target.value)}
+            />
+          </div>
+        ))}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 w-full text-xs"
+          onClick={() => {
+            updateHeaderGap(FLOW_STRIP_LIMITS.contentGapPx.fallback);
+            updateFooterGap(FLOW_STRIP_LIMITS.contentGapPx.fallback);
+            updatePageGap(FLOW_STRIP_LIMITS.contentGapPx.fallback);
+          }}
+        >
+          <RotateCcw className="ml-1 h-3.5 w-3.5" />
+          אפס מרווחים לברירת המחדל
+        </Button>
+      </div>
+    );
+  };
 
 
   const toolbarActions = (
@@ -1320,6 +1439,21 @@ export default function FlowWorkspaceTab({
         </Popover>
       )}
 
+      {/* מרווחים סביב הלוגואים */}
+      {onDesignSettingsChange && (
+        <Button
+          type="button"
+          variant={spacingPanelOpen ? "secondary" : "outline"}
+          size="sm"
+          className="h-8 shrink-0 gap-1 px-2 text-xs"
+          aria-pressed={spacingPanelOpen}
+          onClick={() => setSpacingPanelOpen((current) => !current)}
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          מרווחים
+        </Button>
+      )}
+
       {/* דף */}
       <Popover>
         <PopoverTrigger asChild>
@@ -1435,6 +1569,73 @@ export default function FlowWorkspaceTab({
 
 
 
+
+      {onDesignSettingsChange && spacingPanelOpen && (
+        <div
+          ref={spacingPanelRef}
+          role="dialog"
+          aria-modal="false"
+          aria-label="מרווחי תוכן ולוגואים"
+          data-testid="floating-spacing-panel"
+          dir="rtl"
+          className="fixed z-[120] flex w-[420px] max-w-[calc(100vw-16px)] flex-col overflow-hidden rounded-xl border-2 border-primary/30 bg-background shadow-2xl"
+          style={{
+            left: spacingPanelPosition.x,
+            top: spacingPanelPosition.y,
+            maxHeight: "calc(100vh - 16px)",
+          }}
+        >
+          <div
+            className="flex touch-none cursor-move select-none items-center gap-2 border-b bg-muted/80 px-3 py-2"
+            onPointerDown={(event) => {
+              if ((event.target as HTMLElement).closest("button")) return;
+              const rect = spacingPanelRef.current?.getBoundingClientRect();
+              if (!rect) return;
+              event.currentTarget.setPointerCapture(event.pointerId);
+              setSpacingPanelDrag({
+                pointerId: event.pointerId,
+                offsetX: event.clientX - rect.left,
+                offsetY: event.clientY - rect.top,
+              });
+            }}
+            onPointerMove={(event) => {
+              if (!spacingPanelDrag || spacingPanelDrag.pointerId !== event.pointerId) return;
+              setSpacingPanelPosition(
+                clampSpacingPanelPosition({
+                  x: event.clientX - spacingPanelDrag.offsetX,
+                  y: event.clientY - spacingPanelDrag.offsetY,
+                }),
+              );
+            }}
+            onPointerUp={(event) => {
+              if (spacingPanelDrag?.pointerId === event.pointerId) setSpacingPanelDrag(null);
+            }}
+            onPointerCancel={() => setSpacingPanelDrag(null)}
+          >
+            <GripHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold">מרווחי תוכן ולוגואים</div>
+              <p className="text-[10px] text-muted-foreground">גררו מכאן כדי להזיז · המיקום נשמר אוטומטית</p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0"
+              aria-label="סגור חלון מרווחים"
+              onClick={() => setSpacingPanelOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="overflow-y-auto p-3">
+            <p className="mb-3 text-[11px] text-muted-foreground">
+              השינויים מתעדכנים מיד במיקום הטקסט, בתצוגת A4 ובהדפסה.
+            </p>
+            {renderSpacingBlock()}
+          </div>
+        </div>
+      )}
 
       {onDesignSettingsChange && designerPosition && (
         <StripDesignerDialog

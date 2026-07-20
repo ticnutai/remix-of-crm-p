@@ -66,8 +66,23 @@ describe("renderFlowToHtml", () => {
     expect(html).toContain("max-width: 100% !important");
     expect(html).toContain("table-layout: fixed");
     expect(html).toContain("overflow-wrap: anywhere");
+    expect(html).toContain(".flow-list li {");
+    expect(html).toContain("page-break-inside: avoid");
+    expect(html).toContain("align-items: flex-end !important");
     expect(html).toContain('<col style="width:46.000%" />');
     expect(html).toContain('<col style="width:15.000%" />');
     expect(html).toContain("overflow-x: hidden");
+  });
+
+  it("moves the body margins when logo spacing changes without image strips", () => {
+    const fixture = documentFixture();
+    fixture.branding.headerStripUrl = null;
+    fixture.branding.footerStripUrl = null;
+    fixture.branding.headerStripContentGapPx = 42;
+    fixture.branding.footerStripContentGapPx = 42;
+
+    const html = renderFlowToHtml(fixture);
+
+    expect(html).toContain("margin: 38.35mm 0mm 34.35mm 0mm");
   });
 });

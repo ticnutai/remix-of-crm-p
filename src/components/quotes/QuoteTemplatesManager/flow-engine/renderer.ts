@@ -212,8 +212,8 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     FLOW_STRIP_LIMITS.contentGapPx.min,
     FLOW_STRIP_LIMITS.contentGapPx.max,
   );
-  const headerContentGapMm = hasHeaderStrip ? pxToMm(headerContentGapPx, 18) : 0;
-  const footerContentGapMm = hasFooterStrip ? pxToMm(footerContentGapPx, 18) : 0;
+  const headerContentGapMm = pxToMm(headerContentGapPx, 18);
+  const footerContentGapMm = pxToMm(footerContentGapPx, 18);
   const headerStripWidthPercent = clampFlowNumber(
     branding.headerStripWidthPercent,
     FLOW_STRIP_LIMITS.widthPercent.fallback,
@@ -226,11 +226,21 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     FLOW_STRIP_LIMITS.widthPercent.min,
     FLOW_STRIP_LIMITS.widthPercent.max,
   );
-  const topMargin = hasHeaderStrip ? headerStripMm + headerContentGapMm : m.top;
+  const topMargin = hasHeaderStrip
+    ? headerStripMm + headerContentGapMm
+    : Math.max(
+        0,
+        m.top +
+          (headerContentGapPx - FLOW_STRIP_LIMITS.contentGapPx.fallback) * PX_TO_MM,
+      );
   const pageNumberReserveMm = page.showPageNumbers && hasFooterStrip ? 7 : 0;
   const bottomMargin = hasFooterStrip
     ? footerStripMm + footerContentGapMm + pageNumberReserveMm
-    : m.bottom;
+    : Math.max(
+        0,
+        m.bottom +
+          (footerContentGapPx - FLOW_STRIP_LIMITS.contentGapPx.fallback) * PX_TO_MM,
+      );
   const stripBgColor = branding.stripBgColor || "#ffffff";
 
   const sectionsHtml = sections
@@ -366,6 +376,9 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     width: var(--pagedjs-pagebox-width) !important;
     max-width: none !important;
   }
+  .flow-has-footer-strip .pagedjs_margin-bottom-center {
+    align-items: flex-end !important;
+  }
 
 
   /* ===== Document body (זורם) ===== */
@@ -445,9 +458,18 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   .flow-h2 { font-size: 14pt; }
   .flow-h3 { font-size: 12pt; }
 
-  .flow-p { margin: 0 0 2mm; orphans: 3; widows: 3; direction: rtl; text-align: right; }
+  .flow-p,
+  .flow-doc p { margin: 0 0 2mm; orphans: 3; widows: 3; direction: rtl; text-align: right; }
   .flow-list { margin: 0 0 3mm; padding-inline-start: 6mm; direction: rtl; text-align: right; }
-  .flow-list li { margin-bottom: 1mm; }
+  .flow-list li {
+    margin-bottom: 1mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .flow-list li > p {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 
   .flow-table {
     width: 100% !important; max-width: 100% !important; min-width: 0 !important;

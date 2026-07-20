@@ -14,6 +14,7 @@ import { projectToMergeData } from "./projectTokens";
 import type { DesignPresetConfig } from "./presets/types";
 import type { FlowPageSetup } from "./types";
 import { resolveFlowPageMetrics } from "./pageMetrics";
+import { stabilizeRunningElementsForPrint } from "./printClone";
 
 interface FlowPreviewTabProps {
   template: QuoteTemplate;
@@ -231,17 +232,10 @@ export default function FlowPreviewTab({
               clonedPage.dataset.pageNumber = String(pageIndex + 1);
               clonedPage.style.boxShadow = "none";
               clonedPage.style.margin = "0";
-              // Paged.js duplicates running elements with the same data-ref.
-              // html2canvas can otherwise resolve the even page to a sibling's
-              // running element and omit its header/footer from the bitmap.
-              clonedPage
-                .querySelectorAll<HTMLElement>(".running-header, .running-footer")
-                .forEach((element) => {
-                  element.style.position = "static";
-                  element.style.display = element.classList.contains("strip")
-                    ? "block"
-                    : element.style.display;
-                });
+              // Paged.js keeps a hidden source node on page one in addition to
+              // the visible margin copy. Revealing both creates a blank first
+              // printed page with two logos, so only stabilize the margin copy.
+              stabilizeRunningElementsForPrint(clonedPage);
             },
           });
           pageImages.push(canvas.toDataURL("image/png"));

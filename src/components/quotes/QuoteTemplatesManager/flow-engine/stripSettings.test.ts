@@ -39,4 +39,16 @@ describe("resolveFlowStripSettings", () => {
     expect(resolved.footerWidthPercent).toBe(FLOW_STRIP_LIMITS.widthPercent.min);
     expect(resolved.headerContentGapPx).toBe(FLOW_STRIP_LIMITS.contentGapPx.max);
   });
+
+  it("keeps independent content gaps above and below the document body", () => {
+    const resolved = resolveFlowStripSettings({
+      headerStripUrl: "header.png",
+      footerStripUrl: "footer.png",
+      headerStripContentGapPx: 24,
+      footerStripContentGapPx: 42,
+    });
+
+    expect(resolved.headerContentGapPx).toBe(24);
+    expect(resolved.footerContentGapPx).toBe(42);
+  });
 });
