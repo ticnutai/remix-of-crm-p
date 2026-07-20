@@ -18,16 +18,19 @@ function loadCloudSetting(userId: string, key: string) {
   const existing = settingsLoadInFlight.get(requestKey);
   if (existing) return existing;
 
-  const request = supabase
-    .from('user_settings')
-    .select('setting_value')
-    .eq('user_id', userId)
-    .eq('setting_key', key)
-    .maybeSingle()
-    .then(({ data, error }) => ({ data, error }))
-    .finally(() => {
+  const request = (async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('setting_value')
+        .eq('user_id', userId)
+        .eq('setting_key', key)
+        .maybeSingle();
+      return { data, error };
+    } finally {
       settingsLoadInFlight.delete(requestKey);
-    });
+    }
+  })();
 
   settingsLoadInFlight.set(requestKey, request);
   return request;
