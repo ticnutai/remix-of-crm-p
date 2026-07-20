@@ -2399,10 +2399,10 @@ export type Database = {
           paid_by: string | null
           paid_date: string | null
           payment_method: string | null
+          payment_reference: string | null
           payment_step_id: string | null
           percentage: number | null
           quote_id: string | null
-          payment_reference: string | null
           stage_name: string
           stage_number: number
           updated_at: string | null
@@ -2424,10 +2424,10 @@ export type Database = {
           paid_by?: string | null
           paid_date?: string | null
           payment_method?: string | null
+          payment_reference?: string | null
           payment_step_id?: string | null
           percentage?: number | null
           quote_id?: string | null
-          payment_reference?: string | null
           stage_name: string
           stage_number?: number
           updated_at?: string | null
@@ -2449,10 +2449,10 @@ export type Database = {
           paid_by?: string | null
           paid_date?: string | null
           payment_method?: string | null
+          payment_reference?: string | null
           payment_step_id?: string | null
           percentage?: number | null
           quote_id?: string | null
-          payment_reference?: string | null
           stage_name?: string
           stage_number?: number
           updated_at?: string | null
@@ -3474,6 +3474,13 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_saved_quote_id_fkey"
+            columns: ["saved_quote_id"]
+            isOneToOne: false
+            referencedRelation: "saved_quotes"
             referencedColumns: ["id"]
           },
           {
@@ -7141,6 +7148,58 @@ export type Database = {
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "qp_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_client_creation_operations: {
+        Row: {
+          client_id: string
+          contract_id: string
+          created_at: string
+          idempotency_key: string
+          result: Json
+          saved_quote_id: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          contract_id: string
+          created_at?: string
+          idempotency_key: string
+          result: Json
+          saved_quote_id: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          contract_id?: string
+          created_at?: string
+          idempotency_key?: string
+          result?: Json
+          saved_quote_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_client_creation_operations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_client_creation_operations_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_client_creation_operations_saved_quote_id_fkey"
+            columns: ["saved_quote_id"]
+            isOneToOne: false
+            referencedRelation: "saved_quotes"
             referencedColumns: ["id"]
           },
         ]
