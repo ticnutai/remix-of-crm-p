@@ -4131,34 +4131,34 @@ export default function Clients() {
                 }}
               >
                 {filteredClients.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "64px 0" }}>
-                    <Users
-                      style={{
-                        width: "64px",
-                        height: "64px",
-                        color: "#cbd5e1",
-                        margin: "0 auto 16px",
-                      }}
-                    />
-                    <p
-                      style={{
-                        fontSize: "20px",
-                        color: "#64748b",
-                        fontWeight: "500",
-                      }}
-                    >
-                      {isLoading
-                        ? "טוען לקוחות..."
-                        : searchQuery ||
-                          filters.stages.length > 0 ||
-                          filters.dateFilter !== "all" ||
-                          filters.hasReminders ||
-                          filters.hasTasks ||
-                          filters.hasMeetings
-                        ? "לא נמצאו לקוחות התואמים לסינון"
-                        : "אין לקוחות במערכת"}
-                    </p>
-                  </div>
+                  isLoading ? null : (
+                    <div style={{ textAlign: "center", padding: "64px 0" }}>
+                      <Users
+                        style={{
+                          width: "64px",
+                          height: "64px",
+                          color: "#cbd5e1",
+                          margin: "0 auto 16px",
+                        }}
+                      />
+                      <p
+                        style={{
+                          fontSize: "20px",
+                          color: "#64748b",
+                          fontWeight: "500",
+                        }}
+                      >
+                        {searchQuery ||
+                        filters.stages.length > 0 ||
+                        filters.dateFilter !== "all" ||
+                        filters.hasReminders ||
+                        filters.hasTasks ||
+                        filters.hasMeetings
+                          ? "לא נמצאו לקוחות התואמים לסינון"
+                          : "אין לקוחות במערכת"}
+                      </p>
+                    </div>
+                  )
                 ) : (
                   <>
                     {/* Pagination Info Bar removed per user request */}
