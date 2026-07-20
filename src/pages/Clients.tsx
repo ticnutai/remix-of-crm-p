@@ -57,14 +57,6 @@ import {
   CustomFieldValues,
 } from "@/hooks/useClientCustomFields";
 import { useClientFieldConfig } from "@/hooks/useClientFieldConfig";
-import { ClientsByStageView } from "@/components/clients/ClientsByStageView";
-import { ClientsStatisticsView } from "@/components/clients/ClientsStatisticsView";
-import { ClientAccessSection } from "@/components/clients/ClientAccessSection";
-import { BulkClassifyDialog } from "@/components/clients/BulkClassifyDialog";
-import { BulkStageDialog } from "@/components/clients/BulkStageDialog";
-import { BulkConsultantDialog } from "@/components/clients/BulkConsultantDialog";
-import { CategoryTagsManager } from "@/components/clients/CategoryTagsManager";
-import { CategoriesSidebar } from "@/components/clients/CategoriesSidebar";
 import { ClientNameWithCategory } from "@/components/clients/ClientNameWithCategory";
 import { ViewPresetsMenu, type ViewPresetState } from "@/components/clients/ViewPresetsMenu";
 import {
@@ -74,7 +66,6 @@ import {
   type PageFeature,
 } from "@/components/page-customizer/PageCustomizer";
 import { isValidPhoneForDisplay } from "@/lib/phone-utils";
-import { useInactiveClients } from "@/components/alerts";
 import {
   Users,
   Heart,
@@ -113,6 +104,42 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const ClientsByStageView = React.lazy(() =>
+  import("@/components/clients/ClientsByStageView").then((module) => ({
+    default: module.ClientsByStageView,
+  })),
+);
+const ClientsStatisticsView = React.lazy(() =>
+  import("@/components/clients/ClientsStatisticsView").then((module) => ({
+    default: module.ClientsStatisticsView,
+  })),
+);
+const ClientAccessSection = React.lazy(() =>
+  import("@/components/clients/ClientAccessSection").then((module) => ({
+    default: module.ClientAccessSection,
+  })),
+);
+const BulkClassifyDialog = React.lazy(() =>
+  import("@/components/clients/BulkClassifyDialog").then((module) => ({
+    default: module.BulkClassifyDialog,
+  })),
+);
+const BulkStageDialog = React.lazy(() =>
+  import("@/components/clients/BulkStageDialog").then((module) => ({
+    default: module.BulkStageDialog,
+  })),
+);
+const BulkConsultantDialog = React.lazy(() =>
+  import("@/components/clients/BulkConsultantDialog").then((module) => ({
+    default: module.BulkConsultantDialog,
+  })),
+);
+const CategoryTagsManager = React.lazy(() =>
+  import("@/components/clients/CategoryTagsManager").then((module) => ({
+    default: module.CategoryTagsManager,
+  })),
+);
 
 function isDateInCustomRange(
   createdAt: Date,
@@ -245,6 +272,82 @@ const DEFAULT_CLIENT_DATE_RANGE_TABS: DateRangeTabItem[] = [
 // tab renders the previous list instantly while a fresh fetch refreshes it in
 // the background — no empty-state flash or "old skeleton".
 let clientsCache: Client[] | null = null;
+const CLIENTS_FETCH_PAGE_SIZE = 200;
+let clientsFirstPageFetch: Promise<Client[]> | null = null;
+let clientsRemainingFetch: Promise<Client[]> | null = null;
+
+type ClientFilterDataPayload = {
+  stages: ClientStageInfo[];
+  reminderClientIds: string[];
+  taskClientIds: string[];
+  meetingClientIds: string[];
+  latestSignedByClient: Record<string, string>;
+};
+
+let clientFilterDataFetch: Promise<ClientFilterDataPayload> | null = null;
+let categoriesAndTagsFetch: Promise<{
+  categories: ClientCategory[];
+  tags: string[];
+}> | null = null;
+let clientConsultantsFetch: Promise<
+  Record<string, Array<{ consultantId: string; profession: string }>>
+> | null = null;
+
+function fetchClientsFirstPage(): Promise<Client[]> {
+  if (clientsFirstPageFetch) return clientsFirstPageFetch;
+
+  clientsFirstPageFetch = (async () => {
+    const { data, error } = await supabase
+      .from("clients")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(0, CLIENTS_FETCH_PAGE_SIZE - 1);
+
+    if (error) throw error;
+    return (data || []) as Client[];
+  })().finally(() => {
+    clientsFirstPageFetch = null;
+  });
+
+  return clientsFirstPageFetch;
+}
+
+function fetchRemainingClients(initial: Client[]): Promise<Client[]> {
+  if (initial.length < CLIENTS_FETCH_PAGE_SIZE) return Promise.resolve(initial);
+  if (clientsRemainingFetch) return clientsRemainingFetch;
+
+  clientsRemainingFetch = (async () => {
+    const merged = [...initial];
+    const seen = new Set(initial.map((client) => client.id));
+    let offset = CLIENTS_FETCH_PAGE_SIZE;
+
+    while (true) {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(offset, offset + CLIENTS_FETCH_PAGE_SIZE - 1);
+      if (error) throw error;
+
+      const batch = (data || []) as Client[];
+      for (const client of batch) {
+        if (!seen.has(client.id)) {
+          seen.add(client.id);
+          merged.push(client);
+        }
+      }
+
+      if (batch.length < CLIENTS_FETCH_PAGE_SIZE) break;
+      offset += CLIENTS_FETCH_PAGE_SIZE;
+    }
+
+    return merged;
+  })().finally(() => {
+    clientsRemainingFetch = null;
+  });
+
+  return clientsRemainingFetch;
+}
 
 export default function Clients() {
   const normalizeSearchText = useCallback(
@@ -546,7 +649,7 @@ export default function Clients() {
     deleteField: deleteCustomField,
     updateField: updateCustomField,
     buildCustomData,
-  } = useClientCustomFields();
+  } = useClientCustomFields({ enabled: isAddClientDialogOpen });
 
   // Built-in field visibility config
   const { isVisible, isConditionallyVisible } = useClientFieldConfig();
@@ -608,25 +711,40 @@ export default function Clients() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from("client_consultants")
-        .select("client_id, consultant_id, consultant:consultants(profession)")
-        .eq("status", "active");
-      if (error || cancelled) return;
-      const map: Record<
-        string,
-        Array<{ consultantId: string; profession: string }>
-      > = {};
-      (data || []).forEach((row: any) => {
-        if (!map[row.client_id]) map[row.client_id] = [];
-        map[row.client_id].push({
-          consultantId: row.consultant_id,
-          profession: row.consultant?.profession || "ללא תחום",
+
+    if (!clientConsultantsFetch) {
+      clientConsultantsFetch = (async () => {
+        const { data, error } = await supabase
+          .from("client_consultants")
+          .select("client_id, consultant_id, consultant:consultants(profession)")
+          .eq("status", "active");
+        if (error) throw error;
+
+        const map: Record<
+          string,
+          Array<{ consultantId: string; profession: string }>
+        > = {};
+        (data || []).forEach((row: any) => {
+          if (!map[row.client_id]) map[row.client_id] = [];
+          map[row.client_id].push({
+            consultantId: row.consultant_id,
+            profession: row.consultant?.profession || "ללא תחום",
+          });
         });
+        return map;
+      })().finally(() => {
+        clientConsultantsFetch = null;
       });
-      setClientConsultantsMap(map);
-    })();
+    }
+
+    clientConsultantsFetch
+      .then((map) => {
+        if (!cancelled) setClientConsultantsMap(map);
+      })
+      .catch((error) => {
+        console.error("Error fetching client consultants:", error);
+      });
+
     return () => {
       cancelled = true;
     };
@@ -869,6 +987,7 @@ export default function Clients() {
     clientsWithMeetings,
     latestContractSignedByClient,
     clientConsultantsMap,
+    matchesQueryTokens,
   ]);
 
   const scrollToClientCard = useCallback((clientId: string) => {
@@ -1179,63 +1298,83 @@ export default function Clients() {
 
   const fetchFilterData = useCallback(async () => {
     try {
-      // Fetch all filter data in parallel
-      const [stagesRes, remindersRes, tasksRes, meetingsRes, contractsRes] =
-        await Promise.all([
-          supabase
-            .from("client_stages")
-            .select("client_id, stage_id, stage_name"),
-          supabase
-            .from("reminders")
-            .select("entity_id")
-            .eq("entity_type", "client")
-            .eq("is_dismissed", false),
-          supabase
-            .from("tasks")
-            .select("client_id")
-            .not("client_id", "is", null)
-            .neq("status", "done"),
-          supabase
-            .from("meetings")
-            .select("client_id")
-            .not("client_id", "is", null)
-            .gte("start_time", new Date().toISOString()),
-          supabase
-            .from("contracts")
-            .select("client_id, signed_date")
-            .not("client_id", "is", null)
-            .not("signed_date", "is", null),
-        ]);
+      if (!clientFilterDataFetch) {
+        clientFilterDataFetch = (async () => {
+          const [stagesRes, remindersRes, tasksRes, meetingsRes, contractsRes] =
+            await Promise.all([
+              supabase
+                .from("client_stages")
+                .select("client_id, stage_id, stage_name"),
+              supabase
+                .from("reminders")
+                .select("entity_id")
+                .eq("entity_type", "client")
+                .eq("is_dismissed", false),
+              supabase
+                .from("tasks")
+                .select("client_id")
+                .not("client_id", "is", null)
+                .neq("status", "done"),
+              supabase
+                .from("meetings")
+                .select("client_id")
+                .not("client_id", "is", null)
+                .gte("start_time", new Date().toISOString()),
+              supabase
+                .from("contracts")
+                .select("client_id, signed_date")
+                .not("client_id", "is", null)
+                .not("signed_date", "is", null),
+            ]);
 
-      const latestSignedMap: Record<string, string> = {};
-      (contractsRes.data || []).forEach((contract: any) => {
-        const clientId = contract?.client_id;
-        const signedDate = contract?.signed_date;
-        if (!clientId || !signedDate) return;
+          const firstError = [
+            stagesRes,
+            remindersRes,
+            tasksRes,
+            meetingsRes,
+            contractsRes,
+          ].find((response) => response.error)?.error;
+          if (firstError) throw firstError;
 
-        const existing = latestSignedMap[clientId];
-        if (!existing || new Date(signedDate).getTime() > new Date(existing).getTime()) {
-          latestSignedMap[clientId] = signedDate;
-        }
-      });
+          const latestSignedMap: Record<string, string> = {};
+          (contractsRes.data || []).forEach((contract: any) => {
+            const clientId = contract?.client_id;
+            const signedDate = contract?.signed_date;
+            if (!clientId || !signedDate) return;
+
+            const existing = latestSignedMap[clientId];
+            if (
+              !existing ||
+              new Date(signedDate).getTime() > new Date(existing).getTime()
+            ) {
+              latestSignedMap[clientId] = signedDate;
+            }
+          });
+
+          return {
+            stages: (stagesRes.data || []) as ClientStageInfo[],
+            reminderClientIds:
+              remindersRes.data?.map((row) => row.entity_id).filter(Boolean) || [],
+            taskClientIds:
+              tasksRes.data?.map((row) => row.client_id).filter(Boolean) || [],
+            meetingClientIds:
+              meetingsRes.data?.map((row) => row.client_id).filter(Boolean) || [],
+            latestSignedByClient: latestSignedMap,
+          } as ClientFilterDataPayload;
+        })().finally(() => {
+          clientFilterDataFetch = null;
+        });
+      }
+
+      const payload = await clientFilterDataFetch;
 
       // Batch all state updates
       React.startTransition(() => {
-        setClientStages(stagesRes.data || []);
-        setClientsWithReminders(
-          new Set(
-            remindersRes.data?.map((r) => r.entity_id).filter(Boolean) || [],
-          ),
-        );
-        setClientsWithTasks(
-          new Set(tasksRes.data?.map((t) => t.client_id).filter(Boolean) || []),
-        );
-        setClientsWithMeetings(
-          new Set(
-            meetingsRes.data?.map((m) => m.client_id).filter(Boolean) || [],
-          ),
-        );
-        setLatestContractSignedByClient(latestSignedMap);
+        setClientStages(payload.stages);
+        setClientsWithReminders(new Set(payload.reminderClientIds));
+        setClientsWithTasks(new Set(payload.taskClientIds));
+        setClientsWithMeetings(new Set(payload.meetingClientIds));
+        setLatestContractSignedByClient(payload.latestSignedByClient);
       });
     } catch (error) {
       console.error("Error fetching filter data:", error);
@@ -1244,28 +1383,43 @@ export default function Clients() {
 
   const fetchCategoriesAndTags = useCallback(async () => {
     try {
-      // Fetch categories
-      const { data: categoriesData } = await supabase
-        .from("client_categories")
-        .select("id, name, color, icon")
-        .order("sort_order");
+      if (!categoriesAndTagsFetch) {
+        categoriesAndTagsFetch = (async () => {
+          const [categoriesResponse, tagsResponse] = await Promise.all([
+            supabase
+              .from("client_categories")
+              .select("id, name, color, icon")
+              .order("sort_order"),
+            supabase
+              .from("clients")
+              .select("tags")
+              .not("tags", "is", null),
+          ]);
 
-      setCategories(categoriesData || []);
+          if (categoriesResponse.error) throw categoriesResponse.error;
+          if (tagsResponse.error) throw tagsResponse.error;
 
-      // Fetch unique tags from all clients
-      const { data: clientsData } = await supabase
-        .from("clients")
-        .select("tags")
-        .not("tags", "is", null);
+          const uniqueTags = new Set<string>();
+          tagsResponse.data?.forEach((client) => {
+            if (client.tags && Array.isArray(client.tags)) {
+              client.tags.forEach((tag: string) => uniqueTags.add(tag));
+            }
+          });
 
-      const uniqueTags = new Set<string>();
-      clientsData?.forEach((client) => {
-        if (client.tags && Array.isArray(client.tags)) {
-          client.tags.forEach((tag: string) => uniqueTags.add(tag));
-        }
+          return {
+            categories: (categoriesResponse.data || []) as ClientCategory[],
+            tags: Array.from(uniqueTags).sort(),
+          };
+        })().finally(() => {
+          categoriesAndTagsFetch = null;
+        });
+      }
+
+      const payload = await categoriesAndTagsFetch;
+      React.startTransition(() => {
+        setCategories(payload.categories);
+        setAllTags(payload.tags);
       });
-
-      setAllTags(Array.from(uniqueTags).sort());
     } catch (error) {
       console.error("Error fetching categories and tags:", error);
     }
@@ -1277,46 +1431,19 @@ export default function Clients() {
       setIsLoading(true);
     }
     try {
-      const PAGE_SIZE = 200;
-
       // First page — render immediately so the UI feels instant
-      const { data: firstPage, error: firstErr } = await supabase
-        .from("clients")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .range(0, PAGE_SIZE - 1);
-
-      if (firstErr) throw firstErr;
-
-      const initial = (firstPage || []) as Client[];
+      // Concurrent calls (including React StrictMode in development) share the
+      // same request instead of querying the complete list twice.
+      const initial = await fetchClientsFirstPage();
       setClients(initial);
       clientsCache = initial;
       setIsLoading(false); // progress bar disappears, page is interactive
 
       // Background: stream the rest in batches without blocking the UI
-      if (initial.length === PAGE_SIZE) {
-        let offset = PAGE_SIZE;
-        while (true) {
-          const { data: page, error: pageErr } = await supabase
-            .from("clients")
-            .select("*")
-            .order("created_at", { ascending: false })
-            .range(offset, offset + PAGE_SIZE - 1);
-          if (pageErr) break;
-          const batch = (page || []) as Client[];
-          if (batch.length === 0) break;
-
-          setClients((prev) => {
-            const seen = new Set(prev.map((c) => c.id));
-            const merged = [...prev];
-            for (const c of batch) if (!seen.has(c.id)) merged.push(c);
-            clientsCache = merged;
-            return merged;
-          });
-
-          if (batch.length < PAGE_SIZE) break;
-          offset += PAGE_SIZE;
-        }
+      if (initial.length === CLIENTS_FETCH_PAGE_SIZE) {
+        const completeList = await fetchRemainingClients(initial);
+        clientsCache = completeList;
+        React.startTransition(() => setClients(completeList));
       }
     } catch (error) {
       toast({
@@ -1326,13 +1453,28 @@ export default function Clients() {
       });
       setIsLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   // Data fetching on mount
   useEffect(() => {
-    fetchClients();
-    fetchFilterData();
-    fetchCategoriesAndTags();
+    void fetchClients();
+
+    // Filters, counters and tags are useful immediately after the gallery is
+    // visible, but they should not compete with the first client paint.
+    const loadSecondaryData = () => {
+      void fetchFilterData();
+      void fetchCategoriesAndTags();
+    };
+
+    if ("requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(loadSecondaryData, {
+        timeout: 700,
+      });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timeoutId = window.setTimeout(loadSecondaryData, 0);
+    return () => window.clearTimeout(timeoutId);
   }, [fetchClients, fetchFilterData, fetchCategoriesAndTags]);
 
   // Check for duplicate clients
@@ -3895,17 +4037,23 @@ export default function Clients() {
         {/* Statistics View - When Enabled */}
         {showAccessView ? (
           <div className="flex-1 overflow-auto">
-            <ClientAccessSection />
+            <React.Suspense fallback={<Loader2 className="m-8 h-6 w-6 animate-spin" />}>
+              <ClientAccessSection />
+            </React.Suspense>
           </div>
         ) : showStatisticsView && pcVisible("stats-view") ? (
           <div className="flex-1 border rounded-lg bg-card overflow-hidden">
-            <ClientsStatisticsView
-              clients={clients}
-              onClose={() => setShowStatisticsView(false)}
-            />
+            <React.Suspense fallback={<Loader2 className="m-8 h-6 w-6 animate-spin" />}>
+              <ClientsStatisticsView
+                clients={clients}
+                onClose={() => setShowStatisticsView(false)}
+              />
+            </React.Suspense>
           </div>
         ) : showStagesView && pcVisible("stages-view") ? (
-          <ClientsByStageView className="flex-1" />
+          <React.Suspense fallback={<Loader2 className="m-8 h-6 w-6 animate-spin" />}>
+            <ClientsByStageView className="flex-1" />
+          </React.Suspense>
         ) : pcVisible("main-grid") ? (
           <>
             {/* Clients Grid */}
@@ -4558,54 +4706,70 @@ export default function Clients() {
       </Dialog>
 
       {/* Bulk Classify Dialog */}
-      <BulkClassifyDialog
-        isOpen={isBulkClassifyOpen}
-        onClose={() => setIsBulkClassifyOpen(false)}
-        selectedClientIds={Array.from(selectedClients)}
-        categories={categories}
-        allTags={allTags}
-        onUpdate={() => {
-          fetchClients();
-          fetchCategoriesAndTags();
-          setSelectedClients(new Set());
-          setSelectionMode(false);
-        }}
-      />
+      {isBulkClassifyOpen && (
+        <React.Suspense fallback={null}>
+          <BulkClassifyDialog
+            isOpen
+            onClose={() => setIsBulkClassifyOpen(false)}
+            selectedClientIds={Array.from(selectedClients)}
+            categories={categories}
+            allTags={allTags}
+            onUpdate={() => {
+              fetchClients();
+              fetchCategoriesAndTags();
+              setSelectedClients(new Set());
+              setSelectionMode(false);
+            }}
+          />
+        </React.Suspense>
+      )}
 
       {/* Bulk Stage Dialog */}
-      <BulkStageDialog
-        isOpen={isBulkStageOpen}
-        onClose={() => setIsBulkStageOpen(false)}
-        selectedClientIds={Array.from(selectedClients)}
-        onUpdate={() => {
-          fetchClients();
-          setSelectedClients(new Set());
-          setSelectionMode(false);
-        }}
-      />
+      {isBulkStageOpen && (
+        <React.Suspense fallback={null}>
+          <BulkStageDialog
+            isOpen
+            onClose={() => setIsBulkStageOpen(false)}
+            selectedClientIds={Array.from(selectedClients)}
+            onUpdate={() => {
+              fetchClients();
+              setSelectedClients(new Set());
+              setSelectionMode(false);
+            }}
+          />
+        </React.Suspense>
+      )}
 
       {/* Bulk Consultant Dialog */}
-      <BulkConsultantDialog
-        isOpen={isBulkConsultantOpen}
-        onClose={() => setIsBulkConsultantOpen(false)}
-        selectedClientIds={Array.from(selectedClients)}
-        onUpdate={() => {
-          fetchClients();
-          setSelectedClients(new Set());
-          setSelectionMode(false);
-        }}
-      />
+      {isBulkConsultantOpen && (
+        <React.Suspense fallback={null}>
+          <BulkConsultantDialog
+            isOpen
+            onClose={() => setIsBulkConsultantOpen(false)}
+            selectedClientIds={Array.from(selectedClients)}
+            onUpdate={() => {
+              fetchClients();
+              setSelectedClients(new Set());
+              setSelectionMode(false);
+            }}
+          />
+        </React.Suspense>
+      )}
 
       {/* Category & Tags Manager Dialog */}
-      <CategoryTagsManager
-        isOpen={isCategoryManagerOpen}
-        onClose={() => setIsCategoryManagerOpen(false)}
-        categories={categories}
-        allTags={allTags}
-        onUpdate={() => {
-          fetchCategoriesAndTags();
-        }}
-      />
+      {isCategoryManagerOpen && (
+        <React.Suspense fallback={null}>
+          <CategoryTagsManager
+            isOpen
+            onClose={() => setIsCategoryManagerOpen(false)}
+            categories={categories}
+            allTags={allTags}
+            onUpdate={() => {
+              fetchCategoriesAndTags();
+            }}
+          />
+        </React.Suspense>
+      )}
 
       {/* Duplicate Detection Dialog */}
       <AlertDialog

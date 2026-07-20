@@ -465,9 +465,9 @@ export function QuoteTemplatesManager() {
   const getFolderTilesContainerClass = () => {
     switch (folderLayoutMode) {
       case "grid":
-        return "grid md:grid-cols-2 lg:grid-cols-3 gap-4";
+        return "grid items-start md:grid-cols-2 xl:grid-cols-3 gap-4";
       case "dense":
-        return "grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3";
+        return "grid items-start sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3";
       case "expanded":
         return "flex flex-col gap-6";
       case "table":
@@ -1357,7 +1357,7 @@ export function QuoteTemplatesManager() {
   };
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="min-w-0 max-w-full space-y-6" dir="rtl">
       {/* Hidden file inputs */}
       <input
         ref={fileInputRef}
@@ -1376,14 +1376,14 @@ export function QuoteTemplatesManager() {
       />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-3 sm:gap-4 sm:flex-nowrap text-right">
+      <div className="flex flex-col gap-3 text-right sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 lg:justify-between">
         <div className="shrink-0">
           <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
             <Layers className="h-5 w-5 sm:h-6 sm:w-6 text-[#d8ac27]" />
             תבניות הצעות מחיר
           </h2>
         </div>
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             onClick={() => {
               setEditingFolder({ name: "", color: "#d8ac27" });

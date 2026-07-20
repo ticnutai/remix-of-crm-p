@@ -8,6 +8,30 @@ interface UseUserSettingsOptions<T> {
 }
 
 const LS_PREFIX = 'us_cache:';
+const settingsLoadInFlight = new Map<
+  string,
+  Promise<{ data: { setting_value: unknown } | null; error: unknown }>
+>();
+
+function loadCloudSetting(userId: string, key: string) {
+  const requestKey = `${userId}:${key}`;
+  const existing = settingsLoadInFlight.get(requestKey);
+  if (existing) return existing;
+
+  const request = supabase
+    .from('user_settings')
+    .select('setting_value')
+    .eq('user_id', userId)
+    .eq('setting_key', key)
+    .maybeSingle()
+    .then(({ data, error }) => ({ data, error }))
+    .finally(() => {
+      settingsLoadInFlight.delete(requestKey);
+    });
+
+  settingsLoadInFlight.set(requestKey, request);
+  return request;
+}
 
 function readLocalCache<T>(key: string): T | undefined {
   try {
@@ -55,12 +79,7 @@ export function useUserSettings<T>({ key, defaultValue }: UseUserSettingsOptions
       }
 
       try {
-        const { data, error } = await supabase
-          .from('user_settings')
-          .select('setting_value')
-          .eq('user_id', user.id)
-          .eq('setting_key', key)
-          .maybeSingle();
+        const { data, error } = await loadCloudSetting(user.id, key);
 
         if (error) {
           console.error('Error loading user settings:', error);

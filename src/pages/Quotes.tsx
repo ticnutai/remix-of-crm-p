@@ -488,22 +488,22 @@ export default function Quotes() {
   };
 
   const primaryTabTriggerClass =
-    "h-11 rounded-lg border border-primary/30 bg-background px-3 text-sm font-medium text-foreground transition-colors data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm hover:border-primary/50 hover:bg-primary/5";
+    "h-10 sm:h-11 shrink-0 min-w-[132px] sm:min-w-0 rounded-lg border border-primary/30 bg-background px-2.5 sm:px-3 text-xs sm:text-sm font-medium text-foreground transition-colors data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm hover:border-primary/50 hover:bg-primary/5";
 
   return (
     <AppLayout>
-      <div className="p-6 space-y-6 w-full overflow-x-hidden">
+      <div className="w-full max-w-full space-y-4 overflow-x-hidden p-3 sm:space-y-5 sm:p-4 lg:space-y-6 lg:p-6">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">הצעות מחיר וחוזים</h1>
-            <p className="text-muted-foreground">ניהול הצעות מחיר, חוזים ולוחות תשלומים</p>
+            <h1 className="text-xl font-bold text-foreground sm:text-2xl">הצעות מחיר וחוזים</h1>
+            <p className="text-sm text-muted-foreground sm:text-base">ניהול הצעות מחיר, חוזים ולוחות תשלומים</p>
           </div>
         </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 bg-transparent h-auto p-0">
+          <TabsList className="flex h-auto w-full max-w-full items-center gap-2 overflow-x-auto bg-transparent p-0 pb-1 sm:grid sm:max-w-6xl sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-5">
             <TabsTrigger value="quotes" className={`${primaryTabTriggerClass} gap-2`}>
               <FileText className="h-4 w-4" />
               הצעות מחיר
@@ -537,19 +537,19 @@ export default function Quotes() {
           {/* Quotes Tab */}
           <TabsContent value="quotes" className="space-y-6 mt-6">
             {/* Quotes Header */}
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => navigate('/document-editor?type=quote')}>
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+              <Button className="min-w-0 px-2 sm:px-4" variant="outline" onClick={() => navigate('/document-editor?type=quote')}>
                 <PenTool className="h-4 w-4 ml-2" />
                 עורך מתקדם
               </Button>
-              <Button onClick={() => setIsFormOpen(true)}>
+              <Button className="min-w-0 px-2 sm:px-4" onClick={() => setIsFormOpen(true)}>
                 <Plus className="h-4 w-4 ml-2" />
                 הצעה חדשה
               </Button>
             </div>
             
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2 md:grid-cols-4 md:gap-4">
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
@@ -608,8 +608,8 @@ export default function Quotes() {
             </div>
 
             {/* Filters */}
-            <div className="flex gap-4">
-              <div className="relative flex-1 max-w-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+              <div className="relative w-full flex-1 sm:max-w-sm">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="חיפוש הצעות..."
@@ -619,7 +619,7 @@ export default function Quotes() {
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-full sm:w-40">
                   <SelectValue placeholder="סטטוס" />
                 </SelectTrigger>
                 <SelectContent>
@@ -634,9 +634,10 @@ export default function Quotes() {
             </div>
 
             {/* Quotes Table */}
-            <Card>
+            <Card className="max-w-full overflow-hidden">
               <CardContent className="p-0">
-                <Table>
+                <div className="w-full overflow-x-auto">
+                <Table className="min-w-[860px]">
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead>מספר הצעה</TableHead>
@@ -766,15 +767,16 @@ export default function Quotes() {
                     )}
                   </TableBody>
                 </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           {/* Saved Quotes Tab - הצעות שמורות */}
           <TabsContent value="saved-quotes" className="space-y-6 mt-6">
-            <div className="flex flex-wrap items-center gap-3 justify-between">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1 min-w-[200px]">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                <div className="relative w-full flex-1 sm:min-w-[200px]">
                   <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="חפש הצעה שמורה..."
@@ -785,7 +787,7 @@ export default function Quotes() {
                   />
                 </div>
                 <Select value={savedQuotesStatusFilter} onValueChange={setSavedQuotesStatusFilter}>
-                  <SelectTrigger className="w-32">
+                  <SelectTrigger className="w-full sm:w-32">
                     <SelectValue placeholder="סטטוס" />
                   </SelectTrigger>
                   <SelectContent>
@@ -800,9 +802,10 @@ export default function Quotes() {
               <Badge variant="outline">{filteredSavedQuotes.length} הצעות</Badge>
             </div>
 
-            <Card>
+            <Card className="max-w-full overflow-hidden">
               <CardContent className="p-0">
-                <Table dir="rtl">
+                <div className="w-full overflow-x-auto">
+                <Table dir="rtl" className="min-w-[900px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-right">שם ההצעה</TableHead>
@@ -928,6 +931,7 @@ export default function Quotes() {
                     )}
                   </TableBody>
                 </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -935,7 +939,7 @@ export default function Quotes() {
           {/* Contracts Tab */}
           <TabsContent value="contracts" className="space-y-6 mt-6">
             {/* Contracts Header */}
-            <div className="flex justify-end gap-2">
+            <div className="grid grid-cols-1 gap-2 min-[480px]:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end">
               <Button variant="outline" onClick={() => navigate('/document-editor?type=contract')}>
                 <PenTool className="h-4 w-4 ml-2" />
                 עורך מתקדם
@@ -978,7 +982,7 @@ export default function Quotes() {
             </div>
             
             {/* Contracts Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2 md:grid-cols-4 md:gap-4">
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
@@ -1037,8 +1041,8 @@ export default function Quotes() {
             </div>
 
             {/* Contracts Filters */}
-            <div className="flex gap-4">
-              <div className="relative flex-1 max-w-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+              <div className="relative w-full flex-1 sm:max-w-sm">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="חיפוש חוזים..."
@@ -1048,7 +1052,7 @@ export default function Quotes() {
                 />
               </div>
               <Select value={contractStatusFilter} onValueChange={setContractStatusFilter}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-full sm:w-40">
                   <SelectValue placeholder="סטטוס" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1063,9 +1067,10 @@ export default function Quotes() {
             </div>
 
             {/* Contracts Table */}
-            <Card>
+            <Card className="max-w-full overflow-hidden">
               <CardContent className="p-0">
-                <Table>
+                <div className="w-full overflow-x-auto">
+                <Table className="min-w-[900px]">
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead>מספר חוזה</TableHead>
@@ -1177,6 +1182,7 @@ export default function Quotes() {
                     )}
                   </TableBody>
                 </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

@@ -42,7 +42,8 @@ export interface NewFieldDefinition {
  * Hook for managing client custom field definitions and values.
  * Field definitions are per-user, field values are stored in clients.custom_data.
  */
-export function useClientCustomFields() {
+export function useClientCustomFields(options: { enabled?: boolean } = {}) {
+  const { enabled = true } = options;
   const { user } = useAuth();
   const [definitions, setDefinitions] = useState<CustomFieldDefinition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,6 +62,11 @@ export function useClientCustomFields() {
 
   // Fetch all custom field definitions for current user
   const fetchDefinitions = useCallback(async () => {
+    if (!enabled) {
+      setIsLoading(false);
+      return;
+    }
+
     // Get user from active session to avoid stale closure
     let userId = user?.id;
     if (!userId) {
@@ -93,7 +99,7 @@ export function useClientCustomFields() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [enabled, user?.id]);
 
   useEffect(() => {
     fetchDefinitions();

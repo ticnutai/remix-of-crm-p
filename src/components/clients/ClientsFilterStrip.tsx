@@ -111,6 +111,10 @@ interface ClientStageDefinition {
   stage_icon: string | null;
 }
 
+let stageDefinitionsCache: ClientStageDefinition[] | null = null;
+let stageDefinitionsCachedAt = 0;
+let stageDefinitionsFetch: Promise<ClientStageDefinition[]> | null = null;
+
 interface ClientCategory {
   id: string;
   name: string;
@@ -377,23 +381,40 @@ export function ClientsFilterStrip({
 
   const fetchStageDefinitions = async () => {
     try {
-      const { data, error } = await supabase
-        .from("client_stages")
-        .select("stage_id, stage_name, stage_icon")
-        .order("sort_order");
+      if (
+        stageDefinitionsCache &&
+        Date.now() - stageDefinitionsCachedAt < 60_000
+      ) {
+        setStageDefinitions(stageDefinitionsCache);
+        return;
+      }
 
-      if (error) throw error;
+      if (!stageDefinitionsFetch) {
+        stageDefinitionsFetch = (async () => {
+          const { data, error } = await supabase
+            .from("client_stages")
+            .select("stage_id, stage_name, stage_icon")
+            .order("sort_order");
 
-      // Deduplicate by stage_name to show each unique stage definition only once
-      const uniqueStages =
-        data?.reduce((acc, stage) => {
-          if (!acc.some((s) => s.stage_name === stage.stage_name)) {
-            acc.push(stage);
-          }
-          return acc;
-        }, [] as ClientStageDefinition[]) || [];
+          if (error) throw error;
 
-      setStageDefinitions(uniqueStages);
+          const uniqueStages =
+            data?.reduce((acc, stage) => {
+              if (!acc.some((item) => item.stage_name === stage.stage_name)) {
+                acc.push(stage);
+              }
+              return acc;
+            }, [] as ClientStageDefinition[]) || [];
+
+          stageDefinitionsCache = uniqueStages;
+          stageDefinitionsCachedAt = Date.now();
+          return uniqueStages;
+        })().finally(() => {
+          stageDefinitionsFetch = null;
+        });
+      }
+
+      setStageDefinitions(await stageDefinitionsFetch);
     } catch (error) {
       console.error("Error fetching stage definitions:", error);
     }
