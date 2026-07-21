@@ -150,6 +150,59 @@ function BorderEditor({
         </div>
       </div>
 
+      {showInsets && (
+        <div className="pt-2 border-t border-border/50">
+          <div className="flex items-center justify-between mb-2">
+            <Label className="text-xs font-semibold">מרחק מקצה העמוד (מ״מ)</Label>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1 text-[11px] text-muted-foreground cursor-pointer">
+                <input type="checkbox" checked={linkInsets} onChange={(e) => setLinkInsets(e.target.checked)} />
+                נעל אחיד
+              </label>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-[11px]"
+                onClick={() => update({ insets: { top: 0, right: 0, bottom: 0, left: 0 } })}
+              >
+                הצמד לקצה
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-[11px]"
+                onClick={() => update({ insets: { top: 4, right: 4, bottom: 4, left: 4 } })}
+              >
+                איפוס
+              </Button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { k: "top" as const, label: "עליון" },
+              { k: "bottom" as const, label: "תחתון" },
+              { k: "right" as const, label: "ימין" },
+              { k: "left" as const, label: "שמאל" },
+            ].map((s) => (
+              <div key={s.k}>
+                <Label className="text-[11px]">{s.label}: {insets[s.k]}mm</Label>
+                <Slider
+                  value={[insets[s.k]]}
+                  onValueChange={([v]) => updateInset(s.k, v)}
+                  min={0}
+                  max={30}
+                  step={1}
+                  className="mt-1.5"
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-2">
+            0 = מסגרת צמודה לקצה העמוד (בתצוגה מקדימה וב-PDF).
+          </p>
+        </div>
+      )}
+
       {/* תצוגה מקדימה */}
       <div className="pt-2">
         <Label className="text-xs text-muted-foreground mb-1.5 block">תצוגה מקדימה</Label>
