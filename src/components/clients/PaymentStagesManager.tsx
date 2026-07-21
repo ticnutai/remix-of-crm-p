@@ -25,6 +25,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { CLIENT_PAYMENT_STAGE_UPDATED_EVENT } from "@/lib/clientPaymentStageEvents";
 import {
   Plus,
   Trash2,
@@ -768,6 +769,15 @@ export default function PaymentStagesManager({
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    const handlePaymentStageUpdated = (event: Event) => {
+      const updatedClientId = (event as CustomEvent<{ clientId?: string }>).detail?.clientId;
+      if (!updatedClientId || updatedClientId === clientId) void fetchData();
+    };
+    window.addEventListener(CLIENT_PAYMENT_STAGE_UPDATED_EVENT, handlePaymentStageUpdated);
+    return () => window.removeEventListener(CLIENT_PAYMENT_STAGE_UPDATED_EVENT, handlePaymentStageUpdated);
+  }, [clientId, fetchData]);
 
   // =========================================
   // Summary calculations

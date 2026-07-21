@@ -230,9 +230,25 @@ interface ClientCategory {
 }
 
 interface ClientStageInfo {
+  id: string;
   client_id: string;
   stage_id: string;
   stage_name: string;
+  sort_order: number;
+  is_completed: boolean | null;
+}
+
+interface ClientStageTaskInfo {
+  client_id: string;
+  stage_id: string;
+  title: string;
+  completed: boolean;
+}
+
+interface ClientStageTemplateInfo {
+  id: string;
+  name: string;
+  stages: Array<{ id: string; stage_name: string }>;
 }
 
 const clientCategoryIconMap: Record<
@@ -278,6 +294,8 @@ let clientsRemainingFetch: Promise<Client[]> | null = null;
 
 type ClientFilterDataPayload = {
   stages: ClientStageInfo[];
+  stageTasks: ClientStageTaskInfo[];
+  stageTemplates: ClientStageTemplateInfo[];
   reminderClientIds: string[];
   taskClientIds: string[];
   meetingClientIds: string[];
@@ -428,6 +446,9 @@ export default function Clients() {
     isLoading: fullFiltersLoading,
   } = useUserSettings<{
     stages?: string[];
+    stageSelections?: ClientFilterState["stageSelections"];
+    stageTemplateIds?: string[];
+    stageTaskFilters?: ClientFilterState["stageTaskFilters"];
     dateFilter?: string;
     hasReminders?: boolean | null;
     hasTasks?: boolean | null;
@@ -529,11 +550,16 @@ export default function Clients() {
     setFilters((prev) => ({
       ...prev,
       stages: savedFullFilters.stages ?? prev.stages,
+      stageSelections: savedFullFilters.stageSelections ?? prev.stageSelections,
+      stageTemplateIds: savedFullFilters.stageTemplateIds ?? prev.stageTemplateIds,
+      stageTaskFilters: savedFullFilters.stageTaskFilters ?? prev.stageTaskFilters,
       dateFilter: (savedFullFilters.dateFilter as any) ?? prev.dateFilter,
       hasReminders: savedFullFilters.hasReminders ?? prev.hasReminders,
       hasTasks: savedFullFilters.hasTasks ?? prev.hasTasks,
       hasMeetings: savedFullFilters.hasMeetings ?? prev.hasMeetings,
-      categories: savedFullFilters.categories ?? prev.categories,
+      // Legacy categories are no longer a filter source; workflow templates
+      // are the single source of truth for process/stage/task filtering.
+      categories: [],
       tags: savedFullFilters.tags ?? prev.tags,
       hiddenClassifications:
         savedFullFilters.hiddenClassifications ?? prev.hiddenClassifications,
@@ -688,6 +714,9 @@ export default function Clients() {
   // Filter state
   const [filters, setFilters] = useState<ClientFilterState>({
     stages: [],
+    stageSelections: [],
+    stageTemplateIds: [],
+    stageTaskFilters: [],
     dateFilter: "all",
     hasReminders: null,
     hasTasks: null,
@@ -752,6 +781,8 @@ export default function Clients() {
 
   // Client data for filtering
   const [clientStages, setClientStages] = useState<ClientStageInfo[]>([]);
+  const [clientStageTasks, setClientStageTasks] = useState<ClientStageTaskInfo[]>([]);
+  const [stageTemplates, setStageTemplates] = useState<ClientStageTemplateInfo[]>([]);
   const [clientsWithReminders, setClientsWithReminders] = useState<Set<string>>(
     new Set(),
   );
@@ -765,6 +796,47 @@ export default function Clients() {
   const [allTags, setAllTags] = useState<string[]>([]);
   const [latestContractSignedByClient, setLatestContractSignedByClient] =
     useState<Record<string, string>>({});
+
+  const workflowStateByClient = useMemo(() => {
+    const result = new Map<
+      string,
+      Map<string, { currentStage: ClientStageInfo | null; stages: ClientStageInfo[] }>
+    >();
+    const tasksByClientAndStage = new Map<string, ClientStageTaskInfo[]>();
+    clientStageTasks.forEach((task) => {
+      const key = `${task.client_id}:${task.stage_id}`;
+      const existing = tasksByClientAndStage.get(key) || [];
+      existing.push(task);
+      tasksByClientAndStage.set(key, existing);
+    });
+
+    clients.forEach((client) => {
+      const clientMap = new Map<string, { currentStage: ClientStageInfo | null; stages: ClientStageInfo[] }>();
+      stageTemplates.forEach((template) => {
+        const prefix = `template_${template.id}_`;
+        const stages = clientStages
+          .filter(
+            (stage) =>
+              stage.client_id === client.id &&
+              stage.stage_id.startsWith(prefix),
+          )
+          .sort((a, b) => a.sort_order - b.sort_order);
+        if (stages.length === 0) return;
+
+        const currentStage = stages.find((stage) => {
+          const tasks = tasksByClientAndStage.get(`${client.id}:${stage.stage_id}`) || [];
+          const isCompleted =
+            stage.is_completed === true ||
+            (tasks.length > 0 && tasks.every((task) => task.completed));
+          return !isCompleted;
+        }) || null;
+        clientMap.set(template.id, { currentStage, stages });
+      });
+      if (clientMap.size > 0) result.set(client.id, clientMap);
+    });
+
+    return result;
+  }, [clientStageTasks, clientStages, clients, stageTemplates]);
 
   // Quick Classification dialogs
   const [isBulkClassifyOpen, setIsBulkClassifyOpen] = useState(false);
@@ -794,16 +866,64 @@ export default function Clients() {
       });
     }
 
-    // Stage filter - filter by stage name (not stage_id) to match all clients with same stage name
-    if (filters.stages.length > 0) {
-      const clientIdsWithSelectedStages = new Set(
-        clientStages
-          .filter((cs) => filters.stages.includes(cs.stage_name))
-          .map((cs) => cs.client_id),
-      );
-      result = result.filter((client) =>
-        clientIdsWithSelectedStages.has(client.id),
-      );
+    // Hierarchical workflow filter. Within one template the most specific
+    // selection wins (task > current stage > whole template); templates are OR.
+    const selectedTemplateIds = new Set(filters.stageTemplateIds || []);
+    const selectedStages = filters.stageSelections || [];
+    const selectedTasks = filters.stageTaskFilters || [];
+    const selectedWorkflowTemplateIds = new Set([
+      ...selectedTemplateIds,
+      ...selectedStages.map((stage) => stage.templateId),
+      ...selectedTasks.map((task) => task.templateId),
+    ]);
+    if (selectedWorkflowTemplateIds.size > 0) {
+      result = result.filter((client) => {
+        const clientWorkflows = workflowStateByClient.get(client.id);
+        if (!clientWorkflows) return false;
+
+        return Array.from(selectedWorkflowTemplateIds).some((templateId) => {
+          const workflow = clientWorkflows.get(templateId);
+          if (!workflow) return false;
+
+          const templateTasks = selectedTasks.filter((task) => task.templateId === templateId);
+          if (templateTasks.length > 0) {
+            return templateTasks.some((taskFilter) => {
+              const matchingTasks = clientStageTasks.filter(
+                (task) =>
+                  task.client_id === client.id &&
+                  task.title.trim() === taskFilter.title.trim() &&
+                  workflow.stages.some(
+                    (stage) =>
+                      stage.stage_id === task.stage_id &&
+                      (stage.stage_id ===
+                        `template_${taskFilter.templateId}_${taskFilter.stageId}` ||
+                        stage.stage_id.startsWith(
+                          `template_${taskFilter.templateId}_${taskFilter.stageId}_`,
+                        )),
+                  ),
+              );
+              if (taskFilter.status === "any") return matchingTasks.length > 0;
+              if (taskFilter.status === "complete") return matchingTasks.some((task) => task.completed);
+              return matchingTasks.some((task) => !task.completed);
+            });
+          }
+
+          const templateStages = selectedStages.filter((stage) => stage.templateId === templateId);
+          if (templateStages.length > 0) {
+            return templateStages.some(
+              (selection) =>
+                workflow.currentStage?.stage_name === selection.stageName ||
+                workflow.currentStage?.stage_id ===
+                  `template_${selection.templateId}_${selection.stageId}` ||
+                workflow.currentStage?.stage_id.startsWith(
+                  `template_${selection.templateId}_${selection.stageId}_`,
+                ),
+            );
+          }
+
+          return selectedTemplateIds.has(templateId);
+        });
+      });
     }
 
     // Date filter
@@ -871,14 +991,6 @@ export default function Clients() {
     // Has meetings filter
     if (filters.hasMeetings === true) {
       result = result.filter((client) => clientsWithMeetings.has(client.id));
-    }
-
-    // Category filter
-    if (filters.categories.length > 0) {
-      result = result.filter(
-        (client) =>
-          client.category_id && filters.categories.includes(client.category_id),
-      );
     }
 
     // Tags filter
@@ -981,7 +1093,8 @@ export default function Clients() {
     clients,
     searchQuery,
     filters,
-    clientStages,
+    clientStageTasks,
+    workflowStateByClient,
     clientsWithReminders,
     clientsWithTasks,
     clientsWithMeetings,
@@ -1100,6 +1213,32 @@ export default function Clients() {
 
     return counts;
   }, [clientStages]);
+
+  const selectedWorkflowStageByClient = useMemo(() => {
+    const result = new Map<string, { stageName: string | null; templateName: string }>();
+    const selectedTemplateIds = Array.from(new Set([
+      ...(filters.stageTemplateIds || []),
+      ...(filters.stageSelections || []).map((stage) => stage.templateId),
+      ...(filters.stageTaskFilters || []).map((task) => task.templateId),
+    ]));
+    if (selectedTemplateIds.length === 0) return result;
+
+    clients.forEach((client) => {
+      const workflows = workflowStateByClient.get(client.id);
+      const matchedTemplateId = selectedTemplateIds.find((templateId) => workflows?.has(templateId));
+      if (!matchedTemplateId) return;
+      const matchedTemplate = stageTemplates.find((template) => template.id === matchedTemplateId);
+      if (!matchedTemplate) return;
+      const currentStage = workflows?.get(matchedTemplateId)?.currentStage || null;
+
+      result.set(client.id, {
+        stageName: currentStage?.stage_name || null,
+        templateName: matchedTemplate.name,
+      });
+    });
+
+    return result;
+  }, [clients, filters.stageSelections, filters.stageTaskFilters, filters.stageTemplateIds, stageTemplates, workflowStateByClient]);
 
   const monthAgeCounts = useMemo(() => {
     const counts = {
@@ -1300,11 +1439,30 @@ export default function Clients() {
     try {
       if (!clientFilterDataFetch) {
         clientFilterDataFetch = (async () => {
-          const [stagesRes, remindersRes, tasksRes, meetingsRes, contractsRes] =
+          const [
+            stagesRes,
+            stageTasksRes,
+            stageTemplatesRes,
+            templateStagesRes,
+            remindersRes,
+            tasksRes,
+            meetingsRes,
+            contractsRes,
+          ] =
             await Promise.all([
               supabase
                 .from("client_stages")
-                .select("client_id, stage_id, stage_name"),
+                .select("id, client_id, stage_id, stage_name, sort_order, is_completed"),
+              supabase
+                .from("client_stage_tasks")
+                .select("client_id, stage_id, title, completed"),
+              (supabase as any)
+                .from("stage_templates")
+                .select("id, name"),
+              (supabase as any)
+                .from("stage_template_stages")
+                .select("id, template_id, stage_name")
+                .order("sort_order"),
               supabase
                 .from("reminders")
                 .select("entity_id")
@@ -1329,6 +1487,9 @@ export default function Clients() {
 
           const firstError = [
             stagesRes,
+            stageTasksRes,
+            stageTemplatesRes,
+            templateStagesRes,
             remindersRes,
             tasksRes,
             meetingsRes,
@@ -1353,6 +1514,14 @@ export default function Clients() {
 
           return {
             stages: (stagesRes.data || []) as ClientStageInfo[],
+            stageTasks: (stageTasksRes.data || []) as ClientStageTaskInfo[],
+            stageTemplates: (stageTemplatesRes.data || []).map((template: any) => ({
+              id: template.id,
+              name: template.name,
+              stages: (templateStagesRes.data || [])
+                .filter((stage: any) => stage.template_id === template.id)
+                .map((stage: any) => ({ id: stage.id, stage_name: stage.stage_name })),
+            })),
             reminderClientIds:
               remindersRes.data?.map((row) => row.entity_id).filter(Boolean) || [],
             taskClientIds:
@@ -1371,6 +1540,8 @@ export default function Clients() {
       // Batch all state updates
       React.startTransition(() => {
         setClientStages(payload.stages);
+        setClientStageTasks(payload.stageTasks);
+        setStageTemplates(payload.stageTemplates);
         setClientsWithReminders(new Set(payload.reminderClientIds));
         setClientsWithTasks(new Set(payload.taskClientIds));
         setClientsWithMeetings(new Set(payload.meetingClientIds));
@@ -1913,6 +2084,7 @@ export default function Clients() {
     const category = client.category_id
       ? categories.find((c) => c.id === client.category_id)
       : null;
+    const selectedCategoryStage = selectedWorkflowStageByClient.get(client.id);
     const signedContractDate = latestContractSignedByClient[client.id] || null;
     const monthsAnchorDate = signedContractDate || client.created_at;
     const monthsSinceStart = getElapsedMonths(monthsAnchorDate);
@@ -2042,6 +2214,25 @@ export default function Clients() {
               color: "#ffffff",
             },
           })}
+        </div>
+      );
+    };
+
+    const renderSelectedCategoryStage = (compact = false) => {
+      if (!selectedCategoryStage) return null;
+
+      return (
+        <div
+          title={`שלב נוכחי מתוך תבנית ${selectedCategoryStage.templateName}`}
+          className={cn(
+            "mt-auto flex w-full items-center justify-center gap-1.5 border-t border-[#d4a843]/35 bg-[#fef9ee] text-[#1e3a5f]",
+            compact ? "px-2 py-1 text-[10px]" : "px-3 py-1.5 text-xs",
+          )}
+        >
+          <Layers className={compact ? "h-3 w-3 shrink-0" : "h-3.5 w-3.5 shrink-0"} />
+          <span className="truncate font-semibold">
+            {selectedCategoryStage.stageName || "טרם הוגדר שלב"}
+          </span>
         </div>
       );
     };
@@ -2378,6 +2569,7 @@ export default function Clients() {
               </button>
             </div>
           )}
+          {renderSelectedCategoryStage(true)}
         </div>
       );
     }
@@ -2600,8 +2792,7 @@ export default function Clients() {
             </div>
             )}
           </div>
-
-
+          {renderSelectedCategoryStage()}
         </div>
       );
     }
@@ -2886,6 +3077,7 @@ export default function Clients() {
               </button>
             </div>
           )}
+          {renderSelectedCategoryStage()}
         </div>
       );
     }
@@ -3016,6 +3208,8 @@ export default function Clients() {
             </span>
             {showActions && renderMonthsIndicator("compact")}
           </h3>
+
+          {renderSelectedCategoryStage(true)}
 
           {/* Hover Actions */}
           {showActions && (
@@ -3302,6 +3496,7 @@ export default function Clients() {
               )}
             </div>
           )}
+          {renderSelectedCategoryStage(viewMode === "compact" || viewMode === "list")}
         </div>
       </div>
     );
@@ -3998,6 +4193,9 @@ export default function Clients() {
             saveFullFilters((old) => ({
               ...old,
               stages: newFilters.stages,
+              stageSelections: newFilters.stageSelections,
+              stageTemplateIds: newFilters.stageTemplateIds,
+              stageTaskFilters: newFilters.stageTaskFilters,
               dateFilter: newFilters.dateFilter,
               hasReminders: newFilters.hasReminders,
               hasTasks: newFilters.hasTasks,

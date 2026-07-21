@@ -92,7 +92,6 @@ function frameDesignCss(frameDesign?: FrameDesignSettings) {
   const borderCss = borderToCss(frame.documentBorder)
     .replace(/padding\s*:[^;]+;/gi, "")
     .trim();
-  const ins = { top: 4, right: 4, bottom: 4, left: 4, ...(frame.documentBorder?.insets || {}) };
   return `
   /* ===== Unified design-tab appearance ===== */
   .pagedjs_pagebox {
@@ -102,10 +101,10 @@ function frameDesignCss(frameDesign?: FrameDesignSettings) {
   .pagedjs_pagebox::before {
     content: "";
     position: absolute;
-    top: ${ins.top}mm;
-    right: ${ins.right}mm;
-    bottom: ${ins.bottom}mm;
-    left: ${ins.left}mm;
+    /* The document frame belongs to the physical sheet, not to the page's
+       content box. Keep it flush with the outer page edge so preview and the
+       html2canvas-based print/PDF export render the exact same frame. */
+    inset: 0;
     z-index: 20;
     pointer-events: none;
     box-sizing: border-box;

@@ -48,10 +48,12 @@ import {
   EyeOff,
   Copy,
   GripVertical,
+  ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConsultantsFilterPopover } from "./ConsultantsFilterPopover";
 import { ConsultantsTreeFilter } from "./ConsultantsTreeFilter";
+import { useStageTemplates } from "@/hooks/useStageTemplates";
 
 export type ClientDateRangeConfig =
   | {
@@ -83,6 +85,15 @@ export interface DateRangeTabItem {
 
 export interface ClientFilterState {
   stages: string[];
+  stageSelections: Array<{ templateId: string; stageId: string; stageName: string }>;
+  stageTemplateIds: string[];
+  stageTaskFilters: Array<{
+    templateId: string;
+    stageId: string;
+    taskId: string;
+    title: string;
+    status: "incomplete" | "complete" | "any";
+  }>;
   dateFilter: "all" | "today" | "week" | "month" | "older";
   hasReminders: boolean | null;
   hasTasks: boolean | null;
@@ -104,16 +115,6 @@ export interface ClientFilterState {
     | "classification_asc"
     | "classification_desc";
 }
-
-interface ClientStageDefinition {
-  stage_id: string;
-  stage_name: string;
-  stage_icon: string | null;
-}
-
-let stageDefinitionsCache: ClientStageDefinition[] | null = null;
-let stageDefinitionsCachedAt = 0;
-let stageDefinitionsFetch: Promise<ClientStageDefinition[]> | null = null;
 
 interface ClientCategory {
   id: string;
@@ -171,10 +172,31 @@ export function ClientsFilterStrip({
   dateRangeTabs = [],
   onDateRangeTabsChange,
 }: ClientsFilterStripProps) {
-  const [stageDefinitions, setStageDefinitions] = useState<
-    ClientStageDefinition[]
-  >([]);
   const [stagesDialogOpen, setStagesDialogOpen] = useState(false);
+  const [expandedStageTemplates, setExpandedStageTemplates] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [expandedTemplateStages, setExpandedTemplateStages] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const { templates: stageTemplates, loading: stageTemplatesLoading } = useStageTemplates();
+  const templateStageGroups = useMemo(
+    () =>
+      stageTemplates
+        .map((template) => ({
+          id: template.id,
+          name: template.name,
+          icon: template.icon,
+          stages: (template.stages || []).map((stage) => ({
+            stage_id: stage.id,
+            stage_name: stage.stage_name,
+            stage_icon: stage.stage_icon,
+            tasks: stage.tasks || [],
+          })),
+        }))
+        .filter((template) => template.stages.length > 0),
+    [stageTemplates],
+  );
   const { value: stagesPanelPos, setValue: setStagesPanelPos } = useUserSettings<{ x: number; y: number }>({
     key: "stages_filter_panel_position",
     defaultValue: { x: Math.round(window.innerWidth / 2 - 200), y: Math.round(window.innerHeight / 2 - 250) },
@@ -374,67 +396,94 @@ export function ClientsFilterStrip({
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
   };
-  // Fetch unique stages from all clients
-  useEffect(() => {
-    fetchStageDefinitions();
-  }, []);
-
-  const fetchStageDefinitions = async () => {
-    try {
-      if (
-        stageDefinitionsCache &&
-        Date.now() - stageDefinitionsCachedAt < 60_000
-      ) {
-        setStageDefinitions(stageDefinitionsCache);
-        return;
-      }
-
-      if (!stageDefinitionsFetch) {
-        stageDefinitionsFetch = (async () => {
-          const { data, error } = await supabase
-            .from("client_stages")
-            .select("stage_id, stage_name, stage_icon")
-            .order("sort_order");
-
-          if (error) throw error;
-
-          const uniqueStages =
-            data?.reduce((acc, stage) => {
-              if (!acc.some((item) => item.stage_name === stage.stage_name)) {
-                acc.push(stage);
-              }
-              return acc;
-            }, [] as ClientStageDefinition[]) || [];
-
-          stageDefinitionsCache = uniqueStages;
-          stageDefinitionsCachedAt = Date.now();
-          return uniqueStages;
-        })().finally(() => {
-          stageDefinitionsFetch = null;
-        });
-      }
-
-      setStageDefinitions(await stageDefinitionsFetch);
-    } catch (error) {
-      console.error("Error fetching stage definitions:", error);
-    }
-  };
-
-  const toggleStage = (stageName: string) => {
-    const newStages = filters.stages.includes(stageName)
-      ? filters.stages.filter((s) => s !== stageName)
-      : [...filters.stages, stageName];
-    onFiltersChange({ ...filters, stages: newStages });
+  const toggleStage = (templateId: string, stageId: string, stageName: string) => {
+    const current = filters.stageSelections || [];
+    const exists = current.some((stage) => stage.templateId === templateId && stage.stageId === stageId);
+    const stageSelections = exists
+      ? current.filter((stage) => !(stage.templateId === templateId && stage.stageId === stageId))
+      : [...current, { templateId, stageId, stageName }];
+    onFiltersChange({
+      ...filters,
+      stageSelections,
+      stages: Array.from(new Set(stageSelections.map((stage) => stage.stageName))),
+    });
   };
 
   const clearStages = () => {
-    onFiltersChange({ ...filters, stages: [] });
+    onFiltersChange({ ...filters, stages: [], stageSelections: [], stageTemplateIds: [], stageTaskFilters: [] });
   };
 
   const selectAllStages = () => {
+    const allStageNames = Array.from(
+      new Set(templateStageGroups.flatMap((template) => template.stages.map((stage) => stage.stage_name))),
+    );
     onFiltersChange({
       ...filters,
-      stages: stageDefinitions.map((s) => s.stage_name),
+      stages: allStageNames,
+      stageSelections: templateStageGroups.flatMap((template) =>
+        template.stages.map((stage) => ({
+          templateId: template.id,
+          stageId: stage.stage_id,
+          stageName: stage.stage_name,
+        })),
+      ),
+      stageTemplateIds: templateStageGroups.map((template) => template.id),
+    });
+  };
+
+  const toggleTemplateSelection = (templateId: string) => {
+    const current = filters.stageTemplateIds || [];
+    onFiltersChange({
+      ...filters,
+      stageTemplateIds: current.includes(templateId)
+        ? current.filter((id) => id !== templateId)
+        : [...current, templateId],
+    });
+  };
+
+  const toggleTemplateStageExpansion = (stageId: string) => {
+    setExpandedTemplateStages((current) => {
+      const next = new Set(current);
+      if (next.has(stageId)) next.delete(stageId);
+      else next.add(stageId);
+      return next;
+    });
+  };
+
+  const toggleStageTask = (
+    templateId: string,
+    stageId: string,
+    taskId: string,
+    title: string,
+  ) => {
+    const current = filters.stageTaskFilters || [];
+    const exists = current.some((task) => task.taskId === taskId);
+    onFiltersChange({
+      ...filters,
+      stageTaskFilters: exists
+        ? current.filter((task) => task.taskId !== taskId)
+        : [...current, { templateId, stageId, taskId, title, status: "incomplete" }],
+    });
+  };
+
+  const cycleTaskStatus = (taskId: string) => {
+    const order = ["incomplete", "complete", "any"] as const;
+    onFiltersChange({
+      ...filters,
+      stageTaskFilters: (filters.stageTaskFilters || []).map((task) => {
+        if (task.taskId !== taskId) return task;
+        const nextStatus = order[(order.indexOf(task.status) + 1) % order.length];
+        return { ...task, status: nextStatus };
+      }),
+    });
+  };
+
+  const toggleStageTemplate = (templateId: string) => {
+    setExpandedStageTemplates((current) => {
+      const next = new Set(current);
+      if (next.has(templateId)) next.delete(templateId);
+      else next.add(templateId);
+      return next;
     });
   };
 
@@ -707,11 +756,13 @@ export function ClientsFilterStrip({
 
   const hasActiveFilters =
     filters.stages.length > 0 ||
+    (filters.stageSelections?.length || 0) > 0 ||
+    (filters.stageTemplateIds?.length || 0) > 0 ||
+    (filters.stageTaskFilters?.length || 0) > 0 ||
     filters.dateFilter !== "all" ||
     filters.hasReminders !== null ||
     filters.hasTasks !== null ||
     filters.hasMeetings !== null ||
-    filters.categories.length > 0 ||
     filters.tags.length > 0 ||
     !!filters.customDateRange ||
     (filters.monthAgeRanges && filters.monthAgeRanges.length > 0) ||
@@ -721,6 +772,9 @@ export function ClientsFilterStrip({
   const clearAllFilters = () => {
     onFiltersChange({
       stages: [],
+      stageSelections: [],
+      stageTemplateIds: [],
+      stageTaskFilters: [],
       dateFilter: "all",
       hasReminders: null,
       hasTasks: null,
@@ -811,9 +865,8 @@ export function ClientsFilterStrip({
     { id: "sort", label: "מיון / תאריך" },
     { id: "classification", label: "סיווג" },
     { id: "consultants", label: "יועצים" },
-    { id: "categories", label: "קטגוריות" },
     { id: "tags", label: "תגיות" },
-    { id: "stages", label: "שלבים" },
+    { id: "stages", label: "תהליכים ושלבים" },
     { id: "reminders", label: "תזכורות" },
     { id: "tasks", label: "משימות" },
     { id: "meetings", label: "פגישות" },
@@ -1390,185 +1443,6 @@ export function ClientsFilterStrip({
           />
         )}
 
-        {/* Categories Filter */}
-        {visibleFilterSections.has("categories") && (
-        <Popover
-          open={categoriesDialogOpen}
-          onOpenChange={setCategoriesDialogOpen}
-        >
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(
-                "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
-                filters.categories.length > 0 &&
-                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a] text-xs",
-              )}
-            >
-              <FolderOpen className="h-4 w-4" />
-              קטגוריות
-              {selectedCategories.length > 0 && (
-                <span className="inline-flex items-center -space-x-1 rtl:space-x-reverse mr-1">
-                  {selectedCategories.slice(0, 2).map((category) => (
-                    <span
-                      key={category.id}
-                      className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#f5d27a] bg-[#1e3a5f] text-[#d4a843]"
-                      title={category.name}
-                    >
-                      {iconMap[category.icon] || <FolderOpen className="h-3 w-3" />}
-                    </span>
-                  ))}
-                </span>
-              )}
-              {filters.categories.length > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="mr-1 bg-accent text-accent-foreground"
-                >
-                  {filters.categories.length}
-                </Badge>
-              )}
-              <ChevronDown className="h-3 w-3 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            className="w-[300px] p-0 overflow-hidden"
-            dir="rtl"
-            align="end"
-            collisionPadding={16}
-          >
-            <div className="p-4 border-b">
-              <div className="flex flex-row-reverse items-center gap-2 mb-3">
-                <FolderOpen className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">סינון לפי קטגוריה</h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 mr-auto bg-primary/10 hover:bg-primary/20"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCategoriesDialogOpen(false);
-                    onOpenCategoryManager?.();
-                  }}
-                  title="הוסף קטגוריה"
-                >
-                  <Plus className="h-4 w-4 text-primary" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => setCategoriesDialogOpen(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              {filters.categories.length > 0 && (
-                <Button variant="outline" size="sm" onClick={clearCategories}>
-                  נקה הכל
-                </Button>
-              )}
-            </div>
-            <ScrollArea className="max-h-[50vh] p-4">
-              <div className="space-y-2">
-                {categories.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    אין קטגוריות מוגדרות
-                  </p>
-                ) : (
-                  categories.map((category) => {
-                    const categoryClientCount = categoryCounts[category.id] || 0;
-
-                    return (
-                      <div
-                        key={category.id}
-                        className={cn(
-                          "group flex items-center gap-2 p-2 pr-3 rounded-lg border transition-all",
-                          filters.categories.includes(category.id)
-                            ? "bg-primary/10 border-primary"
-                            : "bg-background border-border hover:border-primary/50",
-                        )}
-                      >
-                        <Checkbox
-                          checked={filters.categories.includes(category.id)}
-                          onCheckedChange={() => toggleCategory(category.id)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <div
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-white flex-shrink-0"
-                          style={{ backgroundColor: category.color }}
-                        >
-                          {iconMap[category.icon] || (
-                            <FolderOpen className="h-3 w-3" />
-                          )}
-                        </div>
-                        <button
-                          className="font-medium flex-1 text-right cursor-pointer bg-transparent border-0 p-0"
-                          onClick={() => toggleCategory(category.id)}
-                          type="button"
-                        >
-                          {category.name}
-                        </button>
-                        {categoryClientCount > 0 && (
-                          <Badge
-                            variant="secondary"
-                            className="h-5 min-w-5 px-1.5 text-[10px] bg-primary/10 text-primary"
-                          >
-                            {categoryClientCount}
-                          </Badge>
-                        )}
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 hover:bg-amber-100 hover:text-amber-700"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setCategoriesDialogOpen(false);
-                              setAddToCategoryId(category.id);
-                            }}
-                            title={`הוסף לקוחות ל${category.name}`}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 hover:bg-blue-100 hover:text-blue-600"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setCategoriesDialogOpen(false);
-                              onOpenCategoryManager?.();
-                            }}
-                            title="ערוך קטגוריה"
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 hover:bg-red-100 hover:text-red-600"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setCategoriesDialogOpen(false);
-                              onOpenCategoryManager?.();
-                            }}
-                            title="מחק קטגוריה"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </ScrollArea>
-          </PopoverContent>
-        </Popover>
-        )}
-
         {/* Tags Filter */}
         {visibleFilterSections.has("tags") && (
         <Popover open={tagsDialogOpen} onOpenChange={setTagsDialogOpen}>
@@ -1672,19 +1546,23 @@ export function ClientsFilterStrip({
             onClick={() => setStagesDialogOpen((v) => !v)}
           >
             <Layers className="h-4 w-4" />
-            שלבים
-            {filters.stages.length > 0 && (
+            תהליכים ושלבים
+            {(filters.stageSelections.length > 0 || filters.stageTemplateIds.length > 0 || filters.stageTaskFilters.length > 0) && (
               <Badge
                 variant="secondary"
                 className="mr-1 bg-accent text-accent-foreground"
               >
-                {filters.stages.length}
+                {filters.stageTemplateIds.length + filters.stageSelections.length + filters.stageTaskFilters.length}
               </Badge>
             )}
             <ChevronDown className="h-3 w-3 opacity-50" />
           </Button>
 
           {stagesDialogOpen && createPortal(
+            <div
+              className="fixed inset-0 z-[9998]"
+              onMouseDown={() => setStagesDialogOpen(false)}
+            >
             <div
               dir="rtl"
               style={{
@@ -1696,6 +1574,7 @@ export function ClientsFilterStrip({
                 maxHeight: "min(82vh, calc(100vh - 24px))",
               }}
               className="rounded-lg border border-border bg-popover shadow-xl overflow-hidden flex flex-col"
+              onMouseDown={(event) => event.stopPropagation()}
             >
               {/* Drag handle header */}
               <div
@@ -1736,7 +1615,7 @@ export function ClientsFilterStrip({
                     <X className="h-4 w-4" />
                   </Button>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-sm">סינון לפי שלבים</h3>
+                    <h3 className="font-semibold text-sm">תהליכים, שלבים ומשימות</h3>
                     <Layers className="h-4 w-4 text-primary" />
                     <GripVertical className="h-4 w-4 text-muted-foreground" />
                   </div>
@@ -1749,43 +1628,196 @@ export function ClientsFilterStrip({
                     נקה שלבים
                   </Button>
                 </div>
+                {((filters.stageTemplateIds || []).length > 0 ||
+                  (filters.stageSelections || []).length > 0 ||
+                  (filters.stageTaskFilters || []).length > 0) && (
+                  <div className="mt-2 flex max-h-20 flex-wrap gap-1 overflow-y-auto" onMouseDown={(e) => e.stopPropagation()}>
+                    {(filters.stageTemplateIds || []).map((templateId) => {
+                      const template = templateStageGroups.find((item) => item.id === templateId);
+                      if (!template) return null;
+                      return (
+                        <button key={`template-${templateId}`} type="button" className="rounded-full bg-primary px-2 py-0.5 text-[10px] text-primary-foreground" onClick={() => toggleTemplateSelection(templateId)}>
+                          {template.name} ×
+                        </button>
+                      );
+                    })}
+                    {(filters.stageSelections || []).map((stage) => (
+                      <button key={`stage-${stage.templateId}-${stage.stageId}`} type="button" className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-900" onClick={() => toggleStage(stage.templateId, stage.stageId, stage.stageName)}>
+                        {stage.stageName} ×
+                      </button>
+                    ))}
+                    {(filters.stageTaskFilters || []).map((task) => (
+                      <button key={`task-${task.taskId}`} type="button" className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] text-blue-900" onClick={() => toggleStageTask(task.templateId, task.stageId, task.taskId, task.title)}>
+                        {task.title} ×
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0">
                 <div className="p-3">
-                  <div className="space-y-3">
-                    {stageDefinitions.length === 0 ? (
+                  <div className="space-y-2">
+                    {stageTemplatesLoading ? (
                       <p className="text-center text-muted-foreground py-8">
-                        אין שלבים מוגדרים
+                        טוען תבניות שלבים...
+                      </p>
+                    ) : templateStageGroups.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">
+                        אין תבניות שלבים מוגדרות
                       </p>
                     ) : (
-                      stageDefinitions.map((stage) => {
-                        const stageClientCount = stageCounts[stage.stage_name] || 0;
+                      templateStageGroups.map((template) => {
+                        const isExpanded = expandedStageTemplates.has(template.id);
+                        const stageNames = template.stages.map((stage) => stage.stage_name);
+                        const selectedCount = (filters.stageSelections || []).filter(
+                          (stage) => stage.templateId === template.id,
+                        ).length;
+                        const templateSelected = (filters.stageTemplateIds || []).includes(template.id);
+                        const selectedTaskCount = (filters.stageTaskFilters || []).filter(
+                          (task) => task.templateId === template.id,
+                        ).length;
+                        const templateClientCount = Array.from(new Set(stageNames)).reduce(
+                          (total, stageName) => total + (stageCounts[stageName] || 0),
+                          0,
+                        );
+
                         return (
                           <div
-                            key={stage.stage_name}
-                            className={cn(
-                              "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
-                              filters.stages.includes(stage.stage_name)
-                                ? "bg-primary/10 border-primary"
-                                : "bg-background border-border hover:border-primary/50",
-                            )}
-                            onClick={() => toggleStage(stage.stage_name)}
+                            key={template.id}
+                            className="overflow-hidden rounded-lg border border-border bg-background"
                           >
-                            <Checkbox
-                              checked={filters.stages.includes(stage.stage_name)}
-                              onCheckedChange={() => toggleStage(stage.stage_name)}
-                            />
-                            <span className="font-medium text-foreground text-right flex-1">
-                              {stage.stage_name}
-                            </span>
-                            {stageClientCount > 0 && (
-                              <Badge
-                                variant="secondary"
-                                className="h-5 min-w-5 px-1.5 text-[10px] bg-primary/10 text-primary"
-                              >
-                                {stageClientCount}
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              aria-expanded={isExpanded}
+                              className={cn(
+                                "flex cursor-pointer items-center gap-2 p-3 transition-colors hover:bg-muted/60",
+                                (templateSelected || selectedCount > 0 || selectedTaskCount > 0) && "bg-primary/5",
+                              )}
+                              onClick={() => toggleStageTemplate(template.id)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault();
+                                  toggleStageTemplate(template.id);
+                                }
+                              }}
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              ) : (
+                                <ChevronLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              )}
+                              <span className="flex-1 text-right font-semibold text-foreground">
+                                {template.name}
+                              </span>
+                              <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                                {template.stages.length} שלבים
                               </Badge>
+                              {selectedCount > 0 && (
+                                <Badge className="h-5 px-1.5 text-[10px]">
+                                  {selectedCount} נבחרו
+                                </Badge>
+                              )}
+                              {selectedTaskCount > 0 && (
+                                <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                                  {selectedTaskCount} משימות
+                                </Badge>
+                              )}
+                              {templateClientCount > 0 && (
+                                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">
+                                  {templateClientCount}
+                                </Badge>
+                              )}
+                              <Checkbox
+                                checked={templateSelected ? true : selectedCount > 0 || selectedTaskCount > 0 ? "indeterminate" : false}
+                                aria-label={`בחר תהליך ${template.name}`}
+                                onClick={(event) => event.stopPropagation()}
+                                onCheckedChange={() => toggleTemplateSelection(template.id)}
+                              />
+                            </div>
+
+                            {isExpanded && (
+                              <div className="space-y-1 border-t border-border bg-muted/20 p-2 pr-7">
+                                {template.stages.map((stage) => {
+                                  const stageClientCount = stageCounts[stage.stage_name] || 0;
+                                  const checked = (filters.stageSelections || []).some(
+                                    (selection) => selection.templateId === template.id && selection.stageId === stage.stage_id,
+                                  );
+                                  const stageExpanded = expandedTemplateStages.has(stage.stage_id);
+                                  const selectedStageTasks = (filters.stageTaskFilters || []).filter(
+                                    (task) => task.stageId === stage.stage_id,
+                                  );
+                                  return (
+                                    <div key={stage.stage_id} className="overflow-hidden rounded-md border border-transparent bg-background">
+                                      <div
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-expanded={stage.tasks.length > 0 ? stageExpanded : undefined}
+                                        className={cn(
+                                          "flex cursor-pointer items-center gap-2 p-2.5 transition-all",
+                                          checked || selectedStageTasks.length > 0
+                                            ? "bg-primary/10"
+                                            : "hover:bg-muted/50",
+                                        )}
+                                        onClick={() => stage.tasks.length > 0 && toggleTemplateStageExpansion(stage.stage_id)}
+                                      >
+                                        {stage.tasks.length > 0 ? (
+                                          stageExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />
+                                        ) : <span className="w-3.5" />}
+                                        <Checkbox
+                                          checked={checked ? true : selectedStageTasks.length > 0 ? "indeterminate" : false}
+                                          aria-label={`בחר שלב ${stage.stage_name}`}
+                                          onClick={(event) => event.stopPropagation()}
+                                          onCheckedChange={() => toggleStage(template.id, stage.stage_id, stage.stage_name)}
+                                        />
+                                        <span className="flex-1 text-right text-sm font-medium text-foreground">
+                                          {stage.stage_name}
+                                        </span>
+                                        {stage.tasks.length > 0 && <Badge variant="outline" className="h-5 text-[10px]">{stage.tasks.length}</Badge>}
+                                        {stageClientCount > 0 && (
+                                          <Badge variant="secondary" className="h-5 min-w-5 bg-primary/10 px-1.5 text-[10px] text-primary">
+                                            {stageClientCount}
+                                          </Badge>
+                                        )}
+                                      </div>
+
+                                      {stageExpanded && stage.tasks.length > 0 && (
+                                        <div className="space-y-1 border-t bg-muted/20 p-2 pr-8">
+                                          {stage.tasks.map((task) => {
+                                            const selectedTask = (filters.stageTaskFilters || []).find((item) => item.taskId === task.id);
+                                            const statusLabel = selectedTask?.status === "complete"
+                                              ? "הושלמה"
+                                              : selectedTask?.status === "any"
+                                                ? "בכל מצב"
+                                                : "לא הושלמה";
+                                            return (
+                                              <div key={task.id} className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-background">
+                                                <Checkbox
+                                                  checked={!!selectedTask}
+                                                  aria-label={`בחר משימה ${task.title}`}
+                                                  onCheckedChange={() => toggleStageTask(template.id, stage.stage_id, task.id, task.title)}
+                                                />
+                                                <span className="min-w-0 flex-1 truncate text-right text-xs">{task.title}</span>
+                                                {selectedTask && (
+                                                  <button
+                                                    type="button"
+                                                    className="rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-muted"
+                                                    onClick={() => cycleTaskStatus(task.id)}
+                                                    title="לחץ לשינוי מצב המשימה"
+                                                  >
+                                                    {statusLabel}
+                                                  </button>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             )}
                           </div>
                         );
@@ -1809,6 +1841,7 @@ export function ClientsFilterStrip({
                   </div>
                 </div>
               </div>
+            </div>
             </div>,
             document.body
           )}

@@ -130,7 +130,7 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
 
   // Flatten all tasks with stage info
   const allTasks = useMemo(() => {
-    const tasks: (ClientStageTask & { stageName: string; stageIcon: string | null; stageOrder: number })[] = [];
+    const tasks: (ClientStageTask & { stageName: string; stageIcon: string | null; stageOrder: number; stageCompleted: boolean })[] = [];
     
     stages.forEach(stage => {
       stage.tasks?.forEach(task => {
@@ -139,6 +139,7 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
           stageName: stage.stage_name,
           stageIcon: stage.stage_icon,
           stageOrder: stage.sort_order,
+          stageCompleted: (stage.tasks || []).every((stageTask) => stageTask.completed),
         });
       });
     });
@@ -371,7 +372,9 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                                   paymentAmount={task.payment_amount}
                                   paymentPercentage={task.payment_percentage}
                                   paymentQuoteId={task.payment_quote_id}
+                                  paymentStepId={task.payment_step_id}
                                   taskId={task.id}
+                                  stageCompleted={task.stageCompleted}
                                 />
                               </span>
                               {isTimerTabTask(task) && task.auto_timer_days && !task.started_at && (
