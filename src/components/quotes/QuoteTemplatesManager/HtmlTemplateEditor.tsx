@@ -188,6 +188,9 @@ import { useClientCustomFields } from "@/hooks/useClientCustomFields";
 import CreateFieldDialog from "./flow-engine/editor/CreateFieldDialog";
 import { useCloudPreferences } from "@/hooks/useCloudPreferences";
 import { useQuoteDraftAutosave } from "@/hooks/useQuoteDraftAutosave";
+import { useAuth } from "@/hooks/useAuth";
+import { useGmailIntegration } from "@/hooks/useGmailIntegration";
+import { useGmailAccounts, type GmailAccount } from "@/hooks/useGmailAccounts";
 import { supabase } from "@/integrations/supabase/client";
 import { syncClientStagesFromTemplate } from "@/lib/clientStageTemplateSync";
 import { syncQuotePaymentLinksToClientTasks } from "@/lib/syncQuotePaymentLinks";
@@ -509,6 +512,7 @@ interface ProjectDetails {
   address: string;
   projectType: string;
   phone?: string;
+  email?: string;
   moshav?: string;
   family?: string;
   stageTemplateId?: string;
@@ -604,6 +608,29 @@ function applyProjectDetailsTokens(content: string, pd: any): string {
   return out;
 }
 
+type QuoteEmailSender = "auto" | `gmail:${string}`;
+
+const QUOTE_EMAIL_SENDER_KEY = "quote_email_default_sender";
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function escapeEmailHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // Email dialog component
 function EmailDialog({
   open,
@@ -611,12 +638,20 @@ function EmailDialog({
   clients,
   onSend,
   templateName,
+  defaultTo,
+  gmailAccounts,
+  defaultSender,
+  onDefaultSenderChange,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clients: Array<{ id: string; name: string; email?: string | null }>;
-  onSend: (to: string, subject: string, message: string) => void;
+  onSend: (to: string, subject: string, message: string, sender: QuoteEmailSender) => Promise<boolean>;
   templateName: string;
+  defaultTo: string;
+  gmailAccounts: GmailAccount[];
+  defaultSender: QuoteEmailSender;
+  onDefaultSenderChange: (sender: QuoteEmailSender) => void;
 }) {
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState(`הצעת מחיר - ${templateName}`);
@@ -625,6 +660,8 @@ function EmailDialog({
   );
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [search, setSearch] = useState("");
+  const [sender, setSender] = useState<QuoteEmailSender>(defaultSender);
+  const [isSending, setIsSending] = useState(false);
   const clientsWithEmail = useMemo(
     () => clients.filter((c) => c.email),
     [clients],
@@ -639,6 +676,24 @@ function EmailDialog({
     [clientsWithEmail, search],
   );
 
+  useEffect(() => {
+    if (!open) return;
+    setTo(defaultTo || "");
+    setSubject(`הצעת מחיר - ${templateName}`);
+    setSender(defaultSender);
+  }, [defaultSender, defaultTo, open, templateName]);
+
+  const submit = async () => {
+    if (!to || isSending) return;
+    setIsSending(true);
+    try {
+      const sent = await onSend(to.trim(), subject.trim(), message, sender);
+      if (sent) onOpenChange(false);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg" dir="rtl">
@@ -649,6 +704,32 @@ function EmailDialog({
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>שליחה באמצעות</Label>
+            <Select
+              value={sender}
+              onValueChange={(value) => {
+                const next = value as QuoteEmailSender;
+                setSender(next);
+                onDefaultSenderChange(next);
+              }}
+            >
+              <SelectTrigger aria-label="חשבון שולח" className="w-full">
+                <SelectValue placeholder="בחר חשבון שולח" />
+              </SelectTrigger>
+              <SelectContent dir="rtl">
+                <SelectItem value="auto">Lovable Auto · שליחה אוטומטית</SelectItem>
+                {gmailAccounts.map((account) => (
+                  <SelectItem key={account.id} value={`gmail:${account.id}`}>
+                    Gmail · {account.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              הבחירה נשמרת כברירת המחדל להצעות הבאות.
+            </p>
+          </div>
           <div className="space-y-2">
             <Label>נמען</Label>
             <div className="flex gap-2">
@@ -729,21 +810,22 @@ function EmailDialog({
               dir="rtl"
             />
           </div>
+          <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+            <FileText className="h-4 w-4 shrink-0" />
+            קובץ ה־PDF המדויק של ההצעה יצורף אוטומטית.
+          </div>
         </div>
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSending}>
             ביטול
           </Button>
           <Button
-            onClick={() => {
-              onSend(to, subject, message);
-              onOpenChange(false);
-            }}
+            onClick={() => void submit()}
             className="bg-green-600 hover:bg-green-700"
-            disabled={!to}
+            disabled={!to || !subject || isSending}
           >
-            <Send className="h-4 w-4 ml-2" />
-            שלח
+            {isSending ? <span className="ml-2 animate-spin">⏳</span> : <Send className="h-4 w-4 ml-2" />}
+            {isSending ? "יוצר PDF ושולח..." : "שלח עם PDF"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1141,7 +1223,7 @@ function ProjectDetailsEditor({
         address: client.address || "",
         projectType: details.projectType || "",
         phone: client.phone || details.phone,
-        ...(client.email ? ({ email: client.email } as any) : {}),
+        email: client.email || "",
         customData: {
           ...(details.customData || {}),
           ...((client.custom_data && typeof client.custom_data === "object")
@@ -4780,6 +4862,9 @@ export function HtmlTemplateEditor({
   savedQuoteId,
 }: HtmlTemplateEditorProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { sendEmailWithToken } = useGmailIntegration();
+  const { accounts: gmailAccounts, getValidToken } = useGmailAccounts();
   const { clients } = useClients();
   const { saveToCloud } = useCloudPreferences();
   const globalDefaultVat = useDefaultVatRate();
@@ -5142,7 +5227,7 @@ export function HtmlTemplateEditor({
   });
   const [projectDetails, setProjectDetails] = useState<ProjectDetails>(() => {
     const saved = (template as any).project_details;
-    if (saved && typeof saved === 'object' && (saved.clientName || saved.clientId || saved.gush || saved.helka || saved.address || saved.projectType || saved.stageTemplateId)) {
+    if (saved && typeof saved === 'object' && (saved.clientName || saved.clientId || saved.email || saved.phone || saved.gush || saved.helka || saved.address || saved.projectType || saved.stageTemplateId)) {
       return {
         clientId: saved.clientId || "",
         clientName: saved.clientName || "",
@@ -5152,6 +5237,8 @@ export function HtmlTemplateEditor({
         taba: saved.taba || "",
         address: saved.address || "",
         projectType: saved.projectType || "",
+        phone: saved.phone || "",
+        email: saved.email || "",
         stageTemplateId: saved.stageTemplateId || "",
         stageTemplateName: saved.stageTemplateName || "",
       };
@@ -5172,7 +5259,38 @@ export function HtmlTemplateEditor({
   const [stageTemplates, setStageTemplates] = useState<StageTemplateOption[]>([]);
   const [isLoadingStageTemplates, setIsLoadingStageTemplates] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [defaultEmailSender, setDefaultEmailSender] = useState<QuoteEmailSender>(() => {
+    try {
+      const saved = localStorage.getItem(QUOTE_EMAIL_SENDER_KEY);
+      if (saved === "auto" || saved?.startsWith("gmail:")) return saved as QuoteEmailSender;
+    } catch { /* Default to Lovable Auto when local preferences are unavailable. */ }
+    return "auto";
+  });
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
+
+  const updateDefaultEmailSender = useCallback((sender: QuoteEmailSender) => {
+    setDefaultEmailSender(sender);
+    try {
+      localStorage.setItem(QUOTE_EMAIL_SENDER_KEY, sender);
+    } catch { /* Sender persistence is best effort. */ }
+  }, []);
+
+  useEffect(() => {
+    if (gmailAccounts.length === 0) return;
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem(QUOTE_EMAIL_SENDER_KEY);
+    } catch { /* Ignore local preference lookup failures. */ }
+    const selectedAccountId = defaultEmailSender.startsWith("gmail:")
+      ? defaultEmailSender.slice("gmail:".length)
+      : null;
+    const selectedExists = selectedAccountId
+      ? gmailAccounts.some((account) => account.id === selectedAccountId)
+      : false;
+    if ((!stored && defaultEmailSender === "auto") || (selectedAccountId && !selectedExists)) {
+      updateDefaultEmailSender(`gmail:${gmailAccounts[0].id}`);
+    }
+  }, [defaultEmailSender, gmailAccounts, updateDefaultEmailSender]);
   const [interactiveEditMode, setInteractiveEditMode] = useState(false);
   const [plainTextMode, setPlainTextMode] = useState(false);
   const [plainTextScope, setPlainTextScope] =
@@ -5776,6 +5894,14 @@ export function HtmlTemplateEditor({
     return [];
   }, [extendedClients, clients]);
 
+  const defaultQuoteRecipientEmail = useMemo(
+    () =>
+      projectDetails.email ||
+      allClients.find((client: any) => client.id === projectDetails.clientId)?.email ||
+      "",
+    [allClients, projectDetails.clientId, projectDetails.email],
+  );
+
   useEffect(() => {
     if (!open) return;
 
@@ -5893,7 +6019,7 @@ export function HtmlTemplateEditor({
     const pt = (template as any).pricing_tiers;
     if (pt && Array.isArray(pt) && pt.length > 0) setPricingTiers(pt);
     const pd = (template as any).project_details;
-    if (pd && typeof pd === 'object' && (pd.clientName || pd.clientId || pd.gush || pd.helka || pd.address || pd.projectType || pd.stageTemplateId)) {
+    if (pd && typeof pd === 'object' && (pd.clientName || pd.clientId || pd.email || pd.phone || pd.gush || pd.helka || pd.address || pd.projectType || pd.stageTemplateId)) {
       setProjectDetails({
         clientId: pd.clientId || "",
         clientName: pd.clientName || "",
@@ -5903,6 +6029,8 @@ export function HtmlTemplateEditor({
         taba: pd.taba || "",
         address: pd.address || "",
         projectType: pd.projectType || "",
+        phone: pd.phone || "",
+        email: pd.email || "",
         stageTemplateId: pd.stageTemplateId || "",
         stageTemplateName: pd.stageTemplateName || "",
       });
@@ -5936,6 +6064,8 @@ export function HtmlTemplateEditor({
               ...resolvedProjectDetails,
               clientId: localExisting.id,
               clientName: localExisting.name || typedName,
+              phone: localExisting.phone || resolvedProjectDetails.phone || "",
+              email: localExisting.email || resolvedProjectDetails.email || "",
             };
           } else {
             const quoteLeadNote = `סטטוס ליד: הצעת מחיר (טרם נסגר)\nנוצר אוטומטית מהצעת מחיר: ${editedTemplate.name || "הצעת מחיר"}\nסוג פרויקט: ${resolvedProjectDetails.projectType || "לא צוין"}`;
@@ -7358,27 +7488,108 @@ ${tbAt('footer')}
     to: string,
     subject: string,
     message: string,
-  ) => {
+    sender: QuoteEmailSender,
+  ): Promise<boolean> => {
     try {
-      // Try to send via Supabase edge function
-      const html = generateHtmlContent();
-      const { error } = await supabase.functions.invoke("send-email", {
-        body: {
-          to,
+      const normalizedTo = to.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedTo)) {
+        throw new Error("כתובת המייל של הנמען אינה תקינה");
+      }
+
+      const pdfBlob = await generateExactA4PdfBlob();
+      const pdfBase64 = await blobToBase64(pdfBlob);
+      const safeName = (editedTemplate.name || "הצעת מחיר")
+        .replace(/[<>:"/\\|?*]/g, "-")
+        .split("")
+        .filter((character) => character.charCodeAt(0) >= 32)
+        .join("")
+        .trim() || "הצעת מחיר";
+      const pdfFileName = `${safeName}.pdf`;
+      const safeMessage = escapeEmailHtml(message).replace(/\n/g, "<br>");
+      const bodyHtml = `<div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.7">${safeMessage}</div>`;
+
+      if (sender.startsWith("gmail:")) {
+        const accountId = sender.slice("gmail:".length);
+        const account = gmailAccounts.find((candidate) => candidate.id === accountId);
+        if (!account) throw new Error("חשבון Gmail שנבחר אינו מחובר עוד למערכת");
+        const token = await getValidToken(account);
+        if (!token) throw new Error(`נדרש לחבר מחדש את חשבון ${account.email}`);
+        const sent = await sendEmailWithToken(token, {
+          to: normalizedTo,
           subject,
-          html: `<div dir="rtl">${message.replace(/\n/g, "<br>")}</div><hr><br>${html}`,
-        },
-      });
-      if (error) throw error;
-      toast({ title: "נשלח בהצלחה", description: `הצעת המחיר נשלחה ל-${to}` });
-    } catch (err) {
-      // Fallback to mailto
-      const mailtoUrl = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
-      window.open(mailtoUrl, "_blank");
+          body: bodyHtml,
+          attachments: [{
+            name: pdfFileName,
+            type: "application/pdf",
+            data: pdfBase64,
+            size: pdfBlob.size,
+          }],
+        });
+        if (!sent) return false;
+
+        if (user?.id) {
+          const { error: logError } = await supabase.from("email_logs").insert({
+            to_email: normalizedTo,
+            from_email: account.email,
+            subject,
+            html_content: bodyHtml,
+            status: "sent",
+            sent_at: new Date().toISOString(),
+            user_id: user.id,
+            metadata: {
+              provider: "gmail",
+              emailType: "quote",
+              attachmentName: pdfFileName,
+              attachmentSize: pdfBlob.size,
+              quoteId: savedQuoteId || null,
+              clientId: projectDetails.clientId || null,
+            },
+          });
+          if (logError) console.warn("Gmail quote was sent but could not be logged:", logError);
+        }
+      } else {
+        const { data, error } = await supabase.functions.invoke("send-reminder-email", {
+          body: {
+            to: normalizedTo,
+            title: subject,
+            subject,
+            message,
+            html: bodyHtml,
+            userName: projectDetails.clientName || undefined,
+            userId: user?.id,
+            attachments: [{
+              filename: pdfFileName,
+              content: pdfBase64,
+              type: "application/pdf",
+            }],
+            tags: ["quote"],
+            variables: {
+              emailType: "quote",
+              quoteId: savedQuoteId || "",
+              templateId: editedTemplate.id || "",
+              clientId: projectDetails.clientId || "",
+            },
+          },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+      }
+
+      if (!sender.startsWith("gmail:")) {
+        toast({
+          title: "הצעת המחיר נשלחה",
+          description: `${pdfFileName} נשלח אל ${normalizedTo}`,
+        });
+      }
+      return true;
+    } catch (err: any) {
+      console.error("Quote email send failed:", err);
       toast({
-        title: "פתיחת אפליקציית מייל",
-        description: "המייל מוכן לשליחה",
+        title: "שליחת המייל נכשלה",
+        description: err?.message || "לא ניתן לשלוח את הצעת המחיר",
+        variant: "destructive",
       });
+      return false;
     }
   };
 
@@ -8654,6 +8865,10 @@ ${tbAt('footer')}
           clients={allClients}
           onSend={handleSendEmail}
           templateName={editedTemplate.name}
+          defaultTo={defaultQuoteRecipientEmail}
+          gmailAccounts={gmailAccounts}
+          defaultSender={defaultEmailSender}
+          onDefaultSenderChange={updateDefaultEmailSender}
         />
 
         {/* Gold Header */}

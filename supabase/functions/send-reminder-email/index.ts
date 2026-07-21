@@ -2,6 +2,8 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const RESEND_FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
+const RESEND_FROM_NAME = Deno.env.get("RESEND_FROM_NAME") || "ArchFlow";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -16,6 +18,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 interface ReminderEmailRequest {
   to: string;
   title: string;
+  subject?: string;
+  html?: string;
+  text?: string;
   message?: string;
   userName?: string;
   templateId?: string;
@@ -64,6 +69,9 @@ const handler = async (req: Request): Promise<Response> => {
     const {
       to,
       title,
+      subject: requestedSubject,
+      html: requestedHtml,
+      text: requestedText,
       message,
       userName,
       templateId,
@@ -89,10 +97,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     let htmlContent = "";
     let textContent = "";
-    let subject = `⏰ תזכורת: ${title}`;
+    let subject = requestedSubject || `⏰ תזכורת: ${title}`;
 
     // If template ID provided, fetch and use template
-    if (templateId) {
+    if (requestedHtml) {
+      htmlContent = requestedHtml;
+      textContent = requestedText || message || "";
+    } else if (templateId) {
       const { data: template, error: templateError } = await supabase
         .from("email_templates")
         .select("*")
@@ -168,13 +179,13 @@ ${actionUrl ? `קישור: ${actionUrl}` : ""}
 
     // Prepare email payload
     const emailPayload: any = {
-      from: "ArchFlow <onboarding@resend.dev>",
+      from: `${RESEND_FROM_NAME} <${RESEND_FROM_EMAIL}>`,
       to: [to],
       subject,
       html: htmlContent,
       text: textContent,
       tags: [
-        { name: "type", value: "reminder" },
+        { name: "type", value: String(variables.emailType || "reminder") },
         ...tags.map((tag) => ({ name: "custom", value: tag })),
       ],
     };
