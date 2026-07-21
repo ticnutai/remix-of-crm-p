@@ -57,14 +57,24 @@ function BorderEditor({
   value,
   onChange,
   onApplyToAll,
+  showInsets = false,
 }: {
   label: string;
   value?: BorderConfig;
   onChange: (b: BorderConfig) => void;
   onApplyToAll?: (b: BorderConfig) => void;
+  showInsets?: boolean;
 }) {
   const cfg = { ...DEFAULT_BORDER, ...(value || {}) };
+  const insets = { top: 4, right: 4, bottom: 4, left: 4, ...(cfg.insets || {}) };
+  const [linkInsets, setLinkInsets] = React.useState(
+    insets.top === insets.right && insets.right === insets.bottom && insets.bottom === insets.left,
+  );
   const update = (patch: Partial<BorderConfig>) => onChange({ ...cfg, ...patch });
+  const updateInset = (side: "top" | "right" | "bottom" | "left", v: number) => {
+    if (linkInsets) update({ insets: { top: v, right: v, bottom: v, left: v } });
+    else update({ insets: { ...insets, [side]: v } });
+  };
 
   return (
     <div className="space-y-4 p-4 rounded-lg border border-border bg-card">
