@@ -11,6 +11,12 @@ import type { DesignPresetConfig } from "./presets/types";
 import { buildPresetExtraCss } from "./presets/presetExtras";
 import { clampFlowNumber, FLOW_STRIP_LIMITS } from "./stripSettings";
 import {
+  isTopPageNumber,
+  normalizePageNumberSettings,
+  pageNumberHorizontalCss,
+  pageNumberShapeCss,
+} from "./pageNumbers";
+import {
   backgroundToBodyCss,
   borderToCss,
   DEFAULT_FRAME_SETTINGS,
@@ -232,6 +238,8 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
       }
     : origBranding;
   const m = page.marginMm;
+  const pageNumber = normalizePageNumberSettings(page.pageNumber);
+  const pageNumberAtTop = page.showPageNumbers && isTopPageNumber(pageNumber.position);
   const hasHeaderStrip = Boolean(branding.headerStripUrl);
   const showFooter = branding.showFooter !== false;
   const hasFooterStrip = showFooter && Boolean(branding.footerStripUrl);
@@ -279,18 +287,18 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     FLOW_STRIP_LIMITS.widthPercent.min,
     FLOW_STRIP_LIMITS.widthPercent.max,
   );
+  const pageNumberReserveMm = page.showPageNumbers ? 7 : 0;
   const topMargin = hasHeaderStrip
-    ? headerStripMm + headerContentGapMm
+    ? headerStripMm + headerContentGapMm + (pageNumberAtTop ? pageNumberReserveMm : 0)
     : Math.max(
         0,
         m.top +
           (headerContentGapPx - FLOW_STRIP_LIMITS.contentGapPx.fallback) * PX_TO_MM,
       );
-  const pageNumberReserveMm = page.showPageNumbers && hasFooterStrip ? 7 : 0;
   const bottomMargin = !showFooter
     ? m.bottom
     : hasFooterStrip
-    ? footerStripMm + footerContentGapMm + pageNumberReserveMm
+    ? footerStripMm + footerContentGapMm + (!pageNumberAtTop && page.showPageNumbers ? pageNumberReserveMm : 0)
     : Math.max(
         0,
         m.bottom +
@@ -340,23 +348,20 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   ${page.showPageNumbers ? `
   .pagedjs_sheet { position: relative; }
   .pagedjs_sheet::after {
-    content: "עמוד " attr(data-page-number);
+    content: ${pageNumber.format === "number" ? "attr(data-page-number)" : pageNumber.format === "dash" ? '"— " attr(data-page-number) " —"' : '"עמוד " attr(data-page-number)'};
     position: absolute;
-    bottom: ${mmCss(hasFooterStrip ? footerStripMm + 2 : 4)}mm;
-    right: 6mm;
+    ${pageNumberAtTop
+      ? `top:${mmCss(hasHeaderStrip ? headerStripMm + 2 : 4)}mm;bottom:auto;`
+      : `bottom:${mmCss(hasFooterStrip ? footerStripMm + 2 : 4)}mm;top:auto;`}
+    ${pageNumberHorizontalCss(pageNumber.position)}
     z-index: 9999;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 38px;
-    height: 20px;
-    padding: 0 8px;
-    border: 1px solid rgba(22, 44, 88, 0.16);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.84);
-    color: #162c58;
-    font-family: ${branding.fontFamily};
-    font-size: 11px;
+    ${pageNumberShapeCss(pageNumber)}
+    color: ${pageNumber.color};
+    font-family: ${pageNumber.fontFamily};
+    font-size: ${pageNumber.fontSizePx}px;
     line-height: 1;
     white-space: nowrap;
     pointer-events: none;

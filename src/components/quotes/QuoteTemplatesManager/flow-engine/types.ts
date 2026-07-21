@@ -58,6 +58,25 @@ export interface FlowBranding {
 
 export type FlowPageSizePreset = "none" | "A4" | "A3" | "A5" | "Letter" | "Legal" | "custom";
 export type FlowPageOrientation = "portrait" | "landscape";
+export type FlowPageNumberPosition =
+  | "top-right"
+  | "top-center"
+  | "top-left"
+  | "bottom-right"
+  | "bottom-center"
+  | "bottom-left";
+export type FlowPageNumberShape = "plain" | "pill" | "circle" | "square";
+export type FlowPageNumberFormat = "page" | "number" | "dash";
+
+export interface FlowPageNumberSettings {
+  position: FlowPageNumberPosition;
+  fontFamily: string;
+  fontSizePx: number;
+  color: string;
+  backgroundColor: string;
+  shape: FlowPageNumberShape;
+  format: FlowPageNumberFormat;
+}
 
 export interface FlowPageSetup {
   size: FlowPageSizePreset;
@@ -65,6 +84,7 @@ export interface FlowPageSetup {
   customSizeMm?: { width: number; height: number };
   marginMm: { top: number; right: number; bottom: number; left: number };
   showPageNumbers: boolean;
+  pageNumber?: FlowPageNumberSettings;
 }
 
 export interface FlowDocument {

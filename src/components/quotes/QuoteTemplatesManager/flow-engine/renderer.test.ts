@@ -120,4 +120,35 @@ describe("renderFlowToHtml", () => {
     expect(html).toContain("@bottom-center { content: none; }");
     expect(html).not.toContain('<div class="running-footer');
   });
+
+  it("renders configurable page-number placement and appearance", () => {
+    const fixture = documentFixture();
+    fixture.page.pageNumber = {
+      position: "top-left",
+      fontFamily: "Arial, sans-serif",
+      fontSizePx: 14,
+      color: "#123456",
+      backgroundColor: "#abcdef",
+      shape: "pill",
+      format: "dash",
+    };
+
+    const html = renderFlowToHtml(fixture);
+
+    expect(html).toContain('content: "— " attr(data-page-number) " —"');
+    expect(html).toContain("top:41.688mm;bottom:auto");
+    expect(html).toContain("left:6mm;right:auto");
+    expect(html).toContain("font-family: Arial, sans-serif");
+    expect(html).toContain("font-size: 14px");
+    expect(html).toContain("background:#abcdef");
+  });
+
+  it("omits the page-number decoration when numbering is disabled", () => {
+    const fixture = documentFixture();
+    fixture.page.showPageNumbers = false;
+
+    const html = renderFlowToHtml(fixture);
+
+    expect(html).not.toContain(".pagedjs_sheet::after");
+  });
 });

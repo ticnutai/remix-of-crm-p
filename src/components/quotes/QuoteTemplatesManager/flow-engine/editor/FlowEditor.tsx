@@ -43,6 +43,13 @@ import { resolveFlowStripSettings } from "../stripSettings";
 import type { DesignPresetConfig } from "../presets/types";
 import { buildPresetExtraCss } from "../presets/presetExtras";
 import type { FlowPageSetup } from "../types";
+import {
+  isTopPageNumber,
+  normalizePageNumberSettings,
+  pageNumberHorizontalCss,
+  pageNumberShapeCss,
+  pageNumberText,
+} from "../pageNumbers";
 
 interface Props {
   initialHtml: string;
@@ -213,6 +220,11 @@ function buildPaginationOptions({
   canResizeStrips: boolean;
 }): PaginationPlusOptions {
   const metrics = resolvePageMetrics(pageSetup);
+  const pageNumber = normalizePageNumberSettings(pageSetup?.pageNumber);
+  const pageNumberHtml = pageSetup?.showPageNumbers
+    ? `<span class="flow-page-number-label" data-position="${pageNumber.position}" data-shape="${pageNumber.shape}">${pageNumberText(pageNumber.format, "{page}")}</span>`
+    : "";
+  const pageNumberAtTop = isTopPageNumber(pageNumber.position);
 
   return {
     enabled: pagedMode,
@@ -238,7 +250,7 @@ function buildPaginationOptions({
           canResizeStrips,
         )
       : "",
-    headerRight: "",
+    headerRight: pageNumberAtTop ? pageNumberHtml : "",
     footerLeft: showFooterStrip
       ? makeStripHtml(
           "footer",
@@ -249,7 +261,7 @@ function buildPaginationOptions({
           canResizeStrips,
         )
       : "",
-    footerRight: pageSetup?.showPageNumbers ? '<span class="flow-page-number-label">עמוד {page}</span>' : "",
+    footerRight: pageNumberAtTop ? "" : pageNumberHtml,
     customHeader: {},
     customFooter: {},
   };
@@ -276,6 +288,7 @@ export default function FlowEditor({
   } | null>(null);
   const pagedMode = Boolean(pageSetup && pageSetup.size !== "none");
   const stripSettings = getStripSettings(templateDesignSettings, designSettings);
+  const pageNumberSettings = normalizePageNumberSettings(pageSetup?.pageNumber);
   const showHeaderStrip = pagedMode && stripSettings.showHeader && Boolean(stripSettings.headerUrl);
   const showFooterStrip = pagedMode && stripSettings.showFooter && Boolean(stripSettings.footerUrl);
   const canResizeStrips = Boolean(onDesignSettingsChange);
@@ -301,6 +314,13 @@ export default function FlowEditor({
       pageSetup?.marginMm?.bottom,
       pageSetup?.marginMm?.left,
       pageSetup?.showPageNumbers,
+      pageSetup?.pageNumber?.position,
+      pageSetup?.pageNumber?.fontFamily,
+      pageSetup?.pageNumber?.fontSizePx,
+      pageSetup?.pageNumber?.color,
+      pageSetup?.pageNumber?.backgroundColor,
+      pageSetup?.pageNumber?.shape,
+      pageSetup?.pageNumber?.format,
       pagedMode,
       stripSettings.headerUrl,
       stripSettings.footerUrl,
@@ -916,19 +936,26 @@ export default function FlowEditor({
           pointer-events: none;
         }
         .flow-page-number-label {
+          position: absolute;
+          top: 50%;
+          ${pageNumberHorizontalCss(pageNumberSettings.position)}
+          transform: ${pageNumberSettings.position.endsWith("-center") ? "translate(-50%, -50%)" : "translateY(-50%)"};
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          min-width: 38px;
-          height: 20px;
-          padding: 0 8px;
-          border: 1px solid rgba(22, 44, 88, 0.16);
-          border-radius: 999px;
-          background: rgba(255, 255, 255, 0.84);
-          color: #162c58;
-          font-size: 11px;
+          ${pageNumberShapeCss(pageNumberSettings)}
+          color: ${pageNumberSettings.color};
+          font-family: ${pageNumberSettings.fontFamily};
+          font-size: ${pageNumberSettings.fontSizePx}px;
           line-height: 1;
           white-space: nowrap;
+          z-index: 3;
+          pointer-events: none;
+        }
+        .flow-editor-content.rm-with-pagination .rm-page-header-content,
+        .flow-editor-content.rm-with-pagination .rm-page-footer-content {
+          position: relative;
+          width: 100%;
         }
         .flow-editor-content.rm-with-pagination .rm-pagination-gap {
           border: 0 !important;

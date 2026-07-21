@@ -40,6 +40,14 @@ import { usePagedGuides } from "./editor/usePagedGuides";
 import StripDesignerDialog, { type FlowStripDesignState, type StripPosition } from "./StripDesignerDialog";
 import type { FlowPageSetup } from "./types";
 import { FLOW_STRIP_LIMITS } from "./stripSettings";
+import {
+  DEFAULT_PAGE_NUMBER_SETTINGS,
+  PAGE_NUMBER_FONTS,
+  PAGE_NUMBER_FORMATS,
+  PAGE_NUMBER_POSITIONS,
+  PAGE_NUMBER_SHAPES,
+  normalizePageNumberSettings,
+} from "./pageNumbers";
 
 interface Props {
   template: QuoteTemplate;
@@ -95,6 +103,7 @@ const DEFAULT_PAGE_SETUP: FlowPageSetup = {
   customSizeMm: { width: 210, height: 297 },
   marginMm: { top: 32, right: 18, bottom: 28, left: 18 },
   showPageNumbers: true,
+  pageNumber: DEFAULT_PAGE_NUMBER_SETTINGS,
 };
 
 function boundedNumber(value: unknown, fallback: number, min = 0, max = Number.POSITIVE_INFINITY) {
@@ -178,6 +187,7 @@ function normalizeA4PageSetup(value?: Partial<FlowPageSetup> | null): FlowPageSe
       left: boundedNumber(margin.left, 18, 8, 35),
     },
     showPageNumbers: value?.showPageNumbers !== false,
+    pageNumber: normalizePageNumberSettings(value?.pageNumber),
   };
 }
 
@@ -329,6 +339,7 @@ export default function FlowWorkspaceTab({
         ...patch,
         marginMm: { ...prev.marginMm, ...(patch.marginMm || {}) },
         customSizeMm: { ...prev.customSizeMm, ...(patch.customSizeMm || {}) },
+        pageNumber: { ...prev.pageNumber, ...(patch.pageNumber || {}) },
       });
       try {
         localStorage.setItem(pageKey(template.id), JSON.stringify(next));
@@ -1074,23 +1085,134 @@ export default function FlowWorkspaceTab({
     </div>
   );
 
-  const renderPageBlock = () => (
-    <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-2 py-1">
-      <Label className="whitespace-nowrap text-xs font-medium">גודל דף</Label>
-      <Badge variant="secondary" className="h-7 px-2 text-xs">A4 · 210×297 מ״מ</Badge>
-      <select
-        className="h-7 rounded border bg-background px-2 text-xs"
-        value={pageSetup.orientation || "portrait"}
-        onChange={(e) =>
-          updatePageSetup({ orientation: e.target.value as FlowPageSetup["orientation"] })
-        }
-        title="כיוון דף A4"
-      >
-        <option value="portrait">לאורך</option>
-        <option value="landscape">לרוחב</option>
-      </select>
-    </div>
-  );
+  const renderPageBlock = () => {
+    const pageNumber = normalizePageNumberSettings(pageSetup.pageNumber);
+    const updatePageNumber = (patch: Partial<typeof pageNumber>) =>
+      updatePageSetup({ pageNumber: { ...pageNumber, ...patch } });
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-2 py-1">
+          <Label className="whitespace-nowrap text-xs font-medium">גודל דף</Label>
+          <Badge variant="secondary" className="h-7 px-2 text-xs">A4 · 210×297 מ״מ</Badge>
+          <select
+            className="h-7 rounded border bg-background px-2 text-xs"
+            value={pageSetup.orientation || "portrait"}
+            onChange={(e) =>
+              updatePageSetup({ orientation: e.target.value as FlowPageSetup["orientation"] })
+            }
+            title="כיוון דף A4"
+          >
+            <option value="portrait">לאורך</option>
+            <option value="landscape">לרוחב</option>
+          </select>
+        </div>
+
+        <div className="space-y-3 rounded-md border border-border bg-muted/20 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <Label className="text-xs font-semibold">מספרי עמודים</Label>
+              <p className="text-[10px] text-muted-foreground">אותו עיצוב בתצוגה, בהדפסה וב־PDF</p>
+            </div>
+            <Switch
+              aria-label="הצג מספרי עמודים"
+              checked={pageSetup.showPageNumbers}
+              onCheckedChange={(checked) => updatePageSetup({ showPageNumbers: checked })}
+            />
+          </div>
+
+          <div className={pageSetup.showPageNumbers ? "grid grid-cols-2 gap-2" : "grid grid-cols-2 gap-2 opacity-50 pointer-events-none"}>
+            <label className="space-y-1 text-[10px] text-muted-foreground">
+              מיקום
+              <select
+                aria-label="מיקום מספר העמוד"
+                className="h-8 w-full rounded border bg-background px-2 text-xs text-foreground"
+                value={pageNumber.position}
+                onChange={(event) => updatePageNumber({ position: event.target.value as typeof pageNumber.position })}
+              >
+                {PAGE_NUMBER_POSITIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label className="space-y-1 text-[10px] text-muted-foreground">
+              תצוגת המספר
+              <select
+                aria-label="צורת כתיבת מספר העמוד"
+                className="h-8 w-full rounded border bg-background px-2 text-xs text-foreground"
+                value={pageNumber.format}
+                onChange={(event) => updatePageNumber({ format: event.target.value as typeof pageNumber.format })}
+              >
+                {PAGE_NUMBER_FORMATS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label className="space-y-1 text-[10px] text-muted-foreground">
+              גופן
+              <select
+                aria-label="גופן מספר העמוד"
+                className="h-8 w-full rounded border bg-background px-2 text-xs text-foreground"
+                value={pageNumber.fontFamily}
+                onChange={(event) => updatePageNumber({ fontFamily: event.target.value })}
+              >
+                {PAGE_NUMBER_FONTS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label className="space-y-1 text-[10px] text-muted-foreground">
+              מסגרת / צורה
+              <select
+                aria-label="צורת מספר העמוד"
+                className="h-8 w-full rounded border bg-background px-2 text-xs text-foreground"
+                value={pageNumber.shape}
+                onChange={(event) => updatePageNumber({ shape: event.target.value as typeof pageNumber.shape })}
+              >
+                {PAGE_NUMBER_SHAPES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label className="space-y-1 text-[10px] text-muted-foreground">
+              גודל
+              <div className="flex items-center gap-1">
+                <input
+                  aria-label="גודל מספר העמוד"
+                  className="h-8 min-w-0 flex-1 rounded border bg-background px-2 text-center text-xs text-foreground"
+                  type="number"
+                  min={8}
+                  max={32}
+                  value={pageNumber.fontSizePx}
+                  onChange={(event) => updatePageNumber({ fontSizePx: boundedNumber(event.target.value, 10, 8, 32) })}
+                />
+                <span>px</span>
+              </div>
+            </label>
+            <div className="space-y-1 text-[10px] text-muted-foreground">
+              צבעים
+              <div className="flex h-8 items-center gap-2">
+                <label className="flex items-center gap-1" title="צבע הטקסט">
+                  <input
+                    aria-label="צבע מספר העמוד"
+                    className="h-8 w-10 cursor-pointer rounded border bg-background p-0.5"
+                    type="color"
+                    value={pageNumber.color}
+                    onChange={(event) => updatePageNumber({ color: event.target.value })}
+                  />
+                  טקסט
+                </label>
+                {pageNumber.shape !== "plain" && (
+                  <label className="flex items-center gap-1" title="צבע הרקע">
+                    <input
+                      aria-label="צבע רקע מספר העמוד"
+                      className="h-8 w-10 cursor-pointer rounded border bg-background p-0.5"
+                      type="color"
+                      value={pageNumber.backgroundColor}
+                      onChange={(event) => updatePageNumber({ backgroundColor: event.target.value })}
+                    />
+                    רקע
+                  </label>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderSpacingBlock = () => {
     const gapMax = FLOW_STRIP_LIMITS.contentGapPx.max;
@@ -1465,8 +1587,8 @@ export default function FlowWorkspaceTab({
             דף
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" sideOffset={6} dir="rtl" className="w-[360px] p-3">
-          <div className="mb-2 text-xs font-medium text-muted-foreground">גודל וכיוון דף</div>
+        <PopoverContent align="end" sideOffset={6} dir="rtl" className="w-[440px] max-w-[95vw] max-h-[75vh] overflow-auto p-3">
+          <div className="mb-2 text-xs font-medium text-muted-foreground">הגדרות דף ומספור</div>
           {renderPageBlock()}
         </PopoverContent>
       </Popover>
