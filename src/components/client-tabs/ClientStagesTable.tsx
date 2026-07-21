@@ -375,6 +375,7 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                                   paymentStepId={task.payment_step_id}
                                   taskId={task.id}
                                   stageCompleted={task.stageCompleted}
+                                  taskCompleted={task.completed}
                                 />
                               </span>
                               {isTimerTabTask(task) && task.auto_timer_days && !task.started_at && (

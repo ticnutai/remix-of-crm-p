@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Banknote, BellPlus, CheckCircle2, FileSignature, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,7 @@ interface TaskPaymentBadgeProps {
   paymentStepId?: string | null;
   taskId?: string;
   stageCompleted?: boolean;
+  taskCompleted?: boolean;
 }
 
 interface LinkedPaymentStage {
@@ -58,11 +59,14 @@ export function TaskPaymentBadge({
   paymentStepId,
   taskId,
   stageCompleted = false,
+  taskCompleted = false,
 }: TaskPaymentBadgeProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [paymentStage, setPaymentStage] = useState<LinkedPaymentStage | null>(null);
+  const [paymentStageResolved, setPaymentStageResolved] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const automaticPaymentSyncAttempted = useRef(false);
   const map = useClientPaymentLinks(clientId);
   const legacyInfo = map.get(paymentTaskKey(stageName, taskTitle));
   const quoteInfo = legacyInfo || map.get(LATEST_CLIENT_QUOTE_KEY);
@@ -81,6 +85,7 @@ export function TaskPaymentBadge({
 
   const loadPaymentStage = useCallback(async () => {
     if (!clientId || !taskId) return;
+    setPaymentStageResolved(false);
     const directStageId = paymentStepId?.startsWith("client_payment_stage:")
       ? paymentStepId.slice("client_payment_stage:".length)
       : null;
@@ -90,6 +95,7 @@ export function TaskPaymentBadge({
       .eq("client_id", clientId);
     if (error) {
       console.error("Error loading linked payment stage:", error);
+      setPaymentStageResolved(true);
       return;
     }
     const normalizedTitle = String(taskTitle || "").trim().toLowerCase();
@@ -108,17 +114,15 @@ export function TaskPaymentBadge({
           String(row.stage_name || "").trim().toLowerCase() === normalizedTitle,
       );
     setPaymentStage(linked || null);
+    setPaymentStageResolved(true);
   }, [clientId, paymentQuoteId, paymentStepId, taskId, taskTitle]);
 
   useEffect(() => {
     void loadPaymentStage();
   }, [loadPaymentStage]);
 
-  const togglePaid = async (event: React.MouseEvent<HTMLButtonElement>) => {
-    stopPropagation(event);
+  const persistPaidState = useCallback(async (nextPaid: boolean, showToast: boolean) => {
     if (!clientId || !taskId || paymentLoading) return;
-
-    const nextPaid = !paymentStage?.is_paid;
     const vatRate = Number(paymentStage?.vat_rate || quoteInfo?.vatRate || 18);
     const displayedGrossAmount = Number(paymentAmount) || 0;
     const grossAmount = Number(paymentStage?.amount_with_vat)
@@ -160,7 +164,6 @@ export function TaskPaymentBadge({
             stage_name: taskTitle || "תשלום",
             stage_number: Number(lastStage?.stage_number || 0) + 1,
             amount: Math.round(netAmount * 100) / 100,
-            amount_with_vat: Math.round(displayedGrossAmount * 100) / 100,
             percentage: Number(paymentPercentage) || null,
             vat_rate: vatRate,
             quote_id: paymentQuoteId || null,
@@ -175,10 +178,12 @@ export function TaskPaymentBadge({
       if (error) throw error;
       setPaymentStage(data);
       notifyClientPaymentStageUpdated(clientId);
-      toast({
-        title: nextPaid ? "התשלום סומן כשולם" : "סימון התשלום בוטל",
-        description: taskTitle || "שלב התשלום עודכן",
-      });
+      if (showToast) {
+        toast({
+          title: nextPaid ? "התשלום סומן כשולם" : "סימון התשלום בוטל",
+          description: taskTitle || "שלב התשלום עודכן",
+        });
+      }
     } catch (error: any) {
       toast({
         title: "לא ניתן לעדכן את התשלום",
@@ -188,20 +193,69 @@ export function TaskPaymentBadge({
     } finally {
       setPaymentLoading(false);
     }
+  }, [
+    clientId,
+    paymentAmount,
+    paymentLoading,
+    paymentPercentage,
+    paymentQuoteId,
+    paymentStage,
+    paymentStepId,
+    quoteInfo?.vatRate,
+    taskId,
+    taskTitle,
+    toast,
+  ]);
+
+  useEffect(() => {
+    if (!taskCompleted) automaticPaymentSyncAttempted.current = false;
+  }, [taskCompleted]);
+
+  useEffect(() => {
+    if (
+      taskCompleted &&
+      paymentStageResolved &&
+      !paymentStage?.is_paid &&
+      !paymentLoading &&
+      !automaticPaymentSyncAttempted.current
+    ) {
+      automaticPaymentSyncAttempted.current = true;
+      void persistPaidState(true, false);
+    }
+  }, [
+    paymentLoading,
+    paymentStage?.is_paid,
+    paymentStageResolved,
+    persistPaidState,
+    taskCompleted,
+  ]);
+
+  const effectivePaid = Boolean(paymentStage?.is_paid || taskCompleted);
+
+  const togglePaid = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    stopPropagation(event);
+    if (taskCompleted && effectivePaid) {
+      toast({
+        title: "התשלום מסומן דרך המשימה",
+        description: "כדי לבטל את התשלום, בטל תחילה את סימון ה־✓ של המשימה.",
+      });
+      return;
+    }
+    await persistPaidState(!effectivePaid, true);
   };
 
   if (!info) return null;
 
   const amountBeforeVat = info.amount / (1 + info.vatRate / 100);
   const isSigned = ["signed", "converted"].includes(info.quoteStatus);
-  const isUnpaidAfterStageCompletion = stageCompleted && !paymentStage?.is_paid;
+  const isUnpaidAfterStageCompletion = stageCompleted && !effectivePaid;
 
   return (
     <span
       title={`${isUnpaidAfterStageCompletion ? "השלב הושלם אך התשלום טרם שולם | " : ""}כולל מע״מ: ${currencyFormatter.format(info.amount)} | לפני מע״מ: ${currencyFormatter.format(amountBeforeVat)} | ${info.quoteTitle}`}
       className={cn(
         "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-all",
-        paymentStage?.is_paid
+        effectivePaid
           ? "border-blue-400 bg-blue-600 text-white shadow-[0_0_16px_rgba(37,99,235,0.75)] ring-1 ring-blue-300 dark:border-blue-400 dark:bg-blue-600 dark:text-white"
           : isUnpaidAfterStageCompletion
             ? "border-red-500 bg-red-600 text-white shadow-[0_0_12px_rgba(220,38,38,0.55)] ring-1 ring-red-300 dark:border-red-400 dark:bg-red-700 dark:text-white"
@@ -212,13 +266,13 @@ export function TaskPaymentBadge({
       {taskId && (
         <button
           type="button"
-          title={paymentStage?.is_paid ? "שולם — לחץ לביטול" : "סמן תשלום כשולם"}
-          aria-label={paymentStage?.is_paid ? `בטל סימון ${taskTitle || "תשלום"} כשולם` : `סמן ${taskTitle || "תשלום"} כשולם`}
+          title={effectivePaid ? "שולם" : "סמן תשלום כשולם"}
+          aria-label={effectivePaid ? `${taskTitle || "תשלום"} שולם` : `סמן ${taskTitle || "תשלום"} כשולם`}
           onClick={togglePaid}
           disabled={paymentLoading}
           className={cn(
             "inline-flex h-6 w-6 items-center justify-center rounded-full transition-all",
-            paymentStage?.is_paid
+            effectivePaid
               ? "bg-white/20 text-white hover:bg-white/30"
               : isUnpaidAfterStageCompletion
                 ? "bg-white/20 text-white hover:bg-white/30"
@@ -228,7 +282,7 @@ export function TaskPaymentBadge({
         >
           {paymentLoading ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : paymentStage?.is_paid ? (
+          ) : effectivePaid ? (
             <CheckCircle2 className="h-3.5 w-3.5" />
           ) : (
             <Banknote className="h-3.5 w-3.5" />

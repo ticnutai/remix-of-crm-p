@@ -4789,6 +4789,10 @@ export function HtmlTemplateEditor({
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("flow-v2");
   const exactA4PrintRef = useRef<(() => Promise<void>) | null>(null);
+  const exactA4PdfBlobRef = useRef<(() => Promise<Blob>) | null>(null);
+  const exactA4PdfWaitersRef = useRef<
+    Array<(handler: () => Promise<Blob>) => void>
+  >([]);
   const pendingExactA4PrintRef = useRef(false);
   const registerExactA4Print = useCallback((handler: (() => Promise<void>) | null) => {
     exactA4PrintRef.current = handler;
@@ -4796,6 +4800,39 @@ export function HtmlTemplateEditor({
       pendingExactA4PrintRef.current = false;
       window.setTimeout(() => void handler(), 0);
     }
+  }, []);
+  const registerExactA4PdfBlob = useCallback(
+    (handler: (() => Promise<Blob>) | null) => {
+      exactA4PdfBlobRef.current = handler;
+      if (!handler) return;
+      const waiters = exactA4PdfWaitersRef.current.splice(0);
+      waiters.forEach((resolve) => resolve(handler));
+    },
+    [],
+  );
+  const generateExactA4PdfBlob = useCallback(async (): Promise<Blob> => {
+    if (exactA4PdfBlobRef.current) return exactA4PdfBlobRef.current();
+
+    setActiveTab("flow-v2");
+    const handler = await new Promise<() => Promise<Blob>>((resolve, reject) => {
+      let settled = false;
+      const waiter = (readyHandler: () => Promise<Blob>) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeoutId);
+        resolve(readyHandler);
+      };
+      exactA4PdfWaitersRef.current.push(waiter);
+      const timeoutId = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        exactA4PdfWaitersRef.current = exactA4PdfWaitersRef.current.filter(
+          (candidate) => candidate !== waiter,
+        );
+        reject(new Error("תצוגת ה־A4 המדויקת לא הסתיימה להיטען"));
+      }, 20_000);
+    });
+    return handler();
   }, []);
   const TAB_DISPLAY_MODE_LS_KEY = "qt-editor-tab-display-mode";
   type TabDisplayMode = "full" | "iconsOnly" | "stacked" | "twoRows";
@@ -8365,36 +8402,7 @@ ${tbAt('footer')}
   };
 
   // === Enhanced Export: WhatsApp file ===
-  const handleShareWhatsAppFile = async () => {
-    try {
-      const html = generateHtmlContent();
-      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-      const file = new Blob([blob], { type: "text/html" }) as any;
-      if (navigator.share && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: editedTemplate.name,
-          text: `הצעת מחיר: ${editedTemplate.name}`,
-        });
-        toast({ title: "נשלח", description: "הקובץ שותף בהצלחה" });
-      } else {
-        // Fallback: download + open WhatsApp
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = file.name;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast({ title: "הקובץ הורד", description: "שתף את הקובץ דרך וואטסאפ" });
-      }
-    } catch (err) {
-      toast({
-        title: "שגיאה",
-        description: "לא ניתן לשתף",
-        variant: "destructive",
-      });
-    }
-  };
+  const handleShareWhatsAppFile = () => setShowWhatsAppDialog(true);
 
   // === Export Excel summary ===
   const handleExportExcel = () => {
@@ -13018,6 +13026,27 @@ ${tbAt('footer')}
                     </p>
                   </div>
 
+                  <div className="rounded-xl border border-green-200 bg-gradient-to-l from-green-50 to-emerald-50 p-5 shadow-sm">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="text-right">
+                        <h3 className="flex items-center gap-2 text-lg font-bold text-green-800">
+                          <MessageCircle className="h-5 w-5" />
+                          שליחת הצעת המחיר ב־WhatsApp
+                        </h3>
+                        <p className="mt-1 text-sm text-green-700/80">
+                          צור PDF אמיתי, שתף דרך Windows או פתח את הצ׳אט של הלקוח עם הודעה מוכנה.
+                        </p>
+                      </div>
+                      <Button
+                        className="bg-[#25D366] text-white hover:bg-[#128C7E]"
+                        onClick={() => setShowWhatsAppDialog(true)}
+                      >
+                        <FileDown className="ml-2 h-4 w-4" />
+                        צור PDF ושלח
+                      </Button>
+                    </div>
+                  </div>
+
                   {/* Status Tracker & Calculator Row */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <QuoteStatusTracker
@@ -14968,6 +14997,7 @@ ${tbAt('footer')}
               hideInternalSubTabs
               structuredMode
               onPrintReady={registerExactA4Print}
+              onPdfBlobReady={registerExactA4PdfBlob}
             />
           </TabsContent>
 
@@ -15514,6 +15544,7 @@ ${tbAt('footer')}
           }
           totalPrice={editedTemplate.base_price || 35000}
           generateExportHtml={generateExportHtml}
+          generateExactPdfBlob={generateExactA4PdfBlob}
           generateWordHtml={generateWordHtml}
           generateWordBlob={generateWordBlob}
         />
@@ -15567,6 +15598,7 @@ function WhatsAppDialog({
   clientPhone,
   totalPrice,
   generateExportHtml,
+  generateExactPdfBlob,
   generateWordHtml,
   generateWordBlob,
 }: {
@@ -15577,6 +15609,7 @@ function WhatsAppDialog({
   clientPhone: string;
   totalPrice: number;
   generateExportHtml?: () => Promise<string>;
+  generateExactPdfBlob?: () => Promise<Blob>;
   generateWordHtml?: () => Promise<string>;
   generateWordBlob?: () => Promise<Blob>;
 }) {
@@ -15587,7 +15620,7 @@ function WhatsAppDialog({
   const [customMessage, setCustomMessage] = useState("");
   const [attachFormat, setAttachFormat] = useState<
     "none" | "pdf" | "word" | "html"
-  >("none");
+  >("pdf");
   const [sending, setSending] = useState(false);
   const { toast } = useToast();
 
@@ -15643,21 +15676,11 @@ function WhatsAppDialog({
       });
     }
 
-    if (attachFormat === "pdf" && generateExportHtml) {
-      // No client-side PDF lib here — open print window for "Save as PDF"
-      const html = await generateExportHtml();
-      const w = window.open("", "_blank");
-      if (w) {
-        w.document.write(html);
-        w.document.close();
-        setTimeout(() => w.print(), 500);
-      }
-      toast({
-        title: "שמור את ה-PDF",
-        description:
-          'בחלון ההדפסה בחר "שמירה כ-PDF", ואז גרור את הקובץ לצ\'אט בוואטסאפ',
+    if (attachFormat === "pdf" && generateExactPdfBlob) {
+      const blob = await generateExactPdfBlob();
+      return new window.File([blob], `${safeName}.pdf`, {
+        type: "application/pdf",
       });
-      return null;
     }
     return null;
   };
@@ -15683,9 +15706,16 @@ function WhatsAppDialog({
       return;
     }
     setSending(true);
+    let whatsappWindow: Window | null = null;
     try {
       const text = messageTemplates[messageType];
       const formattedPhone = formatPhoneForWhatsApp(phone);
+      const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(text)}`;
+
+      // Open the destination while the click still has browser user activation.
+      // PDF generation is asynchronous; opening the window afterwards is often
+      // blocked as a popup, which made attachment sends appear to do nothing.
+      whatsappWindow = window.open("about:blank", "_blank");
       const file = await buildFile();
 
       // Try native share with file (works mainly on mobile)
@@ -15706,11 +15736,13 @@ function WhatsAppDialog({
             title: "שותף בהצלחה",
             description: "בחר את וואטסאפ ברשימת השיתוף",
           });
+          whatsappWindow?.close();
           onOpenChange(false);
           return;
         } catch (err: any) {
           // user cancelled or share failed — fall back below
           if (err?.name === "AbortError") {
+            whatsappWindow?.close();
             return;
           }
         }
@@ -15720,18 +15752,22 @@ function WhatsAppDialog({
       if (file) {
         downloadFile(file);
         toast({
-          title: "הקובץ הורד",
-          description: "גרור אותו לצ'אט בוואטסאפ שנפתח",
+          title: `${file.name} הורד`,
+          description: "WhatsApp נפתח עם ההודעה; צרף את קובץ ה־PDF שהורד.",
         });
       }
-      const message = encodeURIComponent(text);
-      window.open(`https://wa.me/${formattedPhone}?text=${message}`, "_blank");
+      if (whatsappWindow && !whatsappWindow.closed) {
+        whatsappWindow.location.href = whatsappUrl;
+      } else {
+        window.open(whatsappUrl, "_blank");
+      }
       onOpenChange(false);
       if (!file && attachFormat === "none") {
         toast({ title: "וואטסאפ נפתח", description: "ההודעה מוכנה לשליחה" });
       }
     } catch (err) {
       console.error("WhatsApp send error:", err);
+      whatsappWindow?.close();
       toast({
         title: "שגיאה",
         description: "לא ניתן לשלוח כעת",
@@ -15812,8 +15848,8 @@ function WhatsAppDialog({
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              במובייל הקובץ יצורף ישירות. בדסקטופ הוא יורד אוטומטית ויש לגרור
-              אותו לצ'אט (מגבלה של וואטסאפ).
+              אם Windows תומך בשיתוף קבצים, ייפתח חלון השיתוף ותוכל לבחור WhatsApp.
+              אחרת ה־PDF יורד אוטומטית והצ׳אט נפתח עם הודעה מוכנה.
             </p>
           </div>
           {messageType === "custom" ? (

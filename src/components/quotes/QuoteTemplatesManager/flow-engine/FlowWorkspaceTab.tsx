@@ -56,6 +56,8 @@ interface Props {
   structuredMode?: boolean;
   /** Registers the exact A4 print action so the parent export button uses this same renderer. */
   onPrintReady?: (handler: (() => Promise<void>) | null) => void;
+  /** Registers exact A4 PDF generation for email/WhatsApp/tool exports. */
+  onPdfBlobReady?: (handler: (() => Promise<Blob>) | null) => void;
 }
 
 const storageKey = (id?: string) => `flow-edit:${id || "untitled"}:v2`;
@@ -204,6 +206,7 @@ export default function FlowWorkspaceTab({
   hideInternalSubTabs,
   structuredMode = false,
   onPrintReady,
+  onPdfBlobReady,
 }: Props) {
   const designSettingsRef = useRef(designSettings);
   designSettingsRef.current = designSettings;
@@ -1514,6 +1517,7 @@ export default function FlowWorkspaceTab({
               designSettings={designSettings}
               pageSetup={pageSetup}
               onPrintReady={onPrintReady}
+              onPdfBlobReady={onPdfBlobReady}
             />
           </div>
         </div>

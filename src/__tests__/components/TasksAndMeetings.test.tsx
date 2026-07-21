@@ -3,7 +3,7 @@
  * Tests buttons: new task, new meeting, tabs, view toggle, per-task actions
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 
@@ -292,8 +292,14 @@ import TasksAndMeetings from "@/pages/TasksAndMeetings";
 describe("TasksAndMeetings – Button Tests", () => {
   const user = userEvent.setup();
 
+  const openTasksTab = async () => {
+    await user.click(screen.getByRole("tab", { name: /משימות/ }));
+    await waitFor(() => expect(screen.getByTestId("tasks-list-view")).toBeDefined());
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     capturedTaskProps = {};
     capturedMeetingProps = {};
   });
@@ -354,6 +360,7 @@ describe("TasksAndMeetings – Button Tests", () => {
   // ── View Toggle ──
   it("View toggle kanban button works", async () => {
     render(<TasksAndMeetings />);
+    await openTasksTab();
     await user.click(screen.getByTestId("view-kanban"));
     // After clicking, kanban view should render
     await waitFor(() => {
@@ -364,6 +371,7 @@ describe("TasksAndMeetings – Button Tests", () => {
   // ── Edit Task ──
   it("Edit task button opens the task dialog", async () => {
     render(<TasksAndMeetings />);
+    await openTasksTab();
     await user.click(screen.getByTestId("edit-task-t1"));
     await waitFor(() => {
       expect(screen.getByTestId("task-dialog")).toBeDefined();
@@ -372,25 +380,27 @@ describe("TasksAndMeetings – Button Tests", () => {
 
   // ── Delete Task ──
   it("Delete task (with confirm) calls deleteTask", async () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<TasksAndMeetings />);
+    await openTasksTab();
     await user.click(screen.getByTestId("delete-task-t1"));
-    expect(confirmSpy).toHaveBeenCalled();
-    expect(mockDeleteTask).toHaveBeenCalledWith("t1");
-    confirmSpy.mockRestore();
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "מחק" }));
+    await waitFor(() => expect(mockDeleteTask).toHaveBeenCalledWith("t1"));
   });
 
   it("Delete task cancelled does NOT call deleteTask", async () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
     render(<TasksAndMeetings />);
+    await openTasksTab();
     await user.click(screen.getByTestId("delete-task-t1"));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "ביטול" }));
     expect(mockDeleteTask).not.toHaveBeenCalled();
-    confirmSpy.mockRestore();
   });
 
   // ── Toggle Complete ──
   it("Toggle complete calls updateTask with new status", async () => {
     render(<TasksAndMeetings />);
+    await openTasksTab();
     await user.click(screen.getByTestId("toggle-task-t1"));
     expect(mockUpdateTask).toHaveBeenCalledWith("t1", { status: "completed" });
   });
@@ -409,13 +419,13 @@ describe("TasksAndMeetings – Button Tests", () => {
 
   // ── Delete Meeting ──
   it("Delete meeting (with confirm) calls deleteMeeting", async () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<TasksAndMeetings />);
     await user.click(screen.getByRole("tab", { name: /פגישות/ }));
     await waitFor(() => screen.getByTestId("meetings-list-view"));
     await user.click(screen.getByTestId("delete-meeting-m1"));
-    expect(mockDeleteMeeting).toHaveBeenCalledWith("m1");
-    confirmSpy.mockRestore();
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "מחק" }));
+    await waitFor(() => expect(mockDeleteMeeting).toHaveBeenCalledWith("m1"));
   });
 
   // ── Close Dialogs ──

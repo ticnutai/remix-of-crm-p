@@ -28,6 +28,7 @@ interface FlowPreviewTabProps {
   /** הסתר את שורת הכלים העליונה — לשימוש בתצוגת השוואה. */
   hideToolbar?: boolean;
   onPrintReady?: (handler: (() => Promise<void>) | null) => void;
+  onPdfBlobReady?: (handler: (() => Promise<Blob>) | null) => void;
 }
 
 function splitPagedDocument(html: string) {
@@ -104,6 +105,7 @@ export default function FlowPreviewTab({
   pageSetup,
   hideToolbar,
   onPrintReady,
+  onPdfBlobReady,
 }: FlowPreviewTabProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [rendering, setRendering] = useState(false);
@@ -193,22 +195,23 @@ export default function FlowPreviewTab({
     };
   }, [html, renderToken]);
 
-  const handlePrint = useCallback(async () => {
+  const captureExactPageImages = useCallback(async () => {
     const target = containerRef.current;
-    const pages = target
+    let pages = target
       ? Array.from(target.querySelectorAll<HTMLElement>(".pagedjs_page"))
       : [];
-    if (!target || pages.length === 0) {
-      window.alert("התצוגה עוד לא הסתיימה לטעון. נסה שוב בעוד רגע.");
-      return;
+    for (let attempt = 0; target && pages.length === 0 && attempt < 100; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 100));
+      pages = Array.from(target.querySelectorAll<HTMLElement>(".pagedjs_page"));
     }
-    setPrinting(true);
-    try {
-      const html2canvasModule = await import("html2canvas");
-      const html2canvas = html2canvasModule.default;
-      await (document.fonts?.ready || Promise.resolve());
-      const pageImages: string[] = [];
-      for (const [pageIndex, page] of pages.entries()) {
+    if (!target || pages.length === 0) {
+      throw new Error("התצוגה עוד לא הסתיימה לטעון. נסה שוב בעוד רגע.");
+    }
+    const html2canvasModule = await import("html2canvas");
+    const html2canvas = html2canvasModule.default;
+    await (document.fonts?.ready || Promise.resolve());
+    const pageImages: string[] = [];
+    for (const [pageIndex, page] of pages.entries()) {
         // Capture the physical sheet rather than the outer Paged.js wrapper.
         // Left/even pages can be offset inside that wrapper; capturing it caused
         // their running header to be cropped from the exported PDF.
@@ -243,7 +246,49 @@ export default function FlowPreviewTab({
           if (previousId) captureTarget.id = previousId;
           else captureTarget.removeAttribute("id");
         }
-      }
+    }
+    return pageImages;
+  }, []);
+
+  const createExactPdfBlob = useCallback(async () => {
+    setPrinting(true);
+    try {
+      const pageImages = await captureExactPageImages();
+      const { jsPDF } = await import("jspdf");
+      const printMetrics = resolveFlowPageMetrics(flowDoc.page);
+      const orientation =
+        printMetrics.widthMm > printMetrics.heightMm ? "landscape" : "portrait";
+      const pdf = new jsPDF({
+        unit: "mm",
+        format: [printMetrics.widthMm, printMetrics.heightMm],
+        orientation,
+        compress: true,
+      });
+      pageImages.forEach((image, index) => {
+        if (index > 0) {
+          pdf.addPage([printMetrics.widthMm, printMetrics.heightMm], orientation);
+        }
+        pdf.addImage(
+          image,
+          "PNG",
+          0,
+          0,
+          printMetrics.widthMm,
+          printMetrics.heightMm,
+          undefined,
+          "FAST",
+        );
+      });
+      return pdf.output("blob");
+    } finally {
+      setPrinting(false);
+    }
+  }, [captureExactPageImages, flowDoc.page]);
+
+  const handlePrint = useCallback(async () => {
+    setPrinting(true);
+    try {
+      const pageImages = await captureExactPageImages();
 
       const printMetrics = resolveFlowPageMetrics(flowDoc.page);
       const printPageSize = `${printMetrics.widthMm}mm ${printMetrics.heightMm}mm`;
@@ -306,12 +351,17 @@ ${pageImages.map((src, index) => `<section class="print-page"><img src="${src}" 
     } finally {
       setPrinting(false);
     }
-  }, [flowDoc.page, flowDoc.title]);
+  }, [captureExactPageImages, flowDoc.page, flowDoc.title]);
 
   useEffect(() => {
     onPrintReady?.(handlePrint);
     return () => onPrintReady?.(null);
   }, [handlePrint, onPrintReady]);
+
+  useEffect(() => {
+    onPdfBlobReady?.(createExactPdfBlob);
+    return () => onPdfBlobReady?.(null);
+  }, [createExactPdfBlob, onPdfBlobReady]);
 
   return (
     <div className={`flex flex-col bg-muted/30 ${hideToolbar ? "" : "h-full"}`}>

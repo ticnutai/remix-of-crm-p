@@ -194,17 +194,9 @@ describe("Clients – Button Tests", () => {
 
   it('"הוסף לקוח" button is clickable', async () => {
     render(<Clients />);
-    await waitFor(() => {
-      const btn = screen.queryByText("הוסף לקוח");
-      expect(btn).not.toBeNull();
-    });
-    const btns = screen.getAllByText("הוסף לקוח");
-    const mainBtn = btns.find(
-      (b) => b.tagName === "BUTTON" || b.closest("button"),
-    );
-    if (mainBtn) {
-      await user.click(mainBtn.closest("button") || mainBtn);
-    }
+    const button = await screen.findByRole("button", { name: "הוסף לקוח חדש" });
+    await user.click(button);
+    expect(await screen.findByText("הוסף לקוח")).toBeDefined();
   });
 
   it('"טבלה" button navigates to /datatable-pro', async () => {
@@ -220,9 +212,10 @@ describe("Clients – Button Tests", () => {
 
   it('"בחירה מרובה" button exists', async () => {
     render(<Clients />);
-    await waitFor(() => screen.getByTestId("app-layout"));
-    const selBtn = screen.queryByText(/בחירה מרובה/);
-    expect(selBtn).not.toBeNull();
+    const button = await screen.findByRole("button", { name: "הפעל בחירה מרובה" });
+    expect(button).toBeDefined();
+    await user.click(button);
+    expect(screen.getByRole("button", { name: "בטל בחירה מרובה" })).toBeDefined();
   });
 
   it('"שלבים" button exists and is clickable', async () => {

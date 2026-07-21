@@ -79,6 +79,98 @@ export async function generatePdfFromHtml(
   }
 }
 
+// Generate a PDF from a complete standalone HTML document while preserving
+// its own <head>, embedded fonts, print styles, RTL layout and page breaks.
+export async function generatePdfFromStandaloneHtml(
+  fullHtml: string,
+  options: PdfOptions = {},
+): Promise<Blob> {
+  const opts = { ...DEFAULT_OPTIONS, ...options };
+  const [{ jsPDF }, { default: html2canvas }] = await Promise.all([
+    import("jspdf"),
+    import("html2canvas"),
+  ]);
+  const parsedDocument = new DOMParser().parseFromString(fullHtml, "text/html");
+  const container = document.createElement("div");
+  const temporaryStyles: HTMLElement[] = [];
+
+  container.setAttribute("aria-hidden", "true");
+  container.style.position = "fixed";
+  container.style.left = "-10000px";
+  container.style.top = "0";
+  container.style.width = opts.orientation === "landscape" ? "1123px" : "794px";
+  container.style.background = "#ffffff";
+
+  // html2canvas must receive an element owned by the active document. Copy the
+  // standalone document's styles temporarily so print fonts and layout remain
+  // identical without rendering an element from a different iframe document.
+  parsedDocument.head
+    .querySelectorAll<HTMLElement>('style, link[rel="stylesheet"]')
+    .forEach((styleNode) => {
+      const clone = document.importNode(styleNode, true) as HTMLElement;
+      clone.dataset.pdfTemporaryStyle = "true";
+      document.head.appendChild(clone);
+      temporaryStyles.push(clone);
+    });
+
+  Array.from(parsedDocument.body.childNodes).forEach((node) => {
+    container.appendChild(document.importNode(node, true));
+  });
+  document.body.appendChild(container);
+
+  try {
+    if (document.fonts?.ready) await document.fonts.ready;
+    await Promise.all(
+      Array.from(container.querySelectorAll("img")).map((image) =>
+        image.complete
+          ? Promise.resolve()
+          : new Promise<void>((resolve) => {
+              image.addEventListener("load", () => resolve(), { once: true });
+              image.addEventListener("error", () => resolve(), { once: true });
+            }),
+      ),
+    );
+
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: "#ffffff",
+      windowWidth: opts.orientation === "landscape" ? 1123 : 794,
+    });
+
+    const pdf = new jsPDF({
+      unit: "mm",
+      format: opts.pageSize,
+      orientation: opts.orientation,
+    });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = opts.margin ?? 0;
+    const contentWidth = pageWidth - margin * 2;
+    const contentHeight = pageHeight - margin * 2;
+    const imageHeight = (canvas.height * contentWidth) / canvas.width;
+    const imageData = canvas.toDataURL("image/jpeg", 0.98);
+
+    let remainingHeight = imageHeight;
+    let positionY = margin;
+    pdf.addImage(imageData, "JPEG", margin, positionY, contentWidth, imageHeight);
+    remainingHeight -= contentHeight;
+
+    while (remainingHeight > 0) {
+      positionY = margin - (imageHeight - remainingHeight);
+      pdf.addPage();
+      pdf.addImage(imageData, "JPEG", margin, positionY, contentWidth, imageHeight);
+      remainingHeight -= contentHeight;
+    }
+
+    return pdf.output("blob");
+  } finally {
+    container.remove();
+    temporaryStyles.forEach((style) => style.remove());
+  }
+}
+
 // הורדת PDF
 export async function downloadPdf(
   htmlContent: string,
