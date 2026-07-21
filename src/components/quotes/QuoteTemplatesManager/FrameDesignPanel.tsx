@@ -549,6 +549,7 @@ export function FrameDesignPanel({ value, onChange, flowMode = false }: FrameDes
             value={v.documentBorder}
             onChange={(b) => set({ documentBorder: b })}
             onApplyToAll={flowMode ? undefined : applyBorderToAll}
+            showInsets
           />
           {!flowMode && <BorderEditor label="מסגרת לכל שלב" value={v.stageBorder} onChange={(b) => set({ stageBorder: b })} />}
           {!flowMode && <BorderEditor label="מסגרת לסיכום מחיר" value={v.summaryBorder} onChange={(b) => set({ summaryBorder: b })} />}
