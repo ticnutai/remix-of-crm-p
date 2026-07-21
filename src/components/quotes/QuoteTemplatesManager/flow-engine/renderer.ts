@@ -92,6 +92,7 @@ function frameDesignCss(frameDesign?: FrameDesignSettings) {
   const borderCss = borderToCss(frame.documentBorder)
     .replace(/padding\s*:[^;]+;/gi, "")
     .trim();
+  const ins = { top: 4, right: 4, bottom: 4, left: 4, ...(frame.documentBorder?.insets || {}) };
   return `
   /* ===== Unified design-tab appearance ===== */
   .pagedjs_pagebox {
@@ -101,7 +102,10 @@ function frameDesignCss(frameDesign?: FrameDesignSettings) {
   .pagedjs_pagebox::before {
     content: "";
     position: absolute;
-    inset: 4mm;
+    top: ${ins.top}mm;
+    right: ${ins.right}mm;
+    bottom: ${ins.bottom}mm;
+    left: ${ins.left}mm;
     z-index: 20;
     pointer-events: none;
     box-sizing: border-box;
