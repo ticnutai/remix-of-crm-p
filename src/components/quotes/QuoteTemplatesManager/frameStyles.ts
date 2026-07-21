@@ -58,6 +58,16 @@ export type BorderStyle =
 
 export type ShadowLevel = "none" | "sm" | "md" | "lg" | "xl" | "glow-gold";
 
+export interface BorderInsets {
+  /** מרווח מקצה העמוד בכל צד — במ״מ. 0 = צמוד לקצה. */
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+export const DEFAULT_INSETS: BorderInsets = { top: 4, right: 4, bottom: 4, left: 4 };
+
 export interface BorderConfig {
   style: BorderStyle;
   width: number;
@@ -66,6 +76,8 @@ export interface BorderConfig {
   padding: number;
   shadow: ShadowLevel;
   decorativeCorners?: boolean;
+  /** מרחקים מקצה העמוד בכל צד (מ״מ) — עבור מסגרת המסמך. ברירת מחדל 4mm. */
+  insets?: BorderInsets;
 }
 
 export interface BackgroundConfig {
