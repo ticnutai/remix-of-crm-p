@@ -354,7 +354,7 @@ export function ClientQuotesContractsTab({ clientId, clientName }: ClientQuotesC
                               navigate(`/document-editor?type=quote&id=${quote.rawId}&client=${clientId}`);
                               return;
                             }
-                            navigate('/quotes');
+                            navigate(`/quotes?openSavedQuote=${quote.rawId}`);
                           }}
                         >
                           <TableCell className="font-mono font-medium text-sm">{quote.displayNumber}</TableCell>
@@ -383,7 +383,7 @@ export function ClientQuotesContractsTab({ clientId, clientName }: ClientQuotesC
                                     navigate(`/document-editor?type=quote&id=${quote.rawId}&client=${clientId}`);
                                     return;
                                   }
-                                  navigate('/quotes');
+                                  navigate(`/quotes?openSavedQuote=${quote.rawId}`);
                                 }}>
                                   <PenTool className="h-4 w-4 ml-2" />
                                   עורך מתקדם
@@ -440,7 +440,13 @@ export function ClientQuotesContractsTab({ clientId, clientName }: ClientQuotesC
                         <TableRow
                           key={contract.id}
                           className="hover:bg-muted/30 cursor-pointer"
-                          onClick={() => navigate(`/quotes`)}
+                          onClick={() => {
+                            if ((contract as any).saved_quote_id) {
+                              navigate(`/quotes?openSavedQuote=${(contract as any).saved_quote_id}`);
+                            } else {
+                              navigate('/quotes');
+                            }
+                          }}
                         >
                           <TableCell className="font-mono font-medium text-sm">{contract.contract_number}</TableCell>
                           <TableCell className="max-w-[200px] truncate">{contract.title}</TableCell>
@@ -454,7 +460,14 @@ export function ClientQuotesContractsTab({ clientId, clientName }: ClientQuotesC
                             {contract.start_date ? format(new Date(contract.start_date), 'dd/MM/yyyy', { locale: he }) : '-'}
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); navigate('/quotes'); }}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => {
+                              e.stopPropagation();
+                              if ((contract as any).saved_quote_id) {
+                                navigate(`/quotes?openSavedQuote=${(contract as any).saved_quote_id}`);
+                              } else {
+                                navigate('/quotes');
+                              }
+                            }}>
                               <ArrowRight className="h-4 w-4" />
                             </Button>
                           </TableCell>

@@ -1133,6 +1133,14 @@ export default function Quotes() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
+                                  {(contract as any).saved_quote_id && (
+                                    <DropdownMenuItem onClick={() => {
+                                      navigate(`/quotes?openSavedQuote=${(contract as any).saved_quote_id}`);
+                                    }}>
+                                      <PenTool className="h-4 w-4 ml-2" />
+                                      פתח בעורך Flow V2
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuItem onClick={() => {
                                     navigate(`/document-editor?type=contract&id=${contract.id}&client=${contract.client_id}`);
                                   }}>
