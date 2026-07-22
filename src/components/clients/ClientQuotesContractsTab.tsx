@@ -383,7 +383,7 @@ export function ClientQuotesContractsTab({ clientId, clientName }: ClientQuotesC
                                     navigate(`/document-editor?type=quote&id=${quote.rawId}&client=${clientId}`);
                                     return;
                                   }
-                                  navigate('/quotes');
+                                  navigate(`/quotes?openSavedQuote=${quote.rawId}`);
                                 }}>
                                   <PenTool className="h-4 w-4 ml-2" />
                                   עורך מתקדם
