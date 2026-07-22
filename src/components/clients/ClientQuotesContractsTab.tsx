@@ -354,7 +354,7 @@ export function ClientQuotesContractsTab({ clientId, clientName }: ClientQuotesC
                               navigate(`/document-editor?type=quote&id=${quote.rawId}&client=${clientId}`);
                               return;
                             }
-                            navigate('/quotes');
+                            navigate(`/quotes?openSavedQuote=${quote.rawId}`);
                           }}
                         >
                           <TableCell className="font-mono font-medium text-sm">{quote.displayNumber}</TableCell>
