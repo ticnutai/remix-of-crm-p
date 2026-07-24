@@ -139,7 +139,9 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
           stageName: stage.stage_name,
           stageIcon: stage.stage_icon,
           stageOrder: stage.sort_order,
-          stageCompleted: (stage.tasks || []).every((stageTask) => stageTask.completed),
+          stageCompleted: (stage.tasks || [])
+            .filter((stageTask) => stageTask.id !== task.id)
+            .every((stageTask) => stageTask.completed),
         });
       });
     });
@@ -375,7 +377,6 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                                   paymentStepId={task.payment_step_id}
                                   taskId={task.id}
                                   stageCompleted={task.stageCompleted}
-                                  taskCompleted={task.completed}
                                 />
                               </span>
                               {isTimerTabTask(task) && task.auto_timer_days && !task.started_at && (

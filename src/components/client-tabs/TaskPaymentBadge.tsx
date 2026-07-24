@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Banknote, BellPlus, CheckCircle2, FileSignature, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -30,7 +30,6 @@ interface TaskPaymentBadgeProps {
   paymentStepId?: string | null;
   taskId?: string;
   stageCompleted?: boolean;
-  taskCompleted?: boolean;
 }
 
 interface LinkedPaymentStage {
@@ -59,14 +58,11 @@ export function TaskPaymentBadge({
   paymentStepId,
   taskId,
   stageCompleted = false,
-  taskCompleted = false,
 }: TaskPaymentBadgeProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [paymentStage, setPaymentStage] = useState<LinkedPaymentStage | null>(null);
-  const [paymentStageResolved, setPaymentStageResolved] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
-  const automaticPaymentSyncAttempted = useRef(false);
   const map = useClientPaymentLinks(clientId);
   const legacyInfo = map.get(paymentTaskKey(stageName, taskTitle));
   const quoteInfo = legacyInfo || map.get(LATEST_CLIENT_QUOTE_KEY);
@@ -85,7 +81,6 @@ export function TaskPaymentBadge({
 
   const loadPaymentStage = useCallback(async () => {
     if (!clientId || !taskId) return;
-    setPaymentStageResolved(false);
     const directStageId = paymentStepId?.startsWith("client_payment_stage:")
       ? paymentStepId.slice("client_payment_stage:".length)
       : null;
@@ -95,7 +90,6 @@ export function TaskPaymentBadge({
       .eq("client_id", clientId);
     if (error) {
       console.error("Error loading linked payment stage:", error);
-      setPaymentStageResolved(true);
       return;
     }
     const normalizedTitle = String(taskTitle || "").trim().toLowerCase();
@@ -114,7 +108,6 @@ export function TaskPaymentBadge({
           String(row.stage_name || "").trim().toLowerCase() === normalizedTitle,
       );
     setPaymentStage(linked || null);
-    setPaymentStageResolved(true);
   }, [clientId, paymentQuoteId, paymentStepId, taskId, taskTitle]);
 
   useEffect(() => {
@@ -207,36 +200,10 @@ export function TaskPaymentBadge({
     toast,
   ]);
 
-  useEffect(() => {
-    if (!taskCompleted) automaticPaymentSyncAttempted.current = false;
-  }, [taskCompleted]);
-
-  useEffect(() => {
-    if (
-      taskCompleted &&
-      paymentStageResolved &&
-      !paymentStage?.is_paid &&
-      !paymentLoading &&
-      !automaticPaymentSyncAttempted.current
-    ) {
-      automaticPaymentSyncAttempted.current = true;
-      void persistPaidState(true, false);
-    }
-  }, [
-    paymentLoading,
-    paymentStage?.is_paid,
-    paymentStageResolved,
-    persistPaidState,
-    taskCompleted,
-  ]);
-
   const effectivePaid = Boolean(paymentStage?.is_paid);
 
   const togglePaid = async (event: React.MouseEvent<HTMLButtonElement>) => {
     stopPropagation(event);
-    // Once the user manually toggles, stop the task-completion auto-sync from
-    // flipping the state back on the next render.
-    automaticPaymentSyncAttempted.current = true;
     await persistPaidState(!effectivePaid, true);
   };
 
