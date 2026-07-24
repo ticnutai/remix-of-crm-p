@@ -230,17 +230,13 @@ export function TaskPaymentBadge({
     taskCompleted,
   ]);
 
-  const effectivePaid = Boolean(paymentStage?.is_paid || taskCompleted);
+  const effectivePaid = Boolean(paymentStage?.is_paid);
 
   const togglePaid = async (event: React.MouseEvent<HTMLButtonElement>) => {
     stopPropagation(event);
-    if (taskCompleted && effectivePaid) {
-      toast({
-        title: "התשלום מסומן דרך המשימה",
-        description: "כדי לבטל את התשלום, בטל תחילה את סימון ה־✓ של המשימה.",
-      });
-      return;
-    }
+    // Once the user manually toggles, stop the task-completion auto-sync from
+    // flipping the state back on the next render.
+    automaticPaymentSyncAttempted.current = true;
     await persistPaidState(!effectivePaid, true);
   };
 
