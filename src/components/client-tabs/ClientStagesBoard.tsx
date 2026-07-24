@@ -816,8 +816,9 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
                 paymentQuoteId={task.payment_quote_id}
                 paymentStepId={task.payment_step_id}
                 taskId={task.id}
-                stageCompleted={(stage.tasks || []).every((stageTask) => stageTask.completed)}
-                taskCompleted={task.completed}
+                stageCompleted={(stage.tasks || [])
+                  .filter((stageTask) => stageTask.id !== task.id)
+                  .every((stageTask) => stageTask.completed)}
                 className="mt-1"
               />
               {isTimerTab && task.auto_timer_days && !isTimerTabActive && (
@@ -1701,7 +1702,6 @@ function SortableExpandedTaskItem({
           paymentStepId={task.payment_step_id}
           taskId={task.id}
           stageCompleted={stageCompleted}
-          taskCompleted={task.completed}
           className="mt-1"
         />
         {isTimerTab && task.auto_timer_days && !isTimerTabActive && (
@@ -4779,7 +4779,9 @@ export function ClientStagesBoard({
                                       ] || false
                                     }
                                     clientId={clientId}
-                                    stageCompleted={(expandedStageData.tasks || []).every((stageTask) => stageTask.completed)}
+                                    stageCompleted={(expandedStageData.tasks || [])
+                                      .filter((stageTask) => stageTask.id !== task.id)
+                                      .every((stageTask) => stageTask.completed)}
                                     setEditingTask={setEditingTask}
                                     handleToggleTask={handleToggleTask}
                                     handleDeleteTask={handleDeleteTask}
