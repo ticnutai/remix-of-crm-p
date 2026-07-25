@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import PortalNavigation from "@/components/client-portal/PortalNavigation";
+import { isVisibleClientPaymentStage } from "@/lib/clientPaymentStages";
 
 interface PaymentStage {
   id: string;
@@ -75,7 +76,7 @@ export default function ClientPayments() {
         .order("stage_number", { ascending: true });
 
       if (error) throw error;
-      setStages(data || []);
+      setStages((data || []).filter(isVisibleClientPaymentStage));
     } catch (error) {
       console.error("Error fetching payments:", error);
     } finally {

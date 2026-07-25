@@ -125,13 +125,20 @@ export async function applySignedQuoteToClient(
       const vatRate = step?.useCustomVat ? Number(step?.customVat) || defaultVat : defaultVat;
       const baseDesc = step?.templateTaskName || step?.description || `תשלום ${pct}%`;
 
+      const paymentStepId =
+        step?.id || `legacy:${rows.length + 1}:${pct}:${baseDesc}`;
+
       rows.push({
         client_id: clientId,
         stage_name: baseDesc,
         stage_number: nextNumber++,
         description: `${baseDesc} [${quoteTag}]`,
         amount,
+        percentage: pct,
         vat_rate: vatRate,
+        quote_id: savedQuote?.id || null,
+        payment_step_id: paymentStepId,
+        linked_stage_id: step?.templateStageId || null,
         created_by: userId,
       });
     });

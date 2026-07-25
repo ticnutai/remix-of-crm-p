@@ -70,6 +70,8 @@ export function TaskPaymentBadge({
   const map = useClientPaymentLinks(clientId);
   const legacyInfo = map.get(paymentTaskKey(stageName, taskTitle));
   const quoteInfo = legacyInfo || map.get(LATEST_CLIENT_QUOTE_KEY);
+  const hasLinkedPayment =
+    Number(paymentAmount) > 0 || Number(legacyInfo?.amount || 0) > 0;
   const info = Number(paymentAmount) > 0
     ? {
         ...quoteInfo,
@@ -84,7 +86,11 @@ export function TaskPaymentBadge({
   const stopPropagation = (event: React.SyntheticEvent) => event.stopPropagation();
 
   const loadPaymentStage = useCallback(async () => {
-    if (!clientId || !taskId) return;
+    if (!clientId || !taskId || !hasLinkedPayment) {
+      setPaymentStage(null);
+      setPaymentStageResolved(true);
+      return;
+    }
     setPaymentStageResolved(false);
     const directStageId = paymentStepId?.startsWith("client_payment_stage:")
       ? paymentStepId.slice("client_payment_stage:".length)
@@ -115,7 +121,7 @@ export function TaskPaymentBadge({
       );
     setPaymentStage(linked || null);
     setPaymentStageResolved(true);
-  }, [clientId, paymentQuoteId, paymentStepId, taskId, taskTitle]);
+  }, [clientId, hasLinkedPayment, paymentQuoteId, paymentStepId, taskId, taskTitle]);
 
   useEffect(() => {
     void loadPaymentStage();
@@ -212,7 +218,7 @@ export function TaskPaymentBadge({
   }, [taskCompleted, taskId]);
 
   useEffect(() => {
-    if (!paymentStageResolved || paymentLoading) return;
+    if (!hasLinkedPayment || !paymentStageResolved || paymentLoading) return;
 
     const persistedPaid = Boolean(paymentStage?.is_paid);
     const paymentRecordNeedsUpdate =
@@ -230,6 +236,7 @@ export function TaskPaymentBadge({
     paymentLoading,
     paymentStage,
     paymentStageResolved,
+    hasLinkedPayment,
     persistPaidState,
     taskCompleted,
   ]);

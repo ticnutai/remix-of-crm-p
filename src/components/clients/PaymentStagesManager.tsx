@@ -26,6 +26,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { CLIENT_PAYMENT_STAGE_UPDATED_EVENT } from "@/lib/clientPaymentStageEvents";
+import { isVisibleClientPaymentStage } from "@/lib/clientPaymentStages";
 import {
   Plus,
   Trash2,
@@ -757,7 +758,9 @@ export default function PaymentStagesManager({
           .eq("client_id", clientId)
           .order("created_at"),
       ]);
-      if (stagesRes.data) setStages(stagesRes.data);
+      if (stagesRes.data) {
+        setStages(stagesRes.data.filter(isVisibleClientPaymentStage));
+      }
       if (addRes.data) setAdditionalPayments(addRes.data);
     } catch (err) {
       console.error("Error fetching payment stages:", err);
