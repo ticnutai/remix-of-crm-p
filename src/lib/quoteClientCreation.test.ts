@@ -3,6 +3,7 @@ import {
   buildAtomicQuoteClientRequest,
   formatIls,
   isExpiredAuthError,
+  resolveQuoteClientFolderName,
 } from "./quoteClientCreation";
 
 describe("atomic quote client creation", () => {
@@ -33,5 +34,19 @@ describe("atomic quote client creation", () => {
   it("recognizes expired authentication and preserves currency cents", () => {
     expect(isExpiredAuthError({ message: "AUTH_SESSION_EXPIRED" })).toBe(true);
     expect(formatIls(10_237.5)).toMatch(/10,237\.50/);
+  });
+
+  it("prefers the stage-template name for the new editable client folder", () => {
+    expect(resolveQuoteClientFolderName({
+      stageTemplateName: "היתר בנייה",
+      projectType: "תכנון",
+      quoteTitle: "הצעת מחיר",
+      clientName: "ישראל ישראלי",
+    })).toBe("היתר בנייה");
+
+    expect(resolveQuoteClientFolderName({
+      quoteTitle: "הצעת מחיר אדריכלית",
+      clientName: "ישראל ישראלי",
+    })).toBe("הצעת מחיר אדריכלית");
   });
 });

@@ -365,6 +365,14 @@ const App = () => {
                                 element={withErrorBoundary(QuoteTemplateEditorPage)}
                               />
                               <Route
+                                path="/quote-templates/editor/saved/:savedQuoteId"
+                                element={withErrorBoundary(QuoteTemplateEditorPage)}
+                              />
+                              <Route
+                                path="/quote-templates/editor/contract/:contractId"
+                                element={withErrorBoundary(QuoteTemplateEditorPage)}
+                              />
+                              <Route
                                 path="/quotes-pro"
                                 element={withErrorBoundary(QuotesPro)}
                               />

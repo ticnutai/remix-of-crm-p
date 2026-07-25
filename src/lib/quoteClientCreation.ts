@@ -33,6 +33,27 @@ export const formatIls = (amount: number): string =>
     maximumFractionDigits: 2,
   }).format(amount);
 
+export const resolveQuoteClientFolderName = ({
+  stageTemplateName,
+  projectType,
+  quoteTitle,
+  clientName,
+}: {
+  stageTemplateName?: string | null;
+  projectType?: string | null;
+  quoteTitle?: string | null;
+  clientName?: string | null;
+}): string => {
+  const firstMeaningfulName = [
+    stageTemplateName,
+    projectType,
+    quoteTitle,
+    clientName,
+  ].find((value) => Boolean(value?.trim()));
+
+  return firstMeaningfulName?.trim() || "תיק לקוח";
+};
+
 /** Stable payload shape for the single atomic database operation. */
 export function buildAtomicQuoteClientRequest({
   idempotencyKey,
