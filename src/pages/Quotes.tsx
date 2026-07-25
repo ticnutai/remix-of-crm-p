@@ -294,13 +294,54 @@ export default function Quotes() {
   useEffect(() => {
     const quoteId = searchParams.get("openSavedQuote");
     if (!quoteId || savedQuotesLoading || editingSavedQuoteInEditor) return;
-    const quote = savedQuotes.find((item: any) => item.id === quoteId);
-    if (!quote) return;
-    setActiveTab("saved-quotes");
-    setEditingSavedQuoteInEditor(quote);
-    const next = new URLSearchParams(searchParams);
-    next.delete("openSavedQuote");
-    setSearchParams(next, { replace: true });
+
+    let cancelled = false;
+
+    const clearOpenSavedQuoteParam = () => {
+      const next = new URLSearchParams(searchParams);
+      if (next.get("openSavedQuote") !== quoteId) return;
+      next.delete("openSavedQuote");
+      setSearchParams(next, { replace: true });
+    };
+
+    const openSavedQuote = async () => {
+      let quote = savedQuotes.find((item: any) => item.id === quoteId);
+
+      // A quote linked from a contract is not always present in the current
+      // cached/user-filtered list. Fetch it directly and let RLS decide access.
+      if (!quote) {
+        const { data, error } = await (supabase as any)
+          .from("saved_quotes")
+          .select("*, clients:client_id(id, name, phone, email)")
+          .eq("id", quoteId)
+          .maybeSingle();
+
+        if (cancelled) return;
+
+        if (error || !data) {
+          console.error("Could not open saved quote in Flow V2:", error);
+          toast({
+            title: "לא ניתן לפתוח את ההצעה",
+            description: error?.message || "ההצעה המקושרת לא נמצאה או שאין הרשאה לצפות בה.",
+            variant: "destructive",
+          });
+          clearOpenSavedQuoteParam();
+          return;
+        }
+
+        quote = data;
+      }
+
+      if (cancelled) return;
+      setActiveTab("saved-quotes");
+      setEditingSavedQuoteInEditor(quote);
+      clearOpenSavedQuoteParam();
+    };
+
+    void openSavedQuote();
+    return () => {
+      cancelled = true;
+    };
   }, [editingSavedQuoteInEditor, savedQuotes, savedQuotesLoading, searchParams, setActiveTab, setSearchParams]);
   
   // Quotes state

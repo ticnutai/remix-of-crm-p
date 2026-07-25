@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Banknote, BellPlus, CheckCircle2, FileSignature, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { BellPlus, FileSignature } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,7 +29,8 @@ interface TaskPaymentBadgeProps {
   paymentQuoteId?: string | null;
   paymentStepId?: string | null;
   taskId?: string;
-  stageCompleted?: boolean;
+  allOtherTasksCompleted?: boolean;
+  taskCompleted?: boolean;
 }
 
 interface LinkedPaymentStage {
@@ -57,12 +58,15 @@ export function TaskPaymentBadge({
   paymentQuoteId,
   paymentStepId,
   taskId,
-  stageCompleted = false,
+  allOtherTasksCompleted = false,
+  taskCompleted = false,
 }: TaskPaymentBadgeProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [paymentStage, setPaymentStage] = useState<LinkedPaymentStage | null>(null);
+  const [paymentStageResolved, setPaymentStageResolved] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const lastPaymentSyncAttempt = useRef<boolean | null>(null);
   const map = useClientPaymentLinks(clientId);
   const legacyInfo = map.get(paymentTaskKey(stageName, taskTitle));
   const quoteInfo = legacyInfo || map.get(LATEST_CLIENT_QUOTE_KEY);
@@ -81,6 +85,7 @@ export function TaskPaymentBadge({
 
   const loadPaymentStage = useCallback(async () => {
     if (!clientId || !taskId) return;
+    setPaymentStageResolved(false);
     const directStageId = paymentStepId?.startsWith("client_payment_stage:")
       ? paymentStepId.slice("client_payment_stage:".length)
       : null;
@@ -90,6 +95,7 @@ export function TaskPaymentBadge({
       .eq("client_id", clientId);
     if (error) {
       console.error("Error loading linked payment stage:", error);
+      setPaymentStageResolved(true);
       return;
     }
     const normalizedTitle = String(taskTitle || "").trim().toLowerCase();
@@ -108,6 +114,7 @@ export function TaskPaymentBadge({
           String(row.stage_name || "").trim().toLowerCase() === normalizedTitle,
       );
     setPaymentStage(linked || null);
+    setPaymentStageResolved(true);
   }, [clientId, paymentQuoteId, paymentStepId, taskId, taskTitle]);
 
   useEffect(() => {
@@ -200,22 +207,46 @@ export function TaskPaymentBadge({
     toast,
   ]);
 
-  const effectivePaid = Boolean(paymentStage?.is_paid);
+  useEffect(() => {
+    lastPaymentSyncAttempt.current = null;
+  }, [taskCompleted, taskId]);
 
-  const togglePaid = async (event: React.MouseEvent<HTMLButtonElement>) => {
-    stopPropagation(event);
-    await persistPaidState(!effectivePaid, true);
-  };
+  useEffect(() => {
+    if (!paymentStageResolved || paymentLoading) return;
+
+    const persistedPaid = Boolean(paymentStage?.is_paid);
+    const paymentRecordNeedsUpdate =
+      persistedPaid !== taskCompleted && (taskCompleted || Boolean(paymentStage));
+
+    if (!paymentRecordNeedsUpdate) {
+      lastPaymentSyncAttempt.current = taskCompleted;
+      return;
+    }
+
+    if (lastPaymentSyncAttempt.current === taskCompleted) return;
+    lastPaymentSyncAttempt.current = taskCompleted;
+    void persistPaidState(taskCompleted, false);
+  }, [
+    paymentLoading,
+    paymentStage,
+    paymentStageResolved,
+    persistPaidState,
+    taskCompleted,
+  ]);
+
+  // The normal task checkbox is the single source of truth for payment state.
+  // The linked payment record is synchronized above for the Payments tab.
+  const effectivePaid = taskCompleted;
 
   if (!info) return null;
 
   const amountBeforeVat = info.amount / (1 + info.vatRate / 100);
   const isSigned = ["signed", "converted"].includes(info.quoteStatus);
-  const isUnpaidAfterStageCompletion = stageCompleted && !effectivePaid;
+  const isUnpaidAfterStageCompletion = allOtherTasksCompleted && !effectivePaid;
 
   return (
     <span
-      title={`${isUnpaidAfterStageCompletion ? "השלב הושלם אך התשלום טרם שולם | " : ""}כולל מע״מ: ${currencyFormatter.format(info.amount)} | לפני מע״מ: ${currencyFormatter.format(amountBeforeVat)} | ${info.quoteTitle}`}
+      title={`${isUnpaidAfterStageCompletion ? "כל שאר המשימות בשלב הושלמו אך התשלום טרם שולם | " : ""}כולל מע״מ: ${currencyFormatter.format(info.amount)} | לפני מע״מ: ${currencyFormatter.format(amountBeforeVat)} | ${info.quoteTitle}`}
       className={cn(
         "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-all",
         effectivePaid
@@ -226,32 +257,6 @@ export function TaskPaymentBadge({
         className,
       )}
     >
-      {taskId && (
-        <button
-          type="button"
-          title={effectivePaid ? "שולם" : "סמן תשלום כשולם"}
-          aria-label={effectivePaid ? `${taskTitle || "תשלום"} שולם` : `סמן ${taskTitle || "תשלום"} כשולם`}
-          onClick={togglePaid}
-          disabled={paymentLoading}
-          className={cn(
-            "inline-flex h-6 w-6 items-center justify-center rounded-full transition-all",
-            effectivePaid
-              ? "bg-white/20 text-white hover:bg-white/30"
-              : isUnpaidAfterStageCompletion
-                ? "bg-white/20 text-white hover:bg-white/30"
-                : "bg-emerald-600 text-white hover:bg-emerald-700",
-            paymentLoading && "cursor-wait opacity-70",
-          )}
-        >
-          {paymentLoading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : effectivePaid ? (
-            <CheckCircle2 className="h-3.5 w-3.5" />
-          ) : (
-            <Banknote className="h-3.5 w-3.5" />
-          )}
-        </button>
-      )}
       {currencyFormatter.format(info.amount)}
       <span className="font-normal opacity-70">({info.percentage}%)</span>
       {taskId && (

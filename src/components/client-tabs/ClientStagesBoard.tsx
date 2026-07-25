@@ -816,9 +816,10 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
                 paymentQuoteId={task.payment_quote_id}
                 paymentStepId={task.payment_step_id}
                 taskId={task.id}
-                stageCompleted={(stage.tasks || [])
+                allOtherTasksCompleted={(stage.tasks || [])
                   .filter((stageTask) => stageTask.id !== task.id)
                   .every((stageTask) => stageTask.completed)}
+                taskCompleted={task.completed}
                 className="mt-1"
               />
               {isTimerTab && task.auto_timer_days && !isTimerTabActive && (
@@ -1556,7 +1557,7 @@ interface SortableExpandedTaskProps {
   index: number;
   showTaskCount: boolean;
   clientId: string;
-  stageCompleted: boolean;
+  allOtherTasksCompleted: boolean;
   setEditingTask: React.Dispatch<
     React.SetStateAction<{
       stageId: string;
@@ -1580,7 +1581,7 @@ function SortableExpandedTaskItem({
   index,
   showTaskCount,
   clientId,
-  stageCompleted,
+  allOtherTasksCompleted,
   setEditingTask,
   handleToggleTask,
   handleDeleteTask,
@@ -1701,7 +1702,8 @@ function SortableExpandedTaskItem({
           paymentQuoteId={task.payment_quote_id}
           paymentStepId={task.payment_step_id}
           taskId={task.id}
-          stageCompleted={stageCompleted}
+          allOtherTasksCompleted={allOtherTasksCompleted}
+          taskCompleted={task.completed}
           className="mt-1"
         />
         {isTimerTab && task.auto_timer_days && !isTimerTabActive && (
@@ -4779,7 +4781,7 @@ export function ClientStagesBoard({
                                       ] || false
                                     }
                                     clientId={clientId}
-                                    stageCompleted={(expandedStageData.tasks || [])
+                                    allOtherTasksCompleted={(expandedStageData.tasks || [])
                                       .filter((stageTask) => stageTask.id !== task.id)
                                       .every((stageTask) => stageTask.completed)}
                                     setEditingTask={setEditingTask}
