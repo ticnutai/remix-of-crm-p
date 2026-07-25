@@ -2198,7 +2198,6 @@ export function ClientStagesBoard({
     cycleStageTimerStyle,
     deleteTask,
     bulkDeleteTasks,
-    addStage,
     addBulkStages,
     updateStage,
     deleteStage,
@@ -2239,6 +2238,97 @@ export function ClientStagesBoard({
     name: string;
   } | null>(null);
   const [renameFolderDialog, setRenameFolderDialog] = useState(false);
+  const folderBackfillAttemptRef = useRef<string | null>(null);
+  const [folderAssignmentError, setFolderAssignmentError] = useState<
+    string | null
+  >(null);
+
+  // Every client stage must belong to an editable folder. This also repairs
+  // older clients whose stages were created before folders were introduced.
+  useEffect(() => {
+    if (!clientId || loading || foldersLoading) return;
+
+    const unassignedStages = allStages.filter((stage) => !stage.folder_id);
+    const repairKey = [
+      clientId,
+      folders.map((folder) => folder.id).join(","),
+      unassignedStages.map((stage) => stage.id).join(","),
+    ].join(":");
+
+    if (folders.length > 0 && unassignedStages.length === 0) {
+      folderBackfillAttemptRef.current = null;
+      setFolderAssignmentError(null);
+      setSelectedFolderId((current) =>
+        current && folders.some((folder) => folder.id === current)
+          ? current
+          : folders[0].id,
+      );
+      return;
+    }
+
+    if (folderBackfillAttemptRef.current === repairKey) return;
+    folderBackfillAttemptRef.current = repairKey;
+    setFolderAssignmentError(null);
+
+    void (async () => {
+      try {
+        let targetFolder = folders.find(
+          (folder) => folder.folder_name === "שלבים כלליים",
+        );
+
+        if (!targetFolder) {
+          const { data: insertedFolder, error: folderError } = await supabase
+            .from("client_folders")
+            .insert({
+              client_id: clientId,
+              folder_name: "שלבים כלליים",
+              folder_icon: "Folder",
+              sort_order: folders.length,
+            })
+            .select()
+            .single();
+
+          if (folderError) throw folderError;
+          targetFolder = insertedFolder;
+        }
+
+        if (unassignedStages.length > 0) {
+          const { error: stagesError } = await supabase
+            .from("client_stages")
+            .update({ folder_id: targetFolder.id })
+            .in(
+              "id",
+              unassignedStages.map((stage) => stage.id),
+            )
+            .is("folder_id", null);
+
+          if (stagesError) throw stagesError;
+        }
+
+        await Promise.all([refreshFolders(), refresh()]);
+        setSelectedFolderId(targetFolder.id);
+      } catch (error: any) {
+        console.error("Error ensuring client stage folders:", error);
+        setFolderAssignmentError(
+          error?.message || "לא ניתן היה לשייך את השלבים לתיקייה",
+        );
+        toast({
+          title: "שגיאה בשיוך השלבים לתיקייה",
+          description:
+            error?.message || "לא ניתן היה לשייך את השלבים לתיקייה",
+          variant: "destructive",
+        });
+      }
+    })();
+  }, [
+    allStages,
+    clientId,
+    folders,
+    foldersLoading,
+    loading,
+    refresh,
+    refreshFolders,
+  ]);
 
   // Create a new folder, optionally copying stages+tasks from an existing folder
   const handleCreateFolderWithOptions = async () => {
@@ -2940,10 +3030,21 @@ export function ClientStagesBoard({
   };
   const handleAddStage = async () => {
     if (!newStageName.trim()) return;
-    const newStage = await addStage(newStageName, newStageIcon);
-    // If a folder is selected, assign the new stage to it
-    if (newStage && selectedFolderId) {
-      await assignStageToFolder(newStage.stage_id, selectedFolderId);
+    const targetFolderId = selectedFolderId || folders[0]?.id;
+    if (!targetFolderId) {
+      toast({
+        title: "לא נמצאה תיקייה",
+        description: "יש להמתין ליצירת תיקיית השלבים ולנסות שוב",
+        variant: "destructive",
+      });
+      return;
+    }
+    const newStages = await addBulkStages(
+      [newStageName],
+      newStageIcon,
+      targetFolderId,
+    );
+    if (newStages?.length) {
       refresh();
     }
     setNewStageName("");
@@ -2960,7 +3061,15 @@ export function ClientStagesBoard({
 
     // Save values before closing dialog
     const icon = newStageIcon;
-    const folderId = selectedFolderId;
+    const folderId = selectedFolderId || folders[0]?.id;
+    if (!folderId) {
+      toast({
+        title: "לא נמצאה תיקייה",
+        description: "יש להמתין ליצירת תיקיית השלבים ולנסות שוב",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Close dialog
     setBulkStagesText("");
@@ -2968,7 +3077,7 @@ export function ClientStagesBoard({
     setAddStageDialog(false);
 
     // Use addBulkStages with folder_id included directly in the insert
-    const result = await addBulkStages(names, icon, folderId || null);
+    const result = await addBulkStages(names, icon, folderId);
 
     if (result && folderId) {
       refresh();
@@ -3148,10 +3257,42 @@ export function ClientStagesBoard({
         : null,
     [expandedStage, sortedStages],
   );
-  if (loading) {
+  if (
+    loading ||
+    foldersLoading ||
+    (!folderAssignmentError &&
+      (folders.length === 0 ||
+        allStages.some((stage) => !stage.folder_id)))
+  ) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span>מסדר את השלבים בתיקייה…</span>
+        </div>
+      </div>
+    );
+  }
+  if (folderAssignmentError) {
+    return (
+      <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center">
+        <p className="font-medium text-destructive">
+          לא ניתן להציג שלבים מחוץ לתיקייה
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {folderAssignmentError}
+        </p>
+        <Button
+          className="mt-4"
+          variant="outline"
+          onClick={() => {
+            folderBackfillAttemptRef.current = null;
+            setFolderAssignmentError(null);
+            void Promise.all([refreshFolders(), refresh()]);
+          }}
+        >
+          נסה שוב
+        </Button>
       </div>
     );
   }
@@ -3234,15 +3375,30 @@ export function ClientStagesBoard({
                     e.stopPropagation();
                     if (!confirm(`למחוק את התיקייה "${folder.folder_name}"?`))
                       return;
+                    const fallbackFolder = folders.find(
+                      (candidate) => candidate.id !== folder.id,
+                    );
+                    if (!fallbackFolder) {
+                      toast({
+                        title: "לא ניתן למחוק את התיקייה היחידה",
+                        description:
+                          "אפשר לשנות את שמה באמצעות כפתור העריכה",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
                     const folderStages = allStages.filter(
                       (s) => s.folder_id === folder.id,
                     );
                     for (const s of folderStages) {
-                      await assignStageToFolder(s.id, null);
+                      await assignStageToFolder(
+                        s.stage_id,
+                        fallbackFolder.id,
+                      );
                     }
                     await deleteFolder(folder.id);
                     if (selectedFolderId === folder.id) {
-                      setSelectedFolderId(null);
+                      setSelectedFolderId(fallbackFolder.id);
                     }
                     await refreshFolders();
                   }}
@@ -3259,7 +3415,7 @@ export function ClientStagesBoard({
                     ? "bg-gradient-to-r from-yellow-500/90 to-amber-500/90 text-slate-900 shadow-md shadow-yellow-500/20 hover:from-yellow-500 hover:to-amber-500"
                     : "text-slate-300 hover:text-white hover:bg-white/10",
                 )}
-                onClick={() => setSelectedFolderId(isActive ? null : folder.id)}
+                onClick={() => setSelectedFolderId(folder.id)}
               >
                 <Folder className="h-4 w-4" />
                 {folder.folder_name}
@@ -3972,21 +4128,6 @@ export function ClientStagesBoard({
                           <p className="text-xs font-medium text-center py-1 text-muted-foreground">
                             העבר לתיקייה
                           </p>
-                          <button
-                            className={cn(
-                              "w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted/50 transition-colors text-right",
-                              !stage.folder_id &&
-                                "bg-amber-500/10 text-amber-500 font-medium",
-                            )}
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              await assignStageToFolder(stage.id, null);
-                              refresh();
-                            }}
-                          >
-                            <Layers className="h-3.5 w-3.5" />
-                            ללא תיקייה
-                          </button>
                           {folders.map((f) => (
                             <button
                               key={f.id}
@@ -3997,7 +4138,10 @@ export function ClientStagesBoard({
                               )}
                               onClick={async (e) => {
                                 e.stopPropagation();
-                                await assignStageToFolder(stage.id, f.id);
+                                await assignStageToFolder(
+                                  stage.stage_id,
+                                  f.id,
+                                );
                                 refresh();
                               }}
                             >

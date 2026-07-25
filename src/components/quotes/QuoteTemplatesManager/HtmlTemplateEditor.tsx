@@ -198,6 +198,7 @@ import { resolveQuoteBasePrice } from "@/lib/quotePricing";
 import {
   buildAtomicQuoteClientRequest,
   isExpiredAuthError,
+  resolveQuoteClientFolderName,
   type AtomicQuoteClientResult,
 } from "@/lib/quoteClientCreation";
 import companyHeaderImg from "@/assets/company-header.png";
@@ -4871,7 +4872,17 @@ export function HtmlTemplateEditor({
   const [editedTemplate, setEditedTemplate] = useState<QuoteTemplate>(template);
   const [editingStagesTitle, setEditingStagesTitle] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
+  const [selectedTier, setSelectedTier] = useState<string>(() => {
+    const saved = (template as any).pricing_tiers;
+    if (savedQuoteId && Array.isArray(saved)) {
+      const preferred =
+        saved.find((tier: any) => tier?.is_default) ||
+        saved.find((tier: any) => tier?.selected) ||
+        saved[0];
+      return preferred?.name || "";
+    }
+    return "מתקדם";
+  });
   const [activeTab, setActiveTab] = useState("flow-v2");
   const exactA4PrintRef = useRef<(() => Promise<void>) | null>(null);
   const exactA4PdfBlobRef = useRef<(() => Promise<Blob>) | null>(null);
@@ -5074,6 +5085,9 @@ export function HtmlTemplateEditor({
     useState(false);
   const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>(() => {
     const saved = template.payment_schedule;
+    if (savedQuoteId && Array.isArray(saved) && saved.length === 0) {
+      return [];
+    }
     if (saved && Array.isArray(saved) && saved.length > 0) {
       return normalizeLegacyPaymentSteps(saved as any[], template.vat_rate ?? globalDefaultVat).map((s: any) => ({
         id: s.id || Date.now().toString(),
@@ -5210,6 +5224,7 @@ export function HtmlTemplateEditor({
   }, []);
   const [upgrades, setUpgrades] = useState(() => {
     const saved = (template as any).upgrades;
+    if (savedQuoteId && Array.isArray(saved) && saved.length === 0) return [];
     if (saved && Array.isArray(saved) && saved.length > 0) return saved;
     return [
       { id: "1", name: "יחידת דיור נוספת", price: 5000, enabled: true },
@@ -5218,6 +5233,7 @@ export function HtmlTemplateEditor({
   });
   const [pricingTiers, setPricingTiers] = useState(() => {
     const saved = (template as any).pricing_tiers;
+    if (savedQuoteId && Array.isArray(saved) && saved.length === 0) return [];
     if (saved && Array.isArray(saved) && saved.length > 0) return saved;
     return [
       { id: "1", name: "בסיסי", price: 30000 },
@@ -5312,7 +5328,9 @@ export function HtmlTemplateEditor({
   const [isConvertingFile, setIsConvertingFile] = useState(false);
 
   // === Autosave (טיוטה אוטומטית: localStorage מיידי + ענן כל 2 שניות) ===
-  const draftKey = template.id || `new::${template.name || "draft"}`;
+  const draftKey = savedQuoteId
+    ? `saved-quote::${savedQuoteId}`
+    : template.id || `new::${template.name || "draft"}`;
   const draftSnapshot = useMemo(
     () => ({
       editedTemplate,
@@ -5347,7 +5365,9 @@ export function HtmlTemplateEditor({
   } = useQuoteDraftAutosave({
     key: draftKey,
     snapshot: draftSnapshot,
-    enabled: open,
+    // A saved quote is already the source of truth. Restoring a template-level
+    // draft on top of it can mix content from another document.
+    enabled: open && !savedQuoteId,
   });
 
   // === Flush save on tab switch (שמירה מיידית לענן בכל מעבר טאב) ===
@@ -5365,7 +5385,9 @@ export function HtmlTemplateEditor({
   // Saves design tab changes (theme, border, colors, fonts, etc.) to
   // quote_templates.design_settings whenever they change, without requiring
   // the user to press Save. Also mirrors to a dedicated localStorage key.
-  const designLsKey = `quote-design::${template.id || "new"}`;
+  const designLsKey = savedQuoteId
+    ? `quote-design::saved-quote::${savedQuoteId}`
+    : `quote-design::${template.id || "new"}`;
   const designSaveTimer = useRef<number | null>(null);
   const designFirstRunRef = useRef(true);
   const lastDesignJsonRef = useRef<string>("");
@@ -5396,7 +5418,7 @@ export function HtmlTemplateEditor({
     }
 
     // 2. Debounced cloud write to the template row itself (if persisted)
-    if (!template.id) return;
+    if (!template.id || savedQuoteId) return;
     if (designSaveTimer.current) window.clearTimeout(designSaveTimer.current);
     designSaveTimer.current = window.setTimeout(async () => {
       designSaveTimer.current = null;
@@ -5419,7 +5441,7 @@ export function HtmlTemplateEditor({
         designSaveTimer.current = null;
       }
     };
-  }, [designSettings, open, template.id, designLsKey]);
+  }, [designSettings, open, template.id, designLsKey, savedQuoteId]);
 
 
   // שחזור אוטומטי בפתיחה - LS מיידי, ענן אם חדש יותר
@@ -5429,6 +5451,7 @@ export function HtmlTemplateEditor({
       restoredRef.current = false;
       return;
     }
+    if (savedQuoteId) return;
     if (restoredRef.current) return;
     restoredRef.current = true;
 
@@ -8321,6 +8344,7 @@ ${tbAt('footer')}
   const [showCreateClientDialog, setShowCreateClientDialog] = useState(false);
   const createClientOperationKeyRef = useRef<string | null>(null);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
+  const [newClientFolderName, setNewClientFolderName] = useState("");
 
   const [calculationResult, setCalculationResult] =
     useState<CalculationResult | null>(null);
@@ -8814,9 +8838,66 @@ ${tbAt('footer')}
       const result = data as AtomicQuoteClientResult;
       if (!result?.client_id) throw new Error("INVALID_ATOMIC_CREATION_RESULT");
 
+      let createdFolderName: string | null = null;
+      let folderCreationWarning: string | null = null;
+      if (!linkExisting) {
+        const folderName =
+          newClientFolderName.trim() ||
+          resolveQuoteClientFolderName({
+            stageTemplateName: selectedStageTemplate?.name,
+            projectType: projectDetails.projectType,
+            quoteTitle: editedTemplate.name,
+            clientName: projectDetails.clientName,
+          });
+
+        try {
+          const { data: existingFolder, error: existingFolderError } =
+            await (supabase as any)
+              .from("client_folders")
+              .select("id, folder_name")
+              .eq("client_id", result.client_id)
+              .order("sort_order", { ascending: true })
+              .limit(1)
+              .maybeSingle();
+          if (existingFolderError) throw existingFolderError;
+
+          let folder = existingFolder;
+          if (!folder) {
+            const { data: insertedFolder, error: folderInsertError } =
+              await (supabase as any)
+                .from("client_folders")
+                .insert({
+                  client_id: result.client_id,
+                  folder_name: folderName,
+                  folder_icon: "Folder",
+                  sort_order: 0,
+                })
+                .select("id, folder_name")
+                .single();
+            if (folderInsertError) throw folderInsertError;
+            folder = insertedFolder;
+          }
+
+          if (folder?.id) {
+            const { error: stageFolderError } = await (supabase as any)
+              .from("client_stages")
+              .update({ folder_id: folder.id })
+              .eq("client_id", result.client_id)
+              .is("folder_id", null);
+            if (stageFolderError) throw stageFolderError;
+            createdFolderName = folder.folder_name || folderName;
+          }
+        } catch (folderError: any) {
+          console.error("Automatic client folder creation error:", folderError);
+          folderCreationWarning =
+            folderError?.message || "לא ניתן היה ליצור את תיקיית השלבים";
+        }
+      }
+
       setShowCreateClientDialog(false);
       createClientOperationKeyRef.current = null;
       const details = [
+        createdFolderName ? `תיקייה: ${createdFolderName}` : null,
         result.stages_added > 0 ? `${result.stages_added} שלבים` : null,
         result.tasks_added > 0 ? `${result.tasks_added} משימות` : null,
         result.payments_added > 0 ? `${result.payments_added} תשלומים` : null,
@@ -8826,11 +8907,14 @@ ${tbAt('footer')}
         title: result.idempotent_replay
           ? "תיק הלקוח כבר נוצר"
           : "✅ תיק לקוח נוצר בהצלחה!",
-        description: details.length
-          ? details.join(" · ")
-          : `${projectDetails.clientName || "הלקוח"} — ההצעה והחוזה נשמרו`,
+        description: folderCreationWarning
+          ? `תיק הלקוח נוצר, אך התיקייה לא נוצרה: ${folderCreationWarning}`
+          : details.length
+            ? details.join(" · ")
+            : `${projectDetails.clientName || "הלקוח"} — ההצעה והחוזה נשמרו`,
+        variant: folderCreationWarning ? "destructive" : "default",
       });
-      window.open(`/clients/${result.client_id}`, "_blank");
+      window.open(`/client-profile/${result.client_id}`, "_blank");
     } catch (err: any) {
       console.error("Atomic client file creation error:", err);
       if (isExpiredAuthError(err)) {
@@ -15414,6 +15498,14 @@ ${tbAt('footer')}
                 size="sm"
                 onClick={() => {
                   createClientOperationKeyRef.current = crypto.randomUUID();
+                  setNewClientFolderName(
+                    resolveQuoteClientFolderName({
+                      stageTemplateName: selectedStageTemplate?.name,
+                      projectType: projectDetails.projectType,
+                      quoteTitle: editedTemplate.name,
+                      clientName: projectDetails.clientName,
+                    }),
+                  );
                   setShowCreateClientDialog(true);
                 }}
                 disabled={isCreatingClient}
@@ -15469,6 +15561,22 @@ ${tbAt('footer')}
                     return Math.round(bp * (1 + vr / 100)).toLocaleString();
                   })()} (כולל מע״מ)</p>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-client-folder-name" className="text-sm font-medium">
+                  שם תיקיית השלבים
+                </Label>
+                <Input
+                  id="new-client-folder-name"
+                  value={newClientFolderName}
+                  onChange={(event) => setNewClientFolderName(event.target.value)}
+                  placeholder="לדוגמה: היתר בנייה"
+                  className="text-right"
+                />
+                <p className="text-xs text-muted-foreground">
+                  כל שלבי העבודה החדשים ייכנסו לתיקייה זו. ניתן לשנות את שמה גם בפרופיל הלקוח.
+                </p>
               </div>
 
               {/* Check if client exists */}

@@ -25,7 +25,7 @@ function normalizeTemplate(t: any): QuoteTemplate {
     design_settings: t.design_settings || DEFAULT_DESIGN_SETTINGS,
     validity_days: t.validity_days || 30,
     show_vat: t.show_vat ?? true,
-    vat_rate: t.vat_rate || 18,
+    vat_rate: t.vat_rate ?? 18,
     html_content: t.html_content || null,
     text_boxes: t.text_boxes || [],
     upgrades: t.upgrades || [],
@@ -37,7 +37,11 @@ function normalizeTemplate(t: any): QuoteTemplate {
 }
 
 export default function QuoteTemplateEditorPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, savedQuoteId, contractId } = useParams<{
+    id?: string;
+    savedQuoteId?: string;
+    contractId?: string;
+  }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -45,12 +49,204 @@ export default function QuoteTemplateEditorPage() {
 
   const [template, setTemplate] = useState<QuoteTemplate | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeSavedQuoteId, setActiveSavedQuoteId] = useState<string | null>(
+    savedQuoteId || null,
+  );
+
+  const templateFromSavedQuote = (savedQuote: any): QuoteTemplate => {
+    const templateData =
+      savedQuote?.template_data &&
+      typeof savedQuote.template_data === "object"
+        ? savedQuote.template_data
+        : {};
+
+    return normalizeTemplate({
+      ...templateData,
+      id:
+        savedQuote.template_id ||
+        templateData.id ||
+        `saved_quote_${savedQuote.id}`,
+      name: savedQuote.title || templateData.name || "חוזה",
+      description:
+        templateData.description || savedQuote.description || "",
+      payment_schedule:
+        savedQuote.payment_schedule || templateData.payment_schedule || [],
+      design_settings:
+        savedQuote.design_settings ||
+        templateData.design_settings ||
+        DEFAULT_DESIGN_SETTINGS,
+      text_boxes: savedQuote.text_boxes || templateData.text_boxes || [],
+      upgrades: savedQuote.upgrades || templateData.upgrades || [],
+      pricing_tiers:
+        savedQuote.pricing_tiers || templateData.pricing_tiers || [],
+      project_details: {
+        ...(templateData.project_details || {}),
+        ...(savedQuote.project_details || {}),
+        clientId:
+          savedQuote.project_details?.clientId ||
+          templateData.project_details?.clientId ||
+          savedQuote.client_id ||
+          "",
+        clientName:
+          savedQuote.project_details?.clientName ||
+          templateData.project_details?.clientName ||
+          savedQuote.clients?.name ||
+          "",
+      },
+      base_price:
+        savedQuote.base_price ?? templateData.base_price ?? 0,
+      vat_rate: savedQuote.vat_rate ?? templateData.vat_rate ?? 18,
+      created_at:
+        templateData.created_at ||
+        savedQuote.created_at ||
+        new Date().toISOString(),
+      updated_at: savedQuote.updated_at || new Date().toISOString(),
+    });
+  };
+
+  const templateFromContract = (contract: any): QuoteTemplate =>
+    normalizeTemplate({
+      ...createEmptyTemplate(),
+      id: contract.template_id || `contract_${contract.id}`,
+      name: contract.title || contract.contract_number || "חוזה",
+      description: contract.description || "",
+      items: [],
+      stages: [],
+      payment_schedule: [],
+      terms: contract.terms_and_conditions || "",
+      notes: contract.notes || "",
+      base_price: Number(contract.contract_value || 0),
+      show_vat: false,
+      vat_rate: 0,
+      project_details: {
+        clientId: contract.client_id || "",
+        clientName: contract.clients?.name || "",
+        phone: contract.clients?.phone || "",
+        email: contract.clients?.email || "",
+      },
+      created_at: contract.created_at || new Date().toISOString(),
+      updated_at: contract.updated_at || new Date().toISOString(),
+    });
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       setLoading(true);
       try {
+        if (savedQuoteId) {
+          const { data: savedQuote, error: savedQuoteError } = await (
+            supabase as any
+          )
+            .from("saved_quotes")
+            .select("*, clients:client_id(id, name, phone, email)")
+            .eq("id", savedQuoteId)
+            .maybeSingle();
+
+          if (savedQuoteError) throw savedQuoteError;
+          if (!savedQuote) {
+            toast({
+              title: "החוזה המקושר לא נמצא",
+              variant: "destructive",
+            });
+            navigate("/quotes", { replace: true });
+            return;
+          }
+
+          if (!cancelled) {
+            setActiveSavedQuoteId(savedQuote.id);
+            setTemplate(templateFromSavedQuote(savedQuote));
+          }
+          return;
+        }
+
+        if (contractId) {
+          const { data: contract, error: contractError } = await (
+            supabase as any
+          )
+            .from("contracts")
+            .select("*, clients:client_id(id, name, phone, email)")
+            .eq("id", contractId)
+            .maybeSingle();
+
+          if (contractError) throw contractError;
+          if (!contract) {
+            toast({
+              title: "החוזה לא נמצא",
+              variant: "destructive",
+            });
+            navigate("/quotes", { replace: true });
+            return;
+          }
+
+          let linkedSavedQuote = null;
+          if (contract.saved_quote_id) {
+            const { data } = await (supabase as any)
+              .from("saved_quotes")
+              .select("*, clients:client_id(id, name, phone, email)")
+              .eq("id", contract.saved_quote_id)
+              .maybeSingle();
+            linkedSavedQuote = data || null;
+          }
+
+          if (!linkedSavedQuote) {
+            // Older contracts can point to a quote that was removed. Rebuild a
+            // durable editable document from the contract metadata and repair
+            // the link so every later click opens the same Flow V2 document.
+            const restoredTemplate = templateFromContract(contract);
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
+            if (!user) throw new Error("נדרשת התחברות כדי לשחזר את החוזה");
+
+            const restoredQuotePayload = {
+              user_id: user.id,
+              client_id: contract.client_id,
+              template_id: contract.template_id || null,
+              title: contract.title || contract.contract_number || "חוזה",
+              description: contract.description || "",
+              status: "signed",
+              base_price: Number(contract.contract_value || 0),
+              vat_rate: 0,
+              total_with_vat: Number(contract.contract_value || 0),
+              template_data: restoredTemplate as any,
+              project_details: restoredTemplate.project_details as any,
+              payment_schedule: [],
+              design_settings: restoredTemplate.design_settings as any,
+              text_boxes: restoredTemplate.text_boxes || [],
+              upgrades: restoredTemplate.upgrades || [],
+              pricing_tiers: restoredTemplate.pricing_tiers || [],
+              notes: contract.notes || "",
+            };
+
+            const { data: restoredQuote, error: restoreError } = await (
+              supabase as any
+            )
+              .from("saved_quotes")
+              .insert(restoredQuotePayload)
+              .select("*, clients:client_id(id, name, phone, email)")
+              .single();
+            if (restoreError) throw restoreError;
+
+            const { error: linkError } = await (supabase as any)
+              .from("contracts")
+              .update({ saved_quote_id: restoredQuote.id })
+              .eq("id", contract.id);
+            if (linkError) throw linkError;
+
+            linkedSavedQuote = restoredQuote;
+            toast({
+              title: "קישור החוזה תוקן",
+              description: "החוזה שוחזר ונפתח בעורך Flow V2",
+            });
+          }
+
+          if (!cancelled) {
+            setActiveSavedQuoteId(linkedSavedQuote.id);
+            setTemplate(templateFromSavedQuote(linkedSavedQuote));
+          }
+          return;
+        }
+
         // New template flow
         if (!id || id === "new") {
           const stateTemplate = (location.state as any)?.template as
@@ -105,7 +301,7 @@ export default function QuoteTemplateEditorPage() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, savedQuoteId, contractId]);
 
   const handleSave = async (t: Partial<QuoteTemplate>) => {
     const payload: any = {
@@ -123,7 +319,7 @@ export default function QuoteTemplateEditorPage() {
       validity_days: t.validity_days || 30,
       design_settings: t.design_settings || DEFAULT_DESIGN_SETTINGS,
       show_vat: t.show_vat ?? true,
-      vat_rate: t.vat_rate || 18,
+      vat_rate: t.vat_rate ?? 18,
       is_active: t.is_active ?? true,
       html_content: t.html_content || null,
       text_boxes: t.text_boxes || [],
@@ -180,6 +376,7 @@ export default function QuoteTemplateEditorPage() {
           open
           onClose={() => navigate("/quote-templates")}
           template={template}
+          savedQuoteId={activeSavedQuoteId || undefined}
           onSave={handleSave}
         />
       )}
