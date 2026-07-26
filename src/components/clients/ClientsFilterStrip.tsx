@@ -49,6 +49,8 @@ import {
   Copy,
   GripVertical,
   ChevronLeft,
+  History,
+  Settings2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConsultantsFilterPopover } from "./ConsultantsFilterPopover";
@@ -98,6 +100,10 @@ export interface ClientFilterState {
   hasReminders: boolean | null;
   hasTasks: boolean | null;
   hasMeetings: boolean | null;
+  recentClientsDays?: number | null;
+  recentActivityTypes?: Array<
+    "client" | "process" | "tasks" | "reminders" | "meetings"
+  >;
   categories: string[];
   tags: string[];
   hiddenClassifications: string[]; // classifications to HIDE from list (empty = show all)
@@ -129,6 +135,7 @@ interface ClientsFilterStripProps {
   clientsWithReminders: Set<string>;
   clientsWithTasks: Set<string>;
   clientsWithMeetings: Set<string>;
+  recentClientsCount?: number;
   categories?: ClientCategory[];
   categoryCounts?: Record<string, number>;
   stageCounts?: Record<string, number>;
@@ -158,6 +165,7 @@ export function ClientsFilterStrip({
   clientsWithReminders,
   clientsWithTasks,
   clientsWithMeetings,
+  recentClientsCount = 0,
   categories = [],
   categoryCounts = {},
   stageCounts = {},
@@ -233,6 +241,21 @@ export function ClientsFilterStrip({
   }>(persistedSortPopoverOffset || { x: 0, y: 0 });
   const [classificationDialogOpen, setClassificationDialogOpen] =
     useState(false);
+  const {
+    value: recentClientsSettings,
+    setValue: setRecentClientsSettings,
+  } = useUserSettings<{
+    days: number;
+    activityTypes: Array<
+      "client" | "process" | "tasks" | "reminders" | "meetings"
+    >;
+  }>({
+    key: "clients_recent_activity_v2",
+    defaultValue: {
+      days: 30,
+      activityTypes: ["client", "process", "tasks", "reminders", "meetings"],
+    },
+  });
   const [dateTabsManagerOpen, setDateTabsManagerOpen] = useState(false);
   const [dateTabEditorOpen, setDateTabEditorOpen] = useState(false);
   const [editingDateTabId, setEditingDateTabId] = useState<string | null>(null);
@@ -658,17 +681,79 @@ export function ClientsFilterStrip({
 
   const toggleHasReminders = () => {
     const newValue = filters.hasReminders === true ? null : true;
-    onFiltersChange({ ...filters, hasReminders: newValue });
+    onFiltersChange({
+      ...filters,
+      hasReminders: newValue,
+      hasTasks: newValue ? null : filters.hasTasks,
+      hasMeetings: newValue ? null : filters.hasMeetings,
+    });
   };
 
   const toggleHasTasks = () => {
     const newValue = filters.hasTasks === true ? null : true;
-    onFiltersChange({ ...filters, hasTasks: newValue });
+    onFiltersChange({
+      ...filters,
+      hasTasks: newValue,
+      hasReminders: newValue ? null : filters.hasReminders,
+      hasMeetings: newValue ? null : filters.hasMeetings,
+    });
   };
 
   const toggleHasMeetings = () => {
     const newValue = filters.hasMeetings === true ? null : true;
-    onFiltersChange({ ...filters, hasMeetings: newValue });
+    onFiltersChange({
+      ...filters,
+      hasMeetings: newValue,
+      hasReminders: newValue ? null : filters.hasReminders,
+      hasTasks: newValue ? null : filters.hasTasks,
+    });
+  };
+
+  const toggleRecentClients = () => {
+    const activityTypes =
+      recentClientsSettings.activityTypes?.length > 0
+        ? recentClientsSettings.activityTypes
+        : ["client", "process", "tasks", "reminders", "meetings"] as const;
+    onFiltersChange({
+      ...filters,
+      recentClientsDays: filters.recentClientsDays
+        ? null
+        : recentClientsSettings.days,
+      recentActivityTypes: [...activityTypes],
+    });
+  };
+
+  const updateRecentClientsDays = (days: number) => {
+    setRecentClientsSettings({
+      ...recentClientsSettings,
+      days,
+    });
+    if (filters.recentClientsDays) {
+      onFiltersChange({ ...filters, recentClientsDays: days });
+    }
+  };
+
+  const toggleRecentActivityType = (
+    type: "client" | "process" | "tasks" | "reminders" | "meetings",
+  ) => {
+    const current =
+      recentClientsSettings.activityTypes?.length > 0
+        ? recentClientsSettings.activityTypes
+        : ["client", "process", "tasks", "reminders", "meetings"];
+    const next = current.includes(type)
+      ? current.filter((item) => item !== type)
+      : [...current, type];
+    if (next.length === 0) return;
+    setRecentClientsSettings({
+      ...recentClientsSettings,
+      activityTypes: next,
+    });
+    if (filters.recentClientsDays) {
+      onFiltersChange({
+        ...filters,
+        recentActivityTypes: next,
+      });
+    }
   };
 
   const toggleCategory = (categoryId: string) => {
@@ -763,6 +848,7 @@ export function ClientsFilterStrip({
     filters.hasReminders !== null ||
     filters.hasTasks !== null ||
     filters.hasMeetings !== null ||
+    Boolean(filters.recentClientsDays) ||
     filters.tags.length > 0 ||
     !!filters.customDateRange ||
     (filters.monthAgeRanges && filters.monthAgeRanges.length > 0) ||
@@ -779,6 +865,8 @@ export function ClientsFilterStrip({
       hasReminders: null,
       hasTasks: null,
       hasMeetings: null,
+      recentClientsDays: null,
+      recentActivityTypes: filters.recentActivityTypes,
       categories: [],
       tags: [],
       hiddenClassifications: [],
@@ -1889,6 +1977,154 @@ export function ClientsFilterStrip({
           </Badge>
         </Button>
         )}
+
+        {/* Recently active clients */}
+        <div
+          className={cn(
+            "flex h-7 items-center overflow-hidden rounded-md border border-[#d4a843] bg-white shadow-sm",
+            filters.recentClientsDays && "bg-[#d4a843]",
+          )}
+        >
+          <button
+            type="button"
+            onClick={toggleRecentClients}
+            className={cn(
+              "flex h-full items-center gap-1.5 px-2.5 text-xs font-medium text-[#1e293b] transition-colors hover:bg-[#fef9ee]",
+              filters.recentClientsDays && "hover:bg-[#c49a3a]",
+            )}
+            title="לקוחות שנעשתה בהם פעילות לאחרונה"
+          >
+            <History className="h-3.5 w-3.5" />
+            <span>לקוחות אחרונים</span>
+            <Badge
+              variant="secondary"
+              className="mr-0.5 h-5 min-w-5 px-1.5 text-[10px]"
+            >
+              {filters.recentClientsDays
+                ? recentClientsCount
+                : `${recentClientsSettings.days}י׳`}
+            </Badge>
+          </button>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "grid h-6 w-7 shrink-0 place-items-center border-r border-[#d4a843]/70 text-[#1e3a5f] transition-colors hover:bg-[#fff7df]",
+                  filters.recentClientsDays && "hover:bg-[#c49a3a]",
+                )}
+                aria-label="הגדרות לקוחות אחרונים"
+                title="הגדרות לקוחות אחרונים"
+              >
+                <Settings2 className="h-3 w-3" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              sideOffset={8}
+              dir="rtl"
+              className="w-80 border-[#d4a843] p-0 shadow-xl"
+            >
+              <div className="border-b border-[#d4a843]/30 bg-[#fffaf0] px-4 py-3">
+                <div className="flex items-center gap-2 font-semibold text-[#1e3a5f]">
+                  <Settings2 className="h-4 w-4 text-[#d4a843]" />
+                  הגדרות לקוחות אחרונים
+                </div>
+                <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+                  לקוח ייחשב אחרון אם נמצאה עבורו לפחות פעילות אחת בטווח
+                  שבחרת.
+                </p>
+              </div>
+
+              <div className="space-y-4 p-4">
+                <div>
+                  <Label className="mb-2 block text-xs font-semibold">
+                    טווח זמן
+                  </Label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[
+                      { days: 7, label: "שבוע" },
+                      { days: 14, label: "שבועיים" },
+                      { days: 30, label: "חודש" },
+                      { days: 90, label: "3 חודשים" },
+                    ].map((option) => (
+                      <button
+                        key={option.days}
+                        type="button"
+                        onClick={() => updateRecentClientsDays(option.days)}
+                        className={cn(
+                          "rounded-md border px-1 py-1.5 text-[11px] transition-colors",
+                          recentClientsSettings.days === option.days
+                            ? "border-[#d4a843] bg-[#d4a843] font-semibold text-[#1e293b]"
+                            : "border-border bg-white hover:border-[#d4a843] hover:bg-[#fffaf0]",
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={3650}
+                      value={recentClientsSettings.days}
+                      onChange={(event) => {
+                        const days = Number(event.target.value);
+                        if (Number.isFinite(days) && days >= 1) {
+                          updateRecentClientsDays(Math.floor(days));
+                        }
+                      }}
+                      className="h-8 w-24 text-xs"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      ימים אחרונים
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="mb-2 block text-xs font-semibold">
+                    מה נחשב לפעילות?
+                  </Label>
+                  <div className="space-y-2 rounded-lg border bg-muted/20 p-2.5">
+                    {[
+                      { id: "client" as const, label: "עדכון בכרטיס הלקוח" },
+                      { id: "process" as const, label: "תהליך, שלב או משימת שלב" },
+                      { id: "tasks" as const, label: "משימה רגילה" },
+                      { id: "reminders" as const, label: "תזכורת" },
+                      { id: "meetings" as const, label: "פגישה" },
+                    ].map((activity) => {
+                      const selected =
+                        recentClientsSettings.activityTypes?.length > 0
+                          ? recentClientsSettings.activityTypes
+                          : ["client", "process", "tasks", "reminders", "meetings"];
+                      return (
+                        <label
+                          key={activity.id}
+                          className="flex cursor-pointer items-center gap-2 text-xs text-[#1e293b]"
+                        >
+                          <Checkbox
+                            checked={selected.includes(activity.id)}
+                            onCheckedChange={() =>
+                              toggleRecentActivityType(activity.id)
+                            }
+                          />
+                          {activity.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 text-[10px] leading-4 text-muted-foreground">
+                    חייב להישאר לפחות סוג פעילות אחד. הלקוחות מוצגים מהפעילות
+                    החדשה לישנה.
+                  </p>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
 
         {/* Has Meetings Toggle */}
         {visibleFilterSections.has("meetings") && (

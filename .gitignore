@@ -40,5 +40,8 @@ client_secret*.json
 credentials.json
 token.jsontest-results/
 
+# Local test artifacts and temporary browser profiles
+tmp/
+
 # External resources
 external/chai-transcribe
