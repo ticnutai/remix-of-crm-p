@@ -1846,7 +1846,11 @@ export default function Clients() {
     return () => {
       window.removeEventListener("focus", refreshProcessData);
       document.removeEventListener("visibilitychange", refreshProcessData);
-      void supabase.removeChannel(processChannel);
+      if (typeof (supabase as any).removeChannel === "function") {
+        void supabase.removeChannel(processChannel);
+      } else if (typeof (processChannel as any)?.unsubscribe === "function") {
+        void (processChannel as any).unsubscribe();
+      }
     };
   }, [fetchFilterData]);
 
