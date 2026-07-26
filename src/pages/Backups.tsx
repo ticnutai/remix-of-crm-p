@@ -1048,7 +1048,7 @@ export default function Backups() {
       if (records && records.length > 0) {
         const worksheet = XLSX.utils.json_to_sheet(records);
         // Sheet name max 31 chars in Excel - keep only letters, numbers, spaces, hyphens
-        let sheetName =
+        const sheetName =
           (topicLabels[tableName] || tableName)
             .replace(/[^\p{L}\p{N}\s\-_]/gu, "")
             .trim()

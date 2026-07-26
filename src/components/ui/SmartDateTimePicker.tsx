@@ -143,7 +143,7 @@ export const SmartDateTimePicker: React.FC<SmartDateTimePickerProps> = ({
     if (!input.trim()) return null;
     const m = input.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
     if (!m) return null;
-    let [, d, mo, y] = m;
+    const [, d, mo, y] = m;
     let yy = parseInt(y, 10);
     if (y.length === 2) yy = 2000 + yy;
     const dt = new Date(yy, parseInt(mo, 10) - 1, parseInt(d, 10));

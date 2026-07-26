@@ -228,6 +228,7 @@ interface Client {
   company: string | null;
   status: "active" | "inactive" | "pending" | null;
   created_at: string;
+  updated_at?: string | null;
   category_id: string | null;
   tags: string[] | null;
   classification: string | null;
@@ -240,6 +241,13 @@ interface ClientCategory {
   icon: string;
 }
 
+interface ClientTagDefinition {
+  id: string;
+  name: string;
+  color: string;
+  sort_order: number;
+}
+
 interface ClientStageInfo {
   id: string;
   client_id: string;
@@ -247,6 +255,7 @@ interface ClientStageInfo {
   stage_name: string;
   sort_order: number;
   is_completed: boolean | null;
+  updated_at?: string;
 }
 
 interface ClientStageTaskInfo {
@@ -255,7 +264,38 @@ interface ClientStageTaskInfo {
   stage_id: string;
   title: string;
   completed: boolean;
+  updated_at?: string;
 }
+
+interface ClientTaskActivity {
+  id: string;
+  client_id: string;
+  title: string;
+  due_date: string | null;
+  status: string | null;
+  updated_at: string;
+}
+
+interface ClientReminderActivity {
+  id: string;
+  client_id: string;
+  title: string;
+  remind_at: string;
+  created_at: string;
+  is_dismissed: boolean | null;
+}
+
+interface ClientMeetingActivity {
+  id: string;
+  client_id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  status: string | null;
+  updated_at: string;
+}
+
+type ClientTaskViewContent = "process" | "tasks" | "reminders" | "meetings";
 
 interface ClientStageTemplateInfo {
   id: string;
@@ -311,6 +351,14 @@ type ClientFilterDataPayload = {
   reminderClientIds: string[];
   taskClientIds: string[];
   meetingClientIds: string[];
+  tasks: ClientTaskActivity[];
+  reminders: ClientReminderActivity[];
+  meetings: ClientMeetingActivity[];
+  latestActivityByClient: Record<string, string>;
+  latestActivityByType: Record<
+    "process" | "tasks" | "reminders" | "meetings",
+    Record<string, string>
+  >;
   latestSignedByClient: Record<string, string>;
 };
 
@@ -318,6 +366,7 @@ let clientFilterDataFetch: Promise<ClientFilterDataPayload> | null = null;
 let categoriesAndTagsFetch: Promise<{
   categories: ClientCategory[];
   tags: string[];
+  tagDefinitions: ClientTagDefinition[];
 }> | null = null;
 let clientConsultantsFetch: Promise<
   Record<string, Array<{ consultantId: string; profession: string }>>
@@ -488,6 +537,8 @@ export default function Clients() {
       stagesToShow: 1,
       tasksToShow: 3,
       verticalScroll: true,
+      clientsPerRow: 3,
+      pageScrollSpeed: 0.45,
     },
   });
 
@@ -505,6 +556,8 @@ export default function Clients() {
     hasReminders?: boolean | null;
     hasTasks?: boolean | null;
     hasMeetings?: boolean | null;
+    recentClientsDays?: number | null;
+    recentActivityTypes?: ClientFilterState["recentActivityTypes"];
     categories?: string[];
     tags?: string[];
     hiddenClassifications?: string[];
@@ -609,6 +662,10 @@ export default function Clients() {
       hasReminders: savedFullFilters.hasReminders ?? prev.hasReminders,
       hasTasks: savedFullFilters.hasTasks ?? prev.hasTasks,
       hasMeetings: savedFullFilters.hasMeetings ?? prev.hasMeetings,
+      recentClientsDays:
+        savedFullFilters.recentClientsDays ?? prev.recentClientsDays,
+      recentActivityTypes:
+        savedFullFilters.recentActivityTypes ?? prev.recentActivityTypes,
       // Legacy categories are no longer a filter source; workflow templates
       // are the single source of truth for process/stage/task filtering.
       categories: [],
@@ -774,6 +831,14 @@ export default function Clients() {
     hasReminders: null,
     hasTasks: null,
     hasMeetings: null,
+    recentClientsDays: null,
+    recentActivityTypes: [
+      "client",
+      "process",
+      "tasks",
+      "reminders",
+      "meetings",
+    ],
     categories: [],
     tags: [],
     hiddenClassifications: [],
@@ -785,6 +850,24 @@ export default function Clients() {
     consultantProfessions: [],
     sortBy: "date_desc",
   });
+  const [storedTagDefinitions, setStoredTagDefinitions] = useSyncedSetting<ClientTagDefinition[]>({
+    key: "clients-tag-definitions-v1",
+    defaultValue: [],
+  });
+  const storedTagDefinitionsRef = useRef(storedTagDefinitions);
+
+  useEffect(() => {
+    storedTagDefinitionsRef.current = storedTagDefinitions;
+  }, [storedTagDefinitions]);
+
+  const taskViewContent: ClientTaskViewContent =
+    filters.hasTasks === true
+      ? "tasks"
+      : filters.hasReminders === true
+        ? "reminders"
+        : filters.hasMeetings === true
+          ? "meetings"
+          : "process";
 
   // client_id -> Array<{ consultantId, profession }>
   const [clientConsultantsMap, setClientConsultantsMap] = useState<
@@ -845,8 +928,27 @@ export default function Clients() {
   const [clientsWithMeetings, setClientsWithMeetings] = useState<Set<string>>(
     new Set(),
   );
+  const [clientTasks, setClientTasks] = useState<ClientTaskActivity[]>([]);
+  const [clientReminders, setClientReminders] = useState<
+    ClientReminderActivity[]
+  >([]);
+  const [clientMeetings, setClientMeetings] = useState<
+    ClientMeetingActivity[]
+  >([]);
+  const [latestActivityByClient, setLatestActivityByClient] = useState<
+    Record<string, string>
+  >({});
+  const [latestActivityByType, setLatestActivityByType] = useState<
+    ClientFilterDataPayload["latestActivityByType"]
+  >({
+    process: {},
+    tasks: {},
+    reminders: {},
+    meetings: {},
+  });
   const [categories, setCategories] = useState<ClientCategory[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
+  const [tagDefinitions, setTagDefinitions] = useState<ClientTagDefinition[]>([]);
   const [latestContractSignedByClient, setLatestContractSignedByClient] =
     useState<Record<string, string>>({});
 
@@ -901,6 +1003,50 @@ export default function Clients() {
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [duplicateClient, setDuplicateClient] = useState<Client | null>(null);
   const [pendingClientData, setPendingClientData] = useState<any>(null);
+
+  const effectiveLatestActivityByClient = useMemo(() => {
+    const result: Record<string, string> = {};
+    const selectedTypes =
+      filters.recentActivityTypes?.length
+        ? filters.recentActivityTypes
+        : ["client", "process", "tasks", "reminders", "meetings"];
+    const record = (clientId: string, candidate: string | null | undefined) => {
+      if (!candidate) return;
+      const candidateTime = new Date(candidate).getTime();
+      const currentTime = result[clientId]
+        ? new Date(result[clientId]).getTime()
+        : -Infinity;
+      if (!Number.isNaN(candidateTime) && candidateTime > currentTime) {
+        result[clientId] = candidate;
+      }
+    };
+
+    if (selectedTypes.includes("client")) {
+      clients.forEach((client) =>
+        record(client.id, client.updated_at || client.created_at),
+      );
+    }
+    (["process", "tasks", "reminders", "meetings"] as const).forEach(
+      (type) => {
+        if (!selectedTypes.includes(type)) return;
+        Object.entries(latestActivityByType[type]).forEach(
+          ([clientId, activityDate]) => record(clientId, activityDate),
+        );
+      },
+    );
+
+    // Backwards-compatible fallback while cached filter data from an older
+    // module version is being replaced.
+    if (Object.keys(result).length === 0 && selectedTypes.length === 5) {
+      Object.assign(result, latestActivityByClient);
+    }
+    return result;
+  }, [
+    clients,
+    filters.recentActivityTypes,
+    latestActivityByClient,
+    latestActivityByType,
+  ]);
 
   // Memoized filtered clients for performance - replaces applyFilters + useEffect pattern
   // MUST be defined before useEffects that use it
@@ -1046,6 +1192,20 @@ export default function Clients() {
       result = result.filter((client) => clientsWithMeetings.has(client.id));
     }
 
+    // Recently active clients — based on the latest real activity connected
+    // to the client, not only on the date the client record was created.
+    if (filters.recentClientsDays) {
+      const cutoff =
+        Date.now() - filters.recentClientsDays * 24 * 60 * 60 * 1000;
+      result = result.filter((client) => {
+        const activityDate = effectiveLatestActivityByClient[client.id];
+        return (
+          Boolean(activityDate) &&
+          new Date(activityDate).getTime() >= cutoff
+        );
+      });
+    }
+
     // Tags filter
     if (filters.tags.length > 0) {
       result = result.filter(
@@ -1101,6 +1261,12 @@ export default function Clients() {
 
     // Apply sorting
     result.sort((a, b) => {
+      if (filters.recentClientsDays) {
+        return (
+          new Date(effectiveLatestActivityByClient[b.id] || 0).getTime() -
+          new Date(effectiveLatestActivityByClient[a.id] || 0).getTime()
+        );
+      }
       switch (filters.sortBy) {
         case "name_asc":
           return a.name.localeCompare(b.name, "he");
@@ -1151,6 +1317,7 @@ export default function Clients() {
     clientsWithReminders,
     clientsWithTasks,
     clientsWithMeetings,
+    effectiveLatestActivityByClient,
     latestContractSignedByClient,
     clientConsultantsMap,
     matchesQueryTokens,
@@ -1289,6 +1456,66 @@ export default function Clients() {
     });
     return result;
   }, [clientStageTasks]);
+
+  const tasksByClient = useMemo(() => {
+    const result = new Map<string, ClientTaskActivity[]>();
+    clientTasks.forEach((task) => {
+      const current = result.get(task.client_id) || [];
+      current.push(task);
+      result.set(task.client_id, current);
+    });
+    result.forEach((items) =>
+      items.sort((a, b) => {
+        const aTime = a.due_date ? new Date(a.due_date).getTime() : Infinity;
+        const bTime = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+        return aTime - bTime;
+      }),
+    );
+    return result;
+  }, [clientTasks]);
+
+  const remindersByClient = useMemo(() => {
+    const result = new Map<string, ClientReminderActivity[]>();
+    clientReminders.forEach((reminder) => {
+      if (!reminder.client_id) return;
+      const current = result.get(reminder.client_id) || [];
+      current.push(reminder);
+      result.set(reminder.client_id, current);
+    });
+    result.forEach((items) =>
+      items.sort(
+        (a, b) =>
+          new Date(a.remind_at).getTime() - new Date(b.remind_at).getTime(),
+      ),
+    );
+    return result;
+  }, [clientReminders]);
+
+  const meetingsByClient = useMemo(() => {
+    const result = new Map<string, ClientMeetingActivity[]>();
+    clientMeetings.forEach((meeting) => {
+      const current = result.get(meeting.client_id) || [];
+      current.push(meeting);
+      result.set(meeting.client_id, current);
+    });
+    result.forEach((items) =>
+      items.sort(
+        (a, b) =>
+          new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
+      ),
+    );
+    return result;
+  }, [clientMeetings]);
+
+  const recentClientsCount = useMemo(() => {
+    const days = filters.recentClientsDays;
+    if (!days) return 0;
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    return clients.filter((client) => {
+      const activity = effectiveLatestActivityByClient[client.id];
+      return activity && new Date(activity).getTime() >= cutoff;
+    }).length;
+  }, [clients, effectiveLatestActivityByClient, filters.recentClientsDays]);
 
   const handleToggleStageTask = useCallback(
     async (taskId: string, completed: boolean) => {
@@ -1453,10 +1680,15 @@ export default function Clients() {
         wheelStep *= container.clientHeight;
       }
       if (Math.abs(wheelStep) < 40) {
-        wheelStep = Math.sign(wheelStep) * 180;
+        wheelStep =
+          Math.sign(wheelStep) * Math.max(12, Math.abs(wheelStep) * 4);
       }
 
-      pendingWheelDelta += wheelStep;
+      const configuredSpeed = Math.min(
+        1.5,
+        Math.max(0.15, processControlSettings.pageScrollSpeed ?? 0.45),
+      );
+      pendingWheelDelta += wheelStep * configuredSpeed;
       if (wheelFrame !== null) return;
 
       wheelFrame = window.requestAnimationFrame(() => {
@@ -1477,7 +1709,7 @@ export default function Clients() {
       document.removeEventListener("wheel", handlePageWheel, true);
       if (wheelFrame !== null) window.cancelAnimationFrame(wheelFrame);
     };
-  }, [viewMode]);
+  }, [processControlSettings.pageScrollSpeed, viewMode]);
 
   // Keyboard navigation - jump to client by typing letters
   useEffect(() => {
@@ -1615,16 +1847,19 @@ export default function Clients() {
             remindersRes,
             tasksRes,
             meetingsRes,
+            allTaskActivityRes,
+            allReminderActivityRes,
+            allMeetingActivityRes,
             contractsRes,
           ] =
             await Promise.all([
               fetchAllFilterRows(
                 "client_stages",
-                "id, client_id, stage_id, stage_name, sort_order, is_completed, created_at",
+                "id, client_id, stage_id, stage_name, sort_order, is_completed, created_at, updated_at",
               ),
               fetchAllFilterRows(
                 "client_stage_tasks",
-                "id, client_id, stage_id, title, completed, created_at",
+                "id, client_id, stage_id, title, completed, created_at, updated_at",
               ),
               (supabase as any)
                 .from("stage_templates")
@@ -1635,19 +1870,43 @@ export default function Clients() {
                 .order("sort_order"),
               supabase
                 .from("reminders")
-                .select("entity_id")
+                .select(
+                  "id, entity_id, client_id, title, remind_at, created_at, is_dismissed",
+                )
                 .eq("entity_type", "client")
                 .eq("is_dismissed", false),
               supabase
                 .from("tasks")
-                .select("client_id")
+                .select("id, client_id, title, due_date, status, updated_at")
                 .not("client_id", "is", null)
-                .neq("status", "done"),
+                .or(
+                  "status.is.null,status.not.in.(done,completed,cancelled,canceled)",
+                ),
               supabase
                 .from("meetings")
-                .select("client_id")
+                .select(
+                  "id, client_id, title, start_time, end_time, status, updated_at",
+                )
                 .not("client_id", "is", null)
+                .or("status.is.null,status.not.in.(completed,cancelled,canceled)")
                 .gte("start_time", new Date().toISOString()),
+              supabase
+                .from("tasks")
+                .select("client_id, updated_at")
+                .not("client_id", "is", null)
+                .order("updated_at", { ascending: false })
+                .limit(1000),
+              supabase
+                .from("reminders")
+                .select("client_id, entity_id, entity_type, created_at")
+                .order("created_at", { ascending: false })
+                .limit(1000),
+              supabase
+                .from("meetings")
+                .select("client_id, updated_at")
+                .not("client_id", "is", null)
+                .order("updated_at", { ascending: false })
+                .limit(1000),
               supabase
                 .from("contracts")
                 .select("client_id, signed_date")
@@ -1663,11 +1922,73 @@ export default function Clients() {
             remindersRes,
             tasksRes,
             meetingsRes,
+            allTaskActivityRes,
+            allReminderActivityRes,
+            allMeetingActivityRes,
             contractsRes,
           ].find((response) => response.error)?.error;
           if (firstError) throw firstError;
 
           const latestSignedMap: Record<string, string> = {};
+          const latestActivityMap: Record<string, string> = {};
+          const latestActivityTypeMap: ClientFilterDataPayload["latestActivityByType"] =
+            {
+              process: {},
+              tasks: {},
+              reminders: {},
+              meetings: {},
+            };
+          const recordActivity = (
+            type: keyof ClientFilterDataPayload["latestActivityByType"],
+            clientId: string | null | undefined,
+            activityDate: string | null | undefined,
+          ) => {
+            if (!clientId || !activityDate) return;
+            const timestamp = new Date(activityDate).getTime();
+            if (Number.isNaN(timestamp)) return;
+            const existing = latestActivityMap[clientId];
+            if (
+              !existing ||
+              timestamp > new Date(existing).getTime()
+            ) {
+              latestActivityMap[clientId] = activityDate;
+            }
+            const existingForType = latestActivityTypeMap[type][clientId];
+            if (
+              !existingForType ||
+              timestamp > new Date(existingForType).getTime()
+            ) {
+              latestActivityTypeMap[type][clientId] = activityDate;
+            }
+          };
+
+          (stagesRes.data || []).forEach((row: any) =>
+            recordActivity(
+              "process",
+              row.client_id,
+              row.updated_at || row.created_at,
+            ),
+          );
+          (stageTasksRes.data || []).forEach((row: any) =>
+            recordActivity(
+              "process",
+              row.client_id,
+              row.updated_at || row.created_at,
+            ),
+          );
+          (allTaskActivityRes.data || []).forEach((row: any) =>
+            recordActivity("tasks", row.client_id, row.updated_at),
+          );
+          (allReminderActivityRes.data || []).forEach((row: any) => {
+            const clientId =
+              row.client_id ||
+              (row.entity_type === "client" ? row.entity_id : null);
+            recordActivity("reminders", clientId, row.created_at);
+          });
+          (allMeetingActivityRes.data || []).forEach((row: any) =>
+            recordActivity("meetings", row.client_id, row.updated_at),
+          );
+
           (contractsRes.data || []).forEach((contract: any) => {
             const clientId = contract?.client_id;
             const signedDate = contract?.signed_date;
@@ -1693,11 +2014,21 @@ export default function Clients() {
                 .map((stage: any) => ({ id: stage.id, stage_name: stage.stage_name })),
             })),
             reminderClientIds:
-              remindersRes.data?.map((row) => row.entity_id).filter(Boolean) || [],
+              remindersRes.data
+                ?.map((row) => row.client_id || row.entity_id)
+                .filter(Boolean) || [],
             taskClientIds:
               tasksRes.data?.map((row) => row.client_id).filter(Boolean) || [],
             meetingClientIds:
               meetingsRes.data?.map((row) => row.client_id).filter(Boolean) || [],
+            tasks: (tasksRes.data || []) as ClientTaskActivity[],
+            reminders: (remindersRes.data || []).map((row: any) => ({
+              ...row,
+              client_id: row.client_id || row.entity_id,
+            })) as ClientReminderActivity[],
+            meetings: (meetingsRes.data || []) as ClientMeetingActivity[],
+            latestActivityByClient: latestActivityMap,
+            latestActivityByType: latestActivityTypeMap,
             latestSignedByClient: latestSignedMap,
           } as ClientFilterDataPayload;
         })().finally(() => {
@@ -1715,6 +2046,11 @@ export default function Clients() {
         setClientsWithReminders(new Set(payload.reminderClientIds));
         setClientsWithTasks(new Set(payload.taskClientIds));
         setClientsWithMeetings(new Set(payload.meetingClientIds));
+        setClientTasks(payload.tasks);
+        setClientReminders(payload.reminders);
+        setClientMeetings(payload.meetings);
+        setLatestActivityByClient(payload.latestActivityByClient);
+        setLatestActivityByType(payload.latestActivityByType);
         setLatestContractSignedByClient(payload.latestSignedByClient);
       });
     } catch (error) {
@@ -1726,7 +2062,7 @@ export default function Clients() {
     try {
       if (!categoriesAndTagsFetch) {
         categoriesAndTagsFetch = (async () => {
-          const [categoriesResponse, tagsResponse] = await Promise.all([
+          const [categoriesResponse, tagsResponse, tagDefinitionsResponse] = await Promise.all([
             supabase
               .from("client_categories")
               .select("id, name, color, icon")
@@ -1735,12 +2071,21 @@ export default function Clients() {
               .from("clients")
               .select("tags")
               .not("tags", "is", null),
+            supabase
+              .from("client_tag_definitions")
+              .select("id, name, color, sort_order")
+              .order("sort_order")
+              .order("name"),
           ]);
 
           if (categoriesResponse.error) throw categoriesResponse.error;
           if (tagsResponse.error) throw tagsResponse.error;
 
           const uniqueTags = new Set<string>();
+          const persistedTagDefinitions = tagDefinitionsResponse.error
+            ? storedTagDefinitionsRef.current
+            : ((tagDefinitionsResponse.data || []) as ClientTagDefinition[]);
+          persistedTagDefinitions.forEach((tag) => uniqueTags.add(tag.name));
           tagsResponse.data?.forEach((client) => {
             if (client.tags && Array.isArray(client.tags)) {
               client.tags.forEach((tag: string) => uniqueTags.add(tag));
@@ -1750,6 +2095,7 @@ export default function Clients() {
           return {
             categories: (categoriesResponse.data || []) as ClientCategory[],
             tags: Array.from(uniqueTags).sort(),
+            tagDefinitions: persistedTagDefinitions,
           };
         })().finally(() => {
           categoriesAndTagsFetch = null;
@@ -1760,6 +2106,7 @@ export default function Clients() {
       React.startTransition(() => {
         setCategories(payload.categories);
         setAllTags(payload.tags);
+        setTagDefinitions(payload.tagDefinitions);
       });
     } catch (error) {
       console.error("Error fetching categories and tags:", error);
@@ -2491,6 +2838,131 @@ export default function Clients() {
     };
 
     if (viewMode === "tasks") {
+      if (taskViewContent !== "process") {
+        const activityConfig = {
+          tasks: {
+            label: "משימות פתוחות",
+            empty: "אין משימות פתוחות",
+            icon: CheckSquare,
+            items: (tasksByClient.get(client.id) || []).map((item) => ({
+              id: item.id,
+              title: item.title,
+              date: item.due_date,
+            })),
+          },
+          reminders: {
+            label: "תזכורות פעילות",
+            empty: "אין תזכורות פעילות",
+            icon: Bell,
+            items: (remindersByClient.get(client.id) || []).map((item) => ({
+              id: item.id,
+              title: item.title,
+              date: item.remind_at,
+            })),
+          },
+          meetings: {
+            label: "פגישות קרובות",
+            empty: "אין פגישות קרובות",
+            icon: Calendar,
+            items: (meetingsByClient.get(client.id) || []).map((item) => ({
+              id: item.id,
+              title: item.title,
+              date: item.start_time,
+            })),
+          },
+        }[taskViewContent];
+        const ActivityIcon = activityConfig.icon;
+        const visibleItems =
+          processControlSettings.verticalScroll !== false
+            ? activityConfig.items
+            : activityConfig.items.slice(
+                0,
+                processControlSettings.tasksToShow,
+              );
+        const formatActivityDate = (value: string | null) => {
+          if (!value) return "ללא מועד";
+          const date = new Date(value);
+          if (Number.isNaN(date.getTime())) return "ללא מועד";
+          return new Intl.DateTimeFormat("he-IL", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          }).format(date);
+        };
+
+        return (
+          <article
+            ref={cardRef}
+            dir="rtl"
+            className="group flex min-h-[260px] flex-col overflow-hidden rounded-2xl border-2 border-[#d4a843] bg-white shadow-[0_10px_30px_rgba(30,58,95,0.10)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(30,58,95,0.16)]"
+          >
+            <button
+              type="button"
+              onClick={() => navigate(`/client-profile/${client.id}`)}
+              className="flex items-center justify-between gap-3 bg-[#1e3a5f] px-4 py-3 text-right text-white"
+            >
+              <div className="min-w-0">
+                <h3 className="truncate text-base font-bold">{client.name}</h3>
+                <p className="mt-0.5 text-[11px] text-white/65">
+                  {activityConfig.items.length} {activityConfig.label}
+                </p>
+              </div>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#d4a843]/60 bg-white/10 text-[#d4a843]">
+                <ActivityIcon className="h-4 w-4" />
+              </span>
+            </button>
+
+            <div
+              data-client-task-scroll="true"
+              className={cn(
+                "flex-1 space-y-2 p-3",
+                processControlSettings.verticalScroll !== false &&
+                  "overflow-y-auto",
+              )}
+              style={
+                processControlSettings.verticalScroll !== false
+                  ? {
+                      maxHeight: `${Math.max(
+                        180,
+                        processControlSettings.tasksToShow * 56 + 18,
+                      )}px`,
+                    }
+                  : undefined
+              }
+            >
+              {visibleItems.length === 0 ? (
+                <div className="flex h-full min-h-32 items-center justify-center text-sm text-slate-400">
+                  {activityConfig.empty}
+                </div>
+              ) : (
+                visibleItems.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => navigate(`/client-profile/${client.id}`)}
+                    className="flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-right transition hover:border-[#d4a843] hover:bg-[#fef9ee]"
+                  >
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#1e3a5f]/8 text-[#1e3a5f]">
+                      <ActivityIcon className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xs font-semibold text-[#1e3a5f]">
+                        {item.title}
+                      </span>
+                      <span className="mt-0.5 block text-[10px] text-slate-500">
+                        {formatActivityDate(item.date)}
+                      </span>
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </article>
+        );
+      }
+
       const orderedStages = [...(processStagesByClient.get(client.id) || [])]
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
       const clientTasks = processTasksByClient.get(client.id) || [];
@@ -4591,6 +5063,68 @@ export default function Clients() {
                           ))}
                         </select>
                       </div>
+                      <div>
+                        <div className="mb-1.5 flex items-center justify-between gap-2">
+                          <label className="font-semibold text-[#1e3a5f]">
+                            לקוחות בכל שורה
+                          </label>
+                          <span className="rounded-full bg-[#1e3a5f] px-2 py-0.5 text-[11px] font-bold text-white">
+                            {processControlSettings.clientsPerRow ?? 3}
+                          </span>
+                        </div>
+                        <select
+                          className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3"
+                          value={processControlSettings.clientsPerRow ?? 3}
+                          onChange={(event) =>
+                            setProcessControlSettings({
+                              ...processControlSettings,
+                              clientsPerRow: Number(event.target.value),
+                            })
+                          }
+                        >
+                          {[1, 2, 3, 4, 5, 6].map((value) => (
+                            <option key={value} value={value}>
+                              {value} {value === 1 ? "לקוח — כרטיס רחב" : "לקוחות"}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="mt-1 text-[11px] leading-4 text-slate-500">
+                          ככל שמציגים יותר לקוחות בשורה, כל כרטיס נעשה צר יותר.
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 bg-[#fef9ee]/60 p-3">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <label className="font-semibold text-[#1e3a5f]">
+                            מהירות גלילת הלקוחות
+                          </label>
+                          <span className="text-[11px] font-bold text-[#1e3a5f]">
+                            {Math.round(
+                              (processControlSettings.pageScrollSpeed ?? 0.45) *
+                                100,
+                            )}
+                            %
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0.15"
+                          max="1.5"
+                          step="0.05"
+                          value={processControlSettings.pageScrollSpeed ?? 0.45}
+                          onChange={(event) =>
+                            setProcessControlSettings({
+                              ...processControlSettings,
+                              pageScrollSpeed: Number(event.target.value),
+                            })
+                          }
+                          className="h-2 w-full cursor-pointer accent-[#d4a843]"
+                          aria-label="מהירות גלילת הלקוחות"
+                        />
+                        <div className="mt-1 flex justify-between text-[10px] text-slate-500">
+                          <span>איטית</span>
+                          <span>מהירה</span>
+                        </div>
+                      </div>
                       <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-200 bg-[#fef9ee]/60 p-3">
                         <span>
                           <span className="block font-semibold text-[#1e3a5f]">גלילה אנכית</span>
@@ -4749,6 +5283,17 @@ export default function Clients() {
         <ClientsFilterStrip
           filters={filters}
           onFiltersChange={(newFilters) => {
+            const selectedActivity =
+              newFilters.hasTasks === true
+                ? "tasks"
+                : newFilters.hasReminders === true
+                  ? "reminders"
+                  : newFilters.hasMeetings === true
+                    ? "meetings"
+                    : null;
+            if (selectedActivity) {
+              setViewMode("tasks");
+            }
             setFilters(newFilters);
             if (newFilters.sortBy !== filters.sortBy) {
               saveSortBy(newFilters.sortBy);
@@ -4771,6 +5316,8 @@ export default function Clients() {
               hasReminders: newFilters.hasReminders,
               hasTasks: newFilters.hasTasks,
               hasMeetings: newFilters.hasMeetings,
+              recentClientsDays: newFilters.recentClientsDays,
+              recentActivityTypes: newFilters.recentActivityTypes,
               categories: newFilters.categories,
               tags: newFilters.tags,
               hiddenClassifications: newFilters.hiddenClassifications,
@@ -4788,11 +5335,15 @@ export default function Clients() {
           clientsWithReminders={clientsWithReminders}
           clientsWithTasks={clientsWithTasks}
           clientsWithMeetings={clientsWithMeetings}
+          recentClientsCount={recentClientsCount}
           categories={categories}
           categoryCounts={categoryCounts}
           stageCounts={stageCounts}
           monthAgeCounts={monthAgeCounts}
           allTags={allTags}
+          tagColors={Object.fromEntries(
+            tagDefinitions.map((tag) => [tag.name, tag.color]),
+          )}
           visibleClientsCount={filteredClients.length}
           onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
           onUpdate={() => {
@@ -4953,7 +5504,14 @@ export default function Clients() {
                               : viewMode === "cards"
                                 ? "repeat(auto-fill, minmax(320px, 1fr))"
                                 : viewMode === "tasks"
-                                  ? "repeat(auto-fill, minmax(300px, 1fr))"
+                                  ? `repeat(${Math.min(
+                                      6,
+                                      Math.max(
+                                        1,
+                                        processControlSettings.clientsPerRow ??
+                                          3,
+                                      ),
+                                    )}, minmax(0, 1fr))`
                                 : viewMode === "luxury"
                                   ? "repeat(auto-fill, minmax(280px, 1fr))"
                                   : viewMode === "compact"
@@ -5512,7 +6070,16 @@ export default function Clients() {
             onClose={() => setIsCategoryManagerOpen(false)}
             categories={categories}
             allTags={allTags}
+            tagDefinitions={tagDefinitions}
+            initialTab="tags"
+            onTagDefinitionsChange={(definitions) => {
+              storedTagDefinitionsRef.current = definitions;
+              setTagDefinitions(definitions);
+              setAllTags(definitions.map((tag) => tag.name).sort());
+              setStoredTagDefinitions(definitions);
+            }}
             onUpdate={() => {
+              fetchClients();
               fetchCategoriesAndTags();
             }}
           />

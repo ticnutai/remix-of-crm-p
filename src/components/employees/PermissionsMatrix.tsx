@@ -147,7 +147,7 @@ export function PermissionsMatrix({ employees }: { employees: Employee[] }) {
   const toggle = useCallback((moduleKey: string, field: keyof ModulePerm) => {
     setDraft(prev => {
       const cur = prev[moduleKey] ?? noAccess();
-      let next = { ...cur };
+      const next = { ...cur };
 
       if (field === "can_view") {
         next.can_view = !cur.can_view;
