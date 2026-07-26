@@ -144,6 +144,7 @@ interface ClientsFilterStripProps {
     byExact: Record<number, number>;
   };
   allTags?: string[];
+  tagColors?: Record<string, string>;
   visibleClientsCount?: number;
   onOpenCategoryManager?: () => void;
   onUpdate?: () => void;
@@ -158,6 +159,18 @@ const iconMap: Record<string, React.ReactNode> = {
   Handshake: <Handshake className="h-4 w-4" />,
   FolderOpen: <FolderOpen className="h-4 w-4" />,
 };
+
+const FILTER_SECTIONS = [
+  { id: "sort", label: "מיון / תאריך" },
+  { id: "classification", label: "סיווג" },
+  { id: "consultants", label: "יועצים" },
+  { id: "tags", label: "תגיות" },
+  { id: "stages", label: "תהליכים ושלבים" },
+  { id: "reminders", label: "תזכורות" },
+  { id: "tasks", label: "משימות" },
+  { id: "recent", label: "לקוחות אחרונים" },
+  { id: "meetings", label: "פגישות" },
+] as const;
 
 export function ClientsFilterStrip({
   filters,
@@ -174,6 +187,7 @@ export function ClientsFilterStrip({
     byExact: {},
   },
   allTags = [],
+  tagColors = {},
   visibleClientsCount,
   onOpenCategoryManager,
   onUpdate,
@@ -948,21 +962,68 @@ export function ClientsFilterStrip({
     [categories, filters.categories],
   );
 
-  // Visible filter sections (persisted)
-  const FILTER_SECTIONS: { id: string; label: string }[] = [
-    { id: "sort", label: "מיון / תאריך" },
-    { id: "classification", label: "סיווג" },
-    { id: "consultants", label: "יועצים" },
-    { id: "tags", label: "תגיות" },
-    { id: "stages", label: "תהליכים ושלבים" },
-    { id: "reminders", label: "תזכורות" },
-    { id: "tasks", label: "משימות" },
-    { id: "meetings", label: "פגישות" },
-  ];
+  // Filter visibility and order are persisted separately so hiding a filter
+  // never changes the position it returns to when shown again.
   const [visibleFilterSectionsArr, setVisibleFilterSectionsArr] = useSyncedSetting<string[]>({
     key: "clients-filter-strip-visible-sections",
     defaultValue: FILTER_SECTIONS.map((s) => s.id),
   });
+  const [filterSectionsOrderArr, setFilterSectionsOrderArr] =
+    useSyncedSetting<string[]>({
+      key: "clients-filter-strip-sections-order-v1",
+      defaultValue: FILTER_SECTIONS.map((section) => section.id),
+    });
+  const [recentVisibilityMigrated, setRecentVisibilityMigrated] =
+    useSyncedSetting<boolean>({
+      key: "clients-filter-strip-recent-visibility-migrated-v1",
+      defaultValue: false,
+    });
+  const [draggedFilterSectionId, setDraggedFilterSectionId] = useState<
+    string | null
+  >(null);
+  const [dragOverFilterSectionId, setDragOverFilterSectionId] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    if (recentVisibilityMigrated) return;
+    setVisibleFilterSectionsArr((current) =>
+      current.includes("recent") ? current : [...current, "recent"],
+    );
+    setRecentVisibilityMigrated(true);
+  }, [
+    recentVisibilityMigrated,
+    setRecentVisibilityMigrated,
+    setVisibleFilterSectionsArr,
+  ]);
+
+  const orderedFilterSections = useMemo(() => {
+    const knownIds = new Set<string>(
+      FILTER_SECTIONS.map((section) => section.id),
+    );
+    const savedIds = filterSectionsOrderArr.filter((id) => knownIds.has(id));
+    const missingIds = FILTER_SECTIONS.map((section) => section.id).filter(
+      (id) => !savedIds.includes(id),
+    );
+    const normalizedOrder = [...savedIds, ...missingIds];
+    return normalizedOrder
+      .map((id) => FILTER_SECTIONS.find((section) => section.id === id))
+      .filter((section): section is (typeof FILTER_SECTIONS)[number] =>
+        Boolean(section),
+      );
+  }, [filterSectionsOrderArr]);
+
+  const filterSectionOrderMap = useMemo(
+    () =>
+      new Map(
+        orderedFilterSections.map((section, index) => [section.id, index]),
+      ),
+    [orderedFilterSections],
+  );
+  const getFilterSectionOrder = (id: string) =>
+    filterSectionOrderMap.get(id as (typeof FILTER_SECTIONS)[number]["id"]) ??
+    FILTER_SECTIONS.length;
+
   const visibleFilterSections = useMemo(() => new Set(visibleFilterSectionsArr), [visibleFilterSectionsArr]);
   const setVisibleFilterSections = useCallback((next: Set<string> | ((prev: Set<string>) => Set<string>)) => {
     setVisibleFilterSectionsArr((prevArr) => {
@@ -977,6 +1038,21 @@ export function ClientsFilterStrip({
       if (n.has(id)) n.delete(id); else n.add(id);
       return n;
     });
+  };
+  const moveFilterSection = (draggedId: string, targetId: string) => {
+    if (draggedId === targetId) return;
+    const currentOrder = orderedFilterSections.map((section) => section.id);
+    const fromIndex = currentOrder.indexOf(
+      draggedId as (typeof FILTER_SECTIONS)[number]["id"],
+    );
+    const targetIndex = currentOrder.indexOf(
+      targetId as (typeof FILTER_SECTIONS)[number]["id"],
+    );
+    if (fromIndex < 0 || targetIndex < 0) return;
+    const nextOrder = [...currentOrder];
+    const [movedId] = nextOrder.splice(fromIndex, 1);
+    nextOrder.splice(targetIndex, 0, movedId);
+    setFilterSectionsOrderArr(nextOrder);
   };
   const [filterSettingsOpen, setFilterSettingsOpen] = useState(false);
 
@@ -993,29 +1069,88 @@ export function ClientsFilterStrip({
             <Button
               variant="outline"
               size="icon"
+              style={{ order: -200 }}
               className="h-7 w-7 bg-white border border-[#d4a843] hover:bg-[#fef9ee]"
               title="הגדרת פילטרים מוצגים"
             >
               <Filter className="w-3.5 h-3.5 text-muted-foreground" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[260px] p-0" dir="rtl" align="end">
-            <div className="p-3 border-b flex items-center justify-between">
+              <PopoverContent
+                className="flex w-[260px] flex-col overflow-hidden p-0"
+                dir="rtl"
+                align="end"
+                sideOffset={8}
+                collisionPadding={16}
+                style={{
+                  height:
+                    "min(560px, var(--radix-popover-content-available-height))",
+                }}
+              >
+            <div className="flex shrink-0 items-center justify-between border-b p-3">
               <h3 className="font-semibold text-sm">פילטרים מוצגים</h3>
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFilterSettingsOpen(false)}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="p-2 space-y-1">
-              {FILTER_SECTIONS.map((s) => {
+                <div
+                  data-client-task-scroll="true"
+                  className="min-h-0 flex-1 space-y-1 overflow-y-scroll overscroll-contain p-2 [scrollbar-gutter:stable]"
+                  onWheel={(event) => event.stopPropagation()}
+                >
+              <p className="px-2 pb-1 text-[10px] leading-4 text-muted-foreground">
+                גרור את הידית כדי לשנות את סדר הטאבים. ההסתרה אינה משנה את
+                המיקום.
+              </p>
+              {orderedFilterSections.map((s) => {
                 const on = visibleFilterSections.has(s.id);
                 return (
-                  <div key={s.id} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded hover:bg-muted/50">
-                    <div className="flex items-center gap-2">
+                  <div
+                    key={s.id}
+                    draggable
+                    onDragStart={(event) => {
+                      setDraggedFilterSectionId(s.id);
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", s.id);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedFilterSectionId(null);
+                      setDragOverFilterSectionId(null);
+                    }}
+                    onDragEnter={() => setDragOverFilterSectionId(s.id)}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const draggedId =
+                        draggedFilterSectionId ||
+                        event.dataTransfer.getData("text/plain");
+                      if (draggedId) moveFilterSection(draggedId, s.id);
+                      setDraggedFilterSectionId(null);
+                      setDragOverFilterSectionId(null);
+                    }}
+                    className={cn(
+                      "flex items-center justify-between gap-2 rounded border border-transparent px-2 py-1.5 transition hover:bg-muted/50",
+                      draggedFilterSectionId === s.id &&
+                        "border-[#d4a843] bg-[#fef9ee] opacity-60",
+                      dragOverFilterSectionId === s.id &&
+                        draggedFilterSectionId !== s.id &&
+                        "border-[#d4a843] bg-[#fffaf0]",
+                    )}
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing" />
                       {on ? <Eye className="h-3.5 w-3.5 text-primary" /> : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />}
-                      <Label htmlFor={`flt-${s.id}`} className="text-xs cursor-pointer">{s.label}</Label>
+                      <Label htmlFor={`flt-${s.id}`} className="cursor-pointer truncate text-xs">{s.label}</Label>
                     </div>
-                    <Switch id={`flt-${s.id}`} checked={on} onCheckedChange={() => toggleFilterSection(s.id)} />
+                    <Switch
+                      id={`flt-${s.id}`}
+                      checked={on}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onCheckedChange={() => toggleFilterSection(s.id)}
+                    />
                   </div>
                 );
               })}
@@ -1027,6 +1162,7 @@ export function ClientsFilterStrip({
           <div
             className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-[#d4a843]"
             style={{
+              order: -190,
               background: "linear-gradient(180deg, #1e3a5f 0%, #2d5a87 100%)",
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
             }}
@@ -1046,6 +1182,7 @@ export function ClientsFilterStrip({
             <Button
               variant="outline"
               size="sm"
+              style={{ order: getFilterSectionOrder("sort") }}
               className={cn(
                 "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
                 filters.dateFilter !== "all" &&
@@ -1342,6 +1479,7 @@ export function ClientsFilterStrip({
             <Button
               variant="outline"
               size="sm"
+              style={{ order: getFilterSectionOrder("classification") }}
               className={cn(
                 "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
                 (filters.hiddenClassifications?.length || 0) > 0 &&
@@ -1518,6 +1656,10 @@ export function ClientsFilterStrip({
 
         {/* Consultants Filter (יועצים) */}
         {visibleFilterSections.has("consultants") && (
+          <div
+            className="inline-flex"
+            style={{ order: getFilterSectionOrder("consultants") }}
+          >
           <ConsultantsFilterPopover
             selectedConsultantIds={filters.consultantIds || []}
             selectedProfessions={filters.consultantProfessions || []}
@@ -1529,6 +1671,7 @@ export function ClientsFilterStrip({
               })
             }
           />
+          </div>
         )}
 
         {/* Tags Filter */}
@@ -1538,6 +1681,7 @@ export function ClientsFilterStrip({
             <Button
               variant="outline"
               size="sm"
+              style={{ order: getFilterSectionOrder("tags") }}
               className={cn(
                 "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
                 filters.tags.length > 0 &&
@@ -1582,11 +1726,25 @@ export function ClientsFilterStrip({
                 onChange={(e) => setTagSearch(e.target.value)}
                 className="mb-2"
               />
-              {filters.tags.length > 0 && (
-                <Button variant="outline" size="sm" onClick={clearTags}>
-                  נקה הכל
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    setTagsDialogOpen(false);
+                    onOpenCategoryManager?.();
+                  }}
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                  ניהול תגיות
                 </Button>
-              )}
+                {filters.tags.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={clearTags}>
+                    נקה הכל
+                  </Button>
+                )}
+              </div>
             </div>
             <ScrollArea className="max-h-[50vh] p-4">
               <div className="flex flex-wrap gap-2">
@@ -1602,14 +1760,24 @@ export function ClientsFilterStrip({
                         filters.tags.includes(tag) ? "default" : "outline"
                       }
                       className={cn(
-                        "cursor-pointer transition-all",
-                        filters.tags.includes(tag)
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-primary/10",
+                        "cursor-pointer border transition-all hover:-translate-y-0.5 hover:shadow-sm",
+                        filters.tags.includes(tag) && "text-white",
                       )}
+                      style={{
+                        backgroundColor: filters.tags.includes(tag)
+                          ? tagColors[tag] || "#1e3a5f"
+                          : `${tagColors[tag] || "#1e3a5f"}16`,
+                        borderColor: tagColors[tag] || "#1e3a5f",
+                        color: filters.tags.includes(tag)
+                          ? "#ffffff"
+                          : tagColors[tag] || "#1e3a5f",
+                      }}
                       onClick={() => toggleTag(tag)}
                     >
-                      <Tag className="h-3 w-3 ml-1" />
+                      <span
+                        className="ml-1 h-2.5 w-2.5 rounded-full border border-current"
+                        style={{ backgroundColor: tagColors[tag] || "#1e3a5f" }}
+                      />
                       {tag}
                     </Badge>
                   ))
@@ -1626,6 +1794,7 @@ export function ClientsFilterStrip({
           <Button
             variant="outline"
             size="sm"
+            style={{ order: getFilterSectionOrder("stages") }}
             className={cn(
               "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
               filters.stages.length > 0 &&
@@ -1943,6 +2112,7 @@ export function ClientsFilterStrip({
         <Button
           variant="outline"
           size="sm"
+          style={{ order: getFilterSectionOrder("reminders") }}
           onClick={toggleHasReminders}
           className={cn(
             "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
@@ -1963,6 +2133,7 @@ export function ClientsFilterStrip({
         <Button
           variant="outline"
           size="sm"
+          style={{ order: getFilterSectionOrder("tasks") }}
           onClick={toggleHasTasks}
           className={cn(
             "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
@@ -1979,7 +2150,9 @@ export function ClientsFilterStrip({
         )}
 
         {/* Recently active clients */}
+        {visibleFilterSections.has("recent") && (
         <div
+          style={{ order: getFilterSectionOrder("recent") }}
           className={cn(
             "flex h-7 items-center overflow-hidden rounded-md border border-[#d4a843] bg-white shadow-sm",
             filters.recentClientsDays && "bg-[#d4a843]",
@@ -2125,12 +2298,14 @@ export function ClientsFilterStrip({
             </PopoverContent>
           </Popover>
         </div>
+        )}
 
         {/* Has Meetings Toggle */}
         {visibleFilterSections.has("meetings") && (
         <Button
           variant="outline"
           size="sm"
+          style={{ order: getFilterSectionOrder("meetings") }}
           onClick={toggleHasMeetings}
           className={cn(
             "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
@@ -2151,6 +2326,7 @@ export function ClientsFilterStrip({
           <Button
             variant="ghost"
             size="sm"
+            style={{ order: 1000 }}
             onClick={clearAllFilters}
             className="gap-1.5 h-7 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs"
           >

@@ -32,7 +32,7 @@ const Tabs = React.forwardRef<
           console.warn(`⚠️ אותו ערך! הטאב לא ישתנה`);
         }
         console.log(
-          `📦 יש handler onValueChange? ${!!onValueChange ? "✅ כן" : "❌ לא - הטאב לא יגיב!"}`,
+          `📦 יש handler onValueChange? ${onValueChange ? "✅ כן" : "❌ לא - הטאב לא יגיב!"}`,
         );
         if (!onValueChange) {
           console.error(

@@ -23,6 +23,8 @@ export interface ClientProcessControlSettings {
   stagesToShow: number;
   tasksToShow: number;
   verticalScroll?: boolean;
+  clientsPerRow?: number;
+  pageScrollSpeed?: number;
 }
 
 interface ClientProcessControlProps {

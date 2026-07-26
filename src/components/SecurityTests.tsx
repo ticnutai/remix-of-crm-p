@@ -225,7 +225,7 @@ export function SecurityTests() {
         "' OR 1=1--"
       ];
 
-      let vulnerable = false;
+      const vulnerable = false;
 
       for (const input of maliciousInputs) {
         try {

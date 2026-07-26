@@ -52,7 +52,7 @@ const MAX_LOCAL_BACKUPS = 2; // Keep only last 2 backups locally — localStorag
 const getLocalStorageSize = (): number => {
   let total = 0;
   for (const key in localStorage) {
-    if (localStorage.hasOwnProperty(key)) {
+    if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
       total += localStorage[key].length * 2; // UTF-16 = 2 bytes per char
     }
   }

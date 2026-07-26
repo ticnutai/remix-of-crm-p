@@ -90,7 +90,7 @@ class AIChatService {
     const intent = this.detectIntent(lowerQuery);
 
     let response: string;
-    let data: any = null;
+    const data: any = null;
 
     switch (intent.type) {
       case "client-search":

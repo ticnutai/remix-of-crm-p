@@ -241,6 +241,13 @@ interface ClientCategory {
   icon: string;
 }
 
+interface ClientTagDefinition {
+  id: string;
+  name: string;
+  color: string;
+  sort_order: number;
+}
+
 interface ClientStageInfo {
   id: string;
   client_id: string;
@@ -359,6 +366,7 @@ let clientFilterDataFetch: Promise<ClientFilterDataPayload> | null = null;
 let categoriesAndTagsFetch: Promise<{
   categories: ClientCategory[];
   tags: string[];
+  tagDefinitions: ClientTagDefinition[];
 }> | null = null;
 let clientConsultantsFetch: Promise<
   Record<string, Array<{ consultantId: string; profession: string }>>
@@ -529,6 +537,8 @@ export default function Clients() {
       stagesToShow: 1,
       tasksToShow: 3,
       verticalScroll: true,
+      clientsPerRow: 3,
+      pageScrollSpeed: 0.45,
     },
   });
 
@@ -840,6 +850,15 @@ export default function Clients() {
     consultantProfessions: [],
     sortBy: "date_desc",
   });
+  const [storedTagDefinitions, setStoredTagDefinitions] = useSyncedSetting<ClientTagDefinition[]>({
+    key: "clients-tag-definitions-v1",
+    defaultValue: [],
+  });
+  const storedTagDefinitionsRef = useRef(storedTagDefinitions);
+
+  useEffect(() => {
+    storedTagDefinitionsRef.current = storedTagDefinitions;
+  }, [storedTagDefinitions]);
 
   const taskViewContent: ClientTaskViewContent =
     filters.hasTasks === true
@@ -929,6 +948,7 @@ export default function Clients() {
   });
   const [categories, setCategories] = useState<ClientCategory[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
+  const [tagDefinitions, setTagDefinitions] = useState<ClientTagDefinition[]>([]);
   const [latestContractSignedByClient, setLatestContractSignedByClient] =
     useState<Record<string, string>>({});
 
@@ -1660,10 +1680,15 @@ export default function Clients() {
         wheelStep *= container.clientHeight;
       }
       if (Math.abs(wheelStep) < 40) {
-        wheelStep = Math.sign(wheelStep) * 180;
+        wheelStep =
+          Math.sign(wheelStep) * Math.max(12, Math.abs(wheelStep) * 4);
       }
 
-      pendingWheelDelta += wheelStep;
+      const configuredSpeed = Math.min(
+        1.5,
+        Math.max(0.15, processControlSettings.pageScrollSpeed ?? 0.45),
+      );
+      pendingWheelDelta += wheelStep * configuredSpeed;
       if (wheelFrame !== null) return;
 
       wheelFrame = window.requestAnimationFrame(() => {
@@ -1684,7 +1709,7 @@ export default function Clients() {
       document.removeEventListener("wheel", handlePageWheel, true);
       if (wheelFrame !== null) window.cancelAnimationFrame(wheelFrame);
     };
-  }, [viewMode]);
+  }, [processControlSettings.pageScrollSpeed, viewMode]);
 
   // Keyboard navigation - jump to client by typing letters
   useEffect(() => {
@@ -2037,7 +2062,7 @@ export default function Clients() {
     try {
       if (!categoriesAndTagsFetch) {
         categoriesAndTagsFetch = (async () => {
-          const [categoriesResponse, tagsResponse] = await Promise.all([
+          const [categoriesResponse, tagsResponse, tagDefinitionsResponse] = await Promise.all([
             supabase
               .from("client_categories")
               .select("id, name, color, icon")
@@ -2046,12 +2071,21 @@ export default function Clients() {
               .from("clients")
               .select("tags")
               .not("tags", "is", null),
+            supabase
+              .from("client_tag_definitions")
+              .select("id, name, color, sort_order")
+              .order("sort_order")
+              .order("name"),
           ]);
 
           if (categoriesResponse.error) throw categoriesResponse.error;
           if (tagsResponse.error) throw tagsResponse.error;
 
           const uniqueTags = new Set<string>();
+          const persistedTagDefinitions = tagDefinitionsResponse.error
+            ? storedTagDefinitionsRef.current
+            : ((tagDefinitionsResponse.data || []) as ClientTagDefinition[]);
+          persistedTagDefinitions.forEach((tag) => uniqueTags.add(tag.name));
           tagsResponse.data?.forEach((client) => {
             if (client.tags && Array.isArray(client.tags)) {
               client.tags.forEach((tag: string) => uniqueTags.add(tag));
@@ -2061,6 +2095,7 @@ export default function Clients() {
           return {
             categories: (categoriesResponse.data || []) as ClientCategory[],
             tags: Array.from(uniqueTags).sort(),
+            tagDefinitions: persistedTagDefinitions,
           };
         })().finally(() => {
           categoriesAndTagsFetch = null;
@@ -2071,6 +2106,7 @@ export default function Clients() {
       React.startTransition(() => {
         setCategories(payload.categories);
         setAllTags(payload.tags);
+        setTagDefinitions(payload.tagDefinitions);
       });
     } catch (error) {
       console.error("Error fetching categories and tags:", error);
@@ -5027,6 +5063,68 @@ export default function Clients() {
                           ))}
                         </select>
                       </div>
+                      <div>
+                        <div className="mb-1.5 flex items-center justify-between gap-2">
+                          <label className="font-semibold text-[#1e3a5f]">
+                            לקוחות בכל שורה
+                          </label>
+                          <span className="rounded-full bg-[#1e3a5f] px-2 py-0.5 text-[11px] font-bold text-white">
+                            {processControlSettings.clientsPerRow ?? 3}
+                          </span>
+                        </div>
+                        <select
+                          className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3"
+                          value={processControlSettings.clientsPerRow ?? 3}
+                          onChange={(event) =>
+                            setProcessControlSettings({
+                              ...processControlSettings,
+                              clientsPerRow: Number(event.target.value),
+                            })
+                          }
+                        >
+                          {[1, 2, 3, 4, 5, 6].map((value) => (
+                            <option key={value} value={value}>
+                              {value} {value === 1 ? "לקוח — כרטיס רחב" : "לקוחות"}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="mt-1 text-[11px] leading-4 text-slate-500">
+                          ככל שמציגים יותר לקוחות בשורה, כל כרטיס נעשה צר יותר.
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 bg-[#fef9ee]/60 p-3">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <label className="font-semibold text-[#1e3a5f]">
+                            מהירות גלילת הלקוחות
+                          </label>
+                          <span className="text-[11px] font-bold text-[#1e3a5f]">
+                            {Math.round(
+                              (processControlSettings.pageScrollSpeed ?? 0.45) *
+                                100,
+                            )}
+                            %
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0.15"
+                          max="1.5"
+                          step="0.05"
+                          value={processControlSettings.pageScrollSpeed ?? 0.45}
+                          onChange={(event) =>
+                            setProcessControlSettings({
+                              ...processControlSettings,
+                              pageScrollSpeed: Number(event.target.value),
+                            })
+                          }
+                          className="h-2 w-full cursor-pointer accent-[#d4a843]"
+                          aria-label="מהירות גלילת הלקוחות"
+                        />
+                        <div className="mt-1 flex justify-between text-[10px] text-slate-500">
+                          <span>איטית</span>
+                          <span>מהירה</span>
+                        </div>
+                      </div>
                       <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-200 bg-[#fef9ee]/60 p-3">
                         <span>
                           <span className="block font-semibold text-[#1e3a5f]">גלילה אנכית</span>
@@ -5243,6 +5341,9 @@ export default function Clients() {
           stageCounts={stageCounts}
           monthAgeCounts={monthAgeCounts}
           allTags={allTags}
+          tagColors={Object.fromEntries(
+            tagDefinitions.map((tag) => [tag.name, tag.color]),
+          )}
           visibleClientsCount={filteredClients.length}
           onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
           onUpdate={() => {
@@ -5403,7 +5504,14 @@ export default function Clients() {
                               : viewMode === "cards"
                                 ? "repeat(auto-fill, minmax(320px, 1fr))"
                                 : viewMode === "tasks"
-                                  ? "repeat(auto-fill, minmax(300px, 1fr))"
+                                  ? `repeat(${Math.min(
+                                      6,
+                                      Math.max(
+                                        1,
+                                        processControlSettings.clientsPerRow ??
+                                          3,
+                                      ),
+                                    )}, minmax(0, 1fr))`
                                 : viewMode === "luxury"
                                   ? "repeat(auto-fill, minmax(280px, 1fr))"
                                   : viewMode === "compact"
@@ -5962,7 +6070,16 @@ export default function Clients() {
             onClose={() => setIsCategoryManagerOpen(false)}
             categories={categories}
             allTags={allTags}
+            tagDefinitions={tagDefinitions}
+            initialTab="tags"
+            onTagDefinitionsChange={(definitions) => {
+              storedTagDefinitionsRef.current = definitions;
+              setTagDefinitions(definitions);
+              setAllTags(definitions.map((tag) => tag.name).sort());
+              setStoredTagDefinitions(definitions);
+            }}
             onUpdate={() => {
+              fetchClients();
               fetchCategoriesAndTags();
             }}
           />
