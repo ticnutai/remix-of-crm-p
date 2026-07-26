@@ -5,7 +5,7 @@
 //   - Any specific team member (searchable list)
 // Includes a scope toggle: created_by / assigned_to / both
 // The selection is a single global value persisted to the cloud via useSyncedSetting.
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -45,7 +45,7 @@ export function useUserFilter() {
   const targetId = value === "mine" ? user?.id ?? null : value === "all" ? null : value;
 
   /** Returns true if the item passes the filter. */
-  const matches = (item: any, entity: "tasks" | "meetings" | "reminders") => {
+  const matches = useCallback((item: any, entity: "tasks" | "meetings" | "reminders") => {
     if (!targetId) return true;
     const createdBy = item?.created_by || item?.user_id || null;
     const assignedTo = item?.assigned_to || null;
@@ -57,7 +57,7 @@ export function useUserFilter() {
     if (scope === "created_by") return createdBy === targetId;
     if (scope === "assigned_to") return isAssigned;
     return createdBy === targetId || isAssigned;
-  };
+  }, [scope, targetId]);
 
   return { value, setValue, scope, setScope, matches, targetId };
 }
