@@ -46,6 +46,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useViewSettings, useUserSettings } from "@/hooks/useUserSettings";
 import { useSyncedSetting } from "@/hooks/useSyncedSetting";
+import { useUserFilter } from "@/components/shared/UserFilterMenu";
 import { useGoogleSheets } from "@/hooks/useGoogleSheets";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -270,6 +271,8 @@ interface ClientStageTaskInfo {
 interface ClientTaskActivity {
   id: string;
   client_id: string;
+  created_by: string;
+  assigned_to: string | null;
   title: string;
   due_date: string | null;
   status: string | null;
@@ -349,7 +352,6 @@ type ClientFilterDataPayload = {
   stageTasks: ClientStageTaskInfo[];
   stageTemplates: ClientStageTemplateInfo[];
   reminderClientIds: string[];
-  taskClientIds: string[];
   meetingClientIds: string[];
   tasks: ClientTaskActivity[];
   reminders: ClientReminderActivity[];
@@ -922,13 +924,22 @@ export default function Clients() {
   const [clientsWithReminders, setClientsWithReminders] = useState<Set<string>>(
     new Set(),
   );
-  const [clientsWithTasks, setClientsWithTasks] = useState<Set<string>>(
-    new Set(),
-  );
   const [clientsWithMeetings, setClientsWithMeetings] = useState<Set<string>>(
     new Set(),
   );
   const [clientTasks, setClientTasks] = useState<ClientTaskActivity[]>([]);
+  const { matches: matchesGlobalUserFilter } = useUserFilter();
+  const scopedClientTasks = useMemo(
+    () =>
+      clientTasks.filter((task) =>
+        matchesGlobalUserFilter(task, "tasks"),
+      ),
+    [clientTasks, matchesGlobalUserFilter],
+  );
+  const clientsWithTasks = useMemo(
+    () => new Set(scopedClientTasks.map((task) => task.client_id)),
+    [scopedClientTasks],
+  );
   const [clientReminders, setClientReminders] = useState<
     ClientReminderActivity[]
   >([]);
@@ -1459,7 +1470,7 @@ export default function Clients() {
 
   const tasksByClient = useMemo(() => {
     const result = new Map<string, ClientTaskActivity[]>();
-    clientTasks.forEach((task) => {
+    scopedClientTasks.forEach((task) => {
       const current = result.get(task.client_id) || [];
       current.push(task);
       result.set(task.client_id, current);
@@ -1472,7 +1483,7 @@ export default function Clients() {
       }),
     );
     return result;
-  }, [clientTasks]);
+  }, [scopedClientTasks]);
 
   const remindersByClient = useMemo(() => {
     const result = new Map<string, ClientReminderActivity[]>();
@@ -1877,7 +1888,9 @@ export default function Clients() {
                 .eq("is_dismissed", false),
               supabase
                 .from("tasks")
-                .select("id, client_id, title, due_date, status, updated_at")
+                .select(
+                  "id, client_id, created_by, assigned_to, title, due_date, status, updated_at",
+                )
                 .not("client_id", "is", null)
                 .or(
                   "status.is.null,status.not.in.(done,completed,cancelled,canceled)",
@@ -2017,8 +2030,6 @@ export default function Clients() {
               remindersRes.data
                 ?.map((row) => row.client_id || row.entity_id)
                 .filter(Boolean) || [],
-            taskClientIds:
-              tasksRes.data?.map((row) => row.client_id).filter(Boolean) || [],
             meetingClientIds:
               meetingsRes.data?.map((row) => row.client_id).filter(Boolean) || [],
             tasks: (tasksRes.data || []) as ClientTaskActivity[],
@@ -2044,7 +2055,6 @@ export default function Clients() {
         setClientStageTasks(payload.stageTasks);
         setStageTemplates(payload.stageTemplates);
         setClientsWithReminders(new Set(payload.reminderClientIds));
-        setClientsWithTasks(new Set(payload.taskClientIds));
         setClientsWithMeetings(new Set(payload.meetingClientIds));
         setClientTasks(payload.tasks);
         setClientReminders(payload.reminders);
@@ -2186,6 +2196,11 @@ export default function Clients() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "client_stage_tasks" },
+        refreshProcessData,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
         refreshProcessData,
       )
       .subscribe();
