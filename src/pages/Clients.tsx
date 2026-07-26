@@ -37,6 +37,11 @@ import {
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useViewSettings, useUserSettings } from "@/hooks/useUserSettings";
@@ -58,6 +63,10 @@ import {
 } from "@/hooks/useClientCustomFields";
 import { useClientFieldConfig } from "@/hooks/useClientFieldConfig";
 import { ClientNameWithCategory } from "@/components/clients/ClientNameWithCategory";
+import {
+  ClientProcessControl,
+  type ClientProcessControlSettings,
+} from "@/components/clients/ClientProcessControl";
 import { ViewPresetsMenu, type ViewPresetState } from "@/components/clients/ViewPresetsMenu";
 import {
   usePageCustomizer,
@@ -102,6 +111,8 @@ import {
   BarChart3,
   Shield,
   MessageCircle,
+  Settings2,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -239,6 +250,7 @@ interface ClientStageInfo {
 }
 
 interface ClientStageTaskInfo {
+  id: string;
   client_id: string;
   stage_id: string;
   title: string;
@@ -310,6 +322,33 @@ let categoriesAndTagsFetch: Promise<{
 let clientConsultantsFetch: Promise<
   Record<string, Array<{ consultantId: string; profession: string }>>
 > | null = null;
+
+const FILTER_DATA_PAGE_SIZE = 1000;
+
+async function fetchAllFilterRows(
+  table: "client_stages" | "client_stage_tasks",
+  columns: string,
+) {
+  const rows: any[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await (supabase as any)
+      .from(table)
+      .select(columns)
+      .order("created_at", { ascending: true })
+      .range(offset, offset + FILTER_DATA_PAGE_SIZE - 1);
+
+    if (error) return { data: null, error };
+
+    const page = data || [];
+    rows.push(...page);
+    if (page.length < FILTER_DATA_PAGE_SIZE) break;
+    offset += FILTER_DATA_PAGE_SIZE;
+  }
+
+  return { data: rows, error: null };
+}
 
 function fetchClientsFirstPage(): Promise<Client[]> {
   if (clientsFirstPageFetch) return clientsFirstPageFetch;
@@ -439,6 +478,19 @@ export default function Clients() {
     defaultValue: [],
   });
 
+  const {
+    value: processControlSettings,
+    setValue: setProcessControlSettings,
+  } = useUserSettings<ClientProcessControlSettings>({
+    key: "clients_process_control_v1",
+    defaultValue: {
+      enabled: true,
+      stagesToShow: 1,
+      tasksToShow: 3,
+      verticalScroll: true,
+    },
+  });
+
   // Cloud-persisted FULL filter + view state
   const {
     value: savedFullFilters,
@@ -471,7 +523,7 @@ export default function Clients() {
   });
 
   const [viewMode, setViewModeLocal] = useState<
-    "grid" | "list" | "compact" | "cards" | "minimal" | "portrait" | "luxury"
+    "grid" | "list" | "compact" | "cards" | "minimal" | "portrait" | "luxury" | "tasks"
   >("grid");
   const [minimalColumns, setMinimalColumnsLocal] = useState<2 | 3>(2);
   const [showStagesView, setShowStagesViewLocal] = useState(false);
@@ -604,7 +656,8 @@ export default function Clients() {
         | "cards"
         | "minimal"
         | "portrait"
-        | "luxury",
+        | "luxury"
+        | "tasks",
     ) => {
       setViewModeLocal(mode);
       saveViewMode(mode);
@@ -1214,6 +1267,59 @@ export default function Clients() {
     return counts;
   }, [clientStages]);
 
+  const processStagesByClient = useMemo(() => {
+    const result = new Map<string, ClientStageInfo[]>();
+    clientStages.forEach((stage) => {
+      const current = result.get(stage.client_id) || [];
+      current.push(stage);
+      result.set(stage.client_id, current);
+    });
+    result.forEach((stages) =>
+      stages.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+    );
+    return result;
+  }, [clientStages]);
+
+  const processTasksByClient = useMemo(() => {
+    const result = new Map<string, ClientStageTaskInfo[]>();
+    clientStageTasks.forEach((task) => {
+      const current = result.get(task.client_id) || [];
+      current.push(task);
+      result.set(task.client_id, current);
+    });
+    return result;
+  }, [clientStageTasks]);
+
+  const handleToggleStageTask = useCallback(
+    async (taskId: string, completed: boolean) => {
+      const previousTasks = clientStageTasks;
+      setClientStageTasks((current) =>
+        current.map((task) =>
+          task.id === taskId ? { ...task, completed } : task,
+        ),
+      );
+
+      const { error } = await supabase
+        .from("client_stage_tasks")
+        .update({
+          completed,
+          completed_at: completed ? new Date().toISOString() : null,
+        })
+        .eq("id", taskId);
+
+      if (error) {
+        setClientStageTasks(previousTasks);
+        toast({
+          title: "לא ניתן לעדכן את המשימה",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+    },
+    [clientStageTasks],
+  );
+
   const selectedWorkflowStageByClient = useMemo(() => {
     const result = new Map<string, { stageName: string | null; templateName: string }>();
     const selectedTemplateIds = Array.from(new Set([
@@ -1310,6 +1416,68 @@ export default function Clients() {
     observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
   }, [displayedCount, filteredClients.length, isLoadingMore]);
+
+  // In the task-focused view, the clients grid is the page's primary scroll
+  // surface. Route wheel input from every non-interactive area on the page to
+  // that grid, while preserving native scrolling inside task lists and dialogs.
+  useEffect(() => {
+    if (viewMode !== "tasks") return;
+
+    let pendingWheelDelta = 0;
+    let wheelFrame: number | null = null;
+
+    const handlePageWheel = (event: WheelEvent) => {
+      const target = event.target;
+      const container = scrollContainerRef.current;
+      if (!(target instanceof Element) || !container || event.deltaY === 0) return;
+
+      const ownsItsScroll = target.closest(
+        [
+          "[data-client-task-scroll='true']",
+          "[role='dialog']",
+          "[data-radix-popper-content-wrapper]",
+          "button",
+          "input",
+          "textarea",
+          "select",
+          "a[href]",
+        ].join(","),
+      );
+      if (ownsItsScroll) return;
+
+      event.preventDefault();
+
+      let wheelStep = event.deltaY;
+      if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) wheelStep *= 40;
+      if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+        wheelStep *= container.clientHeight;
+      }
+      if (Math.abs(wheelStep) < 40) {
+        wheelStep = Math.sign(wheelStep) * 180;
+      }
+
+      pendingWheelDelta += wheelStep;
+      if (wheelFrame !== null) return;
+
+      wheelFrame = window.requestAnimationFrame(() => {
+        const activeContainer = scrollContainerRef.current;
+        if (activeContainer) {
+          activeContainer.scrollTop += pendingWheelDelta;
+        }
+        pendingWheelDelta = 0;
+        wheelFrame = null;
+      });
+    };
+
+    document.addEventListener("wheel", handlePageWheel, {
+      capture: true,
+      passive: false,
+    });
+    return () => {
+      document.removeEventListener("wheel", handlePageWheel, true);
+      if (wheelFrame !== null) window.cancelAnimationFrame(wheelFrame);
+    };
+  }, [viewMode]);
 
   // Keyboard navigation - jump to client by typing letters
   useEffect(() => {
@@ -1450,12 +1618,14 @@ export default function Clients() {
             contractsRes,
           ] =
             await Promise.all([
-              supabase
-                .from("client_stages")
-                .select("id, client_id, stage_id, stage_name, sort_order, is_completed"),
-              supabase
-                .from("client_stage_tasks")
-                .select("client_id, stage_id, title, completed"),
+              fetchAllFilterRows(
+                "client_stages",
+                "id, client_id, stage_id, stage_name, sort_order, is_completed, created_at",
+              ),
+              fetchAllFilterRows(
+                "client_stage_tasks",
+                "id, client_id, stage_id, title, completed, created_at",
+              ),
               (supabase as any)
                 .from("stage_templates")
                 .select("id, name"),
@@ -1647,6 +1817,38 @@ export default function Clients() {
     const timeoutId = setTimeout(loadSecondaryData, 0);
     return () => clearTimeout(timeoutId);
   }, [fetchClients, fetchFilterData, fetchCategoriesAndTags]);
+
+  // Keep the compact process controls aligned with edits made in a client
+  // profile (including another tab). Refetch on focus and after realtime
+  // changes so open-task counts do not remain stale.
+  useEffect(() => {
+    const refreshProcessData = () => {
+      void fetchFilterData();
+    };
+
+    window.addEventListener("focus", refreshProcessData);
+    document.addEventListener("visibilitychange", refreshProcessData);
+
+    const processChannel = supabase
+      .channel("clients-process-control-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "client_stages" },
+        refreshProcessData,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "client_stage_tasks" },
+        refreshProcessData,
+      )
+      .subscribe();
+
+    return () => {
+      window.removeEventListener("focus", refreshProcessData);
+      document.removeEventListener("visibilitychange", refreshProcessData);
+      void supabase.removeChannel(processChannel);
+    };
+  }, [fetchFilterData]);
 
   // Check for duplicate clients
   const checkForDuplicates = async (
@@ -2237,6 +2439,35 @@ export default function Clients() {
       );
     };
 
+    const renderProcessControl = (compact = false) => {
+      const stages = processStagesByClient.get(client.id) || [];
+      const tasks = processTasksByClient.get(client.id) || [];
+
+      return (
+        <ClientProcessControl
+          clientName={client.name}
+          compact={compact}
+          settings={processControlSettings}
+          stages={stages.map((stage) => ({
+            id: stage.id,
+            stageId: stage.stage_id,
+            name: stage.stage_name,
+            sortOrder: stage.sort_order ?? 0,
+            completed: Boolean(stage.is_completed),
+          }))}
+          tasks={tasks.map((task) => ({
+            id: task.id,
+            stageId: task.stage_id,
+            title: task.title,
+            completed: Boolean(task.completed),
+          }))}
+          onSettingsChange={setProcessControlSettings}
+          onToggleTask={handleToggleStageTask}
+          onOpenProcess={() => navigate(`/client-profile/${client.id}`)}
+        />
+      );
+    };
+
     // Register ref for keyboard navigation
     const cardRef = useCallback(
       (node: HTMLDivElement | null) => {
@@ -2254,6 +2485,103 @@ export default function Clients() {
     const handleMouseLeave = () => {
       setShowActions(false);
     };
+
+    if (viewMode === "tasks") {
+      const orderedStages = [...(processStagesByClient.get(client.id) || [])]
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      const clientTasks = processTasksByClient.get(client.id) || [];
+      const stageGroups = orderedStages
+        .map((stage) => ({
+          stage,
+          tasks: clientTasks.filter(
+            (task) => task.stage_id === stage.stage_id && !task.completed,
+          ),
+        }))
+        .filter((group) => group.tasks.length > 0)
+        .slice(0, processControlSettings.stagesToShow);
+      const allVisibleTasks = stageGroups.flatMap((group) =>
+        group.tasks.map((task) => ({ ...task, stage: group.stage })),
+      );
+      const displayedTasks = processControlSettings.verticalScroll !== false
+        ? allVisibleTasks
+        : allVisibleTasks.slice(0, processControlSettings.tasksToShow);
+
+      return (
+        <article
+          ref={cardRef}
+          dir="rtl"
+          className="group flex min-h-[260px] flex-col overflow-hidden rounded-2xl border-2 border-[#d4a843] bg-white shadow-[0_10px_30px_rgba(30,58,95,0.10)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(30,58,95,0.16)]"
+        >
+          <button
+            type="button"
+            onClick={() => navigate(`/client-profile/${client.id}`)}
+            className="flex items-center justify-between gap-3 bg-[#1e3a5f] px-4 py-3 text-right text-white"
+          >
+            <div className="min-w-0">
+              <h3 className="truncate text-base font-bold">{client.name}</h3>
+              <p className="mt-0.5 text-[11px] text-white/65">
+                {allVisibleTasks.length} משימות פתוחות
+              </p>
+            </div>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#d4a843]/60 bg-white/10 text-[#d4a843]">
+              <ClipboardList className="h-4 w-4" />
+            </span>
+          </button>
+
+          <div
+            data-client-task-scroll="true"
+            className={cn(
+              "flex-1 space-y-3 p-3",
+              processControlSettings.verticalScroll !== false &&
+                "overflow-y-auto",
+            )}
+            style={
+              processControlSettings.verticalScroll !== false
+                ? {
+                    maxHeight: `${Math.max(
+                      180,
+                      processControlSettings.tasksToShow * 48 + 54,
+                    )}px`,
+                  }
+                : undefined
+            }
+          >
+            {displayedTasks.length === 0 ? (
+              <div className="flex h-full min-h-32 items-center justify-center text-sm text-slate-400">
+                אין משימות פתוחות
+              </div>
+            ) : (
+              stageGroups.map(({ stage, tasks: stageTasks }) => {
+                const visibleIds = new Set(displayedTasks.map((task) => task.id));
+                const tasksToRender = stageTasks.filter((task) => visibleIds.has(task.id));
+                if (tasksToRender.length === 0) return null;
+                return (
+                  <section key={stage.id} className="space-y-1.5">
+                    <div className="sticky top-0 z-10 flex items-center justify-between rounded-lg bg-[#f7ecd0] px-2.5 py-1.5 text-[#1e3a5f]">
+                      <span className="truncate text-xs font-bold">{stage.stage_name}</span>
+                      <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold">
+                        {stageTasks.length}
+                      </span>
+                    </div>
+                    {tasksToRender.map((task) => (
+                      <button
+                        key={task.id}
+                        type="button"
+                        className="flex w-full items-start gap-2 rounded-xl border border-slate-100 bg-slate-50/60 p-2.5 text-right transition hover:border-[#d4a843] hover:bg-[#fef9ee]"
+                        onClick={() => void handleToggleStageTask(task.id, true)}
+                      >
+                        <span className="mt-0.5 h-4 w-4 shrink-0 rounded border-2 border-slate-300 bg-white" />
+                        <span className="text-xs leading-5 text-[#1e3a5f]">{task.title}</span>
+                      </button>
+                    ))}
+                  </section>
+                );
+              })
+            )}
+          </div>
+        </article>
+      );
+    }
 
     // Card style configurations based on viewMode
     const getCardStyle = () => {
@@ -2405,6 +2733,7 @@ export default function Clients() {
           }}
         >
           <SelectionCheckbox position="top-left" />
+          {renderProcessControl(true)}
 
           {showActions && (category || hasReminder || hasTask || hasMeeting) && (
             <div className="absolute top-2 right-2 flex gap-1">
@@ -2608,6 +2937,7 @@ export default function Clients() {
         >
           {/* Selection Checkbox */}
           <SelectionCheckbox position="top-left" />
+          {renderProcessControl()}
           {/* Left colored section */}
           <div
             style={{
@@ -2880,6 +3210,7 @@ export default function Clients() {
 
           {/* Selection Checkbox */}
           <SelectionCheckbox position="top-left" />
+          {renderProcessControl()}
 
           {/* Indicators */}
           {showActions && (category || hasReminder || hasTask || hasMeeting) && (
@@ -3264,6 +3595,7 @@ export default function Clients() {
       >
         {/* Selection Checkbox */}
         <SelectionCheckbox position="top-left" />
+        {renderProcessControl(viewMode === "minimal")}
 
         {/* Quick Classify Button */}
         {!selectionMode && (
@@ -4044,6 +4376,241 @@ export default function Clients() {
                 </>
               )}
 
+              <div
+                className={cn(
+                  "flex h-10 items-center overflow-hidden rounded-full border text-sm font-bold shadow-sm transition",
+                  processControlSettings.enabled
+                    ? "border-[#d4a843] bg-[#d4a843] text-[#1e3a5f]"
+                    : "border-[#d4a843] bg-transparent text-[#d4a843] hover:bg-[#d4a843]/10",
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setProcessControlSettings({
+                      ...processControlSettings,
+                      enabled: !processControlSettings.enabled,
+                    })
+                  }
+                  className="flex h-full items-center gap-2 px-4 transition hover:bg-white/15"
+                  title={
+                    processControlSettings.enabled
+                      ? "הסתר מרכז שליטה בכרטיסי לקוחות"
+                      : "הצג מרכז שליטה בכרטיסי לקוחות"
+                  }
+                  aria-pressed={processControlSettings.enabled}
+                >
+                  <Layers className="h-4 w-4" />
+                  מרכז שליטה
+                </button>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="ml-1 flex h-6 w-6 items-center justify-center rounded-full border border-[#1e3a5f]/20 bg-white/25 transition hover:scale-105 hover:bg-white/45"
+                      title="הגדרות מרכז שליטה"
+                      aria-label="הגדרות מרכז שליטה"
+                    >
+                      <Settings2 className="h-3 w-3" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    side="bottom"
+                    align="end"
+                    sideOffset={10}
+                    collisionPadding={16}
+                    className="w-72 resize-none overflow-visible rounded-2xl border border-[#d4a843] bg-white p-4 text-right shadow-2xl"
+                    dir="rtl"
+                  >
+                    <div className="mb-4">
+                      <div className="font-bold text-[#1e3a5f]">
+                        הגדרות מרכז שליטה
+                      </div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        ההגדרות יחולו על כל כרטיסי הלקוחות
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 text-sm">
+                      <div>
+                        <label className="mb-1.5 block font-semibold text-[#1e3a5f]">
+                          מספר שלבים להצגה
+                        </label>
+                        <select
+                          className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3"
+                          value={processControlSettings.stagesToShow}
+                          onChange={(event) =>
+                            setProcessControlSettings({
+                              ...processControlSettings,
+                              stagesToShow: Number(event.target.value),
+                            })
+                          }
+                        >
+                          {[1, 2, 3, 4, 5].map((value) => (
+                            <option key={value} value={value}>{value}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="mb-1.5 block font-semibold text-[#1e3a5f]">
+                          מספר משימות להצגה
+                        </label>
+                        <select
+                          className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3"
+                          value={processControlSettings.tasksToShow}
+                          onChange={(event) =>
+                            setProcessControlSettings({
+                              ...processControlSettings,
+                              tasksToShow: Number(event.target.value),
+                            })
+                          }
+                        >
+                          {[1, 2, 3, 4, 5, 8, 10, 15, 20].map((value) => (
+                            <option key={value} value={value}>{value}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-200 bg-[#fef9ee]/60 p-3">
+                        <span>
+                          <span className="block font-semibold text-[#1e3a5f]">
+                            גלילה אנכית
+                          </span>
+                          <span className="mt-0.5 block text-[11px] text-slate-500">
+                            הצג את הכמות שנבחרה וגלול לשאר המשימות
+                          </span>
+                        </span>
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 shrink-0 accent-[#1e3a5f]"
+                          checked={processControlSettings.verticalScroll !== false}
+                          onChange={(event) =>
+                            setProcessControlSettings({
+                              ...processControlSettings,
+                              verticalScroll: event.target.checked,
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div
+                className={cn(
+                  "flex h-10 items-center overflow-hidden rounded-full border text-sm font-bold shadow-sm transition",
+                  viewMode === "tasks"
+                    ? "border-[#d4a843] bg-white text-[#1e3a5f]"
+                    : "border-[#d4a843] bg-transparent text-[#d4a843]",
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => setViewMode(viewMode === "tasks" ? "grid" : "tasks")}
+                  className={cn(
+                    "flex h-full items-center gap-2 px-4 transition",
+                    viewMode === "tasks"
+                      ? "bg-white hover:bg-[#fef9ee]"
+                      : "hover:bg-[#d4a843]/10",
+                  )}
+                  aria-pressed={viewMode === "tasks"}
+                  title="הצג רק שמות לקוחות, שלבים ומשימות פתוחות"
+                >
+                  <ClipboardList className="h-4 w-4" />
+                  תצוגת משימות
+                </button>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="ml-1 flex h-6 w-6 items-center justify-center rounded-full border border-current/25 bg-white/10 transition hover:scale-105 hover:bg-white/25"
+                      title="הגדרות תצוגת משימות"
+                      aria-label="הגדרות תצוגת משימות"
+                    >
+                      <Settings2 className="h-3 w-3" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    side="bottom"
+                    align="end"
+                    sideOffset={10}
+                    collisionPadding={16}
+                    className="w-72 resize-none overflow-visible rounded-2xl border border-[#d4a843] bg-white p-4 text-right shadow-2xl"
+                    dir="rtl"
+                  >
+                    <div className="mb-4">
+                      <div className="font-bold text-[#1e3a5f]">הגדרות תצוגת משימות</div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        אותן הגדרות משמשות גם את מרכז השליטה
+                      </div>
+                    </div>
+                    <div className="space-y-4 text-sm">
+                      <div>
+                        <label className="mb-1.5 block font-semibold text-[#1e3a5f]">
+                          מספר שלבים להצגה
+                        </label>
+                        <select
+                          className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3"
+                          value={processControlSettings.stagesToShow}
+                          onChange={(event) =>
+                            setProcessControlSettings({
+                              ...processControlSettings,
+                              stagesToShow: Number(event.target.value),
+                            })
+                          }
+                        >
+                          {[1, 2, 3, 4, 5].map((value) => (
+                            <option key={value} value={value}>{value}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block font-semibold text-[#1e3a5f]">
+                          מספר משימות הנראות מיד
+                        </label>
+                        <select
+                          className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3"
+                          value={processControlSettings.tasksToShow}
+                          onChange={(event) =>
+                            setProcessControlSettings({
+                              ...processControlSettings,
+                              tasksToShow: Number(event.target.value),
+                            })
+                          }
+                        >
+                          {[1, 2, 3, 4, 5, 8, 10, 15, 20].map((value) => (
+                            <option key={value} value={value}>{value}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-200 bg-[#fef9ee]/60 p-3">
+                        <span>
+                          <span className="block font-semibold text-[#1e3a5f]">גלילה אנכית</span>
+                          <span className="mt-0.5 block text-[11px] text-slate-500">
+                            אפשר לגלול לכל יתר המשימות הפתוחות
+                          </span>
+                        </span>
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 shrink-0 accent-[#1e3a5f]"
+                          checked={processControlSettings.verticalScroll !== false}
+                          onChange={(event) =>
+                            setProcessControlSettings({
+                              ...processControlSettings,
+                              verticalScroll: event.target.checked,
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
               {/* Search - compact */}
               {pcVisible("search") && pcEnabled("search-bar") && (
               <div
@@ -4363,32 +4930,6 @@ export default function Clients() {
 
                     <div
                       ref={scrollContainerRef}
-                      onScroll={(e) => {
-                        // Infinite scroll on container scroll
-                        if (
-                          isLoadingMore ||
-                          displayedCount >= filteredClients.length
-                        )
-                          return;
-                        const target = e.target as HTMLDivElement;
-                        const scrollTop = target.scrollTop;
-                        const scrollHeight = target.scrollHeight;
-                        const clientHeight = target.clientHeight;
-
-                        // Load more when user is within 200px of the bottom
-                        if (scrollTop + clientHeight >= scrollHeight - 200) {
-                          setIsLoadingMore(true);
-                          setTimeout(() => {
-                            setDisplayedCount((prev) =>
-                              Math.min(
-                                prev + PAGE_SIZE,
-                                filteredClients.length,
-                              ),
-                            );
-                            setIsLoadingMore(false);
-                          }, 50);
-                        }
-                      }}
                       style={{
                         flex: 1,
                         minHeight: 0,
@@ -4407,6 +4948,8 @@ export default function Clients() {
                               ? "repeat(auto-fill, minmax(160px, 1fr))"
                               : viewMode === "cards"
                                 ? "repeat(auto-fill, minmax(320px, 1fr))"
+                                : viewMode === "tasks"
+                                  ? "repeat(auto-fill, minmax(300px, 1fr))"
                                 : viewMode === "luxury"
                                   ? "repeat(auto-fill, minmax(280px, 1fr))"
                                   : viewMode === "compact"
@@ -4423,7 +4966,7 @@ export default function Clients() {
                         // גלילה אנכית
                         overflowY: "auto",
                         overflowX: "hidden",
-                        scrollBehavior: "smooth",
+                        scrollBehavior: "auto",
                         alignContent: "flex-start",
                       }}
                     >
@@ -4432,7 +4975,16 @@ export default function Clients() {
                         .map((client) => (
                           <ContextMenu key={client.id}>
                             <ContextMenuTrigger asChild>
-                              <div>
+                              <div
+                                style={
+                                  viewMode === "tasks"
+                                    ? {
+                                        contentVisibility: "auto",
+                                        containIntrinsicSize: "320px",
+                                      }
+                                    : undefined
+                                }
+                              >
                                 <ClientCard client={client} />
                               </div>
                             </ContextMenuTrigger>
