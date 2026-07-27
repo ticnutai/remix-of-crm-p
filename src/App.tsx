@@ -60,6 +60,7 @@ const Finance = lazy(() => import("./pages/Finance"));
 const Payments = lazy(() => import("./pages/Payments"));
 const History = lazy(() => import("./pages/History"));
 const MyDay = lazy(() => import("./pages/MyDay"));
+const InspectionForms = lazy(() => import("./pages/InspectionForms"));
 const TimeAnalytics = lazy(() => import("./pages/TimeAnalytics"));
 const Quotes = lazy(() => import("./pages/Quotes"));
 // Contracts moved into Quotes page as a tab
@@ -317,6 +318,10 @@ const App = () => {
                               <Route
                                 path="/my-day"
                                 element={withErrorBoundary(MyDay)}
+                              />
+                              <Route
+                                path="/inspection-forms"
+                                element={withErrorBoundary(InspectionForms)}
                               />
                               <Route
                                 path="/time-analytics"

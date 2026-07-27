@@ -15,6 +15,7 @@ const routePreloaders: Record<string, () => Promise<any>> = {
   "/calendar": () => import("@/pages/Calendar"),
   "/time-logs": () => import("@/pages/TimeLogs"),
   "/my-day": () => import("@/pages/MyDay"),
+  "/inspection-forms": () => import("@/pages/InspectionForms"),
   "/dashboard": () => import("@/pages/Dashboard"),
   "/tasks-meetings": () => import("@/pages/TasksAndMeetings"),
   "/reminders": () => import("@/pages/Reminders"),
@@ -72,6 +73,7 @@ export function usePrefetchCommonRoutes() {
         "/datatable-pro",
         "/finance",
         "/my-day",
+        "/inspection-forms",
         "/tasks-meetings",
       ]);
     }, 300);

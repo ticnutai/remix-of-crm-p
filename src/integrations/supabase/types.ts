@@ -8351,6 +8351,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          inspection_run_id: string | null
           is_private: boolean
           priority: string | null
           project_id: string | null
@@ -8368,6 +8369,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          inspection_run_id?: string | null
           is_private?: boolean
           priority?: string | null
           project_id?: string | null
@@ -8385,6 +8387,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          inspection_run_id?: string | null
           is_private?: boolean
           priority?: string | null
           project_id?: string | null
@@ -8399,6 +8402,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_inspection_run_id_fkey"
+            columns: ["inspection_run_id"]
+            isOneToOne: false
+            referencedRelation: "inspection_form_runs"
             referencedColumns: ["id"]
           },
           {

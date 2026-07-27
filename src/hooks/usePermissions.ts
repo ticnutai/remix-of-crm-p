@@ -31,6 +31,7 @@ export const MODULES: ModuleDef[] = [
   // ---- General ----
   { key: "dashboard",          label: "לוח בקרה",                    url: "/",                  group: "כללי" },
   { key: "my-day",             label: "היום שלי",                    url: "/my-day",             group: "כללי" },
+  { key: "inspection-forms",   label: "בדיקת טפסים",                 url: "/inspection-forms",    group: "כללי" },
   // ---- Clients ----
   { key: "clients",            label: "לקוחות",                      url: "/clients",             group: "לקוחות" },
   { key: "datatable",          label: "טבלת לקוחות",                 url: "/datatable-pro",       group: "לקוחות" },
@@ -95,7 +96,7 @@ export const ROLE_TEMPLATES: Record<RoleTemplate, PermissionsMap | null> = {
     MODULES.map(m => {
       if (["hr", "finance", "attendance-admin", "portal-management", "employees"].includes(m.key))
         return [m.key, noAccess()];
-      if (["attendance", "time-logs", "tasks-meetings", "calendar", "my-day", "dashboard"].includes(m.key))
+      if (["attendance", "time-logs", "tasks-meetings", "calendar", "my-day", "inspection-forms", "dashboard"].includes(m.key))
         return [m.key, viewEdit()];
       return [m.key, viewOnly()];
     })

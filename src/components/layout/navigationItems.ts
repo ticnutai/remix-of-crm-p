@@ -1,6 +1,7 @@
 import {
   Bot,
   Calendar,
+  ClipboardCheck,
   Clock,
   Database,
   FileSpreadsheet,
@@ -31,6 +32,12 @@ export interface NavigationItem {
 export const mainNavItems: NavigationItem[] = [
   { title: "לוח בקרה", url: "/", icon: LayoutDashboard, moduleKey: "dashboard" },
   { title: "היום שלי", url: "/my-day", icon: Calendar, moduleKey: "my-day" },
+  {
+    title: "בדיקת טפסים",
+    url: "/inspection-forms",
+    icon: ClipboardCheck,
+    moduleKey: "inspection-forms",
+  },
   { title: "לקוחות", url: "/clients", icon: Users, moduleKey: "clients" },
   { title: "טבלת לקוחות", url: "/datatable-pro", icon: Table, moduleKey: "datatable" },
   { title: "עובדים", url: "/employees", icon: UserCog, moduleKey: "employees" },
