@@ -55,12 +55,20 @@ import {
 } from "lucide-react";
 import {
   addDays,
+  addMonths,
+  addWeeks,
+  endOfMonth,
+  endOfWeek,
   format,
   parseISO,
   isBefore,
   isSameDay,
+  isSameMonth,
+  isSameWeek,
+  startOfMonth,
   startOfDay,
   endOfDay,
+  startOfWeek,
 } from "date-fns";
 import { he } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -137,6 +145,23 @@ const meetingTypeIcons = {
 const floatingAddButtonClass =
   "absolute left-3 bottom-3 h-7 w-7 rounded-full border border-[hsl(45,80%,45%)] bg-[hsl(45,100%,96%)] text-[hsl(45,80%,38%)] shadow-[0_6px_14px_hsl(45_80%_45%_/_0.24)] hover:bg-[hsl(45,95%,91%)] hover:scale-105 active:scale-95 transition-all duration-200 z-10";
 
+type MyDayPeriod = "day" | "week" | "month";
+
+const getPeriodRange = (date: Date, period: MyDayPeriod) => {
+  switch (period) {
+    case "week":
+      return {
+        start: startOfWeek(date, { weekStartsOn: 0 }),
+        end: endOfWeek(date, { weekStartsOn: 0 }),
+      };
+    case "month":
+      return { start: startOfMonth(date), end: endOfMonth(date) };
+    case "day":
+    default:
+      return { start: startOfDay(date), end: endOfDay(date) };
+  }
+};
+
 const getTaskStatusLabel = (status: string) => {
   switch (status) {
     case "pending":
@@ -155,6 +180,7 @@ export default function MyDay() {
   const { user, isLoading: authLoading, isManager } = useAuth();
   const {
     value: userFilterValue,
+    setValue: setUserFilterValue,
     targetId: userFilterTargetId,
     matches: userFilterMatches,
   } = useUserFilter();
@@ -166,6 +192,11 @@ export default function MyDay() {
   const [selectedDate, setSelectedDate] = useState(() =>
     format(new Date(), "yyyy-MM-dd"),
   );
+  const [selectedPeriod, setSelectedPeriod] =
+    useSyncedSetting<MyDayPeriod>({
+      key: "myday-selected-period",
+      defaultValue: "day",
+    });
   const [meetingsView, setMeetingsView] = useSyncedSetting<ViewType>({ key: "myday-meetings-view", defaultValue: "list" });
   const [tasksView, setTasksView] = useSyncedSetting<ViewType>({ key: "myday-tasks-view", defaultValue: "list" });
 
@@ -440,9 +471,11 @@ export default function MyDay() {
 
     setLoading(true);
     const day = parseISO(selectedDate);
-    const dayStart = startOfDay(day).toISOString();
-    const dayEnd = endOfDay(day).toISOString();
-    const isTodayRange = isSameDay(day, new Date());
+    const periodRange = getPeriodRange(day, selectedPeriod);
+    const dayStart = periodRange.start.toISOString();
+    const dayEnd = periodRange.end.toISOString();
+    const isTodayRange =
+      selectedPeriod === "day" && isSameDay(day, new Date());
 
     console.log("📊 [MyDay] fetchDayData range:", dayStart, "->", dayEnd);
 
@@ -453,8 +486,8 @@ export default function MyDay() {
       )
       .neq("status", "completed");
 
-    // On "today" keep overdue open tasks visible. On any other selected date,
-    // show only tasks whose due date belongs to that day.
+    // On "today" keep overdue open tasks visible. In any other period,
+    // show only tasks whose due date belongs to the selected range.
     tasksQuery = isTodayRange
       ? tasksQuery.lte("due_date", dayEnd)
       : tasksQuery.gte("due_date", dayStart).lte("due_date", dayEnd);
@@ -513,7 +546,7 @@ export default function MyDay() {
 
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, user?.id]);
+  }, [selectedDate, selectedPeriod, user?.id]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -524,7 +557,7 @@ export default function MyDay() {
       fetchDayData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, authLoading, navigate, selectedDate]);
+  }, [user?.id, authLoading, navigate, selectedDate, selectedPeriod]);
 
   const formatTime = (dateStr: string) => {
     const date = parseISO(dateStr);
@@ -548,15 +581,44 @@ export default function MyDay() {
   const GreetingIcon = greeting.icon;
   const { showDuplicates } = useDedup();
   const selectedDayDate = parseISO(selectedDate);
-  const isViewingToday = isSameDay(selectedDayDate, new Date());
-  const selectedDayLabel = format(selectedDayDate, "EEEE, d בMMMM yyyy", {
-    locale: he,
-  });
-  const selectedDayShortLabel = isViewingToday
-    ? "היום"
-    : format(selectedDayDate, "dd/MM/yyyy");
+  const visiblePeriodRange = getPeriodRange(selectedDayDate, selectedPeriod);
+  const isViewingCurrentPeriod =
+    selectedPeriod === "day"
+      ? isSameDay(selectedDayDate, new Date())
+      : selectedPeriod === "week"
+        ? isSameWeek(selectedDayDate, new Date(), { weekStartsOn: 0 })
+        : isSameMonth(selectedDayDate, new Date());
+  const selectedDayLabel =
+    selectedPeriod === "day"
+      ? format(selectedDayDate, "EEEE, d בMMMM yyyy", { locale: he })
+      : selectedPeriod === "week"
+        ? `${format(visiblePeriodRange.start, "dd/MM/yyyy")} – ${format(
+            visiblePeriodRange.end,
+            "dd/MM/yyyy",
+          )}`
+        : format(selectedDayDate, "MMMM yyyy", { locale: he });
+  const selectedDayShortLabel = isViewingCurrentPeriod
+    ? selectedPeriod === "day"
+      ? "היום"
+      : selectedPeriod === "week"
+        ? "השבוע"
+        : "החודש"
+    : selectedPeriod === "day"
+      ? format(selectedDayDate, "dd/MM/yyyy")
+      : selectedPeriod === "week"
+        ? `${format(visiblePeriodRange.start, "dd/MM")}–${format(
+            visiblePeriodRange.end,
+            "dd/MM",
+          )}`
+        : format(selectedDayDate, "MMMM yyyy", { locale: he });
   const moveSelectedDate = (amount: number) => {
-    setSelectedDate(format(addDays(selectedDayDate, amount), "yyyy-MM-dd"));
+    const movedDate =
+      selectedPeriod === "day"
+        ? addDays(selectedDayDate, amount)
+        : selectedPeriod === "week"
+          ? addWeeks(selectedDayDate, amount)
+          : addMonths(selectedDayDate, amount);
+    setSelectedDate(format(movedDate, "yyyy-MM-dd"));
   };
 
   const filteredTasks = React.useMemo(() => {
@@ -628,21 +690,52 @@ export default function MyDay() {
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2" dir="rtl">
-            <div className="flex items-center gap-1 rounded-xl border-2 border-[hsl(45,80%,45%)] bg-background p-1 shadow-sm">
+          <DedupToggleButton />
+        </div>
+
+        <div
+          dir="rtl"
+          className="grid gap-3 rounded-2xl border-2 border-[hsl(45,80%,45%)] bg-gradient-to-l from-[hsl(45,100%,98%)] to-background p-3 shadow-[0_8px_24px_rgba(30,58,95,0.08)] lg:grid-cols-[auto_1fr_auto] lg:items-center"
+        >
+          <div className="flex flex-wrap items-center gap-1 rounded-xl bg-background p-1 shadow-sm ring-1 ring-border">
+            {(
+              [
+                ["day", "יום"],
+                ["week", "שבוע"],
+                ["month", "חודש"],
+              ] as Array<[MyDayPeriod, string]>
+            ).map(([period, label]) => (
               <Button
+                key={period}
                 type="button"
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9"
-                title="היום הקודם"
-                onClick={() => moveSelectedDate(-1)}
+                size="sm"
+                variant={selectedPeriod === period ? "default" : "ghost"}
+                className={cn(
+                  "h-9 min-w-16 rounded-lg",
+                  selectedPeriod === period &&
+                    "bg-[hsl(220,60%,25%)] text-white hover:bg-[hsl(220,60%,20%)]",
+                )}
+                onClick={() => setSelectedPeriod(period)}
               >
-                <ChevronRight className="h-4 w-4" />
+                {label}
               </Button>
-              <label className="relative flex min-w-[170px] cursor-pointer items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm font-semibold text-foreground">
+            ))}
+          </div>
+
+          <div className="flex min-w-0 flex-wrap items-center justify-center gap-1 rounded-xl bg-background p-1 shadow-sm ring-1 ring-border">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              title="התקופה הקודמת"
+              onClick={() => moveSelectedDate(-1)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <label className="relative flex min-w-[190px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm font-semibold text-foreground sm:flex-none">
                 <CalendarDays className="h-4 w-4 text-[hsl(45,80%,40%)]" />
-                <span>{selectedDayShortLabel}</span>
+                <span className="truncate">{selectedDayShortLabel}</span>
                 <Input
                   type="date"
                   value={selectedDate}
@@ -654,31 +747,74 @@ export default function MyDay() {
                   aria-label="בחירת תאריך להצגה"
                   className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                 />
-              </label>
+            </label>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              title="התקופה הבאה"
+              onClick={() => moveSelectedDate(1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {!isViewingCurrentPeriod && (
               <Button
                 type="button"
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9"
-                title="היום הבא"
-                onClick={() => moveSelectedDate(1)}
+                variant="outline"
+                size="sm"
+                className="h-9 border-[hsl(45,80%,45%)]"
+                onClick={() =>
+                  setSelectedDate(format(new Date(), "yyyy-MM-dd"))
+                }
               >
-                <ChevronLeft className="h-4 w-4" />
+                חזרה ל{selectedPeriod === "day" ? "היום" : selectedPeriod === "week" ? "שבוע הנוכחי" : "חודש הנוכחי"}
               </Button>
-              {!isViewingToday && (
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-end gap-1 rounded-xl bg-background p-1 shadow-sm ring-1 ring-border">
+            {showUserFilter ? (
+              <>
                 <Button
                   type="button"
-                  variant="outline"
                   size="sm"
-                  className="h-9 border-[hsl(45,80%,45%)]"
-                  onClick={() => setSelectedDate(format(new Date(), "yyyy-MM-dd"))}
+                  variant={userFilterValue === "mine" ? "default" : "ghost"}
+                  className={cn(
+                    "h-9 rounded-lg",
+                    userFilterValue === "mine" &&
+                      "bg-[hsl(220,60%,25%)] text-white hover:bg-[hsl(220,60%,20%)]",
+                  )}
+                  onClick={() => setUserFilterValue("mine")}
                 >
-                  חזרה להיום
+                  <User className="ml-1 h-4 w-4" />
+                  רק שלי
                 </Button>
-              )}
-            </div>
-            {showUserFilter && <UserFilterMenu align="end" />}
-            <DedupToggleButton />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={userFilterValue === "all" ? "default" : "ghost"}
+                  className={cn(
+                    "h-9 rounded-lg",
+                    userFilterValue === "all" &&
+                      "bg-[hsl(220,60%,25%)] text-white hover:bg-[hsl(220,60%,20%)]",
+                  )}
+                  onClick={() => setUserFilterValue("all")}
+                >
+                  <Users className="ml-1 h-4 w-4" />
+                  כולם
+                </Button>
+                <UserFilterMenu align="end" showLabel />
+              </>
+            ) : (
+              <Badge
+                variant="outline"
+                className="h-9 gap-1.5 border-[hsl(45,80%,45%)] px-3"
+              >
+                <User className="h-4 w-4" />
+                רק שלי
+              </Badge>
+            )}
           </div>
         </div>
 
