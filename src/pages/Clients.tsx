@@ -54,6 +54,7 @@ import {
   ClientFilterState,
   type DateRangeTabItem,
   type ClientDateRangeConfig,
+  type ClientPaymentFilterSummary,
 } from "@/components/clients/ClientsFilterStrip";
 import { ClientQuickClassify } from "@/components/clients/ClientQuickClassify";
 import SmartComboField from "@/components/clients/SmartComboField";
@@ -76,6 +77,7 @@ import {
   type PageFeature,
 } from "@/components/page-customizer/PageCustomizer";
 import { isValidPhoneForDisplay } from "@/lib/phone-utils";
+import { isVisibleClientPaymentStage } from "@/lib/clientPaymentStages";
 import {
   Users,
   Heart,
@@ -114,6 +116,7 @@ import {
   MessageCircle,
   Settings2,
   ClipboardList,
+  CircleDollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -268,6 +271,29 @@ interface ClientStageTaskInfo {
   updated_at?: string;
 }
 
+interface ClientPaymentStageInfo {
+  id: string;
+  client_id: string;
+  linked_stage_id: string | null;
+  linked_task_id: string | null;
+  stage_name: string;
+  is_paid: boolean | null;
+  amount: number;
+  amount_with_vat: number | null;
+  paid_amount: number | null;
+}
+
+interface ClientPaymentDisplayItem {
+  id: string;
+  title: string;
+  workflowStageName: string;
+  workflowStageOrder: number;
+  grossAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  isCurrent: boolean;
+}
+
 interface ClientTaskActivity {
   id: string;
   client_id: string;
@@ -298,7 +324,12 @@ interface ClientMeetingActivity {
   updated_at: string;
 }
 
-type ClientTaskViewContent = "process" | "tasks" | "reminders" | "meetings";
+type ClientTaskViewContent =
+  | "process"
+  | "tasks"
+  | "reminders"
+  | "meetings"
+  | "payments";
 
 interface ClientStageTemplateInfo {
   id: string;
@@ -350,6 +381,7 @@ let clientsRemainingFetch: Promise<Client[]> | null = null;
 type ClientFilterDataPayload = {
   stages: ClientStageInfo[];
   stageTasks: ClientStageTaskInfo[];
+  paymentStages: ClientPaymentStageInfo[];
   stageTemplates: ClientStageTemplateInfo[];
   reminderClientIds: string[];
   meetingClientIds: string[];
@@ -377,7 +409,7 @@ let clientConsultantsFetch: Promise<
 const FILTER_DATA_PAGE_SIZE = 1000;
 
 async function fetchAllFilterRows(
-  table: "client_stages" | "client_stage_tasks",
+  table: "client_stages" | "client_stage_tasks" | "client_payment_stages",
   columns: string,
 ) {
   const rows: any[] = [];
@@ -558,6 +590,7 @@ export default function Clients() {
     hasReminders?: boolean | null;
     hasTasks?: boolean | null;
     hasMeetings?: boolean | null;
+    paymentStatus?: ClientFilterState["paymentStatus"];
     recentClientsDays?: number | null;
     recentActivityTypes?: ClientFilterState["recentActivityTypes"];
     categories?: string[];
@@ -664,6 +697,10 @@ export default function Clients() {
       hasReminders: savedFullFilters.hasReminders ?? prev.hasReminders,
       hasTasks: savedFullFilters.hasTasks ?? prev.hasTasks,
       hasMeetings: savedFullFilters.hasMeetings ?? prev.hasMeetings,
+      paymentStatus:
+        savedFullFilters.paymentStatus === undefined
+          ? prev.paymentStatus
+          : savedFullFilters.paymentStatus,
       recentClientsDays:
         savedFullFilters.recentClientsDays ?? prev.recentClientsDays,
       recentActivityTypes:
@@ -833,6 +870,7 @@ export default function Clients() {
     hasReminders: null,
     hasTasks: null,
     hasMeetings: null,
+    paymentStatus: null,
     recentClientsDays: null,
     recentActivityTypes: [
       "client",
@@ -863,7 +901,9 @@ export default function Clients() {
   }, [storedTagDefinitions]);
 
   const taskViewContent: ClientTaskViewContent =
-    filters.hasTasks === true
+    filters.paymentStatus
+      ? "payments"
+      : filters.hasTasks === true
       ? "tasks"
       : filters.hasReminders === true
         ? "reminders"
@@ -920,6 +960,9 @@ export default function Clients() {
   // Client data for filtering
   const [clientStages, setClientStages] = useState<ClientStageInfo[]>([]);
   const [clientStageTasks, setClientStageTasks] = useState<ClientStageTaskInfo[]>([]);
+  const [clientPaymentStages, setClientPaymentStages] = useState<
+    ClientPaymentStageInfo[]
+  >([]);
   const [stageTemplates, setStageTemplates] = useState<ClientStageTemplateInfo[]>([]);
   const [clientsWithReminders, setClientsWithReminders] = useState<Set<string>>(
     new Set(),
@@ -1003,6 +1046,167 @@ export default function Clients() {
 
     return result;
   }, [clientStageTasks, clientStages, clients, stageTemplates]);
+
+  const { paymentProgressByClient, paymentItemsByClient } = useMemo(() => {
+    type Bucket = { payments: number; amount: number };
+    type Progress = Record<
+      "due" | "current" | "paid" | "reached",
+      Bucket
+    >;
+    const result = new Map<string, Progress>();
+    const itemsByClient = new Map<string, ClientPaymentDisplayItem[]>();
+    const stageByClientAndId = new Map<string, ClientStageInfo>();
+    const taskStageById = new Map<string, string>();
+    const tasksByClientAndStage = new Map<string, ClientStageTaskInfo[]>();
+    const currentStageIdsByClient = new Map<string, Set<string>>();
+
+    clientStages.forEach((stage) => {
+      stageByClientAndId.set(`${stage.client_id}:${stage.stage_id}`, stage);
+    });
+    clientStageTasks.forEach((task) => {
+      taskStageById.set(task.id, task.stage_id);
+      const key = `${task.client_id}:${task.stage_id}`;
+      const existing = tasksByClientAndStage.get(key) || [];
+      existing.push(task);
+      tasksByClientAndStage.set(key, existing);
+    });
+    workflowStateByClient.forEach((workflows, clientId) => {
+      const currentIds = new Set<string>();
+      workflows.forEach((workflow) => {
+        if (workflow.currentStage?.stage_id) {
+          currentIds.add(workflow.currentStage.stage_id);
+        }
+      });
+      currentStageIdsByClient.set(clientId, currentIds);
+    });
+
+    const getProgress = (clientId: string) => {
+      const existing = result.get(clientId);
+      if (existing) return existing;
+      const created: Progress = {
+        due: { payments: 0, amount: 0 },
+        current: { payments: 0, amount: 0 },
+        paid: { payments: 0, amount: 0 },
+        reached: { payments: 0, amount: 0 },
+      };
+      result.set(clientId, created);
+      return created;
+    };
+
+    clientPaymentStages
+      .filter(isVisibleClientPaymentStage)
+      .forEach((payment) => {
+        const grossAmount =
+          Number(payment.amount_with_vat || 0) ||
+          Number(payment.amount || 0);
+        const paidAmount = Math.max(
+          Number(payment.paid_amount || 0),
+          payment.is_paid ? grossAmount : 0,
+        );
+        const remainingAmount = Math.max(grossAmount - paidAmount, 0);
+        const linkedStageId =
+          payment.linked_stage_id ||
+          (payment.linked_task_id
+            ? taskStageById.get(payment.linked_task_id) || null
+            : null);
+        const linkedStage = linkedStageId
+          ? stageByClientAndId.get(`${payment.client_id}:${linkedStageId}`)
+          : null;
+        const linkedStageTasks = linkedStageId
+          ? tasksByClientAndStage.get(
+              `${payment.client_id}:${linkedStageId}`,
+            ) || []
+          : [];
+        const linkedStageCompleted =
+          linkedStage?.is_completed === true ||
+          (linkedStageTasks.length > 0 &&
+            linkedStageTasks.every((task) => task.completed));
+        const isCurrent =
+          Boolean(linkedStageId) &&
+          Boolean(
+            currentStageIdsByClient
+              .get(payment.client_id)
+              ?.has(linkedStageId!),
+          );
+        const stageWasReached =
+          payment.is_paid === true ||
+          paidAmount > 0 ||
+          linkedStageCompleted ||
+          isCurrent;
+
+        // Unpaid milestones without a reached/current stage are future money
+        // and intentionally stay outside every clients-page payment filter.
+        if (!stageWasReached) return;
+
+        const progress = getProgress(payment.client_id);
+        const paymentItems = itemsByClient.get(payment.client_id) || [];
+        paymentItems.push({
+          id: payment.id,
+          title: payment.stage_name || "תשלום",
+          workflowStageName: linkedStage?.stage_name || "תשלום כללי",
+          workflowStageOrder: linkedStage?.sort_order ?? Number.MAX_SAFE_INTEGER,
+          grossAmount,
+          paidAmount: Math.min(paidAmount, grossAmount),
+          remainingAmount,
+          isCurrent,
+        });
+        itemsByClient.set(payment.client_id, paymentItems);
+
+        progress.reached.payments += 1;
+        progress.reached.amount += grossAmount;
+
+        if (isCurrent) {
+          progress.current.payments += 1;
+          progress.current.amount += grossAmount;
+        }
+        if (paidAmount > 0) {
+          progress.paid.payments += 1;
+          progress.paid.amount += Math.min(paidAmount, grossAmount);
+        }
+        if (remainingAmount > 0.01) {
+          progress.due.payments += 1;
+          progress.due.amount += remainingAmount;
+        }
+      });
+
+    itemsByClient.forEach((items) => {
+      items.sort(
+        (a, b) =>
+          a.workflowStageOrder - b.workflowStageOrder ||
+          a.title.localeCompare(b.title, "he"),
+      );
+    });
+
+    return {
+      paymentProgressByClient: result,
+      paymentItemsByClient: itemsByClient,
+    };
+  }, [
+    clientPaymentStages,
+    clientStageTasks,
+    clientStages,
+    workflowStateByClient,
+  ]);
+
+  const paymentSummary = useMemo<ClientPaymentFilterSummary>(() => {
+    const summary: ClientPaymentFilterSummary = {
+      due: { clients: 0, payments: 0, amount: 0 },
+      current: { clients: 0, payments: 0, amount: 0 },
+      paid: { clients: 0, payments: 0, amount: 0 },
+      reached: { clients: 0, payments: 0, amount: 0 },
+    };
+    paymentProgressByClient.forEach((progress) => {
+      (Object.keys(summary) as Array<keyof ClientPaymentFilterSummary>).forEach(
+        (key) => {
+          if (progress[key].payments <= 0) return;
+          summary[key].clients += 1;
+          summary[key].payments += progress[key].payments;
+          summary[key].amount += progress[key].amount;
+        },
+      );
+    });
+    return summary;
+  }, [paymentProgressByClient]);
 
   // Quick Classification dialogs
   const [isBulkClassifyOpen, setIsBulkClassifyOpen] = useState(false);
@@ -1177,6 +1381,18 @@ export default function Clients() {
       result = result.filter((client) => clientsWithTasks.has(client.id));
     }
 
+    // Payment relevance follows workflow progress: paid milestones and
+    // unpaid milestones in the current/completed stages only. Future-stage
+    // money never enters these buckets.
+    if (filters.paymentStatus) {
+      result = result.filter(
+        (client) =>
+          (paymentProgressByClient.get(client.id)?.[
+            filters.paymentStatus!
+          ].payments || 0) > 0,
+      );
+    }
+
     // Consultant filter (specific consultants OR any consultant of selected profession)
     const consultantIds = filters.consultantIds || [];
     const consultantProfessions = filters.consultantProfessions || [];
@@ -1328,6 +1544,7 @@ export default function Clients() {
     clientsWithReminders,
     clientsWithTasks,
     clientsWithMeetings,
+    paymentProgressByClient,
     effectiveLatestActivityByClient,
     latestContractSignedByClient,
     clientConsultantsMap,
@@ -1853,6 +2070,7 @@ export default function Clients() {
           const [
             stagesRes,
             stageTasksRes,
+            paymentStagesRes,
             stageTemplatesRes,
             templateStagesRes,
             remindersRes,
@@ -1871,6 +2089,10 @@ export default function Clients() {
               fetchAllFilterRows(
                 "client_stage_tasks",
                 "id, client_id, stage_id, title, completed, created_at, updated_at",
+              ),
+              fetchAllFilterRows(
+                "client_payment_stages",
+                "id, client_id, linked_stage_id, linked_task_id, stage_name, is_paid, amount, amount_with_vat, paid_amount, created_at",
               ),
               (supabase as any)
                 .from("stage_templates")
@@ -1930,6 +2152,7 @@ export default function Clients() {
           const firstError = [
             stagesRes,
             stageTasksRes,
+            paymentStagesRes,
             stageTemplatesRes,
             templateStagesRes,
             remindersRes,
@@ -2019,6 +2242,8 @@ export default function Clients() {
           return {
             stages: (stagesRes.data || []) as ClientStageInfo[],
             stageTasks: (stageTasksRes.data || []) as ClientStageTaskInfo[],
+            paymentStages: (paymentStagesRes.data ||
+              []) as ClientPaymentStageInfo[],
             stageTemplates: (stageTemplatesRes.data || []).map((template: any) => ({
               id: template.id,
               name: template.name,
@@ -2053,6 +2278,7 @@ export default function Clients() {
       React.startTransition(() => {
         setClientStages(payload.stages);
         setClientStageTasks(payload.stageTasks);
+        setClientPaymentStages(payload.paymentStages);
         setStageTemplates(payload.stageTemplates);
         setClientsWithReminders(new Set(payload.reminderClientIds));
         setClientsWithMeetings(new Set(payload.meetingClientIds));
@@ -2196,6 +2422,11 @@ export default function Clients() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "client_stage_tasks" },
+        refreshProcessData,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "client_payment_stages" },
         refreshProcessData,
       )
       .on(
@@ -2853,6 +3084,214 @@ export default function Clients() {
     };
 
     if (viewMode === "tasks") {
+      if (taskViewContent === "payments") {
+        const paymentMode = filters.paymentStatus || "reached";
+        const paymentModeLabel = {
+          due: "ממתינים לתשלום",
+          current: "בשלב הנוכחי",
+          paid: "שולמו",
+          reached: "עד השלב הנוכחי",
+        }[paymentMode];
+        const paymentItems = (paymentItemsByClient.get(client.id) || []).filter(
+          (item) => {
+            switch (paymentMode) {
+              case "due":
+                return item.remainingAmount > 0.01;
+              case "current":
+                return item.isCurrent;
+              case "paid":
+                return item.paidAmount > 0;
+              case "reached":
+                return true;
+            }
+          },
+        );
+        const displayedPayments =
+          processControlSettings.verticalScroll !== false
+            ? paymentItems
+            : paymentItems.slice(0, processControlSettings.tasksToShow);
+        const visiblePaymentIds = new Set(
+          displayedPayments.map((payment) => payment.id),
+        );
+        const paymentGroups = Array.from(
+          paymentItems.reduce((groups, payment) => {
+            const key = `${payment.workflowStageOrder}:${payment.workflowStageName}`;
+            const existing = groups.get(key) || {
+              name: payment.workflowStageName,
+              order: payment.workflowStageOrder,
+              items: [] as ClientPaymentDisplayItem[],
+            };
+            existing.items.push(payment);
+            groups.set(key, existing);
+            return groups;
+          }, new Map<string, { name: string; order: number; items: ClientPaymentDisplayItem[] }>())
+          .values(),
+        ).sort((a, b) => a.order - b.order);
+        const getDisplayedAmount = (payment: ClientPaymentDisplayItem) => {
+          switch (paymentMode) {
+            case "due":
+              return payment.remainingAmount;
+            case "paid":
+              return payment.paidAmount;
+            case "current":
+            case "reached":
+              return payment.grossAmount;
+          }
+        };
+        const totalDisplayedAmount = paymentItems.reduce(
+          (sum, payment) => sum + getDisplayedAmount(payment),
+          0,
+        );
+        const formatPaymentAmount = (amount: number) =>
+          `₪${Math.round(amount).toLocaleString("he-IL")}`;
+
+        return (
+          <article
+            ref={cardRef}
+            dir="rtl"
+            className="group flex min-h-[260px] flex-col overflow-hidden rounded-2xl border-2 border-[#d4a843] bg-white shadow-[0_10px_30px_rgba(30,58,95,0.10)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(30,58,95,0.16)]"
+          >
+            <button
+              type="button"
+              onClick={() => navigate(`/client-profile/${client.id}`)}
+              className="flex items-center justify-between gap-3 bg-[#1e3a5f] px-4 py-3 text-right text-white"
+            >
+              <div className="min-w-0">
+                <h3 className="truncate text-base font-bold">{client.name}</h3>
+                <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-white/70">
+                  <span>
+                    {paymentItems.length} תשלומים {paymentModeLabel}
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span className="font-bold text-[#f1c75b]">
+                    {formatPaymentAmount(totalDisplayedAmount)}
+                  </span>
+                </p>
+              </div>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#d4a843]/60 bg-white/10 text-[#f1c75b]">
+                <CircleDollarSign className="h-4 w-4" />
+              </span>
+            </button>
+
+            <div
+              data-client-task-scroll="true"
+              className={cn(
+                "flex-1 space-y-3 p-3",
+                processControlSettings.verticalScroll !== false &&
+                  "overflow-y-auto",
+              )}
+              style={
+                processControlSettings.verticalScroll !== false
+                  ? {
+                      maxHeight: `${Math.max(
+                        180,
+                        processControlSettings.tasksToShow * 58 + 54,
+                      )}px`,
+                    }
+                  : undefined
+              }
+            >
+              {displayedPayments.length === 0 ? (
+                <div className="flex h-full min-h-32 items-center justify-center text-sm text-slate-400">
+                  אין תשלומים במצב זה
+                </div>
+              ) : (
+                paymentGroups.map((group) => {
+                  const paymentsToRender = group.items.filter((payment) =>
+                    visiblePaymentIds.has(payment.id),
+                  );
+                  if (paymentsToRender.length === 0) return null;
+
+                  return (
+                    <section key={`${group.order}:${group.name}`} className="space-y-1.5">
+                      <div className="sticky top-0 z-10 flex items-center justify-between rounded-lg bg-[#f7ecd0] px-2.5 py-1.5 text-[#1e3a5f]">
+                        <span className="truncate text-xs font-bold">
+                          {group.name}
+                        </span>
+                        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold">
+                          {paymentsToRender.length}
+                        </span>
+                      </div>
+
+                      {paymentsToRender.map((payment) => {
+                        const amount = getDisplayedAmount(payment);
+                        const isFullyPaid =
+                          payment.remainingAmount <= 0.01 &&
+                          payment.paidAmount > 0;
+                        const isPartiallyPaid =
+                          payment.paidAmount > 0 && !isFullyPaid;
+                        const statusLabel = isFullyPaid
+                          ? "שולם"
+                          : isPartiallyPaid
+                            ? "שולם חלקית"
+                            : payment.isCurrent
+                              ? "שלב נוכחי"
+                              : "ממתין";
+
+                        return (
+                          <button
+                            key={payment.id}
+                            type="button"
+                            onClick={() =>
+                              navigate(`/client-profile/${client.id}`)
+                            }
+                            className="flex w-full items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-right transition hover:border-[#d4a843] hover:bg-[#fef9ee]"
+                          >
+                            <span
+                              className={cn(
+                                "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+                                isFullyPaid
+                                  ? "bg-emerald-50 text-emerald-600"
+                                  : isPartiallyPaid
+                                    ? "bg-amber-50 text-amber-600"
+                                    : "bg-[#1e3a5f]/8 text-[#1e3a5f]",
+                              )}
+                            >
+                              <CircleDollarSign className="h-3.5 w-3.5" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-xs font-semibold text-[#1e3a5f]">
+                                {payment.title}
+                              </span>
+                              <span
+                                className={cn(
+                                  "mt-0.5 block text-[10px]",
+                                  isFullyPaid
+                                    ? "text-emerald-600"
+                                    : isPartiallyPaid
+                                      ? "text-amber-600"
+                                      : "text-slate-500",
+                                )}
+                              >
+                                {statusLabel}
+                                {isPartiallyPaid &&
+                                  ` · מתוך ${formatPaymentAmount(payment.grossAmount)}`}
+                              </span>
+                            </span>
+                            <span
+                              className={cn(
+                                "shrink-0 rounded-full border px-2 py-1 text-xs font-black",
+                                isFullyPaid
+                                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                  : isPartiallyPaid
+                                    ? "border-amber-200 bg-amber-50 text-amber-700"
+                                    : "border-[#d4a843]/40 bg-[#f7ecd0] text-[#9a6800]",
+                              )}
+                            >
+                              {formatPaymentAmount(amount)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </section>
+                  );
+                })
+              )}
+            </div>
+          </article>
+        );
+      }
+
       if (taskViewContent !== "process") {
         const activityConfig = {
           tasks: {
@@ -5299,7 +5738,9 @@ export default function Clients() {
           filters={filters}
           onFiltersChange={(newFilters) => {
             const selectedActivity =
-              newFilters.hasTasks === true
+              newFilters.paymentStatus
+                ? "payments"
+                : newFilters.hasTasks === true
                 ? "tasks"
                 : newFilters.hasReminders === true
                   ? "reminders"
@@ -5331,6 +5772,7 @@ export default function Clients() {
               hasReminders: newFilters.hasReminders,
               hasTasks: newFilters.hasTasks,
               hasMeetings: newFilters.hasMeetings,
+              paymentStatus: newFilters.paymentStatus,
               recentClientsDays: newFilters.recentClientsDays,
               recentActivityTypes: newFilters.recentActivityTypes,
               categories: newFilters.categories,
@@ -5350,6 +5792,7 @@ export default function Clients() {
           clientsWithReminders={clientsWithReminders}
           clientsWithTasks={clientsWithTasks}
           clientsWithMeetings={clientsWithMeetings}
+          paymentSummary={paymentSummary}
           recentClientsCount={recentClientsCount}
           categories={categories}
           categoryCounts={categoryCounts}

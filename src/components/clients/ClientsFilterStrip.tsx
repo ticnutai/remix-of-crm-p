@@ -51,6 +51,9 @@ import {
   ChevronLeft,
   History,
   Settings2,
+  CircleDollarSign,
+  CircleCheckBig,
+  CircleAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConsultantsFilterPopover } from "./ConsultantsFilterPopover";
@@ -100,6 +103,7 @@ export interface ClientFilterState {
   hasReminders: boolean | null;
   hasTasks: boolean | null;
   hasMeetings: boolean | null;
+  paymentStatus?: "due" | "current" | "paid" | "reached" | null;
   recentClientsDays?: number | null;
   recentActivityTypes?: Array<
     "client" | "process" | "tasks" | "reminders" | "meetings"
@@ -122,6 +126,11 @@ export interface ClientFilterState {
     | "classification_desc";
 }
 
+export type ClientPaymentFilterSummary = Record<
+  "due" | "current" | "paid" | "reached",
+  { clients: number; payments: number; amount: number }
+>;
+
 interface ClientCategory {
   id: string;
   name: string;
@@ -135,6 +144,7 @@ interface ClientsFilterStripProps {
   clientsWithReminders: Set<string>;
   clientsWithTasks: Set<string>;
   clientsWithMeetings: Set<string>;
+  paymentSummary?: ClientPaymentFilterSummary;
   recentClientsCount?: number;
   categories?: ClientCategory[];
   categoryCounts?: Record<string, number>;
@@ -160,6 +170,14 @@ const iconMap: Record<string, React.ReactNode> = {
   FolderOpen: <FolderOpen className="h-4 w-4" />,
 };
 
+const formatCompactNis = (amount: number) =>
+  new Intl.NumberFormat("he-IL", {
+    style: "currency",
+    currency: "ILS",
+    maximumFractionDigits: 0,
+    notation: amount >= 100_000 ? "compact" : "standard",
+  }).format(amount || 0);
+
 const FILTER_SECTIONS = [
   { id: "sort", label: "מיון / תאריך" },
   { id: "classification", label: "סיווג" },
@@ -170,6 +188,7 @@ const FILTER_SECTIONS = [
   { id: "tasks", label: "משימות" },
   { id: "recent", label: "לקוחות אחרונים" },
   { id: "meetings", label: "פגישות" },
+  { id: "payments", label: "תשלומים" },
 ] as const;
 
 export function ClientsFilterStrip({
@@ -178,6 +197,12 @@ export function ClientsFilterStrip({
   clientsWithReminders,
   clientsWithTasks,
   clientsWithMeetings,
+  paymentSummary = {
+    due: { clients: 0, payments: 0, amount: 0 },
+    current: { clients: 0, payments: 0, amount: 0 },
+    paid: { clients: 0, payments: 0, amount: 0 },
+    reached: { clients: 0, payments: 0, amount: 0 },
+  },
   recentClientsCount = 0,
   categories = [],
   categoryCounts = {},
@@ -195,6 +220,10 @@ export function ClientsFilterStrip({
   onDateRangeTabsChange,
 }: ClientsFilterStripProps) {
   const [stagesDialogOpen, setStagesDialogOpen] = useState(false);
+  const [activeQuickPanel, setActiveQuickPanel] = useState<
+    "stages" | "recent" | "payments" | null
+  >(null);
+  const [activeStageTemplateId, setActiveStageTemplateId] = useState<string | null>(null);
   const [expandedStageTemplates, setExpandedStageTemplates] = useState<Set<string>>(
     () => new Set(),
   );
@@ -215,10 +244,19 @@ export function ClientsFilterStrip({
             stage_icon: stage.stage_icon,
             tasks: stage.tasks || [],
           })),
-        }))
-        .filter((template) => template.stages.length > 0),
+        })),
     [stageTemplates],
   );
+  const activeStageTemplate = useMemo(
+    () =>
+      templateStageGroups.find(
+        (template) => template.id === activeStageTemplateId,
+      ) || null,
+    [activeStageTemplateId, templateStageGroups],
+  );
+  const dialogStageGroups = activeStageTemplate
+    ? [activeStageTemplate]
+    : templateStageGroups;
   const { value: stagesPanelPos, setValue: setStagesPanelPos } = useUserSettings<{ x: number; y: number }>({
     key: "stages_filter_panel_position",
     defaultValue: { x: Math.round(window.innerWidth / 2 - 200), y: Math.round(window.innerHeight / 2 - 250) },
@@ -448,6 +486,30 @@ export function ClientsFilterStrip({
 
   const clearStages = () => {
     onFiltersChange({ ...filters, stages: [], stageSelections: [], stageTemplateIds: [], stageTaskFilters: [] });
+  };
+
+  const clearActiveTemplateSelections = () => {
+    if (!activeStageTemplate) {
+      clearStages();
+      return;
+    }
+
+    const stageSelections = (filters.stageSelections || []).filter(
+      (selection) => selection.templateId !== activeStageTemplate.id,
+    );
+    onFiltersChange({
+      ...filters,
+      stages: Array.from(
+        new Set(stageSelections.map((selection) => selection.stageName)),
+      ),
+      stageSelections,
+      stageTemplateIds: (filters.stageTemplateIds || []).filter(
+        (templateId) => templateId !== activeStageTemplate.id,
+      ),
+      stageTaskFilters: (filters.stageTaskFilters || []).filter(
+        (task) => task.templateId !== activeStageTemplate.id,
+      ),
+    });
   };
 
   const selectAllStages = () => {
@@ -703,6 +765,52 @@ export function ClientsFilterStrip({
     });
   };
 
+  const selectAllActiveTemplateStages = () => {
+    if (!activeStageTemplate) {
+      selectAllStages();
+      return;
+    }
+
+    const otherSelections = (filters.stageSelections || []).filter(
+      (selection) => selection.templateId !== activeStageTemplate.id,
+    );
+    const templateSelections = activeStageTemplate.stages.map((stage) => ({
+      templateId: activeStageTemplate.id,
+      stageId: stage.stage_id,
+      stageName: stage.stage_name,
+    }));
+    const stageSelections = [...otherSelections, ...templateSelections];
+
+    onFiltersChange({
+      ...filters,
+      stages: Array.from(
+        new Set(stageSelections.map((selection) => selection.stageName)),
+      ),
+      stageSelections,
+      stageTemplateIds: Array.from(
+        new Set([
+          ...(filters.stageTemplateIds || []),
+          activeStageTemplate.id,
+        ]),
+      ),
+    });
+  };
+
+  const openStageTemplateDialog = (templateId: string) => {
+    setActiveStageTemplateId(templateId);
+    setExpandedStageTemplates((current) => {
+      const next = new Set(current);
+      next.add(templateId);
+      return next;
+    });
+    setStagesDialogOpen(true);
+  };
+
+  const closeStagesDialog = () => {
+    setStagesDialogOpen(false);
+    setActiveStageTemplateId(null);
+  };
+
   const toggleHasTasks = () => {
     const newValue = filters.hasTasks === true ? null : true;
     onFiltersChange({
@@ -723,20 +831,6 @@ export function ClientsFilterStrip({
     });
   };
 
-  const toggleRecentClients = () => {
-    const activityTypes =
-      recentClientsSettings.activityTypes?.length > 0
-        ? recentClientsSettings.activityTypes
-        : ["client", "process", "tasks", "reminders", "meetings"] as const;
-    onFiltersChange({
-      ...filters,
-      recentClientsDays: filters.recentClientsDays
-        ? null
-        : recentClientsSettings.days,
-      recentActivityTypes: [...activityTypes],
-    });
-  };
-
   const updateRecentClientsDays = (days: number) => {
     setRecentClientsSettings({
       ...recentClientsSettings,
@@ -745,6 +839,21 @@ export function ClientsFilterStrip({
     if (filters.recentClientsDays) {
       onFiltersChange({ ...filters, recentClientsDays: days });
     }
+  };
+
+  const applyRecentClientsDays = (days: number) => {
+    setRecentClientsSettings({
+      ...recentClientsSettings,
+      days,
+    });
+    onFiltersChange({
+      ...filters,
+      recentClientsDays: days,
+      recentActivityTypes:
+        recentClientsSettings.activityTypes?.length > 0
+          ? recentClientsSettings.activityTypes
+          : ["client", "process", "tasks", "reminders", "meetings"],
+    });
   };
 
   const toggleRecentActivityType = (
@@ -862,6 +971,7 @@ export function ClientsFilterStrip({
     filters.hasReminders !== null ||
     filters.hasTasks !== null ||
     filters.hasMeetings !== null ||
+    Boolean(filters.paymentStatus) ||
     Boolean(filters.recentClientsDays) ||
     filters.tags.length > 0 ||
     !!filters.customDateRange ||
@@ -879,6 +989,7 @@ export function ClientsFilterStrip({
       hasReminders: null,
       hasTasks: null,
       hasMeetings: null,
+      paymentStatus: null,
       recentClientsDays: null,
       recentActivityTypes: filters.recentActivityTypes,
       categories: [],
@@ -978,6 +1089,11 @@ export function ClientsFilterStrip({
       key: "clients-filter-strip-recent-visibility-migrated-v1",
       defaultValue: false,
     });
+  const [paymentsVisibilityMigrated, setPaymentsVisibilityMigrated] =
+    useSyncedSetting<boolean>({
+      key: "clients-filter-strip-payments-visibility-migrated-v2",
+      defaultValue: false,
+    });
   const [draggedFilterSectionId, setDraggedFilterSectionId] = useState<
     string | null
   >(null);
@@ -995,6 +1111,22 @@ export function ClientsFilterStrip({
     recentVisibilityMigrated,
     setRecentVisibilityMigrated,
     setVisibleFilterSectionsArr,
+  ]);
+
+  useEffect(() => {
+    if (paymentsVisibilityMigrated) return;
+    if (visibleFilterSectionsArr.includes("payments")) {
+      setPaymentsVisibilityMigrated(true);
+      return;
+    }
+    setVisibleFilterSectionsArr((current) =>
+      current.includes("payments") ? current : [...current, "payments"],
+    );
+  }, [
+    paymentsVisibilityMigrated,
+    setPaymentsVisibilityMigrated,
+    setVisibleFilterSectionsArr,
+    visibleFilterSectionsArr,
   ]);
 
   const orderedFilterSections = useMemo(() => {
@@ -1024,7 +1156,13 @@ export function ClientsFilterStrip({
     filterSectionOrderMap.get(id as (typeof FILTER_SECTIONS)[number]["id"]) ??
     FILTER_SECTIONS.length;
 
-  const visibleFilterSections = useMemo(() => new Set(visibleFilterSectionsArr), [visibleFilterSectionsArr]);
+  const visibleFilterSections = useMemo(() => {
+    const sections = new Set(visibleFilterSectionsArr);
+    // Keep a newly introduced primary tab visible immediately while its
+    // one-time visibility migration is being persisted for existing users.
+    if (!paymentsVisibilityMigrated) sections.add("payments");
+    return sections;
+  }, [paymentsVisibilityMigrated, visibleFilterSectionsArr]);
   const setVisibleFilterSections = useCallback((next: Set<string> | ((prev: Set<string>) => Set<string>)) => {
     setVisibleFilterSectionsArr((prevArr) => {
       const prev = new Set(prevArr);
@@ -1800,7 +1938,16 @@ export function ClientsFilterStrip({
               filters.stages.length > 0 &&
                 "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a] text-xs",
             )}
-            onClick={() => setStagesDialogOpen((v) => !v)}
+            aria-expanded={activeQuickPanel === "stages"}
+            onClick={() => {
+              if (activeQuickPanel === "stages") {
+                setActiveQuickPanel(null);
+                closeStagesDialog();
+              } else {
+                setActiveQuickPanel("stages");
+                closeStagesDialog();
+              }
+            }}
           >
             <Layers className="h-4 w-4" />
             תהליכים ושלבים
@@ -1812,13 +1959,18 @@ export function ClientsFilterStrip({
                 {filters.stageTemplateIds.length + filters.stageSelections.length + filters.stageTaskFilters.length}
               </Badge>
             )}
-            <ChevronDown className="h-3 w-3 opacity-50" />
+            <ChevronDown
+              className={cn(
+                "h-3 w-3 opacity-50 transition-transform",
+                activeQuickPanel === "stages" && "rotate-180",
+              )}
+            />
           </Button>
 
           {stagesDialogOpen && createPortal(
             <div
               className="fixed inset-0 z-[9998]"
-              onMouseDown={() => setStagesDialogOpen(false)}
+              onMouseDown={closeStagesDialog}
             >
             <div
               dir="rtl"
@@ -1867,22 +2019,33 @@ export function ClientsFilterStrip({
                     size="icon"
                     className="h-6 w-6"
                     onMouseDown={(e) => e.stopPropagation()}
-                    onClick={() => setStagesDialogOpen(false)}
+                    onClick={closeStagesDialog}
                   >
                     <X className="h-4 w-4" />
                   </Button>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-sm">תהליכים, שלבים ומשימות</h3>
+                    <div className="text-right">
+                      <h3 className="font-semibold text-sm">
+                        {activeStageTemplate
+                          ? activeStageTemplate.name
+                          : "תהליכים, שלבים ומשימות"}
+                      </h3>
+                      {activeStageTemplate && (
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">
+                          בחירת שלבים ומשימות בתהליך
+                        </p>
+                      )}
+                    </div>
                     <Layers className="h-4 w-4 text-primary" />
                     <GripVertical className="h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end" onMouseDown={(e) => e.stopPropagation()}>
-                  <Button variant="outline" size="sm" onClick={selectAllStages}>
-                    בחר הכל
+                  <Button variant="outline" size="sm" onClick={selectAllActiveTemplateStages}>
+                    {activeStageTemplate ? "בחר את כל שלבי התהליך" : "בחר הכל"}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={clearStages}>
-                    נקה שלבים
+                  <Button variant="outline" size="sm" onClick={clearActiveTemplateSelections}>
+                    {activeStageTemplate ? "נקה את בחירות התהליך" : "נקה שלבים"}
                   </Button>
                 </div>
                 {((filters.stageTemplateIds || []).length > 0 ||
@@ -1919,13 +2082,15 @@ export function ClientsFilterStrip({
                       <p className="text-center text-muted-foreground py-8">
                         טוען תבניות שלבים...
                       </p>
-                    ) : templateStageGroups.length === 0 ? (
+                    ) : dialogStageGroups.length === 0 ? (
                       <p className="text-center text-muted-foreground py-8">
                         אין תבניות שלבים מוגדרות
                       </p>
                     ) : (
-                      templateStageGroups.map((template) => {
-                        const isExpanded = expandedStageTemplates.has(template.id);
+                      dialogStageGroups.map((template) => {
+                        const isExpanded =
+                          activeStageTemplateId === template.id ||
+                          expandedStageTemplates.has(template.id);
                         const stageNames = template.stages.map((stage) => stage.stage_name);
                         const selectedCount = (filters.stageSelections || []).filter(
                           (stage) => stage.templateId === template.id,
@@ -1952,19 +2117,24 @@ export function ClientsFilterStrip({
                                 "flex cursor-pointer items-center gap-2 p-3 transition-colors hover:bg-muted/60",
                                 (templateSelected || selectedCount > 0 || selectedTaskCount > 0) && "bg-primary/5",
                               )}
-                              onClick={() => toggleStageTemplate(template.id)}
+                              onClick={() =>
+                                !activeStageTemplate &&
+                                toggleStageTemplate(template.id)
+                              }
                               onKeyDown={(event) => {
                                 if (event.key === "Enter" || event.key === " ") {
                                   event.preventDefault();
-                                  toggleStageTemplate(template.id);
+                                  if (!activeStageTemplate) {
+                                    toggleStageTemplate(template.id);
+                                  }
                                 }
                               }}
                             >
-                              {isExpanded ? (
+                              {!activeStageTemplate && (isExpanded ? (
                                 <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                               ) : (
                                 <ChevronLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
-                              )}
+                              ))}
                               <span className="flex-1 text-right font-semibold text-foreground">
                                 {template.name}
                               </span>
@@ -1996,7 +2166,11 @@ export function ClientsFilterStrip({
 
                             {isExpanded && (
                               <div className="space-y-1 border-t border-border bg-muted/20 p-2 pr-7">
-                                {template.stages.map((stage) => {
+                                {template.stages.length === 0 ? (
+                                  <p className="py-5 text-center text-xs text-muted-foreground">
+                                    עדיין לא הוגדרו שלבים בתהליך זה
+                                  </p>
+                                ) : template.stages.map((stage) => {
                                   const stageClientCount = stageCounts[stage.stage_name] || 0;
                                   const checked = (filters.stageSelections || []).some(
                                     (selection) => selection.templateId === template.id && selection.stageId === stage.stage_id,
@@ -2083,6 +2257,7 @@ export function ClientsFilterStrip({
                   </div>
 
                   {/* ===== Consultants Tree ===== */}
+                  {!activeStageTemplate && (
                   <div className="mt-5 pt-4 border-t border-border">
                     <ConsultantsTreeFilter
                       selectedConsultantIds={filters.consultantIds || []}
@@ -2096,6 +2271,7 @@ export function ClientsFilterStrip({
                       }
                     />
                   </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -2106,6 +2282,39 @@ export function ClientsFilterStrip({
         )}
 
         {/* Date filter merged into the unified Sort & Date dropdown above */}
+
+        {/* Payments relevant up to the client's current workflow stage */}
+        {visibleFilterSections.has("payments") && (
+          <Button
+            variant="outline"
+            size="sm"
+            style={{ order: getFilterSectionOrder("payments") }}
+            aria-expanded={activeQuickPanel === "payments"}
+            onClick={() => {
+              closeStagesDialog();
+              setActiveQuickPanel((current) =>
+                current === "payments" ? null : "payments",
+              );
+            }}
+            className={cn(
+              "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
+              filters.paymentStatus &&
+                "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
+            )}
+          >
+            <CircleDollarSign className="h-4 w-4" />
+            תשלומים
+            <Badge variant="secondary" className="mr-1">
+              {paymentSummary.due.clients}
+            </Badge>
+            <ChevronDown
+              className={cn(
+                "h-3 w-3 opacity-50 transition-transform",
+                activeQuickPanel === "payments" && "rotate-180",
+              )}
+            />
+          </Button>
+        )}
 
         {/* Has Reminders Toggle */}
         {visibleFilterSections.has("reminders") && (
@@ -2160,7 +2369,13 @@ export function ClientsFilterStrip({
         >
           <button
             type="button"
-            onClick={toggleRecentClients}
+            aria-expanded={activeQuickPanel === "recent"}
+            onClick={() => {
+              closeStagesDialog();
+              setActiveQuickPanel((current) =>
+                current === "recent" ? null : "recent",
+              );
+            }}
             className={cn(
               "flex h-full items-center gap-1.5 px-2.5 text-xs font-medium text-[#1e293b] transition-colors hover:bg-[#fef9ee]",
               filters.recentClientsDays && "hover:bg-[#c49a3a]",
@@ -2335,6 +2550,381 @@ export function ClientsFilterStrip({
           </Button>
         )}
       </div>
+
+      {activeQuickPanel === "stages" && visibleFilterSections.has("stages") && (
+        <div
+          className="mt-2 overflow-hidden rounded-xl border border-[#d4a843]/70 bg-gradient-to-l from-[#fffaf0] via-white to-[#f7f9fc] shadow-[0_8px_24px_rgba(30,58,95,0.08)]"
+          aria-label="קיצורי דרך לתהליכים"
+        >
+          <div className="flex items-center gap-2 border-b border-[#d4a843]/25 px-3 py-2">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#1e3a5f] text-[#e7b941] shadow-sm">
+              <Layers className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-[#1e3a5f]">
+                בחירת תהליך מהירה
+              </p>
+              <p className="text-[10px] text-slate-500">
+                לחיצה על תהליך תציג את כל השלבים שלו
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 rounded-full text-slate-500 hover:bg-[#1e3a5f]/10 hover:text-[#1e3a5f]"
+              onClick={() => {
+                setActiveQuickPanel(null);
+                closeStagesDialog();
+              }}
+              aria-label="סגור קיצורי תהליכים"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+
+          <div className="overflow-x-auto px-3 py-2.5 [scrollbar-color:#d4a843_transparent] [scrollbar-width:thin]">
+            <div className="flex min-w-max items-center gap-2">
+              {stageTemplatesLoading ? (
+                <span className="px-3 py-2 text-xs text-slate-500">
+                  טוען תהליכים...
+                </span>
+              ) : templateStageGroups.length === 0 ? (
+                <span className="px-3 py-2 text-xs text-slate-500">
+                  אין תהליכים עם שלבים מוגדרים
+                </span>
+              ) : (
+                templateStageGroups.map((template) => {
+                  const isActive =
+                    stagesDialogOpen &&
+                    activeStageTemplateId === template.id;
+                  const selectedStages = (
+                    filters.stageSelections || []
+                  ).filter(
+                    (selection) => selection.templateId === template.id,
+                  ).length;
+                  const isTemplateSelected = (
+                    filters.stageTemplateIds || []
+                  ).includes(template.id);
+
+                  return (
+                    <button
+                      key={template.id}
+                      type="button"
+                      onClick={() => openStageTemplateDialog(template.id)}
+                      className={cn(
+                        "group flex h-10 items-center gap-2 rounded-xl border px-3 text-right transition-all duration-200",
+                        "border-[#d4a843]/70 bg-white text-[#1e3a5f] shadow-sm hover:-translate-y-0.5 hover:border-[#d4a843] hover:bg-[#fff8e7] hover:shadow-md",
+                        isActive &&
+                          "border-[#1e3a5f] bg-[#1e3a5f] text-white shadow-md",
+                      )}
+                      aria-label={`פתח את שלבי ${template.name}`}
+                    >
+                      <span
+                        className={cn(
+                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#1e3a5f]/8 text-[#d4a843]",
+                          isActive && "bg-white/10 text-[#e7b941]",
+                        )}
+                      >
+                        <Layers className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="max-w-[190px] truncate text-xs font-bold">
+                        {template.name}
+                      </span>
+                      <span
+                        className={cn(
+                          "rounded-full bg-[#f4ead3] px-2 py-0.5 text-[10px] font-semibold text-[#1e3a5f]",
+                          isActive && "bg-white/15 text-white",
+                        )}
+                      >
+                        {template.stages.length} שלבים
+                      </span>
+                      {(selectedStages > 0 || isTemplateSelected) && (
+                        <span
+                          className={cn(
+                            "h-2 w-2 rounded-full bg-emerald-500",
+                            isActive && "ring-2 ring-white/40",
+                          )}
+                          title="קיימת בחירה פעילה בתהליך"
+                        />
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeQuickPanel === "recent" && visibleFilterSections.has("recent") && (
+        <div
+          className="mt-2 overflow-hidden rounded-xl border border-[#d4a843]/70 bg-gradient-to-l from-[#fffaf0] via-white to-[#f7f9fc] shadow-[0_8px_24px_rgba(30,58,95,0.08)]"
+          aria-label="אפשרויות לקוחות אחרונים"
+        >
+          <div className="flex items-center gap-2 border-b border-[#d4a843]/25 px-3 py-2">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#1e3a5f] text-[#e7b941] shadow-sm">
+              <History className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-[#1e3a5f]">
+                לקוחות אחרונים
+              </p>
+              <p className="text-[10px] text-slate-500">
+                בחר טווח זמן וסוגי פעילות להצגה מהירה
+              </p>
+            </div>
+            {filters.recentClientsDays && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 rounded-full px-3 text-[10px] text-[#1e3a5f] hover:bg-[#1e3a5f]/10"
+                onClick={() =>
+                  onFiltersChange({ ...filters, recentClientsDays: null })
+                }
+              >
+                הצג את כל הלקוחות
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 rounded-full text-slate-500 hover:bg-[#1e3a5f]/10 hover:text-[#1e3a5f]"
+              onClick={() => setActiveQuickPanel(null)}
+              aria-label="סגור אפשרויות לקוחות אחרונים"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+
+          <div className="space-y-2.5 px-3 py-2.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="ml-1 text-[10px] font-bold text-[#1e3a5f]">
+                טווח זמן
+              </span>
+              {[
+                { days: 7, label: "שבוע" },
+                { days: 14, label: "שבועיים" },
+                { days: 30, label: "חודש" },
+                { days: 90, label: "3 חודשים" },
+              ].map((option) => {
+                const isSelected =
+                  filters.recentClientsDays === option.days;
+                return (
+                  <button
+                    key={option.days}
+                    type="button"
+                    onClick={() => applyRecentClientsDays(option.days)}
+                    className={cn(
+                      "h-8 rounded-lg border border-[#d4a843]/70 bg-white px-3 text-[11px] font-semibold text-[#1e3a5f] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#fff8e7]",
+                      isSelected &&
+                        "border-[#1e3a5f] bg-[#1e3a5f] text-white shadow-md hover:bg-[#1e3a5f]",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+              <label className="flex h-8 items-center gap-1.5 rounded-lg border border-[#d4a843]/70 bg-white px-2 text-[10px] text-slate-500">
+                <Input
+                  type="number"
+                  min={1}
+                  max={3650}
+                  value={recentClientsSettings.days}
+                  onChange={(event) => {
+                    const days = Number(event.target.value);
+                    if (Number.isFinite(days) && days >= 1) {
+                      applyRecentClientsDays(Math.floor(days));
+                    }
+                  }}
+                  className="h-6 w-14 border-0 bg-transparent p-0 text-center text-xs font-bold text-[#1e3a5f] shadow-none focus-visible:ring-0"
+                  aria-label="מספר ימים ללקוחות אחרונים"
+                />
+                ימים
+              </label>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="ml-1 text-[10px] font-bold text-[#1e3a5f]">
+                פעילות
+              </span>
+              {[
+                { id: "client" as const, label: "כרטיס לקוח" },
+                { id: "process" as const, label: "תהליכים ושלבים" },
+                { id: "tasks" as const, label: "משימות" },
+                { id: "reminders" as const, label: "תזכורות" },
+                { id: "meetings" as const, label: "פגישות" },
+              ].map((activity) => {
+                const selectedTypes =
+                  recentClientsSettings.activityTypes?.length > 0
+                    ? recentClientsSettings.activityTypes
+                    : [
+                        "client",
+                        "process",
+                        "tasks",
+                        "reminders",
+                        "meetings",
+                      ];
+                const isSelected = selectedTypes.includes(activity.id);
+                return (
+                  <button
+                    key={activity.id}
+                    type="button"
+                    onClick={() => toggleRecentActivityType(activity.id)}
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-[10px] transition-colors",
+                      isSelected
+                        ? "border-[#d4a843] bg-[#f8edcf] font-semibold text-[#1e3a5f]"
+                        : "border-slate-200 bg-white text-slate-400 hover:border-[#d4a843]",
+                    )}
+                    aria-pressed={isSelected}
+                  >
+                    {activity.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeQuickPanel === "payments" &&
+        visibleFilterSections.has("payments") && (
+          <div
+            className="mt-2 overflow-hidden rounded-xl border border-[#d4a843]/70 bg-gradient-to-l from-[#fffaf0] via-white to-[#f7f9fc] shadow-[0_8px_24px_rgba(30,58,95,0.08)]"
+            aria-label="אפשרויות סינון תשלומים"
+          >
+            <div className="flex items-center gap-2 border-b border-[#d4a843]/25 px-3 py-1.5">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#1e3a5f] text-[#e7b941] shadow-sm">
+                <CircleDollarSign className="h-3.5 w-3.5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-[#1e3a5f]">
+                  תשלומים עד השלב הנוכחי
+                </p>
+                <p className="text-[10px] text-slate-500">
+                  תשלומים משלבים עתידיים אינם נכללים בחישוב
+                </p>
+              </div>
+              {filters.paymentStatus && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 rounded-full px-3 text-[10px] text-[#1e3a5f] hover:bg-[#1e3a5f]/10"
+                  onClick={() =>
+                    onFiltersChange({ ...filters, paymentStatus: null })
+                  }
+                >
+                  הצג את כל הלקוחות
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0 rounded-full text-slate-500 hover:bg-[#1e3a5f]/10 hover:text-[#1e3a5f]"
+                onClick={() => setActiveQuickPanel(null)}
+                aria-label="סגור אפשרויות תשלומים"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+
+            <div className="overflow-x-auto p-2 [scrollbar-color:#d4a843_transparent] [scrollbar-width:thin]">
+            <div className="grid min-w-[1040px] grid-cols-4 gap-2">
+              {[
+                {
+                  id: "due" as const,
+                  title: "ממתינים לתשלום",
+                  description: "לא שולם בשלב הנוכחי או בשלב שכבר עבר",
+                  icon: CircleAlert,
+                  accent: "text-red-600",
+                  selectedClass:
+                    "border-red-400 bg-red-50 ring-1 ring-red-200",
+                },
+                {
+                  id: "current" as const,
+                  title: "בשלב הנוכחי",
+                  description: "תשלומים שמשויכים לשלב שבו הלקוח נמצא",
+                  icon: CircleDollarSign,
+                  accent: "text-amber-600",
+                  selectedClass:
+                    "border-amber-400 bg-amber-50 ring-1 ring-amber-200",
+                },
+                {
+                  id: "paid" as const,
+                  title: "שולמו עד כה",
+                  description: "כל התשלומים שכבר סומנו כשולמו",
+                  icon: CircleCheckBig,
+                  accent: "text-emerald-600",
+                  selectedClass:
+                    "border-emerald-400 bg-emerald-50 ring-1 ring-emerald-200",
+                },
+                {
+                  id: "reached" as const,
+                  title: "הכול עד עכשיו",
+                  description: "שולם וממתין, ללא שלבים עתידיים",
+                  icon: Layers,
+                  accent: "text-[#1e3a5f]",
+                  selectedClass:
+                    "border-[#1e3a5f] bg-[#eef3f8] ring-1 ring-[#1e3a5f]/20",
+                },
+              ].map((option) => {
+                const Icon = option.icon;
+                const summary = paymentSummary[option.id];
+                const isSelected = filters.paymentStatus === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() =>
+                      onFiltersChange({
+                        ...filters,
+                        paymentStatus: isSelected ? null : option.id,
+                      })
+                    }
+                    className={cn(
+                      "group rounded-lg border border-slate-200 bg-white p-2 text-right shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#d4a843] hover:shadow-md",
+                      isSelected && option.selectedClass,
+                    )}
+                    aria-pressed={isSelected}
+                  >
+                    <div className="flex items-start gap-1.5">
+                      <span
+                        className={cn(
+                          "flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-50",
+                          option.accent,
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-xs font-bold text-[#1e3a5f]">
+                          {option.title}
+                        </span>
+                        <span className="mt-0.5 block whitespace-nowrap text-[9px] leading-3.5 text-slate-500">
+                          {option.description}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between border-t border-slate-100 pt-1.5">
+                      <span className="text-[9px] text-slate-500">
+                        {summary.clients} לקוחות · {summary.payments} תשלומים
+                      </span>
+                      <span className={cn("text-[11px] font-black", option.accent)}>
+                        {formatCompactNis(summary.amount)}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            </div>
+          </div>
+        )}
 
       {/* Active Filters Summary removed per user request */}
     </div>
