@@ -49,8 +49,19 @@ import {
   CheckCircle2,
   AlertCircle,
   Plus,
+  ChevronRight,
+  ChevronLeft,
+  CalendarDays,
 } from "lucide-react";
-import { format, parseISO, isBefore, startOfDay, endOfDay } from "date-fns";
+import {
+  addDays,
+  format,
+  parseISO,
+  isBefore,
+  isSameDay,
+  startOfDay,
+  endOfDay,
+} from "date-fns";
 import { he } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -64,6 +75,7 @@ interface Task {
   status: string;
   priority: string;
   due_date: string | null;
+  created_at: string;
   client?: { name: string } | null;
   project?: { name: string } | null;
 }
@@ -151,6 +163,9 @@ export default function MyDay() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [selectedDate, setSelectedDate] = useState(() =>
+    format(new Date(), "yyyy-MM-dd"),
+  );
   const [meetingsView, setMeetingsView] = useSyncedSetting<ViewType>({ key: "myday-meetings-view", defaultValue: "list" });
   const [tasksView, setTasksView] = useSyncedSetting<ViewType>({ key: "myday-tasks-view", defaultValue: "list" });
 
@@ -257,7 +272,7 @@ export default function MyDay() {
     } else {
       console.log("✅ [MyDay] Task created successfully:", data);
       toast.success("המשימה נוצרה בהצלחה");
-      fetchTodayData();
+      fetchDayData();
       setTaskDialogOpen(false);
     }
   };
@@ -303,7 +318,7 @@ export default function MyDay() {
     } else {
       console.log("✅ [MyDay] Meeting created successfully:", data);
       toast.success("הפגישה נוצרה בהצלחה");
-      fetchTodayData();
+      fetchDayData();
       setMeetingDialogOpen(false);
     }
   };
@@ -355,7 +370,7 @@ export default function MyDay() {
     } else {
       console.log("✅ [MyDay] Reminder created successfully:", data);
       toast.success("התזכורת נוצרה בהצלחה");
-      fetchTodayData();
+      fetchDayData();
       setReminderDialogOpen(false);
     }
   };
@@ -415,61 +430,67 @@ export default function MyDay() {
     } else {
       console.log("✅ [MyDay] TimeEntry created successfully:", data);
       toast.success("הזמן נרשם בהצלחה");
-      fetchTodayData();
+      fetchDayData();
       setTimeDialogOpen(false);
     }
   };
 
-  const fetchTodayData = useCallback(async () => {
+  const fetchDayData = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
-    const today = new Date();
-    const todayStart = startOfDay(today).toISOString();
-    const todayEnd = endOfDay(today).toISOString();
+    const day = parseISO(selectedDate);
+    const dayStart = startOfDay(day).toISOString();
+    const dayEnd = endOfDay(day).toISOString();
+    const isTodayRange = isSameDay(day, new Date());
 
-    console.log("📊 [MyDay] fetchTodayData range:", todayStart, "->", todayEnd);
+    console.log("📊 [MyDay] fetchDayData range:", dayStart, "->", dayEnd);
+
+    let tasksQuery = supabase
+      .from("tasks")
+      .select(
+        "id, title, description, created_by, assigned_to, status, priority, due_date, created_at, client:clients(name), project:projects(name)",
+      )
+      .neq("status", "completed");
+
+    // On "today" keep overdue open tasks visible. On any other selected date,
+    // show only tasks whose due date belongs to that day.
+    tasksQuery = isTodayRange
+      ? tasksQuery.lte("due_date", dayEnd)
+      : tasksQuery.gte("due_date", dayStart).lte("due_date", dayEnd);
 
     const [tasksRes, meetingsRes, remindersRes, timeRes] = await Promise.all([
-      // Tasks due today or overdue (RLS-scoped, then user-filtered client-side)
-      supabase
-        .from("tasks")
-        .select(
-          "id, title, description, created_by, assigned_to, status, priority, due_date, client:clients(name), project:projects(name)",
-        )
-        .or(`due_date.lte.${todayEnd},status.neq.completed`)
-        .neq("status", "completed")
-        .order("priority", { ascending: false }),
+      tasksQuery.order("priority", { ascending: false }),
 
-      // Meetings today (RLS-scoped, then user-filtered client-side)
+      // Meetings on the selected day (RLS-scoped, then user-filtered client-side)
       supabase
         .from("meetings")
         .select(
-          "id, title, description, created_by, start_time, end_time, location, meeting_type, status, client:clients(name), project:projects(name)",
+          "id, title, description, created_by, assigned_to, start_time, end_time, location, meeting_type, status, client:clients(name), project:projects(name)",
         )
-        .gte("start_time", todayStart)
-        .lte("start_time", todayEnd)
+        .gte("start_time", dayStart)
+        .lte("start_time", dayEnd)
         .order("start_time", { ascending: true }),
 
-      // Reminders for today (RLS-scoped, then user-filtered client-side)
+      // Reminders on the selected day (RLS-scoped, then user-filtered client-side)
       supabase
         .from("reminders")
         .select(
           "id, title, message, user_id, remind_at, is_dismissed, client:clients(name)",
         )
-        .gte("remind_at", todayStart)
-        .lte("remind_at", todayEnd)
+        .gte("remind_at", dayStart)
+        .lte("remind_at", dayEnd)
         .eq("is_dismissed", false)
         .order("remind_at", { ascending: true }),
 
-      // Time entries today (RLS-scoped, then user-filtered client-side)
+      // Time entries on the selected day
       supabase
         .from("time_entries")
         .select(
           "id, user_id, start_time, end_time, duration_minutes, description, project:projects(name), client:clients(name)",
         )
-        .gte("start_time", todayStart)
-        .lte("start_time", todayEnd)
+        .gte("start_time", dayStart)
+        .lte("start_time", dayEnd)
         .order("start_time", { ascending: true }),
     ]);
 
@@ -492,7 +513,7 @@ export default function MyDay() {
 
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [selectedDate, user?.id]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -500,10 +521,10 @@ export default function MyDay() {
       return;
     }
     if (user) {
-      fetchTodayData();
+      fetchDayData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, authLoading, navigate]);
+  }, [user?.id, authLoading, navigate, selectedDate]);
 
   const formatTime = (dateStr: string) => {
     const date = parseISO(dateStr);
@@ -526,6 +547,17 @@ export default function MyDay() {
   const greeting = getGreeting();
   const GreetingIcon = greeting.icon;
   const { showDuplicates } = useDedup();
+  const selectedDayDate = parseISO(selectedDate);
+  const isViewingToday = isSameDay(selectedDayDate, new Date());
+  const selectedDayLabel = format(selectedDayDate, "EEEE, d בMMMM yyyy", {
+    locale: he,
+  });
+  const selectedDayShortLabel = isViewingToday
+    ? "היום"
+    : format(selectedDayDate, "dd/MM/yyyy");
+  const moveSelectedDate = (amount: number) => {
+    setSelectedDate(format(addDays(selectedDayDate, amount), "yyyy-MM-dd"));
+  };
 
   const filteredTasks = React.useMemo(() => {
     if (!showUserFilter || !userFilterTargetId) return tasks;
@@ -582,7 +614,7 @@ export default function MyDay() {
     <AppLayout title="היום שלי">
       <div className="p-6 md:p-8 space-y-8">
         {/* Greeting Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex items-center gap-4">
             <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[hsl(45,80%,50%)] to-[hsl(45,90%,40%)] flex items-center justify-center shadow-lg">
               <GreetingIcon className="h-7 w-7 text-[hsl(220,60%,15%)]" />
@@ -592,11 +624,59 @@ export default function MyDay() {
                 {greeting.text}!
               </h1>
               <p className="text-muted-foreground">
-                {format(new Date(), "EEEE, d בMMMM yyyy", { locale: he })}
+                {selectedDayLabel}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2" dir="rtl">
+            <div className="flex items-center gap-1 rounded-xl border-2 border-[hsl(45,80%,45%)] bg-background p-1 shadow-sm">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9"
+                title="היום הקודם"
+                onClick={() => moveSelectedDate(-1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <label className="relative flex min-w-[170px] cursor-pointer items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm font-semibold text-foreground">
+                <CalendarDays className="h-4 w-4 text-[hsl(45,80%,40%)]" />
+                <span>{selectedDayShortLabel}</span>
+                <Input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(event) => {
+                    if (event.target.value) {
+                      setSelectedDate(event.target.value);
+                    }
+                  }}
+                  aria-label="בחירת תאריך להצגה"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+              </label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9"
+                title="היום הבא"
+                onClick={() => moveSelectedDate(1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              {!isViewingToday && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 border-[hsl(45,80%,45%)]"
+                  onClick={() => setSelectedDate(format(new Date(), "yyyy-MM-dd"))}
+                >
+                  חזרה להיום
+                </Button>
+              )}
+            </div>
             {showUserFilter && <UserFilterMenu align="end" />}
             <DedupToggleButton />
           </div>
@@ -649,14 +729,16 @@ export default function MyDay() {
                 <p className="text-2xl font-bold">
                   {formatMinutes(totalTimeMinutes)}
                 </p>
-                <p className="text-sm text-muted-foreground">שעות היום</p>
+                <p className="text-sm text-muted-foreground">
+                  שעות {selectedDayShortLabel}
+                </p>
               </div>
             </CardContent>
           </Card>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Today's Schedule (Meetings) */}
+          {/* Selected day's schedule (meetings) */}
           <Card className="border-2 border-[hsl(45,80%,45%)] relative">
             <Button
               size="icon"
@@ -669,7 +751,7 @@ export default function MyDay() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Calendar className="h-5 w-5 text-[hsl(45,80%,45%)]" />
-                  לוח הפגישות היום
+                  פגישות · {selectedDayShortLabel}
                 </CardTitle>
                 <DisplayOptions
                   viewType={meetingsView}
@@ -682,7 +764,7 @@ export default function MyDay() {
               {visibleMeetings.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Calendar className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>אין פגישות מתוכננות להיום</p>
+                  <p>אין פגישות מתוכננות בתאריך זה</p>
                 </div>
               ) : (
                 <div
@@ -764,7 +846,7 @@ export default function MyDay() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <CheckSquare className="h-5 w-5 text-[hsl(220,60%,25%)]" />
-                  משימות לביצוע
+                  משימות · {selectedDayShortLabel}
                 </CardTitle>
                 <DisplayOptions
                   viewType={tasksView}
@@ -821,7 +903,7 @@ export default function MyDay() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{task.title}</p>
-                            <div className="flex items-center gap-2 mt-1">
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
                               {task.due_date && (
                                 <span
                                   className={cn(
@@ -839,8 +921,24 @@ export default function MyDay() {
                                 </span>
                               )}
                               {task.client?.name && (
-                                <span className="text-xs text-muted-foreground">
-                                  • {task.client.name}
+                                <Badge
+                                  variant="outline"
+                                  className="h-5 max-w-full gap-1 px-1.5 text-[10px]"
+                                >
+                                  <User className="h-3 w-3 shrink-0" />
+                                  <span className="truncate">
+                                    {task.client.name}
+                                  </span>
+                                </Badge>
+                              )}
+                              {task.created_at && (
+                                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                  <CalendarDays className="h-3 w-3" />
+                                  נוצרה{" "}
+                                  {format(
+                                    parseISO(task.created_at),
+                                    "dd/MM/yyyy",
+                                  )}
                                 </span>
                               )}
                             </div>
@@ -885,14 +983,14 @@ export default function MyDay() {
             <CardHeader className="pb-14">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Bell className="h-5 w-5 text-warning" />
-                תזכורות להיום
+                תזכורות · {selectedDayShortLabel}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {visibleReminders.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Bell className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>אין תזכורות להיום</p>
+                  <p>אין תזכורות בתאריך זה</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -927,6 +1025,17 @@ export default function MyDay() {
                             <Clock className="h-3 w-3" />
                             {formatTime(reminder.remind_at)}
                           </p>
+                          {reminder.client?.name && (
+                            <Badge
+                              variant="outline"
+                              className="mt-2 h-6 max-w-full gap-1 bg-background/70 px-2 text-[10px]"
+                            >
+                              <User className="h-3 w-3 shrink-0" />
+                              <span className="truncate">
+                                {reminder.client.name}
+                              </span>
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </HoverItemWrapper>
@@ -948,14 +1057,14 @@ export default function MyDay() {
             <CardHeader className="pb-14">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Clock className="h-5 w-5 text-success" />
-                זמן שנרשם היום
+                זמן שנרשם · {selectedDayShortLabel}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {visibleTimeEntries.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Clock className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>לא נרשם זמן עבודה היום</p>
+                  <p>לא נרשם זמן עבודה בתאריך זה</p>
                 </div>
               ) : (
                 <div className="space-y-2">
