@@ -105,6 +105,7 @@ export interface ClientFilterState {
   hasMeetings: boolean | null;
   paymentStatus?: "due" | "current" | "paid" | "reached" | null;
   recentClientsDays?: number | null;
+  recentClientsSortMode?: "activity" | "custom";
   recentActivityTypes?: Array<
     "client" | "process" | "tasks" | "reminders" | "meetings"
   >;
@@ -146,6 +147,8 @@ interface ClientsFilterStripProps {
   clientsWithMeetings: Set<string>;
   paymentSummary?: ClientPaymentFilterSummary;
   recentClientsCount?: number;
+  hasRecentCustomOrder?: boolean;
+  onResetRecentCustomOrder?: () => void;
   categories?: ClientCategory[];
   categoryCounts?: Record<string, number>;
   stageCounts?: Record<string, number>;
@@ -204,6 +207,8 @@ export function ClientsFilterStrip({
     reached: { clients: 0, payments: 0, amount: 0 },
   },
   recentClientsCount = 0,
+  hasRecentCustomOrder = false,
+  onResetRecentCustomOrder,
   categories = [],
   categoryCounts = {},
   stageCounts = {},
@@ -2556,7 +2561,7 @@ export function ClientsFilterStrip({
           className="mt-2 overflow-hidden rounded-xl border border-[#d4a843]/70 bg-gradient-to-l from-[#fffaf0] via-white to-[#f7f9fc] shadow-[0_8px_24px_rgba(30,58,95,0.08)]"
           aria-label="קיצורי דרך לתהליכים"
         >
-          <div className="flex items-center gap-2 border-b border-[#d4a843]/25 px-3 py-2">
+          <div className="flex items-center gap-2 border-b border-[#d4a843]/25 px-3 py-1.5">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#1e3a5f] text-[#e7b941] shadow-sm">
               <Layers className="h-4 w-4" />
             </span>
@@ -2699,8 +2704,69 @@ export function ClientsFilterStrip({
             </Button>
           </div>
 
-          <div className="space-y-2.5 px-3 py-2.5">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="grid gap-2 px-2.5 py-2 sm:grid-cols-2 lg:grid-cols-[1.1fr_1.25fr_1.45fr]">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5 rounded-lg border border-[#d4a843]/25 bg-white/75 px-2.5 py-2 shadow-sm">
+              <span className="ml-1 text-[10px] font-bold text-[#1e3a5f]">
+                סדר תצוגה
+              </span>
+              {[
+                {
+                  id: "activity" as const,
+                  label: "פעילות אחרונה",
+                  description: "הלקוח שעבדו עליו לאחרונה מופיע ראשון",
+                },
+                {
+                  id: "custom" as const,
+                  label: "סדר אישי בגרירה",
+                  description: "כל משתמש שומר לעצמו סדר אחר",
+                },
+              ].map((option) => {
+                const isSelected =
+                  (filters.recentClientsSortMode || "activity") === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() =>
+                      onFiltersChange({
+                        ...filters,
+                        recentClientsDays:
+                          filters.recentClientsDays ||
+                          recentClientsSettings.days,
+                        recentClientsSortMode: option.id,
+                      })
+                    }
+                    className={cn(
+                      "h-8 rounded-lg border border-[#d4a843]/70 bg-white px-3 text-[11px] font-semibold text-[#1e3a5f] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#fff8e7]",
+                      isSelected &&
+                        "border-[#1e3a5f] bg-[#1e3a5f] text-white shadow-md hover:bg-[#1e3a5f]",
+                    )}
+                    title={option.description}
+                    aria-pressed={isSelected}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+              {(filters.recentClientsSortMode || "activity") === "custom" && (
+                <>
+                  <span className="min-w-[150px] flex-1 text-[10px] leading-4 text-slate-500">
+                    גרור בידית שעל הכרטיס כדי לקבוע מי יופיע ראשון
+                  </span>
+                  {hasRecentCustomOrder && onResetRecentCustomOrder && (
+                    <button
+                      type="button"
+                      onClick={onResetRecentCustomOrder}
+                      className="h-7 rounded-full border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-500 transition-colors hover:border-[#d4a843] hover:text-[#1e3a5f]"
+                    >
+                      איפוס הסדר האישי
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5 rounded-lg border border-[#d4a843]/25 bg-white/75 px-2.5 py-2 shadow-sm">
               <span className="ml-1 text-[10px] font-bold text-[#1e3a5f]">
                 טווח זמן
               </span>
@@ -2718,7 +2784,7 @@ export function ClientsFilterStrip({
                     type="button"
                     onClick={() => applyRecentClientsDays(option.days)}
                     className={cn(
-                      "h-8 rounded-lg border border-[#d4a843]/70 bg-white px-3 text-[11px] font-semibold text-[#1e3a5f] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#fff8e7]",
+                      "h-8 rounded-lg border border-[#d4a843]/70 bg-white px-2.5 text-[11px] font-semibold text-[#1e3a5f] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#fff8e7]",
                       isSelected &&
                         "border-[#1e3a5f] bg-[#1e3a5f] text-white shadow-md hover:bg-[#1e3a5f]",
                     )}
@@ -2746,7 +2812,7 @@ export function ClientsFilterStrip({
               </label>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5 rounded-lg border border-[#d4a843]/25 bg-white/75 px-2.5 py-2 shadow-sm sm:col-span-2 lg:col-span-1">
               <span className="ml-1 text-[10px] font-bold text-[#1e3a5f]">
                 פעילות
               </span>
