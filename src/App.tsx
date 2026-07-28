@@ -106,13 +106,16 @@ const queryClient = new QueryClient({
       // Revalidate only when the cached result is stale. Using "always" here
       // bypasses staleTime and repeats the same requests on every remount.
       refetchOnMount: true,
-      refetchOnReconnect: "always", // Refetch when connection restored
+      // Keep fresh cached data on reconnect; stale queries still revalidate.
+      refetchOnReconnect: true,
       retry: 2, // Retry twice on failure
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
       networkMode: "offlineFirst", // Use cache first when offline
     },
     mutations: {
-      retry: 1,
+      // Writes are not guaranteed to be idempotent. Automatic retries can
+      // duplicate records when the server succeeds but the response is lost.
+      retry: 0,
       networkMode: "offlineFirst",
     },
   },

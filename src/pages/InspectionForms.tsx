@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type DragEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { AppLayout } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,9 +22,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -49,16 +52,19 @@ import {
   ChevronUp,
   Circle,
   ClipboardCheck,
+  Copy,
   FileCheck2,
   Folder,
   FolderInput,
   FolderOpen,
   FolderPlus,
+  GripVertical,
   Layers3,
   ListChecks,
   Loader2,
   LockKeyhole,
   MoreVertical,
+  Pencil,
   Pin,
   PinOff,
   Plus,
@@ -170,6 +176,10 @@ interface DraftTaskRow {
   dueDate: string;
 }
 
+type DraggedLibraryItem =
+  | { type: "template"; id: string }
+  | { type: "folder"; id: string };
+
 const iconOptions: Array<{
   value: IconName;
   label: string;
@@ -233,6 +243,29 @@ const buildFolderOptions = (
       ];
     });
 
+const getDescendantFolderIds = (
+  folders: InspectionFolder[],
+  folderId: string,
+) => {
+  const descendants = new Set<string>();
+  const pending = [folderId];
+
+  while (pending.length > 0) {
+    const currentId = pending.pop();
+    if (!currentId) continue;
+
+    folders
+      .filter((folder) => folder.parent_id === currentId)
+      .forEach((folder) => {
+        if (descendants.has(folder.id)) return;
+        descendants.add(folder.id);
+        pending.push(folder.id);
+      });
+  }
+
+  return descendants;
+};
+
 export default function InspectionForms() {
   const { user, profile, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -264,6 +297,14 @@ export default function InspectionForms() {
   const [draftTaskRows, setDraftTaskRows] = useState<DraftTaskRow[]>([]);
   const [bulkStepsDialogOpen, setBulkStepsDialogOpen] = useState(false);
   const [bulkStepsText, setBulkStepsText] = useState("");
+  const [templateBeingRenamed, setTemplateBeingRenamed] =
+    useState<InspectionTemplate | null>(null);
+  const [templateRenameValue, setTemplateRenameValue] = useState("");
+  const [draggedLibraryItem, setDraggedLibraryItem] =
+    useState<DraggedLibraryItem | null>(null);
+  const [libraryDropTarget, setLibraryDropTarget] = useState<string | null>(
+    null,
+  );
   const [draftName, setDraftName] = useState("");
   const [draftDescription, setDraftDescription] = useState("");
   const [draftIcon, setDraftIcon] = useState<IconName>("clipboard-check");
@@ -572,61 +613,6 @@ export default function InspectionForms() {
     await fetchData();
   };
 
-  const createActiveForm = async () => {
-    if (!user) {
-      toast.error("יש להתחבר כדי ליצור טופס");
-      return;
-    }
-
-    const cleanSteps = getCleanDraft();
-    if (!cleanSteps) return;
-
-    setSaving(true);
-    try {
-      const { data: run, error: runError } = await db
-        .from("inspection_form_runs")
-        .insert({
-          template_id: null,
-          template_name: draftName.trim(),
-          description: draftDescription.trim() || null,
-          icon_name: draftIcon,
-          color: draftColor,
-          created_by: user.id,
-        })
-        .select("id")
-        .single();
-      if (runError) throw runError;
-
-      const { error: stepsError } = await db
-        .from("inspection_form_run_steps")
-        .insert(
-          cleanSteps.map((step, position) => ({
-            run_id: run.id,
-            template_step_id: null,
-            title: step.title,
-            description: step.description || null,
-            position,
-            is_required: true,
-          })),
-        );
-      if (stepsError) {
-        await db.from("inspection_form_runs").delete().eq("id", run.id);
-        throw stepsError;
-      }
-
-      await finishCreatedRun(run.id, `הטופס „${draftName.trim()}” נוצר ונפתח`);
-    } catch (error) {
-      console.error("Failed to create active inspection form", error);
-      toast.error(
-        error instanceof Error
-          ? `יצירת הטופס נכשלה: ${error.message}`
-          : "יצירת הטופס נכשלה",
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const createActiveFormAndTemplate = async () => {
     if (!user) {
       toast.error("יש להתחבר כדי ליצור טופס");
@@ -803,6 +789,14 @@ export default function InspectionForms() {
   };
 
   const deactivateTemplate = async (template: InspectionTemplate) => {
+    if (
+      !window.confirm(
+        `למחוק את הטופס „${template.name}” ממלאי הטפסים? טפסים פעילים שכבר נוצרו ממנו לא יימחקו.`,
+      )
+    ) {
+      return;
+    }
+
     setBusyId(template.id);
     try {
       const { error } = await db
@@ -815,6 +809,88 @@ export default function InspectionForms() {
     } catch (error) {
       console.error("Failed to deactivate inspection template", error);
       toast.error("לא ניתן להסיר את התבנית");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const openRenameTemplateDialog = (template: InspectionTemplate) => {
+    setTemplateBeingRenamed(template);
+    setTemplateRenameValue(template.name);
+  };
+
+  const renameTemplate = async () => {
+    if (!templateBeingRenamed || !templateRenameValue.trim()) {
+      toast.error("יש להזין שם לטופס");
+      return;
+    }
+
+    setBusyId(templateBeingRenamed.id);
+    try {
+      const { error } = await db
+        .from("inspection_form_templates")
+        .update({ name: templateRenameValue.trim() })
+        .eq("id", templateBeingRenamed.id);
+      if (error) throw error;
+
+      toast.success("שם הטופס עודכן");
+      setTemplateBeingRenamed(null);
+      setTemplateRenameValue("");
+      await fetchData();
+    } catch (error) {
+      console.error("Failed to rename inspection template", error);
+      toast.error("לא ניתן לשנות את שם הטופס");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const duplicateTemplate = async (template: InspectionTemplate) => {
+    setBusyId(template.id);
+    let duplicatedTemplateId: string | null = null;
+
+    try {
+      const { data: duplicate, error: templateError } = await db
+        .from("inspection_form_templates")
+        .insert({
+          name: `${template.name} — עותק`,
+          description: template.description,
+          folder_id: template.folder_id,
+          icon_name: template.icon_name,
+          color: template.color,
+          created_by: user?.id,
+        })
+        .select("id")
+        .single();
+      if (templateError) throw templateError;
+      duplicatedTemplateId = duplicate.id;
+
+      if (template.steps.length > 0) {
+        const { error: stepsError } = await db
+          .from("inspection_form_template_steps")
+          .insert(
+            template.steps.map((step, position) => ({
+              template_id: duplicate.id,
+              title: step.title,
+              description: step.description,
+              position,
+              is_required: step.is_required,
+            })),
+          );
+        if (stepsError) throw stepsError;
+      }
+
+      toast.success(`נוצר עותק של „${template.name}”`);
+      await fetchData();
+    } catch (error) {
+      console.error("Failed to duplicate inspection template", error);
+      if (duplicatedTemplateId) {
+        await db
+          .from("inspection_form_templates")
+          .delete()
+          .eq("id", duplicatedTemplateId);
+      }
+      toast.error("לא ניתן לשכפל את הטופס");
     } finally {
       setBusyId(null);
     }
@@ -889,6 +965,105 @@ export default function InspectionForms() {
     } finally {
       setBusyId(null);
     }
+  };
+
+  const moveFolderToParent = async (
+    folder: InspectionFolder,
+    parentId: string | null,
+  ) => {
+    if (folder.parent_id === parentId) return;
+    if (
+      parentId === folder.id ||
+      (parentId && getDescendantFolderIds(folders, folder.id).has(parentId))
+    ) {
+      toast.error("אי אפשר להעביר תיקייה לתוך עצמה או לתוך תיקיית משנה שלה");
+      return;
+    }
+
+    setBusyId(folder.id);
+    try {
+      const { error } = await db
+        .from("inspection_form_folders")
+        .update({ parent_id: parentId })
+        .eq("id", folder.id);
+      if (error) throw error;
+
+      if (parentId) {
+        setExpandedFolderIds((current) => new Set(current).add(parentId));
+      }
+      toast.success(
+        parentId ? "התיקייה הועברה לתיקיית המשנה" : "התיקייה הועברה לרמה הראשית",
+      );
+      await fetchData();
+    } catch (error) {
+      console.error("Failed to move inspection folder", error);
+      toast.error("לא ניתן להעביר את התיקייה");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const beginLibraryDrag = (
+    event: DragEvent<HTMLElement>,
+    item: DraggedLibraryItem,
+  ) => {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData(
+      "application/x-inspection-library-item",
+      JSON.stringify(item),
+    );
+    setDraggedLibraryItem(item);
+  };
+
+  const readDraggedLibraryItem = (
+    event: DragEvent<HTMLElement>,
+  ): DraggedLibraryItem | null => {
+    if (draggedLibraryItem) return draggedLibraryItem;
+
+    try {
+      const raw = event.dataTransfer.getData(
+        "application/x-inspection-library-item",
+      );
+      const parsed = JSON.parse(raw) as DraggedLibraryItem;
+      return parsed?.id &&
+        (parsed.type === "template" || parsed.type === "folder")
+        ? parsed
+        : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const dropLibraryItem = async (
+    event: DragEvent<HTMLElement>,
+    folderId: string | null,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const item = readDraggedLibraryItem(event);
+    setDraggedLibraryItem(null);
+    setLibraryDropTarget(null);
+    if (!item) return;
+
+    if (item.type === "template") {
+      const template = templates.find((candidate) => candidate.id === item.id);
+      if (template) await moveTemplateToFolder(template, folderId);
+      return;
+    }
+
+    const folder = folders.find((candidate) => candidate.id === item.id);
+    if (folder) await moveFolderToParent(folder, folderId);
+  };
+
+  const prepareLibraryDrop = (
+    event: DragEvent<HTMLElement>,
+    targetKey: string,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "move";
+    setLibraryDropTarget(targetKey);
   };
 
   const deleteFolder = async (folder: InspectionFolder) => {
@@ -1105,12 +1280,20 @@ export default function InspectionForms() {
                       <button
                         type="button"
                         onClick={() => setSelectedFolderId("all")}
+                        onDragOver={(event) =>
+                          prepareLibraryDrop(event, "all-root")
+                        }
+                        onDragLeave={() => setLibraryDropTarget(null)}
+                        onDrop={(event) => void dropLibraryItem(event, null)}
                         className={cn(
-                          "flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-right text-sm transition-colors",
+                          "flex w-full items-center gap-2 rounded-xl border border-transparent px-3 py-2.5 text-right text-sm transition-colors",
                           selectedFolderId === "all"
                             ? "bg-[hsl(220,60%,25%)] font-semibold text-white"
                             : "hover:bg-muted",
+                          libraryDropTarget === "all-root" &&
+                            "border-[hsl(45,80%,45%)] bg-[hsl(45,100%,93%)] text-[hsl(220,60%,23%)] ring-2 ring-[hsl(45,80%,45%)]/25",
                         )}
+                        title="הצג הכול • גרור לכאן תיקייה כדי להעביר לרמה הראשית"
                       >
                         <Layers3 className="h-4 w-4" />
                         <span className="flex-1">כל הטפסים</span>
@@ -1120,12 +1303,20 @@ export default function InspectionForms() {
                       <button
                         type="button"
                         onClick={() => setSelectedFolderId("unfiled")}
+                        onDragOver={(event) =>
+                          prepareLibraryDrop(event, "unfiled")
+                        }
+                        onDragLeave={() => setLibraryDropTarget(null)}
+                        onDrop={(event) => void dropLibraryItem(event, null)}
                         className={cn(
-                          "flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-right text-sm transition-colors",
+                          "flex w-full items-center gap-2 rounded-xl border border-transparent px-3 py-2.5 text-right text-sm transition-colors",
                           selectedFolderId === "unfiled"
                             ? "bg-[hsl(220,60%,25%)] font-semibold text-white"
                             : "hover:bg-muted",
+                          libraryDropTarget === "unfiled" &&
+                            "border-[hsl(45,80%,45%)] bg-[hsl(45,100%,93%)] text-[hsl(220,60%,23%)] ring-2 ring-[hsl(45,80%,45%)]/25",
                         )}
+                        title="גרור לכאן טופס להסרתו מתיקייה"
                       >
                         <Folder className="h-4 w-4 text-muted-foreground" />
                         <span className="flex-1">ללא תיקייה</span>
@@ -1163,9 +1354,18 @@ export default function InspectionForms() {
                                 return next;
                               })
                             }
-                            onAddChild={openFolderDialog}
-                            onDelete={deleteFolder}
-                          />
+                             onAddChild={openFolderDialog}
+                             onDelete={deleteFolder}
+                             draggedItem={draggedLibraryItem}
+                             dropTargetKey={libraryDropTarget}
+                             onDragStart={beginLibraryDrag}
+                             onDragEnd={() => {
+                               setDraggedLibraryItem(null);
+                               setLibraryDropTarget(null);
+                             }}
+                             onDragOver={prepareLibraryDrop}
+                             onDrop={dropLibraryItem}
+                           />
                         ))}
                     </div>
                   </aside>
@@ -1225,7 +1425,23 @@ export default function InspectionForms() {
                           return (
                             <Card
                               key={template.id}
-                              className="group overflow-hidden border-2 border-[hsl(45,80%,45%)] transition-all hover:-translate-y-0.5 hover:shadow-xl"
+                              draggable={busyId !== template.id}
+                              onDragStart={(event) =>
+                                beginLibraryDrag(event, {
+                                  type: "template",
+                                  id: template.id,
+                                })
+                              }
+                              onDragEnd={() => {
+                                setDraggedLibraryItem(null);
+                                setLibraryDropTarget(null);
+                              }}
+                              className={cn(
+                                "group relative cursor-grab overflow-hidden border-2 border-[hsl(45,80%,45%)] transition-all hover:-translate-y-0.5 hover:shadow-xl active:cursor-grabbing",
+                                draggedLibraryItem?.type === "template" &&
+                                  draggedLibraryItem.id === template.id &&
+                                  "opacity-45",
+                              )}
                             >
                               <div
                                 className="h-1.5"
@@ -1251,85 +1467,115 @@ export default function InspectionForms() {
                                       </p>
                                     </div>
                                   </div>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        disabled={busyId === template.id}
+                                  <div className="flex shrink-0 items-center gap-0.5 rounded-xl border bg-background/95 p-0.5 opacity-100 shadow-sm transition-opacity md:pointer-events-none md:opacity-0 md:group-focus-within:pointer-events-auto md:group-focus-within:opacity-100 md:group-hover:pointer-events-auto md:group-hover:opacity-100">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      title="עריכת שם הטופס"
+                                      aria-label={`עריכת שם ${template.name}`}
+                                      disabled={busyId === template.id}
+                                      onClick={() =>
+                                        openRenameTemplateDialog(template)
+                                      }
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      title="שכפול הטופס"
+                                      aria-label={`שכפול ${template.name}`}
+                                      disabled={busyId === template.id}
+                                      onClick={() =>
+                                        void duplicateTemplate(template)
+                                      }
+                                    >
+                                      <Copy className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                       <Button
+                                         variant="ghost"
+                                         size="icon"
+                                         className="h-8 w-8"
+                                         disabled={busyId === template.id}
+                                         title="העברה לתיקייה"
+                                         aria-label={`העברת ${template.name} לתיקייה`}
+                                       >
+                                         <FolderInput className="h-3.5 w-3.5" />
+                                       </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent
+                                        align="end"
+                                        className="max-h-72 overflow-y-auto"
+                                        dir="rtl"
                                       >
-                                        <MoreVertical className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" dir="rtl">
-                                      <DropdownMenuSub>
-                                        <DropdownMenuSubTrigger>
-                                          <FolderInput className="ml-2 h-4 w-4" />
+                                        <DropdownMenuLabel>
                                           העבר לתיקייה
-                                        </DropdownMenuSubTrigger>
-                                        <DropdownMenuSubContent
-                                          className="max-h-72 overflow-y-auto"
-                                          dir="rtl"
+                                        </DropdownMenuLabel>
+                                        <DropdownMenuItem
+                                          disabled={!template.folder_id}
+                                          onClick={() =>
+                                            moveTemplateToFolder(template, null)
+                                          }
                                         >
-                                          <DropdownMenuLabel>
-                                            בחר מיקום
-                                          </DropdownMenuLabel>
+                                          <Folder className="ml-2 h-4 w-4" />
+                                          ללא תיקייה
+                                        </DropdownMenuItem>
+                                        {folderOptions.map((folder) => (
                                           <DropdownMenuItem
-                                            disabled={!template.folder_id}
+                                            key={folder.id}
+                                            disabled={
+                                              template.folder_id === folder.id
+                                            }
                                             onClick={() =>
                                               moveTemplateToFolder(
                                                 template,
-                                                null,
+                                                folder.id,
                                               )
                                             }
                                           >
-                                            <Folder className="ml-2 h-4 w-4" />
-                                            ללא תיקייה
-                                          </DropdownMenuItem>
-                                          {folderOptions.map((folder) => (
-                                            <DropdownMenuItem
-                                              key={folder.id}
-                                              disabled={
-                                                template.folder_id === folder.id
-                                              }
-                                              onClick={() =>
-                                                moveTemplateToFolder(
-                                                  template,
-                                                  folder.id,
-                                                )
-                                              }
+                                            <span
+                                              className="ml-2 h-3 w-3 rounded-sm"
+                                              style={{
+                                                backgroundColor: folder.color,
+                                              }}
+                                            />
+                                            <span
+                                              style={{
+                                                paddingRight:
+                                                  folder.depth * 10,
+                                              }}
                                             >
-                                              <span
-                                                className="ml-2 h-3 w-3 rounded-sm"
-                                                style={{
-                                                  backgroundColor: folder.color,
-                                                }}
-                                              />
-                                              <span
-                                                style={{
-                                                  paddingRight:
-                                                    folder.depth * 10,
-                                                }}
-                                              >
-                                                {folder.path}
-                                              </span>
-                                            </DropdownMenuItem>
-                                          ))}
-                                        </DropdownMenuSubContent>
-                                      </DropdownMenuSub>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem
-                                        className="text-destructive"
-                                        onClick={() =>
-                                          deactivateTemplate(template)
-                                        }
-                                      >
-                                        <Trash2 className="ml-2 h-4 w-4" />
-                                        הסר מהספרייה
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
+                                              {folder.path}
+                                            </span>
+                                          </DropdownMenuItem>
+                                        ))}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                      title="מחיקת הטופס"
+                                      aria-label={`מחיקת ${template.name}`}
+                                      disabled={busyId === template.id}
+                                      onClick={() =>
+                                        void deactivateTemplate(template)
+                                      }
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-background/90 px-2 py-1 text-[11px] text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+                                  <GripVertical className="h-3 w-3" />
+                                  גרור לתיקייה
                                 </div>
                                 {templateFolder && (
                                   <Badge
@@ -1629,26 +1875,85 @@ export default function InspectionForms() {
 
           <DialogFooter className="gap-2 sm:justify-start">
             <Button
-              onClick={createActiveForm}
+              onClick={createActiveFormAndTemplate}
               disabled={saving}
               className="bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,20%)]"
             >
               {saving && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-              <ClipboardCheck className="ml-2 h-4 w-4" />
-              צור טופס
-            </Button>
-            <Button
-              variant="outline"
-              onClick={createActiveFormAndTemplate}
-              disabled={saving}
-              className="border-[hsl(43,65%,52%)] text-[hsl(220,60%,25%)] hover:bg-[hsl(43,70%,95%)]"
-            >
               <Archive className="ml-2 h-4 w-4" />
               צור טופס והוסף למלאי הטפסים
             </Button>
             <Button
               variant="outline"
               onClick={() => setCreateDialogOpen(false)}
+            >
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(templateBeingRenamed)}
+        onOpenChange={(open) => {
+          if (!open && busyId !== templateBeingRenamed?.id) {
+            setTemplateBeingRenamed(null);
+            setTemplateRenameValue("");
+          }
+        }}
+      >
+        <DialogContent
+          dir="rtl"
+          className="max-w-md border-2 border-[hsl(45,80%,45%)]"
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(45,100%,93%)] text-[hsl(220,60%,25%)]">
+                <Pencil className="h-5 w-5" />
+              </span>
+              עריכת שם הטופס
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-2 py-2">
+            <Label htmlFor="inspection-template-rename">שם הטופס</Label>
+            <Input
+              id="inspection-template-rename"
+              value={templateRenameValue}
+              onChange={(event) => setTemplateRenameValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && templateRenameValue.trim()) {
+                  event.preventDefault();
+                  void renameTemplate();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:justify-start">
+            <Button
+              onClick={() => void renameTemplate()}
+              disabled={
+                !templateRenameValue.trim() ||
+                busyId === templateBeingRenamed?.id
+              }
+              className="bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,20%)]"
+            >
+              {busyId === templateBeingRenamed?.id ? (
+                <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="ml-2 h-4 w-4" />
+              )}
+              שמור שם
+            </Button>
+            <Button
+              variant="outline"
+              disabled={busyId === templateBeingRenamed?.id}
+              onClick={() => {
+                setTemplateBeingRenamed(null);
+                setTemplateRenameValue("");
+              }}
             >
               ביטול
             </Button>
@@ -2023,6 +2328,12 @@ function FolderTreeItem({
   onToggle,
   onAddChild,
   onDelete,
+  draggedItem,
+  dropTargetKey,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop,
 }: {
   folder: InspectionFolder;
   folders: InspectionFolder[];
@@ -2036,6 +2347,18 @@ function FolderTreeItem({
   onToggle: (folderId: string) => void;
   onAddChild: (parentId: string) => void;
   onDelete: (folder: InspectionFolder) => void;
+  draggedItem: DraggedLibraryItem | null;
+  dropTargetKey: string | null;
+  onDragStart: (
+    event: DragEvent<HTMLElement>,
+    item: DraggedLibraryItem,
+  ) => void;
+  onDragEnd: () => void;
+  onDragOver: (event: DragEvent<HTMLElement>, targetKey: string) => void;
+  onDrop: (
+    event: DragEvent<HTMLElement>,
+    folderId: string | null,
+  ) => void | Promise<void>;
 }) {
   const children = folders
     .filter((item) => item.parent_id === folder.id)
@@ -2049,14 +2372,28 @@ function FolderTreeItem({
   return (
     <div>
       <div
+        draggable={busyId !== folder.id}
+        onDragStart={(event) =>
+          onDragStart(event, { type: "folder", id: folder.id })
+        }
+        onDragEnd={onDragEnd}
+        onDragOver={(event) => onDragOver(event, folder.id)}
+        onDrop={(event) => void onDrop(event, folder.id)}
         className={cn(
-          "group flex items-center gap-1 rounded-xl transition-colors",
+          "group flex cursor-grab items-center gap-1 rounded-xl border border-transparent transition-colors active:cursor-grabbing",
           selected
             ? "bg-[hsl(45,100%,93%)] text-[hsl(220,60%,23%)]"
             : "hover:bg-muted",
+          dropTargetKey === folder.id &&
+            "border-[hsl(45,80%,45%)] bg-[hsl(45,100%,93%)] ring-2 ring-[hsl(45,80%,45%)]/25",
+          draggedItem?.type === "folder" &&
+            draggedItem.id === folder.id &&
+            "opacity-45",
         )}
         style={{ paddingRight: depth * 14 }}
+        title="גרור טופס או תיקייה לכאן"
       >
+        <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
         <Button
           type="button"
           variant="ghost"
@@ -2144,6 +2481,12 @@ function FolderTreeItem({
             onToggle={onToggle}
             onAddChild={onAddChild}
             onDelete={onDelete}
+            draggedItem={draggedItem}
+            dropTargetKey={dropTargetKey}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
           />
         ))}
     </div>
