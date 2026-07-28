@@ -142,6 +142,11 @@ interface DraftStep {
   description: string;
 }
 
+interface CleanDraftStep {
+  title: string;
+  description: string;
+}
+
 interface ProfileOption {
   id: string;
   name: string;
@@ -538,10 +543,9 @@ export default function InspectionForms() {
     }
   };
 
-  const createTemplate = async () => {
+  const getCleanDraft = (): CleanDraftStep[] | null => {
     const cleanSteps = draftSteps
       .map((step) => ({
-        ...step,
         title: step.title.trim(),
         description: step.description.trim(),
       }))
@@ -549,14 +553,91 @@ export default function InspectionForms() {
 
     if (!draftName.trim()) {
       toast.error("יש להזין שם לטופס");
-      return;
+      return null;
     }
     if (cleanSteps.length === 0) {
       toast.error("יש להוסיף לפחות שלב אחד");
+      return null;
+    }
+
+    return cleanSteps;
+  };
+
+  const finishCreatedRun = async (runId: string, message: string) => {
+    setActiveTab("active");
+    setOpenRunIds((current) => new Set(current).add(runId));
+    setCreateDialogOpen(false);
+    resetDraft();
+    toast.success(message);
+    await fetchData();
+  };
+
+  const createActiveForm = async () => {
+    if (!user) {
+      toast.error("יש להתחבר כדי ליצור טופס");
       return;
     }
 
+    const cleanSteps = getCleanDraft();
+    if (!cleanSteps) return;
+
     setSaving(true);
+    try {
+      const { data: run, error: runError } = await db
+        .from("inspection_form_runs")
+        .insert({
+          template_id: null,
+          template_name: draftName.trim(),
+          description: draftDescription.trim() || null,
+          icon_name: draftIcon,
+          color: draftColor,
+          created_by: user.id,
+        })
+        .select("id")
+        .single();
+      if (runError) throw runError;
+
+      const { error: stepsError } = await db
+        .from("inspection_form_run_steps")
+        .insert(
+          cleanSteps.map((step, position) => ({
+            run_id: run.id,
+            template_step_id: null,
+            title: step.title,
+            description: step.description || null,
+            position,
+            is_required: true,
+          })),
+        );
+      if (stepsError) {
+        await db.from("inspection_form_runs").delete().eq("id", run.id);
+        throw stepsError;
+      }
+
+      await finishCreatedRun(run.id, `הטופס „${draftName.trim()}” נוצר ונפתח`);
+    } catch (error) {
+      console.error("Failed to create active inspection form", error);
+      toast.error(
+        error instanceof Error
+          ? `יצירת הטופס נכשלה: ${error.message}`
+          : "יצירת הטופס נכשלה",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const createActiveFormAndTemplate = async () => {
+    if (!user) {
+      toast.error("יש להתחבר כדי ליצור טופס");
+      return;
+    }
+
+    const cleanSteps = getCleanDraft();
+    if (!cleanSteps) return;
+
+    setSaving(true);
+    let createdTemplateId: string | null = null;
     try {
       const { data: template, error: templateError } = await db
         .from("inspection_form_templates")
@@ -567,11 +648,12 @@ export default function InspectionForms() {
             draftTemplateFolderId !== "unfiled" ? draftTemplateFolderId : null,
           icon_name: draftIcon,
           color: draftColor,
-          created_by: user?.id,
+          created_by: user.id,
         })
         .select("id")
         .single();
       if (templateError) throw templateError;
+      createdTemplateId = template.id;
 
       const { error: stepsError } = await db
         .from("inspection_form_template_steps")
@@ -592,13 +674,34 @@ export default function InspectionForms() {
         throw stepsError;
       }
 
-      toast.success("טופס הבדיקה נוסף לספרייה");
-      setCreateDialogOpen(false);
-      resetDraft();
-      await fetchData();
+      const { data: runId, error: runError } = await db.rpc(
+        "start_inspection_form",
+        {
+          p_template_id: template.id,
+        },
+      );
+      if (runError) throw runError;
+
+      await finishCreatedRun(
+        runId,
+        `הטופס „${draftName.trim()}” נוצר ונוסף למלאי הטפסים`,
+      );
     } catch (error) {
-      console.error("Failed to create inspection template", error);
-      toast.error("יצירת הטופס נכשלה");
+      console.error(
+        "Failed to create active inspection form and template",
+        error,
+      );
+      if (createdTemplateId) {
+        await db
+          .from("inspection_form_templates")
+          .delete()
+          .eq("id", createdTemplateId);
+      }
+      toast.error(
+        error instanceof Error
+          ? `יצירת הטופס נכשלה: ${error.message}`
+          : "יצירת הטופס נכשלה",
+      );
     } finally {
       setSaving(false);
     }
@@ -1526,12 +1629,22 @@ export default function InspectionForms() {
 
           <DialogFooter className="gap-2 sm:justify-start">
             <Button
-              onClick={createTemplate}
+              onClick={createActiveForm}
               disabled={saving}
               className="bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,20%)]"
             >
               {saving && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-              שמור בספריית הטפסים
+              <ClipboardCheck className="ml-2 h-4 w-4" />
+              צור טופס
+            </Button>
+            <Button
+              variant="outline"
+              onClick={createActiveFormAndTemplate}
+              disabled={saving}
+              className="border-[hsl(43,65%,52%)] text-[hsl(220,60%,25%)] hover:bg-[hsl(43,70%,95%)]"
+            >
+              <Archive className="ml-2 h-4 w-4" />
+              צור טופס והוסף למלאי הטפסים
             </Button>
             <Button
               variant="outline"

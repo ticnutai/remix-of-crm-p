@@ -237,6 +237,145 @@ interface BackupData {
   CustomTableData?: BackupCustomTableData[];
 }
 
+type CurrentBackupData = Record<string, Record<string, unknown>[]>;
+
+// Dependency-safe restore order for backups created by the current CRM.
+// Tasks are deliberately restored after inspection runs because they may carry
+// inspection_run_id, while all template/run IDs stay unchanged.
+const CURRENT_BACKUP_RESTORE_ORDER = [
+  "profiles",
+  "employees",
+  "clients",
+  "client_categories",
+  "client_sources",
+  "client_contacts",
+  "projects",
+  "time_entries",
+  "meetings",
+  "reminders",
+  "stage_templates",
+  "stage_template_stages",
+  "stage_template_tasks",
+  "client_stages",
+  "client_folder_stages",
+  "client_folder_tasks",
+  "client_deadlines",
+  "deadline_templates",
+  "quote_template_folders",
+  "quote_templates",
+  "quote_template_versions",
+  "quotes",
+  "quote_items",
+  "quote_payments",
+  "saved_quotes",
+  "client_stage_tasks",
+  "saved_quote_payment_events",
+  "qp_folders",
+  "qp_themes",
+  "qp_documents",
+  "qp_versions",
+  "contract_templates",
+  "contracts",
+  "contract_documents",
+  "contract_amendments",
+  "quote_client_creation_operations",
+  "invoices",
+  "invoice_payments",
+  "payment_schedules",
+  "payments",
+  "inspection_form_folders",
+  "inspection_form_templates",
+  "inspection_form_template_steps",
+  "inspection_form_runs",
+  "inspection_form_run_steps",
+  "tasks",
+  "client_payment_stages",
+  "client_additional_payments",
+  "client_custom_tabs",
+  "client_tab_columns",
+  "client_tab_data",
+  "client_tab_files",
+  "custom_tables",
+  "custom_table_data",
+  "custom_table_permissions",
+  "table_custom_columns",
+  "app_settings",
+  "user_settings",
+] as const;
+
+const GENERATED_COLUMNS: Record<string, string[]> = {
+  time_entries: ["duration_minutes"],
+  invoices: ["remaining_amount"],
+  quotes: ["remaining_amount"],
+  quote_items: ["subtotal"],
+  client_payment_stages: ["amount_with_vat"],
+  client_additional_payments: ["amount_with_vat"],
+};
+
+const CONFLICT_COLUMNS: Record<string, string> = {
+  quote_client_creation_operations: "idempotency_key",
+};
+
+const isCurrentBackup = (data: unknown): data is CurrentBackupData => {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+  const keys = Object.keys(data as Record<string, unknown>);
+  return keys.some((key) =>
+    (CURRENT_BACKUP_RESTORE_ORDER as readonly string[]).includes(key),
+  );
+};
+
+const restoreCurrentBackup = async (
+  supabase: ReturnType<typeof createClient>,
+  backupData: CurrentBackupData,
+) => {
+  const restored: Record<string, number> = {};
+  const skipped: string[] = [];
+
+  for (const table of CURRENT_BACKUP_RESTORE_ORDER) {
+    if (!(table in backupData)) {
+      skipped.push(table);
+      continue;
+    }
+
+    const records = backupData[table];
+    if (!Array.isArray(records)) {
+      throw new Error(`Invalid backup payload for table ${table}`);
+    }
+    if (records.length === 0) {
+      restored[table] = 0;
+      continue;
+    }
+
+    const generatedColumns = GENERATED_COLUMNS[table] || [];
+    const sanitizedRecords = records.map((record) =>
+      Object.fromEntries(
+        Object.entries(record).filter(
+          ([column]) => !generatedColumns.includes(column),
+        ),
+      ),
+    );
+
+    const { error } = await supabase.from(table).upsert(sanitizedRecords, {
+      onConflict: CONFLICT_COLUMNS[table] || "id",
+    });
+    if (error) {
+      throw new Error(`Restore failed for ${table}: ${error.message}`);
+    }
+    restored[table] = records.length;
+  }
+
+  return {
+    success: true,
+    mode: "current",
+    restored,
+    skipped,
+    totalRecords: Object.values(restored).reduce(
+      (sum, count) => sum + count,
+      0,
+    ),
+  };
+};
+
 // Map Hebrew statuses to valid DB values
 const statusMap: Record<string, string> = {
   פוטנציאלי: "active",
@@ -269,12 +408,12 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { data: backupData, userId } = (await req.json()) as {
-      data: BackupData;
+    const { data: rawBackupData, userId } = (await req.json()) as {
+      data: BackupData | CurrentBackupData;
       userId: string;
     };
 
-    if (!backupData || !userId) {
+    if (!rawBackupData || !userId) {
       return new Response(
         JSON.stringify({ error: "Missing backup data or userId" }),
         {
@@ -284,6 +423,19 @@ serve(async (req) => {
       );
     }
 
+    if (isCurrentBackup(rawBackupData)) {
+      console.log("Starting dependency-safe current CRM backup restore...");
+      const currentResult = await restoreCurrentBackup(supabase, rawBackupData);
+      return new Response(
+        JSON.stringify({
+          ...currentResult,
+          message: `השחזור הושלם: ${currentResult.totalRecords} רשומות שוחזרו`,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const backupData = rawBackupData as BackupData;
     console.log("Starting comprehensive backup import...");
     console.log("Data counts:", {
       clients: backupData.Client?.length || 0,

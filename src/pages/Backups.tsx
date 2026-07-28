@@ -77,6 +77,11 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 import { he } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import {
+  BACKUP_TABLE_NAMES,
+  BACKUP_TOPIC_LABELS,
+  DEFAULT_BACKUP_TOPICS,
+} from "@/config/backupRegistry";
 import { Cloud, RefreshCw, Play, Contact } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -272,12 +277,7 @@ const parseTimeLogsCSV = (csvContent: string): ParsedTimeLogEntry[] => {
 };
 
 type BackupStatus =
-  | "idle"
-  | "creating"
-  | "restoring"
-  | "importing"
-  | "success"
-  | "error";
+  "idle" | "creating" | "restoring" | "importing" | "success" | "error";
 
 // Interface for external ArchFlow backup format (supports both PascalCase and camelCase)
 interface ArchFlowBackup {
@@ -689,7 +689,10 @@ function AutoBackupSettings() {
             <p>
               גיבוי הבא:{" "}
               {autoBackupStatus?.nextBackup
-                ? format(new Date(autoBackupStatus.nextBackup), "dd/MM HH:mm:ss")
+                ? format(
+                    new Date(autoBackupStatus.nextBackup),
+                    "dd/MM HH:mm:ss",
+                  )
                 : "-"}
             </p>
           </div>
@@ -735,7 +738,11 @@ export default function Backups() {
     const now = new Date();
     const dateStr = now.toLocaleDateString("he-IL").replace(/\//g, "-");
     const timeStr = now
-      .toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      .toLocaleTimeString("he-IL", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
       .replace(/:/g, "");
     return `tenarc-${dateStr}-${timeStr}`;
   };
@@ -750,25 +757,9 @@ export default function Backups() {
   const excelFileInputRef = useRef<HTMLInputElement>(null);
 
   // Backup topics selection
-  const [backupTopics, setBackupTopics] = useState({
-    clients: true,
-    projects: true,
-    time_entries: true,
-    tasks: true,
-    meetings: true,
-    quotes: true,
-    profiles: true,
-    client_custom_tabs: true,
-    client_tab_columns: true,
-    custom_tables: true,
-    custom_table_data: true,
-    settings: true,
-    client_stages: true,
-    client_stage_tasks: true,
-    stage_templates: true,
-    stage_template_stages: true,
-    stage_template_tasks: true,
-  });
+  const [backupTopics, setBackupTopics] = useState<Record<string, boolean>>(
+    () => ({ ...DEFAULT_BACKUP_TOPICS }),
+  );
 
   // Export format selection
   const [exportFormats, setExportFormats] = useState({
@@ -837,7 +828,7 @@ export default function Backups() {
   const [lastImportError, setLastImportError] = useState<string | null>(null);
 
   // Fetch cloud backups from storage
-  const fetchCloudBackups = async () => {
+  const fetchCloudBackups = React.useCallback(async () => {
     setLoadingCloudBackups(true);
     try {
       const { data: files, error } = await supabase.storage
@@ -868,7 +859,7 @@ export default function Backups() {
     } finally {
       setLoadingCloudBackups(false);
     }
-  };
+  }, [toast]);
 
   // Download and restore cloud backup
   const handleCloudRestore = async () => {
@@ -886,11 +877,21 @@ export default function Backups() {
       // Parse JSON
       const text = await fileData.text();
       const backupContent = JSON.parse(text);
+      const restoreData =
+        backupContent?.data &&
+        typeof backupContent.data === "object" &&
+        !Array.isArray(backupContent.data)
+          ? backupContent.data
+          : Object.fromEntries(
+              Object.entries(backupContent).filter(([, value]) =>
+                Array.isArray(value),
+              ),
+            );
 
       // Call import-backup edge function
       const { data: result, error: importError } =
         await supabase.functions.invoke("import-backup", {
-          body: { data: backupContent.data, userId: user?.id },
+          body: { data: restoreData, userId: user?.id },
         });
 
       if (importError) throw importError;
@@ -967,68 +968,41 @@ export default function Backups() {
   // Load cloud backups on mount
   React.useEffect(() => {
     fetchCloudBackups();
-  }, []);
-
-  // All available tables for backup
-  const allTableNames = [
-    "clients",
-    "projects",
-    "time_entries",
-    "tasks",
-    "meetings",
-    "quotes",
-    "profiles",
-    "client_custom_tabs",
-    "client_tab_columns",
-    "custom_tables",
-    "custom_table_data",
-    "client_stages",
-    "client_stage_tasks",
-    "stage_templates",
-    "stage_template_stages",
-    "stage_template_tasks",
-  ] as const;
-
-  // Topic labels for display
-  const topicLabels: Record<string, string> = {
-    clients: "👥 לקוחות",
-    projects: "📁 פרויקטים",
-    time_entries: "⏱️ רישומי זמן",
-    tasks: "📋 משימות",
-    meetings: "📅 פגישות",
-    quotes: "📝 הצעות מחיר",
-    profiles: "👤 פרופילים",
-    client_custom_tabs: "🗂️ טאבים מותאמים",
-    client_tab_columns: "📊 עמודות מותאמות",
-    custom_tables: "📋 טבלאות מותאמות",
-    custom_table_data: "📝 נתוני טבלאות",
-    settings: "⚙️ הגדרות",
-    client_stages: "🚦 שלבי לקוחות",
-    client_stage_tasks: "✅ משימות בשלבים",
-    stage_templates: "📜 תבניות שלבים",
-    stage_template_stages: "🎯 שלבים בתבניות",
-    stage_template_tasks: "📌 משימות בתבניות",
-  };
+  }, [fetchCloudBackups]);
 
   // Fetch all data from Supabase for backup (with topic selection)
   const fetchAllData = async (selectedTopics?: Record<string, boolean>) => {
     const topics = selectedTopics || backupTopics;
-    const tableNames = allTableNames.filter((t) => topics[t] !== false);
+    const tableNames = BACKUP_TABLE_NAMES.filter((t) => topics[t] !== false);
     const data: Record<string, any[]> = {};
+    const failures: string[] = [];
 
     for (let i = 0; i < tableNames.length; i++) {
       const table = tableNames[i];
       setProgress(((i + 1) / tableNames.length) * 50);
-      setProgressMessage(`טוען ${topicLabels[table] || table}...`);
+      setProgressMessage(`טוען ${BACKUP_TOPIC_LABELS[table] || table}...`);
 
-      const { data: tableData, error } = await supabase.from(table).select("*");
+      const { data: tableData, error } = await (
+        supabase.from(table as never) as any
+      ).select("*");
 
       if (error) {
         console.error(`Error fetching ${table}:`, error);
+        failures.push(
+          `${BACKUP_TOPIC_LABELS[table] || table}: ${error.message}`,
+        );
         continue;
       }
 
       data[table] = tableData || [];
+    }
+
+    if (failures.length > 0) {
+      throw new Error(
+        `הגיבוי נעצר כי ${failures.length} טבלאות לא נקראו: ${failures.join(
+          " | ",
+        )}`,
+      );
     }
 
     return data;
@@ -1049,7 +1023,7 @@ export default function Backups() {
         const worksheet = XLSX.utils.json_to_sheet(records);
         // Sheet name max 31 chars in Excel - keep only letters, numbers, spaces, hyphens
         const sheetName =
-          (topicLabels[tableName] || tableName)
+          (BACKUP_TOPIC_LABELS[tableName] || tableName)
             .replace(/[^\p{L}\p{N}\s\-_]/gu, "")
             .trim()
             .substring(0, 31) || tableName.substring(0, 31);
@@ -1281,7 +1255,8 @@ export default function Backups() {
       setStatus("error");
       toast({
         title: "שגיאה ביצירת גיבוי",
-        description: "לא ניתן לגבות את הנתונים",
+        description:
+          error instanceof Error ? error.message : "לא ניתן לגבות את הנתונים",
         variant: "destructive",
       });
     }
@@ -1810,8 +1785,6 @@ export default function Backups() {
               .toLowerCase()
               .trim();
             mappedClientId = clientNameMap.get(normalizedClientName) || null;
-            if (!mappedClientId) {
-            }
           }
 
           const startTime = new Date(timeLog.log_date);
@@ -3524,7 +3497,7 @@ export default function Backups() {
                                     htmlFor={`topic-${key}`}
                                     className="text-sm cursor-pointer"
                                   >
-                                    {topicLabels[key] || key}
+                                    {BACKUP_TOPIC_LABELS[key] || key}
                                   </Label>
                                 </div>
                               ),

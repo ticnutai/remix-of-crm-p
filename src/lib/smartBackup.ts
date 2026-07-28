@@ -30,11 +30,18 @@ export const BACKUP_TABLES = {
     "client_sources", // מקורות לקוחות
     "client_stages", // שלבים של לקוחות
     "client_stage_tasks", // משימות בשלבים
+    "client_folder_stages", // שלבים בתיקיות לקוח
+    "client_folder_tasks", // משימות בשלבי תיקיות לקוח
     "client_deadlines", // דדליינים של לקוחות
     "deadline_templates", // תבניות דדליינים
     "stage_templates", // תבניות שלבים
     "stage_template_stages", // שלבים בתבניות
     "stage_template_tasks", // משימות בתבניות שלבים
+    "inspection_form_folders", // תיקיות טפסי בדיקה
+    "inspection_form_templates", // תבניות טפסי בדיקה
+    "inspection_form_template_steps", // שלבי תבניות בדיקה
+    "inspection_form_runs", // טפסי בדיקה פעילים והיסטוריים
+    "inspection_form_run_steps", // ביצוע שלבי הבדיקה
   ],
 
   // 🟠 חשוב - נתונים עסקיים
@@ -49,7 +56,16 @@ export const BACKUP_TABLES = {
     "quotes", // הצעות מחיר
     "quote_items", // פריטי הצעות מחיר
     "quote_templates", // תבניות הצעות מחיר
+    "quote_template_folders", // תיקיות תבניות הצעות מחיר
+    "quote_template_versions", // גרסאות תבניות הצעות מחיר
     "quote_payments", // תשלומי הצעות מחיר
+    "saved_quotes", // הצעות מחיר שמורות
+    "saved_quote_payment_events", // אירועי תשלום בהצעות
+    "quote_client_creation_operations", // קישורי הצעה ולקוח
+    "qp_folders", // תיקיות עורך הצעות המחיר
+    "qp_themes", // ערכות עיצוב להצעות
+    "qp_documents", // מסמכי עורך הצעות
+    "qp_versions", // גרסאות מסמכי עורך הצעות
     "contracts", // חוזים
     "contract_templates", // תבניות חוזים
     "contract_documents", // מסמכי חוזים
@@ -58,6 +74,8 @@ export const BACKUP_TABLES = {
     "invoice_payments", // תשלומי חשבוניות
     "payments", // תשלומים
     "payment_schedules", // לוחות תשלום
+    "client_payment_stages", // שלבי תשלום המקושרים ללקוחות ולשלבים
+    "client_additional_payments", // תשלומים נוספים המקושרים ללקוחות
     "expenses", // הוצאות
     "budgets", // תקציבים
     "bank_transactions", // תנועות בנק

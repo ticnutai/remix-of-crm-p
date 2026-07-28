@@ -16,6 +16,69 @@ interface BackupResult {
   error?: string;
 }
 
+// Parent tables precede their children so the same file can be restored while
+// preserving process, payment, quote and inspection-form relationships.
+const TABLES_TO_BACKUP = [
+  "profiles",
+  "employees",
+  "clients",
+  "client_categories",
+  "client_sources",
+  "client_contacts",
+  "projects",
+  "time_entries",
+  "meetings",
+  "reminders",
+  "stage_templates",
+  "stage_template_stages",
+  "stage_template_tasks",
+  "client_stages",
+  "client_folder_stages",
+  "client_folder_tasks",
+  "client_deadlines",
+  "deadline_templates",
+  "quote_template_folders",
+  "quote_templates",
+  "quote_template_versions",
+  "quotes",
+  "quote_items",
+  "quote_payments",
+  "saved_quotes",
+  "client_stage_tasks",
+  "saved_quote_payment_events",
+  "qp_folders",
+  "qp_themes",
+  "qp_documents",
+  "qp_versions",
+  "contract_templates",
+  "contracts",
+  "contract_documents",
+  "contract_amendments",
+  "quote_client_creation_operations",
+  "invoices",
+  "invoice_payments",
+  "payment_schedules",
+  "payments",
+  "inspection_form_folders",
+  "inspection_form_templates",
+  "inspection_form_template_steps",
+  "inspection_form_runs",
+  "inspection_form_run_steps",
+  "tasks",
+  "client_payment_stages",
+  "client_additional_payments",
+  "client_custom_tabs",
+  "client_tab_columns",
+  "client_tab_data",
+  "client_tab_files",
+  "custom_tables",
+  "custom_table_data",
+  "custom_table_permissions",
+  "table_custom_columns",
+  "app_settings",
+  "user_settings",
+] as const;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -31,33 +94,19 @@ serve(async (req) => {
     const timestamp = new Date().toISOString();
     const dateStr = timestamp.split("T")[0];
 
-    // Define tables to backup
-    const tablesToBackup = [
-      "clients",
-      "projects",
-      "tasks",
-      "invoices",
-      "expenses",
-      "meetings",
-      "time_entries",
-      "quotes",
-      "reminders",
-      "profiles",
-    ];
-
     const backupData: Record<string, any[]> = {};
     const recordCounts: Record<string, number> = {};
+    const failedTables: string[] = [];
     let totalRecords = 0;
 
     // Fetch data from each table
-    for (const table of tablesToBackup) {
+    for (const table of TABLES_TO_BACKUP) {
       try {
         const { data, error } = await supabase.from(table).select("*");
 
         if (error) {
           console.error(`Error fetching ${table}:`, error);
-          backupData[table] = [];
-          recordCounts[table] = 0;
+          failedTables.push(`${table}: ${error.message}`);
         } else {
           backupData[table] = data || [];
           recordCounts[table] = data?.length || 0;
@@ -65,13 +114,22 @@ serve(async (req) => {
         }
       } catch (e) {
         console.error(`Exception fetching ${table}:`, e);
-        backupData[table] = [];
-        recordCounts[table] = 0;
+        failedTables.push(
+          `${table}: ${e instanceof Error ? e.message : "Unknown error"}`,
+        );
       }
     }
 
+    if (failedTables.length > 0) {
+      throw new Error(
+        `Backup aborted; ${failedTables.length} tables failed: ${failedTables.join(
+          " | ",
+        )}`,
+      );
+    }
+
     console.log(
-      `Backup collected ${totalRecords} records from ${tablesToBackup.length} tables`,
+      `Backup collected ${totalRecords} records from ${TABLES_TO_BACKUP.length} tables`,
     );
 
     // Create backup object
