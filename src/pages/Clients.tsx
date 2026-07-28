@@ -117,7 +117,12 @@ import {
   Settings2,
   ClipboardList,
   CircleDollarSign,
+  GripVertical,
 } from "lucide-react";
+import {
+  moveRecentClientBefore,
+  sortByPersonalRecentOrder,
+} from "@/lib/recentClientOrder";
 import { cn } from "@/lib/utils";
 
 const ClientsByStageView = React.lazy(() =>
@@ -576,6 +581,14 @@ export default function Clients() {
     },
   });
 
+  const {
+    value: recentClientPersonalOrder,
+    setValue: setRecentClientPersonalOrder,
+  } = useUserSettings<string[]>({
+    key: "clients_recent_personal_order_v1",
+    defaultValue: [],
+  });
+
   // Cloud-persisted FULL filter + view state
   const {
     value: savedFullFilters,
@@ -592,6 +605,7 @@ export default function Clients() {
     hasMeetings?: boolean | null;
     paymentStatus?: ClientFilterState["paymentStatus"];
     recentClientsDays?: number | null;
+    recentClientsSortMode?: ClientFilterState["recentClientsSortMode"];
     recentActivityTypes?: ClientFilterState["recentActivityTypes"];
     categories?: string[];
     tags?: string[];
@@ -703,6 +717,9 @@ export default function Clients() {
           : savedFullFilters.paymentStatus,
       recentClientsDays:
         savedFullFilters.recentClientsDays ?? prev.recentClientsDays,
+      recentClientsSortMode:
+        savedFullFilters.recentClientsSortMode ??
+        prev.recentClientsSortMode,
       recentActivityTypes:
         savedFullFilters.recentActivityTypes ?? prev.recentActivityTypes,
       // Legacy categories are no longer a filter source; workflow templates
@@ -872,6 +889,7 @@ export default function Clients() {
     hasMeetings: null,
     paymentStatus: null,
     recentClientsDays: null,
+    recentClientsSortMode: "activity",
     recentActivityTypes: [
       "client",
       "process",
@@ -1489,6 +1507,9 @@ export default function Clients() {
     // Apply sorting
     result.sort((a, b) => {
       if (filters.recentClientsDays) {
+        if (filters.recentClientsSortMode === "custom") {
+          return 0;
+        }
         return (
           new Date(effectiveLatestActivityByClient[b.id] || 0).getTime() -
           new Date(effectiveLatestActivityByClient[a.id] || 0).getTime()
@@ -1534,6 +1555,17 @@ export default function Clients() {
       }
     });
 
+    if (
+      filters.recentClientsDays &&
+      filters.recentClientsSortMode === "custom"
+    ) {
+      return sortByPersonalRecentOrder(
+        result,
+        recentClientPersonalOrder,
+        effectiveLatestActivityByClient,
+      );
+    }
+
     return result;
   }, [
     clients,
@@ -1546,10 +1578,46 @@ export default function Clients() {
     clientsWithMeetings,
     paymentProgressByClient,
     effectiveLatestActivityByClient,
+    recentClientPersonalOrder,
     latestContractSignedByClient,
     clientConsultantsMap,
     matchesQueryTokens,
   ]);
+
+  const [draggedRecentClientId, setDraggedRecentClientId] = useState<
+    string | null
+  >(null);
+  const [recentClientDropTargetId, setRecentClientDropTargetId] = useState<
+    string | null
+  >(null);
+  const personalRecentOrderingActive =
+    Boolean(filters.recentClientsDays) &&
+    filters.recentClientsSortMode === "custom";
+
+  const handleRecentClientDrop = useCallback(
+    (targetClientId: string) => {
+      if (!draggedRecentClientId || !personalRecentOrderingActive) return;
+
+      const nextOrder = moveRecentClientBefore(
+        recentClientPersonalOrder,
+        filteredClients.map((client) => client.id),
+        draggedRecentClientId,
+        targetClientId,
+      );
+      if (nextOrder !== recentClientPersonalOrder) {
+        setRecentClientPersonalOrder(nextOrder);
+      }
+      setDraggedRecentClientId(null);
+      setRecentClientDropTargetId(null);
+    },
+    [
+      draggedRecentClientId,
+      filteredClients,
+      personalRecentOrderingActive,
+      recentClientPersonalOrder,
+      setRecentClientPersonalOrder,
+    ],
+  );
 
   const scrollToClientCard = useCallback((clientId: string) => {
     const clientElement = clientRefs.current.get(clientId);
@@ -2890,6 +2958,16 @@ export default function Clients() {
     const monthsSourceLabel = signedContractDate
       ? "מחתימה אחרונה של חוזה"
       : "ממועד פתיחת תיק הלקוח";
+    const renderPersonalOrderHandle = () =>
+      personalRecentOrderingActive ? (
+        <span
+          className="pointer-events-none mr-1 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded border border-[#d4a843]/70 bg-white/95 text-[#d4a843] opacity-0 shadow-sm transition-opacity group-hover/client-name:opacity-100"
+          title="גרור לשינוי הסדר האישי"
+          aria-hidden="true"
+        >
+          <GripVertical className="h-3 w-3" />
+        </span>
+      ) : null;
 
     const getMonthsPalette = (months: number) => {
       if (months >= 8) {
@@ -3157,7 +3235,10 @@ export default function Clients() {
               className="flex items-center justify-between gap-3 bg-[#1e3a5f] px-4 py-3 text-right text-white"
             >
               <div className="min-w-0">
-                <h3 className="truncate text-base font-bold">{client.name}</h3>
+                <h3 className="group/client-name flex items-center truncate text-base font-bold">
+                  <span className="truncate">{client.name}</span>
+                  {renderPersonalOrderHandle()}
+                </h3>
                 <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-white/70">
                   <span>
                     {paymentItems.length} תשלומים {paymentModeLabel}
@@ -3358,7 +3439,10 @@ export default function Clients() {
               className="flex items-center justify-between gap-3 bg-[#1e3a5f] px-4 py-3 text-right text-white"
             >
               <div className="min-w-0">
-                <h3 className="truncate text-base font-bold">{client.name}</h3>
+                <h3 className="group/client-name flex items-center truncate text-base font-bold">
+                  <span className="truncate">{client.name}</span>
+                  {renderPersonalOrderHandle()}
+                </h3>
                 <p className="mt-0.5 text-[11px] text-white/65">
                   {activityConfig.items.length} {activityConfig.label}
                 </p>
@@ -3448,7 +3532,10 @@ export default function Clients() {
             className="flex items-center justify-between gap-3 bg-[#1e3a5f] px-4 py-3 text-right text-white"
           >
             <div className="min-w-0">
-              <h3 className="truncate text-base font-bold">{client.name}</h3>
+              <h3 className="group/client-name flex items-center truncate text-base font-bold">
+                <span className="truncate">{client.name}</span>
+                {renderPersonalOrderHandle()}
+              </h3>
               <p className="mt-0.5 text-[11px] text-white/65">
                 {allVisibleTasks.length} משימות פתוחות
               </p>
@@ -3991,6 +4078,7 @@ export default function Clients() {
             )}
 
             <h3
+              className="group/client-name"
               style={{
                 fontSize: "18px",
                 fontWeight: "700",
@@ -4004,6 +4092,7 @@ export default function Clients() {
                   categoryId={client.category_id}
                   categories={categories}
                 />
+                {renderPersonalOrderHandle()}
                 {showActions && renderMonthsIndicator()}
               </span>
             </h3>
@@ -5733,7 +5822,7 @@ export default function Clients() {
 
         {/* ═══ Compact Row 2: Filter Strip ═══ */}
         {pcVisible("filter-strip") && pcEnabled("filter-strip") && (
-        <div style={{ marginBottom: '36px' }}>
+        <div style={{ marginBottom: "18px" }}>
         <ClientsFilterStrip
           filters={filters}
           onFiltersChange={(newFilters) => {
@@ -5774,6 +5863,7 @@ export default function Clients() {
               hasMeetings: newFilters.hasMeetings,
               paymentStatus: newFilters.paymentStatus,
               recentClientsDays: newFilters.recentClientsDays,
+              recentClientsSortMode: newFilters.recentClientsSortMode,
               recentActivityTypes: newFilters.recentActivityTypes,
               categories: newFilters.categories,
               tags: newFilters.tags,
@@ -5794,6 +5884,14 @@ export default function Clients() {
           clientsWithMeetings={clientsWithMeetings}
           paymentSummary={paymentSummary}
           recentClientsCount={recentClientsCount}
+          hasRecentCustomOrder={recentClientPersonalOrder.length > 0}
+          onResetRecentCustomOrder={() => {
+            setRecentClientPersonalOrder([]);
+            toast({
+              title: "הסדר האישי אופס",
+              description: "הלקוחות מוצגים שוב לפי הפעילות האחרונה.",
+            });
+          }}
           categories={categories}
           categoryCounts={categoryCounts}
           stageCounts={stageCounts}
@@ -5996,6 +6094,56 @@ export default function Clients() {
                           <ContextMenu key={client.id}>
                             <ContextMenuTrigger asChild>
                               <div
+                                draggable={personalRecentOrderingActive}
+                                onDragStart={(event) => {
+                                  if (!personalRecentOrderingActive) return;
+                                  setDraggedRecentClientId(client.id);
+                                  event.dataTransfer.effectAllowed = "move";
+                                  event.dataTransfer.setData(
+                                    "text/plain",
+                                    client.id,
+                                  );
+                                }}
+                                onDragOver={(event) => {
+                                  if (
+                                    !personalRecentOrderingActive ||
+                                    draggedRecentClientId === client.id
+                                  ) {
+                                    return;
+                                  }
+                                  event.preventDefault();
+                                  event.dataTransfer.dropEffect = "move";
+                                  setRecentClientDropTargetId(client.id);
+                                }}
+                                onDragLeave={(event) => {
+                                  if (
+                                    !event.currentTarget.contains(
+                                      event.relatedTarget as Node | null,
+                                    )
+                                  ) {
+                                    setRecentClientDropTargetId((current) =>
+                                      current === client.id ? null : current,
+                                    );
+                                  }
+                                }}
+                                onDrop={(event) => {
+                                  event.preventDefault();
+                                  handleRecentClientDrop(client.id);
+                                }}
+                                onDragEnd={() => {
+                                  setDraggedRecentClientId(null);
+                                  setRecentClientDropTargetId(null);
+                                }}
+                                className={cn(
+                                  "relative rounded-xl transition-all",
+                                  personalRecentOrderingActive &&
+                                    "cursor-grab active:cursor-grabbing",
+                                  draggedRecentClientId === client.id &&
+                                    "opacity-45",
+                                  recentClientDropTargetId === client.id &&
+                                    draggedRecentClientId !== client.id &&
+                                    "ring-4 ring-[#d4a843]/60 ring-offset-2",
+                                )}
                                 style={
                                   viewMode === "tasks"
                                     ? {
