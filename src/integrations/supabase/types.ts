@@ -1730,33 +1730,6 @@ export type Database = {
         }
         Relationships: []
       }
-      client_tag_definitions: {
-        Row: {
-          color: string
-          created_at: string
-          id: string
-          name: string
-          sort_order: number
-          updated_at: string
-        }
-        Insert: {
-          color?: string
-          created_at?: string
-          id?: string
-          name: string
-          sort_order?: number
-          updated_at?: string
-        }
-        Update: {
-          color?: string
-          created_at?: string
-          id?: string
-          name?: string
-          sort_order?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
       client_consultants: {
         Row: {
           client_id: string
@@ -2903,6 +2876,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      client_tag_definitions: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       client_task_files: {
         Row: {
@@ -5927,6 +5927,270 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      inspection_form_folders: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_form_folders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_form_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "inspection_form_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inspection_form_run_steps: {
+        Row: {
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_completed: boolean
+          is_required: boolean
+          position: number
+          run_id: string
+          template_step_id: string | null
+          title: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_completed?: boolean
+          is_required?: boolean
+          position: number
+          run_id: string
+          template_step_id?: string | null
+          title: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_completed?: boolean
+          is_required?: boolean
+          position?: number
+          run_id?: string
+          template_step_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_form_run_steps_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_form_run_steps_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "inspection_form_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_form_run_steps_template_step_id_fkey"
+            columns: ["template_step_id"]
+            isOneToOne: false
+            referencedRelation: "inspection_form_template_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inspection_form_runs: {
+        Row: {
+          color: string
+          completed_at: string | null
+          created_by: string | null
+          description: string | null
+          icon_name: string
+          id: string
+          is_pinned: boolean
+          started_at: string
+          status: string
+          template_id: string | null
+          template_name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          completed_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          icon_name?: string
+          id?: string
+          is_pinned?: boolean
+          started_at?: string
+          status?: string
+          template_id?: string | null
+          template_name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          completed_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          icon_name?: string
+          id?: string
+          is_pinned?: boolean
+          started_at?: string
+          status?: string
+          template_id?: string | null
+          template_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_form_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_form_runs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "inspection_form_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inspection_form_template_steps: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_required: boolean
+          position: number
+          template_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          position: number
+          template_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          position?: number
+          template_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_form_template_steps_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "inspection_form_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inspection_form_templates: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          folder_id: string | null
+          icon_name: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          folder_id?: string | null
+          icon_name?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          folder_id?: string | null
+          icon_name?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_form_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_form_templates_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "inspection_form_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoice_payments: {
         Row: {
@@ -9495,6 +9759,10 @@ export type Database = {
           view_count: number
         }[]
       }
+      set_inspection_step_completion: {
+        Args: { p_completed: boolean; p_step_id: string }
+        Returns: undefined
+      }
       set_user_module_permission: {
         Args: {
           p_by: string
@@ -9505,6 +9773,10 @@ export type Database = {
           p_view: boolean
         }
         Returns: undefined
+      }
+      start_inspection_form: {
+        Args: { p_template_id: string }
+        Returns: string
       }
       toggle_file_star: { Args: { p_file_id: string }; Returns: boolean }
       toggle_file_tag: {

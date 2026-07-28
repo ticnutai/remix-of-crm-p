@@ -103,13 +103,14 @@ const queryClient = new QueryClient({
       staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh
       gcTime: 30 * 60 * 1000, // 30 minutes - cache time
       refetchOnWindowFocus: false, // Don't refetch on tab switch
-      // Revalidate only when the cached result is stale. Using "always" here
-      // bypasses staleTime and repeats the same requests on every remount.
-      refetchOnMount: true,
-      // Keep fresh cached data on reconnect; stale queries still revalidate.
-      refetchOnReconnect: true,
-      retry: 2, // Retry twice on failure
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+      // Trust cached data on mount when still fresh (staleTime) — avoids
+      // hammering the DB with duplicate requests on every navigation.
+      refetchOnMount: false,
+      refetchOnReconnect: "always", // Refetch when connection restored
+      // Fewer retries + shorter backoff so a slow/timing-out backend
+      // does not stall the UI for 20s+ per failed request.
+      retry: 1,
+      retryDelay: (attemptIndex) => Math.min(500 * 2 ** attemptIndex, 3000),
       networkMode: "offlineFirst", // Use cache first when offline
     },
     mutations: {
