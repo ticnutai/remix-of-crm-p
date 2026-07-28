@@ -114,6 +114,8 @@ const queryClient = new QueryClient({
       networkMode: "offlineFirst", // Use cache first when offline
     },
     mutations: {
+      // Writes are not guaranteed to be idempotent. Automatic retries can
+      // duplicate records when the server succeeds but the response is lost.
       retry: 0,
       networkMode: "offlineFirst",
     },
