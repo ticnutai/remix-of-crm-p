@@ -136,6 +136,7 @@ import {
   sortByPersonalRecentOrder,
 } from "@/lib/recentClientOrder";
 import { cn } from "@/lib/utils";
+import { CLIENT_CONSULTANTS_UPDATED_EVENT } from "@/lib/consultantAssignmentSync";
 
 const ClientsByStageView = React.lazy(() =>
   import("@/components/clients/ClientsByStageView").then((module) => ({
@@ -994,41 +995,105 @@ export default function Clients() {
   useEffect(() => {
     let cancelled = false;
 
-    if (!clientConsultantsFetch) {
-      clientConsultantsFetch = (async () => {
-        const { data, error } = await supabase
-          .from("client_consultants")
-          .select("client_id, consultant_id, consultant:consultants(profession)")
-          .eq("status", "active");
-        if (error) throw error;
+    const loadClientConsultants = () => {
+      if (!clientConsultantsFetch) {
+        clientConsultantsFetch = (async () => {
+          const [directResult, taskLinksResult] = await Promise.all([
+            supabase
+              .from("client_consultants")
+              .select(
+                "client_id, consultant_id, consultant:consultants(profession)",
+              )
+              .eq("status", "active"),
+            supabase
+              .from("task_consultants")
+              .select(
+                "task_id, consultant_id, consultant:consultants(profession)",
+              ),
+          ]);
+          if (directResult.error) throw directResult.error;
+          if (taskLinksResult.error) throw taskLinksResult.error;
 
-        const map: Record<
-          string,
-          Array<{ consultantId: string; profession: string }>
-        > = {};
-        (data || []).forEach((row: any) => {
-          if (!map[row.client_id]) map[row.client_id] = [];
-          map[row.client_id].push({
-            consultantId: row.consultant_id,
-            profession: row.consultant?.profession || "ללא תחום",
-          });
+          const taskIds = Array.from(
+            new Set((taskLinksResult.data || []).map((row) => row.task_id)),
+          );
+          const taskClientById = new Map<string, string>();
+          if (taskIds.length > 0) {
+            const { data, error } = await supabase
+              .from("client_stage_tasks")
+              .select("id, client_id")
+              .in("id", taskIds);
+            if (error) throw error;
+            (data || []).forEach((task) =>
+              taskClientById.set(task.id, task.client_id),
+            );
+          }
+
+          const map: Record<
+            string,
+            Array<{ consultantId: string; profession: string }>
+          > = {};
+          const addAssignment = (
+            clientId: string | null | undefined,
+            consultantId: string,
+            profession: string | null | undefined,
+          ) => {
+            if (!clientId) return;
+            if (!map[clientId]) map[clientId] = [];
+            if (
+              map[clientId].some(
+                (assignment) => assignment.consultantId === consultantId,
+              )
+            ) {
+              return;
+            }
+            map[clientId].push({
+              consultantId,
+              profession: profession || "ללא תחום",
+            });
+          };
+
+          (directResult.data || []).forEach((row: any) =>
+            addAssignment(
+              row.client_id,
+              row.consultant_id,
+              row.consultant?.profession,
+            ),
+          );
+          (taskLinksResult.data || []).forEach((row: any) =>
+            addAssignment(
+              taskClientById.get(row.task_id),
+              row.consultant_id,
+              row.consultant?.profession,
+            ),
+          );
+          return map;
+        })().finally(() => {
+          clientConsultantsFetch = null;
         });
-        return map;
-      })().finally(() => {
-        clientConsultantsFetch = null;
-      });
-    }
+      }
 
-    clientConsultantsFetch
-      .then((map) => {
-        if (!cancelled) setClientConsultantsMap(map);
-      })
-      .catch((error) => {
-        console.error("Error fetching client consultants:", error);
-      });
+      clientConsultantsFetch
+        .then((map) => {
+          if (!cancelled) setClientConsultantsMap(map);
+        })
+        .catch((error) => {
+          console.error("Error fetching client consultants:", error);
+        });
+    };
+
+    loadClientConsultants();
+    window.addEventListener(
+      CLIENT_CONSULTANTS_UPDATED_EVENT,
+      loadClientConsultants,
+    );
 
     return () => {
       cancelled = true;
+      window.removeEventListener(
+        CLIENT_CONSULTANTS_UPDATED_EVENT,
+        loadClientConsultants,
+      );
     };
   }, []);
 

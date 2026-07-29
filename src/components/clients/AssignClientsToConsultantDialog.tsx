@@ -18,6 +18,11 @@ import { useClients } from "@/hooks/useClients";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  notifyClientConsultantsUpdated,
+  removeClientConsultantFromStageTasks,
+  syncClientConsultantToMatchingStageTasks,
+} from "@/lib/consultantAssignmentSync";
 
 interface Props {
   open: boolean;
@@ -49,16 +54,37 @@ export function AssignClientsToConsultantDialog({
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("client_consultants")
-        .select("client_id")
-        .eq("consultant_id", consultantId)
-        .eq("status", "active");
+      const [directResult, taskLinksResult] = await Promise.all([
+        supabase
+          .from("client_consultants")
+          .select("client_id")
+          .eq("consultant_id", consultantId)
+          .eq("status", "active"),
+        supabase
+          .from("task_consultants")
+          .select("task_id")
+          .eq("consultant_id", consultantId),
+      ]);
       if (cancelled) return;
-      if (error) {
+      if (directResult.error || taskLinksResult.error) {
         toast.error("שגיאה בטעינת לקוחות משויכים");
       } else {
-        const ids = new Set((data || []).map((r: any) => r.client_id));
+        const ids = new Set(
+          (directResult.data || []).map((row) => row.client_id),
+        );
+        const taskIds = (taskLinksResult.data || []).map((row) => row.task_id);
+        if (taskIds.length > 0) {
+          const { data: taskClients, error: taskClientsError } = await supabase
+            .from("client_stage_tasks")
+            .select("client_id")
+            .in("id", taskIds);
+          if (taskClientsError) {
+            toast.error("שגיאה בטעינת שיוכי היועץ מהמשימות");
+          } else {
+            (taskClients || []).forEach((task) => ids.add(task.client_id));
+          }
+        }
+        if (cancelled) return;
         setSelectedIds(new Set(ids));
         setInitialIds(new Set(ids));
       }
@@ -128,6 +154,11 @@ export function AssignClientsToConsultantDialog({
           .eq("consultant_id", consultantId)
           .in("client_id", toRemove);
         if (error) throw error;
+        await Promise.all(
+          toRemove.map((clientId) =>
+            removeClientConsultantFromStageTasks(clientId, consultantId),
+          ),
+        );
       }
 
       if (toAdd.length > 0) {
@@ -141,8 +172,18 @@ export function AssignClientsToConsultantDialog({
           .from("client_consultants")
           .upsert(rows, { onConflict: "client_id,consultant_id" });
         if (error) throw error;
+        await Promise.all(
+          toAdd.map((clientId) =>
+            syncClientConsultantToMatchingStageTasks(
+              clientId,
+              consultantId,
+              consultantProfession,
+            ),
+          ),
+        );
       }
 
+      notifyClientConsultantsUpdated();
       toast.success(
         `נשמר בהצלחה · נוספו ${toAdd.length} · הוסרו ${toRemove.length}`,
       );

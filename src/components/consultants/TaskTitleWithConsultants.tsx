@@ -13,6 +13,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { ensureStageTaskConsultantIsLinkedToClient } from '@/lib/consultantAssignmentSync';
 
 interface TaskConsultantLink {
   id: string;
@@ -109,6 +110,12 @@ export function TaskTitleWithConsultants({
         .single();
 
       if (error) throw error;
+
+      await ensureStageTaskConsultantIsLinkedToClient(
+        taskId,
+        consultant.id,
+        consultant.profession,
+      );
       
       setTaskConsultants(prev => [...prev, {
         ...data,
