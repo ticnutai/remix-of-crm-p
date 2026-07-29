@@ -26,6 +26,7 @@ import {
 import { format, parseISO, isPast, isToday } from "date-fns";
 import { he } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { TaskElapsedDaysBadge } from "@/components/shared/TaskElapsedDaysBadge";
 
 const priorities = [
   {
@@ -132,6 +133,13 @@ export function TasksGridView({
                 </DropdownMenu>
 
                 <div className="flex items-center gap-2 flex-1 justify-end">
+                  <TaskElapsedDaysBadge
+                    createdAt={task.created_at}
+                    completedAt={task.completed_at}
+                    updatedAt={task.updated_at}
+                    completed={task.status === "completed"}
+                    compact
+                  />
                   <h3
                     className={cn(
                       "font-medium text-sm text-right line-clamp-2",

@@ -20,6 +20,7 @@ import {
 import { format, parseISO, isPast, isToday } from "date-fns";
 import { he } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { TaskElapsedDaysBadge } from "@/components/shared/TaskElapsedDaysBadge";
 import {
   DndContext,
   DragEndEvent,
@@ -138,15 +139,24 @@ const DraggableTaskCard = React.memo(function DraggableTaskCard({
               <Trash2 className="h-3 w-3 text-destructive" />
             </Button>
           </div>
-          <h4
-            className={cn(
-              "text-sm font-medium text-right flex-1 line-clamp-2",
-              task.status === "completed" &&
-                "line-through text-muted-foreground",
-            )}
-          >
-            {cleanTitle(task.title)}
-          </h4>
+          <div className="flex flex-1 items-start justify-end gap-2">
+            <TaskElapsedDaysBadge
+              createdAt={task.created_at}
+              completedAt={task.completed_at}
+              updatedAt={task.updated_at}
+              completed={task.status === "completed"}
+              compact
+            />
+            <h4
+              className={cn(
+                "text-sm font-medium text-right line-clamp-2",
+                task.status === "completed" &&
+                  "line-through text-muted-foreground",
+              )}
+            >
+              {cleanTitle(task.title)}
+            </h4>
+          </div>
         </div>
 
 {task.created_at && (() => {

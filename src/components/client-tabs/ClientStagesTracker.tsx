@@ -27,6 +27,8 @@ import { AddReminderDialog } from '@/components/reminders/AddReminderDialog';
 import { TaskTimerBadge } from './StageTimerDisplay';
 import { TaskClientMessageButton } from './TaskClientMessageButton';
 import { ActivityFollowUpActions } from '@/components/shared/ActivityFollowUpActions';
+import { TaskElapsedDaysBadge } from '@/components/shared/TaskElapsedDaysBadge';
+import { buildStageTaskElapsedStartMap } from '@/lib/stageTaskElapsed';
 
 interface ClientStagesTrackerProps {
   clientId: string;
@@ -62,6 +64,28 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
   const selectedTasksList = useMemo(
     () => stages.flatMap(s => s.tasks || []).filter(t => effectiveSelectedTaskIds.has(t.id)),
     [stages, effectiveSelectedTaskIds],
+  );
+
+  const stageTaskElapsedStarts = useMemo(
+    () =>
+      buildStageTaskElapsedStartMap(
+        stages.map((stage) => ({
+          stageId: stage.stage_id,
+          sortOrder: stage.sort_order,
+          createdAt: stage.created_at,
+          updatedAt: stage.updated_at,
+        })),
+        stages.flatMap((stage) =>
+          (stage.tasks || []).map((task) => ({
+            id: task.id,
+            stageId: task.stage_id,
+            completed: task.completed,
+            createdAt: task.created_at,
+            completedAt: task.completed_at,
+          })),
+        ),
+      ),
+    [stages],
   );
 
   const toggleStageSelection = (stageId: string) => {
@@ -368,6 +392,15 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                       )}
 
                       <div className="flex gap-1 shrink-0 flex-row-reverse">
+                        {stageTaskElapsedStarts[task.id] && (
+                          <TaskElapsedDaysBadge
+                            createdAt={stageTaskElapsedStarts[task.id]}
+                            completedAt={task.completed_at}
+                            updatedAt={task.updated_at}
+                            completed={task.completed}
+                            compact
+                          />
+                        )}
                         <ActivityFollowUpActions
                           entityType="client_stage_task"
                           entityId={task.id}

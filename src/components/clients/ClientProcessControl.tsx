@@ -3,6 +3,8 @@ import { Check, ChevronLeft, Layers, ListChecks, Settings2, X } from "lucide-rea
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TaskClientMessageButton } from "@/components/client-tabs/TaskClientMessageButton";
+import { TaskElapsedDaysBadge } from "@/components/shared/TaskElapsedDaysBadge";
+import { buildStageTaskElapsedStartMap } from "@/lib/stageTaskElapsed";
 
 export interface ClientProcessStage {
   id: string;
@@ -10,6 +12,8 @@ export interface ClientProcessStage {
   name: string;
   sortOrder: number;
   completed: boolean;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface ClientProcessTask {
@@ -17,6 +21,9 @@ export interface ClientProcessTask {
   stageId: string;
   title: string;
   completed: boolean;
+  createdAt?: string | null;
+  completedAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface ClientProcessControlSettings {
@@ -58,6 +65,25 @@ export function ClientProcessControl({
   const orderedStages = useMemo(
     () => [...stages].sort((a, b) => a.sortOrder - b.sortOrder),
     [stages],
+  );
+  const stageTaskElapsedStarts = useMemo(
+    () =>
+      buildStageTaskElapsedStartMap(
+        orderedStages.map((stage) => ({
+          stageId: stage.stageId,
+          sortOrder: stage.sortOrder,
+          createdAt: stage.createdAt,
+          updatedAt: stage.updatedAt,
+        })),
+        tasks.map((task) => ({
+          id: task.id,
+          stageId: task.stageId,
+          completed: task.completed,
+          createdAt: task.createdAt,
+          completedAt: task.completedAt,
+        })),
+      ),
+    [orderedStages, tasks],
   );
   const stageHasTasks = (stage: ClientProcessStage) =>
     tasks.some((task) => task.stageId === stage.stageId);
@@ -320,6 +346,15 @@ export function ClientProcessControl({
                             stageName={stage.name}
                             className="ml-1 opacity-60 transition-opacity group-hover/task:opacity-100"
                           />
+                          {stageTaskElapsedStarts[task.id] && (
+                            <TaskElapsedDaysBadge
+                              createdAt={stageTaskElapsedStarts[task.id]}
+                              completedAt={task.completedAt}
+                              updatedAt={task.updatedAt}
+                              completed={task.completed}
+                              compact
+                            />
+                          )}
                         </div>
                       ))}
                     </section>

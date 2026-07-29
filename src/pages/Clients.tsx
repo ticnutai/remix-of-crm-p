@@ -72,6 +72,8 @@ import {
 } from "@/components/clients/ClientProcessControl";
 import { TaskClientMessageButton } from "@/components/client-tabs/TaskClientMessageButton";
 import { ActivityFollowUpActions } from "@/components/shared/ActivityFollowUpActions";
+import { TaskElapsedDaysBadge } from "@/components/shared/TaskElapsedDaysBadge";
+import { buildStageTaskElapsedStartMap } from "@/lib/stageTaskElapsed";
 import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
@@ -273,6 +275,7 @@ interface ClientStageInfo {
   stage_name: string;
   sort_order: number;
   is_completed: boolean | null;
+  created_at: string;
   updated_at?: string;
 }
 
@@ -283,6 +286,8 @@ interface ClientStageTaskInfo {
   title: string;
   completed: boolean;
   due_date?: string | null;
+  completed_at?: string | null;
+  created_at: string;
   updated_at?: string;
 }
 
@@ -317,6 +322,8 @@ interface ClientTaskActivity {
   title: string;
   due_date: string | null;
   status: string | null;
+  created_at: string;
+  completed_at: string | null;
   updated_at: string;
 }
 
@@ -2201,7 +2208,7 @@ export default function Clients() {
               ),
               fetchAllFilterRows(
                 "client_stage_tasks",
-                "id, client_id, stage_id, title, completed, due_date, created_at, updated_at",
+                "id, client_id, stage_id, title, completed, completed_at, due_date, created_at, updated_at",
               ),
               fetchAllFilterRows(
                 "client_payment_stages",
@@ -2224,7 +2231,7 @@ export default function Clients() {
               supabase
                 .from("tasks")
                 .select(
-                  "id, client_id, created_by, assigned_to, title, due_date, status, updated_at",
+                  "id, client_id, created_by, assigned_to, title, due_date, status, completed_at, created_at, updated_at",
                 )
                 .not("client_id", "is", null)
                 .or(
@@ -2527,7 +2534,7 @@ export default function Clients() {
           sort_order: stageTaskCount,
         } as any)
         .select(
-          "id, client_id, stage_id, title, completed, created_at, updated_at",
+          "id, client_id, stage_id, title, completed, completed_at, created_at, updated_at",
         )
         .single();
 
@@ -3410,12 +3417,17 @@ export default function Clients() {
             name: stage.stage_name,
             sortOrder: stage.sort_order ?? 0,
             completed: Boolean(stage.is_completed),
+            createdAt: stage.created_at,
+            updatedAt: stage.updated_at,
           }))}
           tasks={tasks.map((task) => ({
             id: task.id,
             stageId: task.stage_id,
             title: task.title,
             completed: Boolean(task.completed),
+            completedAt: task.completed_at,
+            createdAt: task.created_at,
+            updatedAt: task.updated_at,
           }))}
           onSettingsChange={setProcessControlSettings}
           onToggleTask={handleToggleStageTask}
@@ -3668,6 +3680,9 @@ export default function Clients() {
               date: item.due_date,
               entityType: "task" as const,
               completed: item.status === "completed",
+              createdAt: item.created_at,
+              completedAt: item.completed_at,
+              updatedAt: item.updated_at,
             })),
           },
           reminders: {
@@ -3680,6 +3695,9 @@ export default function Clients() {
               date: item.remind_at,
               entityType: "reminder" as const,
               completed: Boolean(item.is_dismissed),
+              createdAt: null,
+              completedAt: null,
+              updatedAt: null,
             })),
           },
           meetings: {
@@ -3692,6 +3710,9 @@ export default function Clients() {
               date: item.start_time,
               entityType: "meeting" as const,
               completed: item.status === "completed",
+              createdAt: null,
+              completedAt: null,
+              updatedAt: item.updated_at,
             })),
           },
         }[effectiveTaskViewContent];
@@ -3797,6 +3818,15 @@ export default function Clients() {
                       compact
                       onChanged={fetchFilterData}
                     />
+                    {item.entityType === "task" && (
+                      <TaskElapsedDaysBadge
+                        createdAt={item.createdAt}
+                        completedAt={item.completedAt}
+                        updatedAt={item.updatedAt}
+                        completed={item.completed}
+                        compact
+                      />
+                    )}
                   </div>
                 ))
               )}
@@ -3808,6 +3838,21 @@ export default function Clients() {
       const orderedStages = [...(processStagesByClient.get(client.id) || [])]
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
       const clientTasks = processTasksByClient.get(client.id) || [];
+      const stageTaskElapsedStarts = buildStageTaskElapsedStartMap(
+        orderedStages.map((stage) => ({
+          stageId: stage.stage_id,
+          sortOrder: stage.sort_order ?? 0,
+          createdAt: stage.created_at,
+          updatedAt: stage.updated_at,
+        })),
+        clientTasks.map((task) => ({
+          id: task.id,
+          stageId: task.stage_id,
+          completed: Boolean(task.completed),
+          createdAt: task.created_at,
+          completedAt: task.completed_at,
+        })),
+      );
       const stageGroups = orderedStages
         .map((stage) => ({
           stage,
@@ -3906,6 +3951,15 @@ export default function Clients() {
                           stageName={stage.stage_name}
                           className="ml-1 opacity-60 transition-opacity group-hover/task:opacity-100"
                         />
+                        {stageTaskElapsedStarts[task.id] && (
+                          <TaskElapsedDaysBadge
+                            createdAt={stageTaskElapsedStarts[task.id]}
+                            completedAt={task.completed_at}
+                            updatedAt={task.updated_at}
+                            completed={task.completed}
+                            compact
+                          />
+                        )}
                         <ActivityFollowUpActions
                           entityType="client_stage_task"
                           entityId={task.id}

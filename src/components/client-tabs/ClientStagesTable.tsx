@@ -61,11 +61,13 @@ import { useClientStages, ClientStageTask } from '@/hooks/useClientStages';
 import { AddReminderDialog } from '@/components/reminders/AddReminderDialog';
 import { StageTaskActionsPopup, StageTaskIndicator } from './StageTaskActionsPopup';
 import { ActivityFollowUpActions } from '@/components/shared/ActivityFollowUpActions';
+import { TaskElapsedDaysBadge } from '@/components/shared/TaskElapsedDaysBadge';
 import { TaskPaymentBadge } from './TaskPaymentBadge';
 import { DayCounterCell } from '@/components/tables/DayCounterCell';
 import { format, parseISO } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
+import { buildStageTaskElapsedStartMap } from '@/lib/stageTaskElapsed';
 
 // Predefined colors for background and text
 const BACKGROUND_COLORS = [
@@ -128,6 +130,28 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingTask, setEditingTask] = useState<{ taskId: string; title: string } | null>(null);
   const [editingDate, setEditingDate] = useState<string | null>(null);
+
+  const stageTaskElapsedStarts = useMemo(
+    () =>
+      buildStageTaskElapsedStartMap(
+        stages.map((stage) => ({
+          stageId: stage.stage_id,
+          sortOrder: stage.sort_order,
+          createdAt: stage.created_at,
+          updatedAt: stage.updated_at,
+        })),
+        stages.flatMap((stage) =>
+          (stage.tasks || []).map((task) => ({
+            id: task.id,
+            stageId: task.stage_id,
+            completed: task.completed,
+            createdAt: task.created_at,
+            completedAt: task.completed_at,
+          })),
+        ),
+      ),
+    [stages],
+  );
 
   // Flatten all tasks with stage info
   const allTasks = useMemo(() => {
@@ -546,6 +570,15 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                     
                     <TableCell>
                       <div className="flex items-center justify-center gap-1">
+                        {stageTaskElapsedStarts[task.id] && (
+                          <TaskElapsedDaysBadge
+                            createdAt={stageTaskElapsedStarts[task.id]}
+                            completedAt={task.completed_at}
+                            updatedAt={task.updated_at}
+                            completed={task.completed}
+                            compact
+                          />
+                        )}
                         <ActivityFollowUpActions
                           entityType="client_stage_task"
                           entityId={task.id}

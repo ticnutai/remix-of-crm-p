@@ -12,6 +12,7 @@ import {
 import { format, parseISO, isPast, isToday, isTomorrow, isThisWeek, isThisMonth, startOfDay, differenceInDays } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { TaskElapsedDaysBadge } from '@/components/shared/TaskElapsedDaysBadge';
 
 interface TimelineItem {
   id: string;
@@ -192,6 +193,15 @@ export function TasksTimelineView({
                               )}>
                                 {item.title}
                               </h4>
+                              {isTask && task && (
+                                <TaskElapsedDaysBadge
+                                  createdAt={task.created_at}
+                                  completedAt={task.completed_at}
+                                  updatedAt={task.updated_at}
+                                  completed={task.status === 'completed'}
+                                  compact
+                                />
+                              )}
                             </div>
 
                             {isTask && task?.created_at && (() => {

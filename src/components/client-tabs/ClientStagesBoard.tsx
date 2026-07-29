@@ -125,6 +125,8 @@ import { useClientFolders } from "@/hooks/useClientFolders";
 import { TaskPaymentBadge } from "./TaskPaymentBadge";
 import { TaskClientMessageButton } from "./TaskClientMessageButton";
 import { ActivityFollowUpActions } from "@/components/shared/ActivityFollowUpActions";
+import { TaskElapsedDaysBadge } from "@/components/shared/TaskElapsedDaysBadge";
+import { buildStageTaskElapsedStartMap } from "@/lib/stageTaskElapsed";
 import { Folder, FolderPlus, ChevronRight, ChevronLeft } from "lucide-react";
 import { useClients } from "@/hooks/useClients";
 import { supabase } from "@/integrations/supabase/client";
@@ -592,6 +594,7 @@ const createStageThemeDraft = (base?: StageBoardTheme): StageBoardTheme => {
 interface SortableTaskProps {
   task: ClientStageTask;
   stage: ClientStage;
+  elapsedStartAt?: string;
   index: number;
   showTaskCount: boolean;
   clientId: string;
@@ -634,6 +637,7 @@ const isTimerTabTask = (task: ClientStageTask) =>
 const SortableTaskItem = React.memo(function SortableTaskItem({
   task,
   stage,
+  elapsedStartAt,
   index,
   showTaskCount,
   clientId,
@@ -880,6 +884,15 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
               taskTitle={task.title}
               stageName={stage.stage_name}
             />
+            {elapsedStartAt && (
+              <TaskElapsedDaysBadge
+                createdAt={elapsedStartAt}
+                completedAt={task.completed_at}
+                updatedAt={task.updated_at}
+                completed={task.completed}
+                compact
+              />
+            )}
             <ActivityFollowUpActions
               entityType="client_stage_task"
               entityId={task.id}
@@ -1571,6 +1584,7 @@ interface SortableExpandedTaskProps {
   task: ClientStageTask;
   stageId: string;
   stageName?: string;
+  elapsedStartAt?: string;
   index: number;
   showTaskCount: boolean;
   clientId: string;
@@ -1595,6 +1609,7 @@ function SortableExpandedTaskItem({
   task,
   stageId,
   stageName,
+  elapsedStartAt,
   index,
   showTaskCount,
   clientId,
@@ -1782,6 +1797,15 @@ function SortableExpandedTaskItem({
             </Button>
           }
         />
+        {elapsedStartAt && (
+          <TaskElapsedDaysBadge
+            createdAt={elapsedStartAt}
+            completedAt={task.completed_at}
+            updatedAt={task.updated_at}
+            completed={task.completed}
+            compact
+          />
+        )}
         <ActivityFollowUpActions
           entityType="client_stage_task"
           entityId={task.id}
@@ -2394,9 +2418,35 @@ export function ClientStagesBoard({
   };
 
   // Filter stages by selected folder (no folder = show ALL stages)
-  const stages = selectedFolderId
-    ? allStages.filter((s) => s.folder_id === selectedFolderId)
-    : allStages;
+  const stages = useMemo(
+    () =>
+      selectedFolderId
+        ? allStages.filter((stage) => stage.folder_id === selectedFolderId)
+        : allStages,
+    [allStages, selectedFolderId],
+  );
+
+  const stageTaskElapsedStarts = useMemo(
+    () =>
+      buildStageTaskElapsedStartMap(
+        stages.map((stage) => ({
+          stageId: stage.stage_id,
+          sortOrder: stage.sort_order,
+          createdAt: stage.created_at,
+          updatedAt: stage.updated_at,
+        })),
+        stages.flatMap((stage) =>
+          (stage.tasks || []).map((task) => ({
+            id: task.id,
+            stageId: task.stage_id,
+            completed: task.completed,
+            createdAt: task.created_at,
+            completedAt: task.completed_at,
+          })),
+        ),
+      ),
+    [stages],
+  );
 
   useEffect(() => {
     if (!clientId || !linkedProjectTemplateId || loading) return;
@@ -4487,6 +4537,7 @@ export function ClientStagesBoard({
                             key={task.id}
                             task={task}
                             stage={stage}
+                            elapsedStartAt={stageTaskElapsedStarts[task.id]}
                             index={index}
                             showTaskCount={
                               showTaskCount[stage.stage_id] || false
@@ -4944,6 +4995,7 @@ export function ClientStagesBoard({
                                     task={task}
                                     stageId={expandedStageData.stage_id}
                                     stageName={expandedStageData.stage_name}
+                                    elapsedStartAt={stageTaskElapsedStarts[task.id]}
                                     index={index}
                                     showTaskCount={
                                       showTaskCount[
@@ -5121,6 +5173,15 @@ export function ClientStagesBoard({
                                           </Button>
                                         }
                                       />
+                                      {stageTaskElapsedStarts[task.id] && (
+                                        <TaskElapsedDaysBadge
+                                          createdAt={stageTaskElapsedStarts[task.id]}
+                                          completedAt={task.completed_at}
+                                          updatedAt={task.updated_at}
+                                          completed={task.completed}
+                                          compact
+                                        />
+                                      )}
                                       <ActivityFollowUpActions
                                         entityType="client_stage_task"
                                         entityId={task.id}

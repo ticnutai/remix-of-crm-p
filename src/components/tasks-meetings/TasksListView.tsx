@@ -26,6 +26,7 @@ import { format, parseISO, isPast, isToday } from "date-fns";
 import { he } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { ActivityFollowUpActions } from "@/components/shared/ActivityFollowUpActions";
+import { TaskElapsedDaysBadge } from "@/components/shared/TaskElapsedDaysBadge";
 import {
   DndContext,
   closestCenter,
@@ -164,6 +165,13 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = React.memo(
                 >
                   {cleanTitle(task.title)}
                 </h3>
+                <TaskElapsedDaysBadge
+                  createdAt={task.created_at}
+                  completedAt={task.completed_at}
+                  updatedAt={task.updated_at}
+                  completed={task.status === "completed"}
+                  compact
+                />
               </div>
 
 {task.created_at && (() => {

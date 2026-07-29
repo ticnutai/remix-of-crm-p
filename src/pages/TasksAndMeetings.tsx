@@ -67,6 +67,7 @@ import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeti
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
 import { DedupToggleButton } from "@/components/DedupToggleButton";
 import { UserFilterMenu, useUserFilter } from "@/components/shared/UserFilterMenu";
+import { TaskElapsedDaysBadge } from "@/components/shared/TaskElapsedDaysBadge";
 import {
   ClientGroupingToggle,
   groupItemsByClient,
@@ -1251,6 +1252,13 @@ const TasksAndMeetings = () => {
                             </p>
                           )}
                         </div>
+                        <TaskElapsedDaysBadge
+                          createdAt={task.created_at}
+                          completedAt={task.completed_at}
+                          updatedAt={task.updated_at}
+                          completed={task.status === "completed"}
+                          compact
+                        />
                         <button
                           type="button"
                           className={`shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors ${
