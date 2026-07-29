@@ -52,6 +52,16 @@ const resolvePortalUrl = (value: unknown) => {
   }
 };
 
+const randomTemporaryPassword = () =>
+  `${crypto.randomUUID()}-${crypto.randomUUID()}`;
+
+const privilegedRoles = new Set([
+  "admin",
+  "super_manager",
+  "manager",
+  "employee",
+]);
+
 const clientPhones = (client: Record<string, unknown>) => {
   const values = [client.phone, client.phone_secondary, client.whatsapp];
   if (Array.isArray(client.additional_phones)) values.push(...client.additional_phones);
@@ -187,16 +197,148 @@ serve(async (req) => {
 
     const resolvedPortalUrl = resolvePortalUrl(portalUrl);
     const normalizedEmail = String(client.email).trim().toLowerCase();
+    const effectiveTemporaryPassword = temporaryPassword
+      ? String(temporaryPassword).replace(/\s/g, "")
+      : channel === "whatsapp"
+        ? normalizeLocalPhone(phoneNumber || client.phone)
+        : "";
+
+    if (effectiveTemporaryPassword && effectiveTemporaryPassword.length < 6) {
+      return json({ error: "Temporary password must contain at least 6 characters" }, 400);
+    }
+
+    const linkedUserId = client.user_id;
     const { data: authUserData, error: authUserError } =
       await admin.auth.admin.getUserById(client.user_id);
     if (authUserError || !authUserData.user) {
       return json({ error: "Client portal user was not found" }, 404);
     }
 
-    const currentAuthEmail = String(authUserData.user.email || "").trim().toLowerCase();
+    const { data: linkedRoleRows, error: linkedRolesError } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", linkedUserId);
+    if (linkedRolesError) throw linkedRolesError;
+
+    const linkedRoles = (linkedRoleRows || []).map(({ role }) => String(role));
+    const isSharedSystemAccount = linkedRoles.some((role) => privilegedRoles.has(role));
+
+    let portalUser = authUserData.user;
+    let portalUserId = linkedUserId;
+    let currentAuthEmail = String(portalUser.email || "").trim().toLowerCase();
+
+    if (isSharedSystemAccount) {
+      const { data: employee } = await admin
+        .from("employees")
+        .select("email")
+        .or(`user_id.eq.${linkedUserId},profile_id.eq.${linkedUserId}`)
+        .not("email", "is", null)
+        .limit(1)
+        .maybeSingle();
+      const employeeEmail = String(employee?.email || "").trim().toLowerCase();
+
+      if (
+        !employeeEmail ||
+        employeeEmail === normalizedEmail ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(employeeEmail)
+      ) {
+        return json({
+          error:
+            "חשבון הפורטל מקושר למשתמש מערכת. יש לעדכן תחילה את כתובת האימייל של העובד כדי ליצור חשבון לקוח נפרד.",
+          code: "PORTAL_ACCOUNT_COLLISION",
+        }, 409);
+      }
+
+      let restoredSystemEmail = false;
+      let createdPortalUserId: string | null = null;
+      try {
+        if (currentAuthEmail === normalizedEmail) {
+          const { error: restoreAuthError } = await admin.auth.admin.updateUserById(
+            linkedUserId,
+            { email: employeeEmail, email_confirm: true },
+          );
+          if (restoreAuthError) throw restoreAuthError;
+          restoredSystemEmail = true;
+
+          const { error: restoreProfileError } = await admin
+            .from("profiles")
+            .update({ email: employeeEmail })
+            .eq("id", linkedUserId);
+          if (restoreProfileError) throw restoreProfileError;
+        }
+
+        const { data: createdUserData, error: createUserError } =
+          await admin.auth.admin.createUser({
+            email: normalizedEmail,
+            password: effectiveTemporaryPassword || randomTemporaryPassword(),
+            email_confirm: true,
+            user_metadata: {
+              full_name: client.name || normalizedEmail,
+              must_change_password: Boolean(effectiveTemporaryPassword),
+            },
+          });
+        if (createUserError || !createdUserData.user) {
+          throw createUserError || new Error("Failed to create dedicated client portal user");
+        }
+
+        portalUser = createdUserData.user;
+        portalUserId = portalUser.id;
+        createdPortalUserId = portalUserId;
+        currentAuthEmail = normalizedEmail;
+
+        const { error: roleInsertError } = await admin
+          .from("user_roles")
+          .upsert(
+            { user_id: portalUserId, role: "client" },
+            { onConflict: "user_id,role" },
+          );
+        if (roleInsertError) throw roleInsertError;
+
+        const { error: profileSetupError } = await admin
+          .from("profiles")
+          .update({
+            email: normalizedEmail,
+            full_name: client.name || normalizedEmail,
+            approval_status: "approved",
+            is_active: true,
+            approved_at: new Date().toISOString(),
+            approved_by: caller.id,
+          })
+          .eq("id", portalUserId);
+        if (profileSetupError) throw profileSetupError;
+
+        const { error: clientLinkError } = await admin
+          .from("clients")
+          .update({ user_id: portalUserId })
+          .eq("id", client.id);
+        if (clientLinkError) throw clientLinkError;
+
+        await admin
+          .from("user_roles")
+          .delete()
+          .eq("user_id", linkedUserId)
+          .eq("role", "client");
+      } catch (separationError) {
+        if (createdPortalUserId) {
+          await admin.auth.admin.deleteUser(createdPortalUserId);
+        }
+        if (restoredSystemEmail && currentAuthEmail) {
+          await admin.auth.admin.updateUserById(
+            linkedUserId,
+            { email: normalizedEmail, email_confirm: true },
+          );
+          await admin
+            .from("profiles")
+            .update({ email: normalizedEmail })
+            .eq("id", linkedUserId);
+        }
+        throw separationError;
+      }
+    }
+
     if (currentAuthEmail !== normalizedEmail) {
       const { error: authEmailError } = await admin.auth.admin.updateUserById(
-        client.user_id,
+        portalUserId,
         { email: normalizedEmail, email_confirm: true },
       );
       if (authEmailError) {
@@ -210,11 +352,11 @@ serve(async (req) => {
       const { error: profileEmailError } = await admin
         .from("profiles")
         .update({ email: normalizedEmail })
-        .eq("id", client.user_id);
+        .eq("id", portalUserId);
       if (profileEmailError) {
         if (currentAuthEmail) {
           await admin.auth.admin.updateUserById(
-            client.user_id,
+            portalUserId,
             { email: currentAuthEmail, email_confirm: true },
           );
         }
@@ -222,22 +364,13 @@ serve(async (req) => {
       }
     }
 
-    const effectiveTemporaryPassword = temporaryPassword
-      ? String(temporaryPassword).replace(/\s/g, "")
-      : channel === "whatsapp"
-        ? normalizeLocalPhone(phoneNumber || client.phone)
-        : "";
-
     if (effectiveTemporaryPassword) {
-      if (effectiveTemporaryPassword.length < 6) {
-        return json({ error: "Temporary password must contain at least 6 characters" }, 400);
-      }
       const { error: passwordError } = await admin.auth.admin.updateUserById(
-        client.user_id,
+        portalUserId,
         {
           password: effectiveTemporaryPassword,
           user_metadata: {
-            ...(authUserData.user.user_metadata || {}),
+            ...(portalUser.user_metadata || {}),
             must_change_password: true,
           },
         },
@@ -293,7 +426,7 @@ serve(async (req) => {
             <div style="background:#f8fafc;border-right:4px solid #d6a934;padding:16px;border-radius:8px">
               <span style="color:#64748b">שם משתמש:</span><div style="direction:ltr;font-weight:600">${safeEmail}</div>${passwordBlock}
             </div>
-            <div style="text-align:center;margin:28px"><a href="${escapeHtml(actionUrl)}" style="background:#17365f;color:#fff;padding:13px 28px;border-radius:8px;text-decoration:none;font-weight:700">${temporaryPassword ? "כניסה לפורטל" : "הגדרת סיסמה וכניסה"}</a></div>
+            <div style="text-align:center;margin:28px"><a href="${escapeHtml(actionUrl)}" style="background:#17365f;color:#fff;padding:13px 28px;border-radius:8px;text-decoration:none;font-weight:700">${effectiveTemporaryPassword ? "כניסה לפורטל" : "הגדרת סיסמה וכניסה"}</a></div>
             <p style="font-size:13px;color:#64748b">מטעמי אבטחה אין להעביר את ההודעה לאחרים.</p>
           </div>
         </div></body></html>`,
