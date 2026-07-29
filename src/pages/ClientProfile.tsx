@@ -1593,14 +1593,29 @@ export default function ClientProfile() {
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row items-start justify-between gap-6">
               {/* Right side - Client info */}
-              <div className="flex items-center gap-4 w-full md:w-auto">
+              <div className="flex items-start gap-4 w-full md:flex-1">
                 <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] flex items-center justify-center shadow-lg flex-shrink-0">
                   <Building className="h-8 w-8 text-[hsl(45,70%,55%)]" />
                 </div>
-                <div className="text-right flex-1">
-                  <h1 className="text-2xl font-bold text-foreground">
-                    {client.name}
-                  </h1>
+                <div className="min-w-0 text-right flex-1">
+                  {isAdmin || isManager ? (
+                    <button
+                      type="button"
+                      onClick={handleEditClick}
+                      className="group/client-title inline-flex max-w-full items-center gap-2 rounded-lg px-1 py-0.5 text-right transition-colors hover:bg-[hsl(45,70%,55%)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(45,70%,45%)]"
+                      title="עריכת פרטי הלקוח"
+                      aria-label={`עריכת פרטי הלקוח ${client.name}`}
+                    >
+                      <span className="truncate text-2xl font-bold text-foreground">
+                        {client.name}
+                      </span>
+                      <Pencil className="h-4 w-4 shrink-0 text-[hsl(45,70%,42%)] opacity-0 transition-opacity group-hover/client-title:opacity-100 group-focus-visible/client-title:opacity-100" />
+                    </button>
+                  ) : (
+                    <h1 className="truncate text-2xl font-bold text-foreground">
+                      {client.name}
+                    </h1>
+                  )}
                   {client.company && (
                     <p className="text-muted-foreground font-medium">
                       {client.company}
@@ -1613,6 +1628,41 @@ export default function ClientProfile() {
                         {client.stage}
                       </Badge>
                     )}
+                  </div>
+
+                  <div className="mt-4 max-w-xl rounded-xl border border-[hsl(222,47%,25%)]/15 bg-gradient-to-l from-[hsl(45,70%,55%)]/10 to-muted/20 p-3">
+                    <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                      <MapPin className="h-3.5 w-3.5 text-[hsl(45,70%,42%)]" />
+                      <span>פרטי הנכס</span>
+                    </div>
+                    <div className="grid grid-cols-3 divide-x divide-x-reverse divide-border/60 overflow-hidden rounded-lg border border-border/50 bg-background/80">
+                      {[
+                        { label: "גוש", value: client.gush },
+                        { label: "חלקה", value: client.helka },
+                        { label: "מגרש", value: client.migrash },
+                      ].map((property) => (
+                        <div
+                          key={property.label}
+                          className="min-w-0 px-3 py-2 text-center"
+                        >
+                          <span className="block text-[10px] font-medium text-muted-foreground">
+                            {property.label}
+                          </span>
+                          <span
+                            className={`mt-0.5 block truncate text-sm font-bold ${
+                              property.value
+                                ? "text-foreground"
+                                : "font-medium text-muted-foreground/60"
+                            }`}
+                            title={
+                              property.value || `${property.label} לא הוזן`
+                            }
+                          >
+                            {property.value || "לא הוזן"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
