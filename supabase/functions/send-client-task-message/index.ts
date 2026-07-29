@@ -38,6 +38,133 @@ function fallbackUrl(channel: Channel, phone: string, message: string): string {
   return `sms:+${phone}?body=${encodeURIComponent(message)}`;
 }
 
+type SendResult =
+  | { ok: true; provider: string; providerMessageId: string | null }
+  | { ok: false; provider: string; error: string };
+
+// ================= PROVIDER 1: Personal Twilio (user's own account) =================
+async function sendViaPersonalTwilio(
+  channel: Channel,
+  phone: string,
+  message: string,
+  creds: { accountSid?: string; authToken?: string; from?: string },
+): Promise<SendResult | null> {
+  const { accountSid, authToken, from } = creds;
+  if (!accountSid || !authToken || !from) return null; // signal: not configured
+
+  const params = new URLSearchParams({
+    From: channel === "whatsapp" ? `whatsapp:${from}` : from,
+    To: channel === "whatsapp" ? `whatsapp:+${phone}` : `+${phone}`,
+    Body: message,
+  });
+
+  try {
+    const res = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}`,
+        },
+        body: params.toString(),
+      },
+    );
+    const body = await res.json().catch(() => ({} as any));
+    if (res.ok) {
+      return { ok: true, provider: "twilio_personal", providerMessageId: body?.sid ?? null };
+    }
+    return {
+      ok: false,
+      provider: "twilio_personal",
+      error: body?.message || `Twilio personal rejected (${res.status})`,
+    };
+  } catch (err) {
+    return { ok: false, provider: "twilio_personal", error: (err as Error).message };
+  }
+}
+
+// ================= PROVIDER 2: GatewayAPI (Lovable connector, SMS only) =================
+async function sendViaGatewayAPI(
+  phone: string,
+  message: string,
+  senderName: string,
+): Promise<SendResult | null> {
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  const connKey = Deno.env.get("GATEWAYAPI_API_KEY");
+  if (!lovableKey || !connKey) return null;
+
+  try {
+    const res = await fetch("https://connector-gateway.lovable.dev/gatewayapi/mobile/single", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${lovableKey}`,
+        "X-Connection-Api-Key": connKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: senderName.slice(0, 11),
+        recipient: Number(phone),
+        message,
+      }),
+    });
+    const body = await res.json().catch(() => ({} as any));
+    if (res.ok) {
+      const id = body?.ids?.[0] ?? body?.id ?? null;
+      return { ok: true, provider: "gatewayapi_lovable", providerMessageId: id ? String(id) : null };
+    }
+    return {
+      ok: false,
+      provider: "gatewayapi_lovable",
+      error: body?.message || body?.error || `GatewayAPI rejected (${res.status})`,
+    };
+  } catch (err) {
+    return { ok: false, provider: "gatewayapi_lovable", error: (err as Error).message };
+  }
+}
+
+// ================= PROVIDER 3: Twilio Connector (Lovable managed, WhatsApp) =================
+async function sendViaTwilioConnector(
+  channel: Channel,
+  phone: string,
+  message: string,
+  from: string | undefined,
+): Promise<SendResult | null> {
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  const connKey = Deno.env.get("TWILIO_API_KEY");
+  if (!lovableKey || !connKey || !from) return null;
+
+  const params = new URLSearchParams({
+    From: channel === "whatsapp" ? `whatsapp:${from}` : from,
+    To: channel === "whatsapp" ? `whatsapp:+${phone}` : `+${phone}`,
+    Body: message,
+  });
+
+  try {
+    // Gateway automatically prepends /2010-04-01/Accounts/{AccountSid}
+    const res = await fetch("https://connector-gateway.lovable.dev/twilio/Messages.json", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${lovableKey}`,
+        "X-Connection-Api-Key": connKey,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    });
+    const body = await res.json().catch(() => ({} as any));
+    if (res.ok) {
+      return { ok: true, provider: "twilio_lovable", providerMessageId: body?.sid ?? null };
+    }
+    return {
+      ok: false,
+      provider: "twilio_lovable",
+      error: body?.message || `Twilio connector rejected (${res.status})`,
+    };
+  } catch (err) {
+    return { ok: false, provider: "twilio_lovable", error: (err as Error).message };
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -103,7 +230,8 @@ serve(async (req) => {
       .eq("stage_id", task.stage_id)
       .maybeSingle();
 
-    const { data: credentialRows } = await admin
+    // Load personal Twilio credentials + fallback config from platform_settings
+    const { data: settingsRows } = await admin
       .from("platform_settings")
       .select("key,value")
       .in("key", [
@@ -111,56 +239,61 @@ serve(async (req) => {
         "twilio:TWILIO_AUTH_TOKEN",
         "twilio:TWILIO_PHONE_NUMBER",
         "twilio:TWILIO_WHATSAPP_NUMBER",
+        "gatewayapi:SENDER_NAME",
+        "lovable_twilio:WHATSAPP_FROM",
+        "lovable_twilio:SMS_FROM",
       ]);
-    const credentials = new Map(
-      (credentialRows || []).map((row: { key: string; value: string }) => [row.key, row.value]),
+    const settings = new Map(
+      (settingsRows || []).map((row: { key: string; value: string }) => [row.key, row.value]),
     );
-    const accountSid = credentials.get("twilio:TWILIO_ACCOUNT_SID");
-    const authToken = credentials.get("twilio:TWILIO_AUTH_TOKEN");
-    const from = channel === "whatsapp"
-      ? credentials.get("twilio:TWILIO_WHATSAPP_NUMBER")
-      : credentials.get("twilio:TWILIO_PHONE_NUMBER");
-    const appUrl = fallbackUrl(channel, phone, cleanMessage);
 
-    if (!accountSid || !authToken || !from) {
-      return respond({
-        success: true,
-        mode: "app",
-        fallbackUrl: appUrl,
-        reason: "provider_not_configured",
-      });
-    }
+    const personalCreds = {
+      accountSid: settings.get("twilio:TWILIO_ACCOUNT_SID"),
+      authToken: settings.get("twilio:TWILIO_AUTH_TOKEN"),
+      from: channel === "whatsapp"
+        ? settings.get("twilio:TWILIO_WHATSAPP_NUMBER")
+        : settings.get("twilio:TWILIO_PHONE_NUMBER"),
+    };
+    const senderName = settings.get("gatewayapi:SENDER_NAME") || "CRM";
+    const lovableTwilioFrom = channel === "whatsapp"
+      ? settings.get("lovable_twilio:WHATSAPP_FROM")
+      : settings.get("lovable_twilio:SMS_FROM");
 
-    let status: "sent" | "failed" = "failed";
-    const provider = "twilio";
-    let providerMessageId: string | null = null;
-    let providerError: string | null = null;
+    const attempts: Array<{ provider: string; error?: string; ok: boolean }> = [];
+    let finalResult: SendResult | null = null;
 
-    const params = new URLSearchParams({
-      From: channel === "whatsapp" ? `whatsapp:${from}` : from,
-      To: channel === "whatsapp" ? `whatsapp:+${phone}` : `+${phone}`,
-      Body: cleanMessage,
-    });
-    const twilioResponse = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}`,
-        },
-        body: params.toString(),
-      },
-    );
-    const twilioBody = await twilioResponse.json().catch(() => ({}));
-    if (twilioResponse.ok) {
-      status = "sent";
-      providerMessageId = typeof twilioBody.sid === "string" ? twilioBody.sid : null;
+    // ==== 1. Try Personal Twilio ====
+    const personal = await sendViaPersonalTwilio(channel, phone, cleanMessage, personalCreds);
+    if (personal) {
+      attempts.push({ provider: personal.provider, ok: personal.ok, error: personal.ok ? undefined : personal.error });
+      if (personal.ok) finalResult = personal;
     } else {
-      providerError = typeof twilioBody.message === "string"
-        ? twilioBody.message
-        : "Twilio rejected the message";
+      attempts.push({ provider: "twilio_personal", ok: false, error: "not_configured" });
     }
+
+    // ==== 2. Fallback to Lovable connector if personal failed/missing ====
+    if (!finalResult) {
+      const lovable = channel === "sms"
+        ? await sendViaGatewayAPI(phone, cleanMessage, senderName)
+        : await sendViaTwilioConnector(channel, phone, cleanMessage, lovableTwilioFrom);
+
+      if (lovable) {
+        attempts.push({ provider: lovable.provider, ok: lovable.ok, error: lovable.ok ? undefined : lovable.error });
+        if (lovable.ok) finalResult = lovable;
+      } else {
+        attempts.push({
+          provider: channel === "sms" ? "gatewayapi_lovable" : "twilio_lovable",
+          ok: false,
+          error: "not_configured",
+        });
+      }
+    }
+
+    const appUrl = fallbackUrl(channel, phone, cleanMessage);
+    const status: "sent" | "failed" = finalResult?.ok ? "sent" : "failed";
+    const provider = finalResult?.ok ? finalResult.provider : (attempts[0]?.provider || "none");
+    const providerMessageId = finalResult?.ok ? finalResult.providerMessageId : null;
+    const lastError = attempts.filter((a) => !a.ok).map((a) => `${a.provider}: ${a.error}`).join(" | ") || null;
 
     const { error: logError } = await admin.from("client_task_message_log").insert({
       client_id: clientId,
@@ -173,20 +306,27 @@ serve(async (req) => {
       status,
       provider,
       provider_message_id: providerMessageId,
-      error_message: providerError,
+      error_message: status === "sent" ? null : lastError,
       sent_by: authData.user.id,
       sent_at: status === "sent" ? new Date().toISOString() : null,
     });
     if (logError) console.error("Failed to write task message log", logError.message);
 
     if (status === "sent") {
-      return respond({ success: true, mode: "provider", provider, providerMessageId });
+      return respond({
+        success: true,
+        mode: "provider",
+        provider,
+        providerMessageId,
+        attempts,
+      });
     }
     return respond({
-      success: status !== "failed",
+      success: false,
       mode: "app",
       fallbackUrl: appUrl,
-      error: providerError,
+      error: lastError || "לא הצלחנו לשלוח דרך אף אחד מהערוצים",
+      attempts,
     });
   } catch (error) {
     console.error("send-client-task-message failed", error);
