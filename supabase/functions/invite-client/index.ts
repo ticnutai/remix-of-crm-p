@@ -165,11 +165,47 @@ serve(async (req) => {
       return json({ error: "Client portal account was not found" }, 404);
     }
 
+    const normalizedEmail = String(client.email).trim().toLowerCase();
+    const { data: authUserData, error: authUserError } =
+      await admin.auth.admin.getUserById(client.user_id);
+    if (authUserError || !authUserData.user) {
+      return json({ error: "Client portal user was not found" }, 404);
+    }
+
+    const currentAuthEmail = String(authUserData.user.email || "").trim().toLowerCase();
+    if (currentAuthEmail !== normalizedEmail) {
+      const { error: authEmailError } = await admin.auth.admin.updateUserById(
+        client.user_id,
+        { email: normalizedEmail, email_confirm: true },
+      );
+      if (authEmailError) {
+        return json({
+          error: authEmailError.message.includes("already")
+            ? "כתובת האימייל החדשה כבר משויכת לחשבון אחר"
+            : `עדכון שם המשתמש נכשל: ${authEmailError.message}`,
+        }, 400);
+      }
+
+      const { error: profileEmailError } = await admin
+        .from("profiles")
+        .update({ email: normalizedEmail })
+        .eq("id", client.user_id);
+      if (profileEmailError) {
+        if (currentAuthEmail) {
+          await admin.auth.admin.updateUserById(
+            client.user_id,
+            { email: currentAuthEmail, email_confirm: true },
+          );
+        }
+        throw profileEmailError;
+      }
+    }
+
     let actionUrl = portalUrl;
     if (!temporaryPassword) {
       const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
         type: "recovery",
-        email: client.email,
+        email: normalizedEmail,
         options: { redirectTo: portalUrl },
       });
       if (linkError) throw linkError;
@@ -177,7 +213,7 @@ serve(async (req) => {
     }
 
     const safeName = escapeHtml(client.name || "לקוח/ה");
-    const safeEmail = escapeHtml(client.email);
+    const safeEmail = escapeHtml(normalizedEmail);
     const safeBusiness = escapeHtml(String(businessName));
     const passwordBlock = temporaryPassword
       ? `<div style="margin-top:12px"><span style="color:#64748b">סיסמה זמנית:</span>
@@ -185,8 +221,8 @@ serve(async (req) => {
       : `<p style="color:#475569;line-height:1.6">לחיצה על הכפתור תאפשר לבחור סיסמה אישית ומיד לאחר מכן להיכנס לפורטל.</p>`;
 
     const accessMessage = temporaryPassword
-      ? `שלום ${client.name},\nנפתחה עבורך גישה לפורטל הלקוחות של ${businessName}.\n\nשם משתמש: ${client.email}\nסיסמה זמנית: ${temporaryPassword}\nכניסה: ${portalUrl}\n\nבכניסה הראשונה יש לבחור סיסמה חדשה.`
-      : `שלום ${client.name},\nנפתחה עבורך גישה מאובטחת לפורטל הלקוחות של ${businessName}.\n\nשם משתמש: ${client.email}\nלהגדרת סיסמה ולכניסה לפורטל:\n${actionUrl}\n\nהקישור אישי ואין להעבירו לאחרים.`;
+      ? `שלום ${client.name},\nנפתחה עבורך גישה לפורטל הלקוחות של ${businessName}.\n\nשם משתמש: ${normalizedEmail}\nסיסמה זמנית: ${temporaryPassword}\nכניסה: ${portalUrl}\n\nבכניסה הראשונה יש לבחור סיסמה חדשה.`
+      : `שלום ${client.name},\nנפתחה עבורך גישה מאובטחת לפורטל הלקוחות של ${businessName}.\n\nשם משתמש: ${normalizedEmail}\nלהגדרת סיסמה ולכניסה לפורטל:\n${actionUrl}\n\nהקישור אישי ואין להעבירו לאחרים.`;
 
     if (channel === "whatsapp") {
       const phone = normalizePhone(phoneNumber || client.whatsapp || client.phone);
@@ -203,7 +239,7 @@ serve(async (req) => {
     const resend = new Resend(resendKey);
     const response = await resend.emails.send({
       from: Deno.env.get("RESEND_FROM") || `${safeBusiness} <onboarding@resend.dev>`,
-      to: [client.email],
+      to: [normalizedEmail],
       subject: `הגישה שלך לפורטל הלקוחות של ${businessName}`,
       html: `<html dir="rtl" lang="he"><body style="font-family:Arial,sans-serif;background:#f8fafc;padding:24px;color:#0f172a">
         <div style="max-width:600px;margin:auto;background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden">
