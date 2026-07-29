@@ -811,6 +811,23 @@ export function ClientsFilterStrip({
     setStagesDialogOpen(true);
   };
 
+  const applyQuickTemplateFilter = (templateId: string) => {
+    const templateOnlySelected =
+      (filters.stageTemplateIds || []).length === 1 &&
+      filters.stageTemplateIds[0] === templateId &&
+      (filters.stageSelections || []).length === 0 &&
+      (filters.stageTaskFilters || []).length === 0;
+
+    onFiltersChange({
+      ...filters,
+      stages: [],
+      stageSelections: [],
+      stageTaskFilters: [],
+      stageTemplateIds: templateOnlySelected ? [] : [templateId],
+    });
+    closeStagesDialog();
+  };
+
   const closeStagesDialog = () => {
     setStagesDialogOpen(false);
     setActiveStageTemplateId(null);
@@ -2570,7 +2587,7 @@ export function ClientsFilterStrip({
                 בחירת תהליך מהירה
               </p>
               <p className="text-[10px] text-slate-500">
-                לחיצה על תהליך תציג את כל השלבים שלו
+                לחיצה על שם התהליך מסננת לקוחות; האייקון פותח שלבים ומשימות
               </p>
             </div>
             <Button
@@ -2613,47 +2630,60 @@ export function ClientsFilterStrip({
                   ).includes(template.id);
 
                   return (
-                    <button
+                    <div
                       key={template.id}
-                      type="button"
-                      onClick={() => openStageTemplateDialog(template.id)}
                       className={cn(
-                        "group flex h-10 items-center gap-2 rounded-xl border px-3 text-right transition-all duration-200",
+                        "group flex h-10 items-center overflow-hidden rounded-xl border text-right transition-all duration-200",
                         "border-[#d4a843]/70 bg-white text-[#1e3a5f] shadow-sm hover:-translate-y-0.5 hover:border-[#d4a843] hover:bg-[#fff8e7] hover:shadow-md",
                         isActive &&
                           "border-[#1e3a5f] bg-[#1e3a5f] text-white shadow-md",
+                        isTemplateSelected &&
+                          !isActive &&
+                          "border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500/30",
                       )}
-                      aria-label={`פתח את שלבי ${template.name}`}
                     >
-                      <span
-                        className={cn(
-                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#1e3a5f]/8 text-[#d4a843]",
-                          isActive && "bg-white/10 text-[#e7b941]",
-                        )}
+                      <button
+                        type="button"
+                        onClick={() => applyQuickTemplateFilter(template.id)}
+                        className="flex h-full min-w-0 flex-1 items-center gap-2 px-3 text-right"
+                        aria-label={`סנן לקוחות לפי ${template.name}`}
+                        aria-pressed={isTemplateSelected}
                       >
-                        <Layers className="h-3.5 w-3.5" />
-                      </span>
-                      <span className="max-w-[190px] truncate text-xs font-bold">
-                        {template.name}
-                      </span>
-                      <span
-                        className={cn(
-                          "rounded-full bg-[#f4ead3] px-2 py-0.5 text-[10px] font-semibold text-[#1e3a5f]",
-                          isActive && "bg-white/15 text-white",
-                        )}
-                      >
-                        {template.stages.length} שלבים
-                      </span>
-                      {(selectedStages > 0 || isTemplateSelected) && (
+                        <span className="max-w-[190px] truncate text-xs font-bold">
+                          {template.name}
+                        </span>
                         <span
                           className={cn(
-                            "h-2 w-2 rounded-full bg-emerald-500",
-                            isActive && "ring-2 ring-white/40",
+                            "rounded-full bg-[#f4ead3] px-2 py-0.5 text-[10px] font-semibold text-[#1e3a5f]",
+                            isActive && "bg-white/15 text-white",
+                            isTemplateSelected &&
+                              !isActive &&
+                              "bg-emerald-100 text-emerald-800",
                           )}
-                          title="קיימת בחירה פעילה בתהליך"
-                        />
-                      )}
-                    </button>
+                        >
+                          {template.stages.length} שלבים
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openStageTemplateDialog(template.id);
+                        }}
+                        className={cn(
+                          "ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#d4a843] transition-colors",
+                          "bg-[#1e3a5f]/8 hover:bg-[#1e3a5f]/15",
+                          isActive && "bg-white/10 text-[#e7b941] hover:bg-white/20",
+                          (selectedStages > 0 || isTemplateSelected) &&
+                            !isActive &&
+                            "bg-emerald-500 text-white hover:bg-emerald-600",
+                        )}
+                        aria-label={`בחר שלבים ומשימות עבור ${template.name}`}
+                        title="בחירת שלבים ומשימות"
+                      >
+                        <Layers className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   );
                 })
               )}
