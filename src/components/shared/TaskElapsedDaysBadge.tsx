@@ -1,4 +1,3 @@
-import { Clock3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getTaskElapsedDays } from "@/lib/taskElapsedDays";
 
@@ -37,16 +36,16 @@ export function TaskElapsedDaysBadge({
       title={label}
       aria-label={label}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center gap-1 rounded-full border font-black tabular-nums",
-        compact ? "h-6 min-w-6 px-1.5 text-[10px]" : "h-7 min-w-7 px-2 text-xs",
+        "inline-flex shrink-0 items-center justify-center rounded-full font-black leading-none text-white tabular-nums shadow-sm",
+        compact ? "h-6 w-6 text-[10px]" : "h-7 w-7 text-xs",
+        days >= 100 && (compact ? "text-[8px]" : "text-[9px]"),
         completed
-          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-          : "border-red-200 bg-red-50 text-red-600",
+          ? "bg-emerald-600 shadow-emerald-200/70"
+          : "bg-red-600 shadow-red-200/70",
         className,
       )}
     >
-      <Clock3 className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} />
-      <span>{days}</span>
+      {days}
     </span>
   );
 }

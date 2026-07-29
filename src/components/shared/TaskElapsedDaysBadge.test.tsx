@@ -14,9 +14,10 @@ describe("TaskElapsedDaysBadge", () => {
     );
 
     const badge = screen.getByLabelText("המשימה פתוחה 2 ימים");
-    expect(badge.className).toContain("text-red-600");
-    expect(badge.className).toContain("bg-red-50");
-    expect(badge.textContent).toContain("2");
+    expect(badge.className).toContain("bg-red-600");
+    expect(badge.className).not.toContain("border-red");
+    expect(badge.textContent).toBe("2");
+    expect(badge.querySelector("svg")).toBeNull();
   });
 
   it("renders a completed task with a frozen green duration", () => {
@@ -29,8 +30,9 @@ describe("TaskElapsedDaysBadge", () => {
     );
 
     const badge = screen.getByLabelText("המשימה הושלמה בתוך 4 ימים");
-    expect(badge.className).toContain("text-emerald-700");
-    expect(badge.className).toContain("bg-emerald-50");
-    expect(badge.textContent).toContain("4");
+    expect(badge.className).toContain("bg-emerald-600");
+    expect(badge.className).not.toContain("border-emerald");
+    expect(badge.textContent).toBe("4");
+    expect(badge.querySelector("svg")).toBeNull();
   });
 });
