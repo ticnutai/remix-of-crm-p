@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { useClientStages, type ClientStageTask } from '@/hooks/useClientStages';
 import { AddReminderDialog } from '@/components/reminders/AddReminderDialog';
 import { TaskTimerBadge } from './StageTimerDisplay';
+import { TaskClientMessageButton } from './TaskClientMessageButton';
 
 interface ClientStagesTrackerProps {
   clientId: string;
@@ -355,6 +356,13 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                       )}
 
                       <div className="flex gap-1 shrink-0 flex-row-reverse">
+                        <TaskClientMessageButton
+                          clientId={clientId}
+                          taskId={task.id}
+                          taskTitle={task.title}
+                          stageName={stage.stage_name}
+                          className="h-8 w-8"
+                        />
                         <Button
                           size="sm"
                           variant="ghost"

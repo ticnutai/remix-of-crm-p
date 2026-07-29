@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Check, ChevronLeft, Layers, ListChecks, Settings2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { TaskClientMessageButton } from "@/components/client-tabs/TaskClientMessageButton";
 
 export interface ClientProcessStage {
   id: string;
@@ -28,6 +29,7 @@ export interface ClientProcessControlSettings {
 }
 
 interface ClientProcessControlProps {
+  clientId: string;
   clientName: string;
   stages: ClientProcessStage[];
   tasks: ClientProcessTask[];
@@ -39,6 +41,7 @@ interface ClientProcessControlProps {
 }
 
 export function ClientProcessControl({
+  clientId,
   clientName,
   stages,
   tasks,
@@ -295,18 +298,29 @@ export function ClientProcessControl({
                         </span>
                       </div>
                       {stageTasks.map((task) => (
-                        <button
+                        <div
                           key={task.id}
-                          type="button"
-                          disabled={updatingTaskId === task.id}
-                          className="flex w-full items-start gap-2 rounded-lg border border-slate-100 p-2 text-right transition hover:border-[#d4a843]/60 hover:bg-[#fef9ee] disabled:opacity-60"
-                          onClick={() => void toggleTask(task)}
+                          className="group/task flex w-full items-center gap-1 rounded-lg border border-slate-100 pr-2 transition hover:border-[#d4a843]/60 hover:bg-[#fef9ee]"
                         >
-                          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-slate-300 bg-white">
-                            {updatingTaskId === task.id && <Check className="h-3 w-3 text-emerald-500" />}
-                          </span>
-                          <span className="text-xs">{task.title}</span>
-                        </button>
+                          <button
+                            type="button"
+                            disabled={updatingTaskId === task.id}
+                            className="flex min-w-0 flex-1 items-start gap-2 py-2 text-right disabled:opacity-60"
+                            onClick={() => void toggleTask(task)}
+                          >
+                            <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-slate-300 bg-white">
+                              {updatingTaskId === task.id && <Check className="h-3 w-3 text-emerald-500" />}
+                            </span>
+                            <span className="text-xs">{task.title}</span>
+                          </button>
+                          <TaskClientMessageButton
+                            clientId={clientId}
+                            taskId={task.id}
+                            taskTitle={task.title}
+                            stageName={stage.name}
+                            className="ml-1 opacity-60 transition-opacity group-hover/task:opacity-100"
+                          />
+                        </div>
                       ))}
                     </section>
                   ))}

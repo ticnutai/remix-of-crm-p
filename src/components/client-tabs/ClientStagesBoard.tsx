@@ -123,6 +123,7 @@ import {
 } from "./StageTemplateDialogs";
 import { useClientFolders } from "@/hooks/useClientFolders";
 import { TaskPaymentBadge } from "./TaskPaymentBadge";
+import { TaskClientMessageButton } from "./TaskClientMessageButton";
 import { Folder, FolderPlus, ChevronRight, ChevronLeft } from "lucide-react";
 import { useClients } from "@/hooks/useClients";
 import { supabase } from "@/integrations/supabase/client";
@@ -872,6 +873,12 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
             >
               <Trash2 className="h-3 w-3" />
             </Button>
+            <TaskClientMessageButton
+              clientId={clientId}
+              taskId={task.id}
+              taskTitle={task.title}
+              stageName={stage.stage_name}
+            />
             <StageTaskActionsPopup
               stageTaskId={task.id}
               stageTaskTitle={task.title}

@@ -45,6 +45,8 @@ const TABLES_TO_BACKUP = [
   "quote_payments",
   "saved_quotes",
   "client_stage_tasks",
+  "client_task_message_settings",
+  "client_task_message_log",
   "saved_quote_payment_events",
   "qp_folders",
   "qp_themes",

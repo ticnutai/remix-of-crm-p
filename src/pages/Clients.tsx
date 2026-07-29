@@ -69,6 +69,7 @@ import {
   ClientProcessControl,
   type ClientProcessControlSettings,
 } from "@/components/clients/ClientProcessControl";
+import { TaskClientMessageButton } from "@/components/client-tabs/TaskClientMessageButton";
 import { ViewPresetsMenu, type ViewPresetState } from "@/components/clients/ViewPresetsMenu";
 import {
   usePageCustomizer,
@@ -3120,6 +3121,7 @@ export default function Clients() {
 
       return (
         <ClientProcessControl
+          clientId={client.id}
           clientName={client.name}
           compact={compact}
           settings={processControlSettings}
@@ -3581,15 +3583,26 @@ export default function Clients() {
                       </span>
                     </div>
                     {tasksToRender.map((task) => (
-                      <button
+                      <div
                         key={task.id}
-                        type="button"
-                        className="flex w-full items-start gap-2 rounded-xl border border-slate-100 bg-slate-50/60 p-2.5 text-right transition hover:border-[#d4a843] hover:bg-[#fef9ee]"
-                        onClick={() => void handleToggleStageTask(task.id, true)}
+                        className="group/task flex w-full items-center gap-1 rounded-xl border border-slate-100 bg-slate-50/60 pr-2.5 text-right transition hover:border-[#d4a843] hover:bg-[#fef9ee]"
                       >
-                        <span className="mt-0.5 h-4 w-4 shrink-0 rounded border-2 border-slate-300 bg-white" />
-                        <span className="text-xs leading-5 text-[#1e3a5f]">{task.title}</span>
-                      </button>
+                        <button
+                          type="button"
+                          className="flex min-w-0 flex-1 items-start gap-2 py-2.5 text-right"
+                          onClick={() => void handleToggleStageTask(task.id, true)}
+                        >
+                          <span className="mt-0.5 h-4 w-4 shrink-0 rounded border-2 border-slate-300 bg-white" />
+                          <span className="text-xs leading-5 text-[#1e3a5f]">{task.title}</span>
+                        </button>
+                        <TaskClientMessageButton
+                          clientId={client.id}
+                          taskId={task.id}
+                          taskTitle={task.title}
+                          stageName={stage.stage_name}
+                          className="ml-1 opacity-60 transition-opacity group-hover/task:opacity-100"
+                        />
+                      </div>
                     ))}
                   </section>
                 );
