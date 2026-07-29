@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { CreateClientLoginDialog } from "./CreateClientLoginDialog";
+import { ClientPortalAccessShareDialog } from "./ClientPortalAccessShareDialog";
 import {
-  KeyRound, Search, Shield, ShieldOff, UserCheck, UserX, Loader2, MoreVertical, RotateCcw
+  KeyRound, Search, Shield, ShieldOff, UserCheck, UserX, Loader2, MoreVertical, RotateCcw, MessageCircle
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -44,6 +45,7 @@ export function ClientAccessSection() {
   const [selectedClient, setSelectedClient] = useState<ClientAccess | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showRevokeDialog, setShowRevokeDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [resettingClientId, setResettingClientId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -234,6 +236,15 @@ export function ClientAccessSection() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedClient(client);
+                              setShowShareDialog(true);
+                            }}
+                          >
+                            <MessageCircle className="h-4 w-4 ml-2" />
+                            שלח פרטי גישה
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
                             onClick={() => handleResetAccess(client)}
                             disabled={resettingClientId === client.id}
                           >
@@ -283,6 +294,16 @@ export function ClientAccessSection() {
           clientEmail={selectedClient.email || ""}
           clientPhone={selectedClient.phone || ""}
           onSuccess={fetchClients}
+        />
+      )}
+      {selectedClient && (
+        <ClientPortalAccessShareDialog
+          open={showShareDialog}
+          onOpenChange={setShowShareDialog}
+          clientId={selectedClient.id}
+          clientName={selectedClient.name}
+          clientEmail={selectedClient.email || ""}
+          clientPhone={selectedClient.phone || ""}
         />
       )}
 

@@ -83,6 +83,7 @@ import { ClientEmailsTab } from "@/components/clients/ClientEmailsTab";
 import { ClientQuotesContractsTab } from "@/components/clients/ClientQuotesContractsTab";
 import { ClientPaymentsTab } from "@/components/clients/ClientPaymentsTab";
 import { CreateClientLoginDialog } from "@/components/clients/CreateClientLoginDialog";
+import { ClientPortalAccessShareDialog } from "@/components/clients/ClientPortalAccessShareDialog";
 import PaymentStagesManager from "@/components/clients/PaymentStagesManager";
 import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
@@ -387,6 +388,7 @@ export default function ClientProfile() {
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = useState(false);
   const [isAddPaymentDialogOpen, setIsAddPaymentDialogOpen] = useState(false);
   const [isCreateLoginDialogOpen, setIsCreateLoginDialogOpen] = useState(false);
+  const [isSharePortalAccessOpen, setIsSharePortalAccessOpen] = useState(false);
   const [isDeletingClient, setIsDeletingClient] = useState(false);
   const queryClient = useQueryClient();
   // Edit states for overview cards
@@ -1566,9 +1568,22 @@ export default function ClientProfile() {
               </Button>
             )}
             {client.user_id && (
-              <Badge variant="outline" className="text-xs border-green-500 text-green-600">
-                יש גישה לפורטל
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs border-green-500 text-green-600">
+                  יש גישה לפורטל
+                </Badge>
+                {(isAdmin || isManager) && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsSharePortalAccessOpen(true)}
+                    className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  >
+                    <MessageCircle className="h-4 w-4 ml-2" />
+                    שלח פרטי גישה
+                  </Button>
+                )}
+              </div>
             )}
           </div>}
         </div>
@@ -3606,6 +3621,14 @@ export default function ClientProfile() {
           clientEmail={client.email || ""}
           clientPhone={client.phone || ""}
           onSuccess={refresh}
+        />
+        <ClientPortalAccessShareDialog
+          open={isSharePortalAccessOpen}
+          onOpenChange={setIsSharePortalAccessOpen}
+          clientId={clientId}
+          clientName={client.name}
+          clientEmail={client.email || ""}
+          clientPhone={(client as any).whatsapp || client.phone || ""}
         />
 
         {/* Edit Client Dialog */}

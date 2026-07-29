@@ -64,6 +64,7 @@ export function CreateClientLoginDialog({
   const [method, setMethod] = useState<AccessMethod>("secure_link");
   const [sendNow, setSendNow] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
   const [created, setCreated] = useState(false);
   const [inviteSent, setInviteSent] = useState(false);
 
@@ -174,6 +175,51 @@ export function CreateClientLoginDialog({
       "_blank",
       "noopener,noreferrer",
     );
+  };
+
+  const sendWhatsAppViaSystem = async () => {
+    if (!isValidIsraeliPhone(phone)) {
+      toast({ title: "לא נמצא מספר WhatsApp תקין ללקוח", variant: "destructive" });
+      return;
+    }
+    setSendingWhatsApp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("invite-client", {
+        body: {
+          clientId,
+          portalUrl,
+          channel: "whatsapp",
+          phoneNumber: phone,
+          temporaryPassword: method === "phone_password" ? password : undefined,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (data?.success) {
+        toast({
+          title: "פרטי הגישה נשלחו ב־WhatsApp",
+          description: `נשלח באמצעות ${data.provider || "הספק המוגדר במערכת"}.`,
+        });
+        return;
+      }
+      if (data?.fallbackUrl) {
+        window.open(data.fallbackUrl, "_blank", "noopener,noreferrer");
+        toast({
+          title: "לא הוגדר ספק לשליחה ישירה",
+          description: "WhatsApp נפתח עם הודעה מוכנה לשליחה.",
+        });
+        return;
+      }
+      throw new Error("ספק ה-WhatsApp לא הצליח לשלוח את ההודעה");
+    } catch (error) {
+      toast({
+        title: "שליחת ה-WhatsApp נכשלה",
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    } finally {
+      setSendingWhatsApp(false);
+    }
   };
 
   const close = () => {
@@ -306,7 +352,11 @@ export function CreateClientLoginDialog({
                 </Button>
               )}
               <Button variant="outline" onClick={copyCredentials}><Copy className="h-4 w-4" /> העתק פרטים</Button>
-              <Button variant="outline" onClick={openWhatsApp}><MessageCircle className="h-4 w-4 text-emerald-600" /> שלח ב-WhatsApp</Button>
+              <Button variant="outline" onClick={sendWhatsAppViaSystem} disabled={sendingWhatsApp}>
+                {sendingWhatsApp ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4 text-emerald-600" />}
+                שלח דרך המערכת
+              </Button>
+              <Button variant="outline" onClick={openWhatsApp}><MessageCircle className="h-4 w-4 text-emerald-600" /> פתח ב-WhatsApp</Button>
               <Button variant="outline" onClick={() => window.open(portalUrl, "_blank", "noopener,noreferrer")}><ExternalLink className="h-4 w-4" /> פתח עמוד כניסה</Button>
             </div>
           </div>

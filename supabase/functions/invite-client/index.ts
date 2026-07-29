@@ -23,6 +23,99 @@ const escapeHtml = (value: string) =>
     "'": "&#039;",
   })[char] || char);
 
+const normalizePhone = (value: unknown) => {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("00972")) return digits.slice(2);
+  if (digits.startsWith("972")) return digits;
+  if (digits.startsWith("0")) return `972${digits.slice(1)}`;
+  return digits.length === 9 ? `972${digits}` : digits;
+};
+
+const clientPhones = (client: Record<string, unknown>) => {
+  const values = [client.phone, client.phone_secondary, client.whatsapp];
+  if (Array.isArray(client.additional_phones)) values.push(...client.additional_phones);
+  return new Set(values.map(normalizePhone).filter(Boolean));
+};
+
+async function sendWhatsApp(
+  admin: ReturnType<typeof createClient>,
+  phone: string,
+  message: string,
+) {
+  const { data: rows } = await admin
+    .from("platform_settings")
+    .select("key,value")
+    .in("key", [
+      "twilio:TWILIO_ACCOUNT_SID",
+      "twilio:TWILIO_AUTH_TOKEN",
+      "twilio:TWILIO_WHATSAPP_NUMBER",
+      "lovable_twilio:WHATSAPP_FROM",
+    ]);
+  const settings = new Map(
+    (rows || []).map((row: { key: string; value: string }) => [row.key, row.value]),
+  );
+
+  const personalSid = settings.get("twilio:TWILIO_ACCOUNT_SID");
+  const personalToken = settings.get("twilio:TWILIO_AUTH_TOKEN");
+  const personalFrom = settings.get("twilio:TWILIO_WHATSAPP_NUMBER");
+  if (personalSid && personalToken && personalFrom) {
+    const params = new URLSearchParams({
+      From: `whatsapp:${personalFrom}`,
+      To: `whatsapp:+${phone}`,
+      Body: message,
+    });
+    const response = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${personalSid}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${btoa(`${personalSid}:${personalToken}`)}`,
+        },
+        body: params.toString(),
+      },
+    );
+    const body = await response.json().catch(() => ({}));
+    if (response.ok) {
+      return { success: true, provider: "twilio_personal", messageId: body?.sid || null };
+    }
+  }
+
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  const connectorKey = Deno.env.get("TWILIO_API_KEY");
+  const connectorFrom = settings.get("lovable_twilio:WHATSAPP_FROM");
+  if (lovableKey && connectorKey && connectorFrom) {
+    const params = new URLSearchParams({
+      From: `whatsapp:${connectorFrom}`,
+      To: `whatsapp:+${phone}`,
+      Body: message,
+    });
+    const response = await fetch(
+      "https://connector-gateway.lovable.dev/twilio/Messages.json",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${lovableKey}`,
+          "X-Connection-Api-Key": connectorKey,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params.toString(),
+      },
+    );
+    const body = await response.json().catch(() => ({}));
+    if (response.ok) {
+      return { success: true, provider: "twilio_lovable", messageId: body?.sid || null };
+    }
+  }
+
+  return {
+    success: false,
+    mode: "app",
+    fallbackUrl: `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -30,8 +123,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    const resendKey = Deno.env.get("RESEND_API_KEY");
-    if (!supabaseUrl || !serviceRoleKey || !anonKey || !resendKey) {
+    if (!supabaseUrl || !serviceRoleKey || !anonKey) {
       return json({ error: "Missing server configuration" }, 500);
     }
 
@@ -58,13 +150,15 @@ serve(async (req) => {
       clientId,
       temporaryPassword,
       portalUrl,
+      channel = "email",
+      phoneNumber,
       businessName = Deno.env.get("BUSINESS_NAME") || "TENARCH",
     } = await req.json();
     if (!clientId || !portalUrl) return json({ error: "clientId and portalUrl are required" }, 400);
 
     const { data: client, error: clientError } = await admin
       .from("clients")
-      .select("id, name, email, user_id")
+      .select("id, name, email, phone, phone_secondary, whatsapp, additional_phones, user_id")
       .eq("id", clientId)
       .single();
     if (clientError || !client?.user_id || !client.email) {
@@ -89,6 +183,22 @@ serve(async (req) => {
       ? `<div style="margin-top:12px"><span style="color:#64748b">סיסמה זמנית:</span>
           <div style="direction:ltr;font:600 18px monospace;background:#fff;padding:9px 12px;border:1px solid #e2e8f0;border-radius:6px;margin-top:5px">${escapeHtml(String(temporaryPassword))}</div></div>`
       : `<p style="color:#475569;line-height:1.6">לחיצה על הכפתור תאפשר לבחור סיסמה אישית ומיד לאחר מכן להיכנס לפורטל.</p>`;
+
+    const accessMessage = temporaryPassword
+      ? `שלום ${client.name},\nנפתחה עבורך גישה לפורטל הלקוחות של ${businessName}.\n\nשם משתמש: ${client.email}\nסיסמה זמנית: ${temporaryPassword}\nכניסה: ${portalUrl}\n\nבכניסה הראשונה יש לבחור סיסמה חדשה.`
+      : `שלום ${client.name},\nנפתחה עבורך גישה מאובטחת לפורטל הלקוחות של ${businessName}.\n\nשם משתמש: ${client.email}\nלהגדרת סיסמה ולכניסה לפורטל:\n${actionUrl}\n\nהקישור אישי ואין להעבירו לאחרים.`;
+
+    if (channel === "whatsapp") {
+      const phone = normalizePhone(phoneNumber || client.whatsapp || client.phone);
+      if (!phone || !clientPhones(client).has(phone)) {
+        return json({ error: "מספר ה-WhatsApp אינו משויך ללקוח" }, 400);
+      }
+      const result = await sendWhatsApp(admin, phone, accessMessage);
+      return json(result);
+    }
+
+    const resendKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendKey) return json({ error: "Email provider is not configured" }, 500);
 
     const resend = new Resend(resendKey);
     const response = await resend.emails.send({
