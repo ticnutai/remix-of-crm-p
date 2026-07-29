@@ -32,6 +32,26 @@ const normalizePhone = (value: unknown) => {
   return digits.length === 9 ? `972${digits}` : digits;
 };
 
+const normalizeLocalPhone = (value: unknown) => {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.startsWith("00972")) return `0${digits.slice(5)}`;
+  if (digits.startsWith("972")) return `0${digits.slice(3)}`;
+  if (digits.length === 9 && !digits.startsWith("0")) return `0${digits}`;
+  return digits;
+};
+
+const resolvePortalUrl = (value: unknown) => {
+  try {
+    const url = new URL(String(value || ""));
+    if (["localhost", "127.0.0.1", "::1"].includes(url.hostname)) {
+      return Deno.env.get("PUBLIC_APP_URL") || "https://crmtenarch.lovable.app/auth";
+    }
+    return url.toString();
+  } catch {
+    return Deno.env.get("PUBLIC_APP_URL") || "https://crmtenarch.lovable.app/auth";
+  }
+};
+
 const clientPhones = (client: Record<string, unknown>) => {
   const values = [client.phone, client.phone_secondary, client.whatsapp];
   if (Array.isArray(client.additional_phones)) values.push(...client.additional_phones);
@@ -165,6 +185,7 @@ serve(async (req) => {
       return json({ error: "Client portal account was not found" }, 404);
     }
 
+    const resolvedPortalUrl = resolvePortalUrl(portalUrl);
     const normalizedEmail = String(client.email).trim().toLowerCase();
     const { data: authUserData, error: authUserError } =
       await admin.auth.admin.getUserById(client.user_id);
@@ -201,12 +222,35 @@ serve(async (req) => {
       }
     }
 
-    let actionUrl = portalUrl;
-    if (!temporaryPassword) {
+    const effectiveTemporaryPassword = temporaryPassword
+      ? String(temporaryPassword).replace(/\s/g, "")
+      : channel === "whatsapp"
+        ? normalizeLocalPhone(phoneNumber || client.phone)
+        : "";
+
+    if (effectiveTemporaryPassword) {
+      if (effectiveTemporaryPassword.length < 6) {
+        return json({ error: "Temporary password must contain at least 6 characters" }, 400);
+      }
+      const { error: passwordError } = await admin.auth.admin.updateUserById(
+        client.user_id,
+        {
+          password: effectiveTemporaryPassword,
+          user_metadata: {
+            ...(authUserData.user.user_metadata || {}),
+            must_change_password: true,
+          },
+        },
+      );
+      if (passwordError) throw passwordError;
+    }
+
+    let actionUrl = resolvedPortalUrl;
+    if (!effectiveTemporaryPassword) {
       const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
         type: "recovery",
         email: normalizedEmail,
-        options: { redirectTo: portalUrl },
+        options: { redirectTo: resolvedPortalUrl },
       });
       if (linkError) throw linkError;
       actionUrl = linkData.properties.action_link;
@@ -215,13 +259,13 @@ serve(async (req) => {
     const safeName = escapeHtml(client.name || "לקוח/ה");
     const safeEmail = escapeHtml(normalizedEmail);
     const safeBusiness = escapeHtml(String(businessName));
-    const passwordBlock = temporaryPassword
+    const passwordBlock = effectiveTemporaryPassword
       ? `<div style="margin-top:12px"><span style="color:#64748b">סיסמה זמנית:</span>
-          <div style="direction:ltr;font:600 18px monospace;background:#fff;padding:9px 12px;border:1px solid #e2e8f0;border-radius:6px;margin-top:5px">${escapeHtml(String(temporaryPassword))}</div></div>`
+          <div style="direction:ltr;font:600 18px monospace;background:#fff;padding:9px 12px;border:1px solid #e2e8f0;border-radius:6px;margin-top:5px">${escapeHtml(effectiveTemporaryPassword)}</div></div>`
       : `<p style="color:#475569;line-height:1.6">לחיצה על הכפתור תאפשר לבחור סיסמה אישית ומיד לאחר מכן להיכנס לפורטל.</p>`;
 
-    const accessMessage = temporaryPassword
-      ? `שלום ${client.name},\nנפתחה עבורך גישה לפורטל הלקוחות של ${businessName}.\n\nשם משתמש: ${normalizedEmail}\nסיסמה זמנית: ${temporaryPassword}\nכניסה: ${portalUrl}\n\nבכניסה הראשונה יש לבחור סיסמה חדשה.`
+    const accessMessage = effectiveTemporaryPassword
+      ? `שלום ${client.name},\nנפתחה עבורך גישה לפורטל הלקוחות של ${businessName}.\n\nשם משתמש: ${normalizedEmail}\nסיסמה זמנית: ${effectiveTemporaryPassword}\nכניסה: ${resolvedPortalUrl}\n\nבכניסה הראשונה יש לבחור סיסמה חדשה.`
       : `שלום ${client.name},\nנפתחה עבורך גישה מאובטחת לפורטל הלקוחות של ${businessName}.\n\nשם משתמש: ${normalizedEmail}\nלהגדרת סיסמה ולכניסה לפורטל:\n${actionUrl}\n\nהקישור אישי ואין להעבירו לאחרים.`;
 
     if (channel === "whatsapp") {

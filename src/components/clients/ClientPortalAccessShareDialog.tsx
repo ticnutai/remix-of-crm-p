@@ -62,7 +62,12 @@ export function ClientPortalAccessShareDialog({
           clientId,
           portalUrl,
           channel,
-          ...(channel === "whatsapp" ? { phoneNumber: phone } : {}),
+          ...(channel === "whatsapp"
+            ? {
+                phoneNumber: phone,
+                temporaryPassword: phone.replace(/\D/g, ""),
+              }
+            : {}),
         },
       });
       if (error) throw error;
@@ -113,7 +118,7 @@ export function ClientPortalAccessShareDialog({
             שליחת גישה לפורטל
           </DialogTitle>
           <DialogDescription>
-            שלח ל{clientName} קישור מאובטח לבחירת סיסמה ולכניסה לפורטל.
+            שלח ל{clientName} שם משתמש וסיסמה זמנית לכניסה ראשונה לפורטל.
           </DialogDescription>
         </DialogHeader>
 
@@ -125,7 +130,7 @@ export function ClientPortalAccessShareDialog({
               <span dir="ltr" className="font-medium">{clientEmail || "לא הוגדר אימייל"}</span>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              מטעמי אבטחה אי אפשר להציג סיסמה קיימת. ההודעה כוללת קישור אישי לבחירת סיסמה חדשה.
+              הסיסמה הזמנית תהיה מספר ה־WhatsApp ללא מקפים. בכניסה הראשונה הלקוח יתבקש לבחור סיסמה חדשה.
             </p>
           </div>
 
