@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
+  extractTaskMessagePhones,
   fillTaskMessageTemplate,
   normalizeTaskMessagePhone,
 } from "@/lib/taskMessage";
@@ -81,7 +82,7 @@ export function TaskClientMessageButton({
     const additional = Array.isArray(client.additional_phones)
       ? client.additional_phones.filter((phone): phone is string => typeof phone === "string")
       : [];
-    const candidates = [
+    const sources = [
       { value: client.whatsapp || "", label: "WhatsApp" },
       { value: client.phone || "", label: "טלפון ראשי" },
       { value: client.phone_secondary || "", label: "טלפון נוסף" },
@@ -90,11 +91,16 @@ export function TaskClientMessageButton({
         label: `מספר נוסף ${index + 1}`,
       })),
     ];
+    const candidates = sources.flatMap(({ value, label }) =>
+      extractTaskMessagePhones(value).map((phone, index, phonesInSource) => ({
+        value: phone,
+        label: phonesInSource.length > 1 ? `${label} ${index + 1}` : label,
+      })),
+    );
     const seen = new Set<string>();
     return candidates.filter(({ value }) => {
-      const normalized = normalizeTaskMessagePhone(value);
-      if (!normalized || seen.has(normalized)) return false;
-      seen.add(normalized);
+      if (seen.has(value)) return false;
+      seen.add(value);
       return true;
     });
   }, [client]);
@@ -148,7 +154,7 @@ export function TaskClientMessageButton({
       const preferred = loadedSettings.default_channel === "whatsapp"
         ? loadedClient.whatsapp || loadedClient.phone
         : loadedClient.phone || loadedClient.phone_secondary;
-      setPhoneNumber(preferred || "");
+      setPhoneNumber(extractTaskMessagePhones(preferred || "")[0] || "");
       setLoading(false);
     })();
     return () => {
@@ -161,8 +167,9 @@ export function TaskClientMessageButton({
     const preferred = channel === "whatsapp"
       ? client.whatsapp || client.phone
       : client.phone || client.phone_secondary;
-    if (preferred && !phones.some(({ value }) => normalizeTaskMessagePhone(value) === normalizeTaskMessagePhone(phoneNumber))) {
-      setPhoneNumber(preferred);
+    const preferredPhone = extractTaskMessagePhones(preferred || "")[0] || "";
+    if (preferredPhone && !phones.some(({ value }) => value === normalizeTaskMessagePhone(phoneNumber))) {
+      setPhoneNumber(preferredPhone);
     }
   }, [channel, client, phoneNumber, phones]);
 

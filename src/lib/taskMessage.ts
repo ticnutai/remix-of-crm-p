@@ -6,6 +6,21 @@ export const normalizeTaskMessagePhone = (value: string) => {
   return digits;
 };
 
+export const extractTaskMessagePhones = (value: string) => {
+  const matches =
+    value.match(/(?<!\d)(?:\+?972|0)(?:[\s().-]*\d){9}(?!\d)/g) || [];
+  const normalized = matches
+    .map(normalizeTaskMessagePhone)
+    .filter((phone) => /^972\d{9}$/.test(phone));
+
+  if (normalized.length > 0) {
+    return [...new Set(normalized)];
+  }
+
+  const fallback = normalizeTaskMessagePhone(value);
+  return /^972\d{9}$/.test(fallback) ? [fallback] : [];
+};
+
 export const fillTaskMessageTemplate = (
   template: string,
   values: Record<string, string>,
