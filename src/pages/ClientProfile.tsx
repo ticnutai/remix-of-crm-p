@@ -1562,7 +1562,7 @@ export default function ClientProfile() {
                 className="border-[hsl(222,47%,25%)] hover:bg-[hsl(222,47%,20%)]/10"
               >
                 <KeyRound className="h-4 w-4 ml-2" />
-                צור כניסה
+                הפעל פורטל
               </Button>
             )}
             {client.user_id && (
@@ -3604,6 +3604,7 @@ export default function ClientProfile() {
           clientId={clientId}
           clientName={client.name}
           clientEmail={client.email || ""}
+          clientPhone={client.phone || ""}
           onSuccess={refresh}
         />
 

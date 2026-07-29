@@ -89,6 +89,10 @@ export default function Auth() {
   useEffect(() => {
     if (!user) return;
     if (authView === 'reset') return;
+    if (user.user_metadata?.must_change_password === true) {
+      setAuthView('reset');
+      return;
+    }
 
     // Check approval status
     (async () => {
@@ -290,7 +294,7 @@ export default function Auth() {
       description: 'אפשר להמשיך להשתמש במערכת.',
     });
 
-    navigate('/');
+    navigate(isClient ? '/client-portal' : '/');
   };
 
   if (isLoading) {

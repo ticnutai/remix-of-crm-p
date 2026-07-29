@@ -7,146 +7,122 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform",
 };
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!supabaseUrl || !serviceRoleKey || !anonKey) {
+    return json({ error: "Missing Supabase configuration" }, 500);
   }
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
 
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) return json({ error: "Unauthorized" }, 401);
+
+    const callerClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
       auth: { autoRefreshToken: false, persistSession: false },
     });
+    const { data: { user: caller } } = await callerClient.auth.getUser();
+    if (!caller) return json({ error: "Unauthorized" }, 401);
 
-    // Verify caller is admin
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const callerClient = createClient(
-      supabaseUrl,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      {
-        global: { headers: { Authorization: authHeader } },
-        auth: { autoRefreshToken: false, persistSession: false },
-      },
-    );
-
-    const {
-      data: { user: caller },
-    } = await callerClient.auth.getUser();
-    if (!caller) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Check admin role
-    const { data: roleData } = await supabaseAdmin
+    const { data: roles, error: roleError } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", caller.id)
-      .eq("role", "admin")
-      .maybeSingle();
+      .eq("user_id", caller.id);
+    if (roleError) throw roleError;
+    const allowed = (roles || []).some(({ role }) =>
+      ["admin", "super_manager", "manager"].includes(role)
+    );
+    if (!allowed) return json({ error: "Management access required" }, 403);
 
-    if (!roleData) {
-      return new Response(JSON.stringify({ error: "Admin access required" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { clientId, email, password, clientName } = await req.json();
-
+    const { clientId, email, password, clientName, phone, accessMethod = "secure_link" } =
+      await req.json();
     if (!clientId || !email || !password) {
-      return new Response(
-        JSON.stringify({ error: "clientId, email, and password are required" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+      return json({ error: "clientId, email, and password are required" }, 400);
     }
 
-    // Check if client already has a user_id
-    const { data: existingClient } = await supabaseAdmin
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const { data: existingClient, error: clientError } = await supabaseAdmin
       .from("clients")
-      .select("user_id")
+      .select("id, name, phone, user_id")
       .eq("id", clientId)
       .single();
-
-    if (existingClient?.user_id) {
-      return new Response(
-        JSON.stringify({ error: "ללקוח זה כבר יש חשבון כניסה" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+    if (clientError || !existingClient) return json({ error: "Client not found" }, 404);
+    if (existingClient.user_id) {
+      return json({ error: "ללקוח זה כבר יש חשבון כניסה" }, 400);
     }
 
-    // Create auth user
     const { data: userData, error: createError } =
       await supabaseAdmin.auth.admin.createUser({
-        email,
+        email: normalizedEmail,
         password,
         email_confirm: true,
-        user_metadata: { full_name: clientName || email },
+        user_metadata: {
+          full_name: clientName || existingClient.name || normalizedEmail,
+          must_change_password: accessMethod === "phone_password",
+        },
       });
-
-    if (createError) {
-      return new Response(JSON.stringify({ error: createError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (createError || !userData.user) {
+      return json({ error: createError?.message || "Failed to create user" }, 400);
     }
 
     const userId = userData.user.id;
+    try {
+      const { error: roleInsertError } = await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: userId, role: "client" }, { onConflict: "user_id,role" });
+      if (roleInsertError) throw roleInsertError;
 
-    // Set role to 'client' (upsert - new users won't have a row yet)
-    await supabaseAdmin
-      .from("user_roles")
-      .upsert(
-        { user_id: userId, role: "client" },
-        { onConflict: "user_id,role" },
-      );
+      const { error: linkError } = await supabaseAdmin
+        .from("clients")
+        .update({
+          user_id: userId,
+          email: normalizedEmail,
+          ...(phone ? { phone: String(phone).replace(/\D/g, "") } : {}),
+        })
+        .eq("id", clientId);
+      if (linkError) throw linkError;
 
-    // Link user to client record
-    await supabaseAdmin
-      .from("clients")
-      .update({ user_id: userId, email })
-      .eq("id", clientId);
+      const { error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .update({
+          full_name: clientName || existingClient.name || normalizedEmail,
+          approval_status: "approved",
+          is_active: true,
+          approved_at: new Date().toISOString(),
+          approved_by: caller.id,
+        })
+        .eq("id", userId);
+      if (profileError) throw profileError;
+    } catch (setupError) {
+      await supabaseAdmin.from("clients").update({ user_id: null }).eq("id", clientId);
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      throw setupError;
+    }
 
-    // Update profile
-    await supabaseAdmin
-      .from("profiles")
-      .update({ full_name: clientName || email })
-      .eq("id", userId);
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: `חשבון נוצר בהצלחה עבור ${clientName || email}`,
-        user_id: userId,
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
-  } catch (error: unknown) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Internal server error";
-    return new Response(JSON.stringify({ error: errorMessage }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return json({
+      success: true,
+      message: `חשבון נוצר בהצלחה עבור ${clientName || normalizedEmail}`,
+      user_id: userId,
+      email: normalizedEmail,
     });
+  } catch (error) {
+    return json(
+      { error: error instanceof Error ? error.message : "Internal server error" },
+      500,
+    );
   }
 });

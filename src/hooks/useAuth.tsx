@@ -316,7 +316,13 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   };
 
   const updatePassword = async (newPassword: string) => {
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+      data: {
+        ...(user?.user_metadata || {}),
+        must_change_password: false,
+      },
+    });
     return { error: error ? new Error(error.message) : null };
   };
 

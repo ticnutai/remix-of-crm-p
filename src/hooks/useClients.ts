@@ -11,6 +11,7 @@ export interface Client {
   address: string | null;
   status: string | null;
   stage: string | null;
+  user_id: string | null;
 }
 
 const CLIENTS_QUERY_KEY = ["clients-list"] as const;
@@ -23,7 +24,7 @@ export function useClients() {
     queryFn: createOfflineQueryFn<Client>("clients", async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, name, email, phone, company, address, status, stage")
+        .select("id, name, email, phone, company, address, status, stage, user_id")
         .order("name");
 
       if (error) {

@@ -34,6 +34,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { CreateClientLoginDialog } from "@/components/clients/CreateClientLoginDialog";
 
 // Navy/Gold accent colors
 const NAVY = "hsl(220, 60%, 20%)";
@@ -89,6 +90,7 @@ export default function PortalManagement() {
   const [activeTab, setActiveTab] = useSyncedSetting<string>({ key: "portal-management-active-tab", defaultValue: "overview" });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [accessClient, setAccessClient] = useState<PortalClient | null>(null);
 
   // Stats
   const [portalClients, setPortalClients] = useState<PortalClient[]>([]);
@@ -831,10 +833,10 @@ export default function PortalManagement() {
                             className="text-xs h-7 border-[hsl(40,70%,65%)]"
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(`/clients/${client.id}`);
+                              setAccessClient(client);
                             }}
                           >
-                            צור גישה
+                            הפעל פורטל
                           </Button>
                         </div>
                       ))}
@@ -845,6 +847,19 @@ export default function PortalManagement() {
             </div>
           </TabsContent>
         </Tabs>
+        {accessClient && (
+          <CreateClientLoginDialog
+            open={Boolean(accessClient)}
+            onOpenChange={(nextOpen) => {
+              if (!nextOpen) setAccessClient(null);
+            }}
+            clientId={accessClient.id}
+            clientName={accessClient.name}
+            clientEmail={accessClient.email || ""}
+            clientPhone={accessClient.phone || ""}
+            onSuccess={loadPortalData}
+          />
+        )}
       </div>
     </AppLayout>
   );

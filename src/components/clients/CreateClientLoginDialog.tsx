@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,9 +10,26 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Eye, EyeOff, Copy, Check, Wand2 } from "lucide-react";
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  KeyRound,
+  Link2,
+  Loader2,
+  Mail,
+  MessageCircle,
+  Phone,
+  ShieldCheck,
+} from "lucide-react";
+import {
+  isValidIsraeliPhone,
+  normalizeIsraeliPhone,
+  toWhatsAppPhone,
+} from "@/lib/portalAccess";
 
 interface CreateClientLoginDialogProps {
   open: boolean;
@@ -20,66 +37,15 @@ interface CreateClientLoginDialogProps {
   clientId: string;
   clientName: string;
   clientEmail?: string;
+  clientPhone?: string;
   onSuccess?: () => void;
 }
 
-/**
- * Generate a username from client name:
- * - Transliterate Hebrew to English
- * - Add random digits for uniqueness
- */
-function generateUsername(clientName: string): string {
-  const hebrewToEnglish: Record<string, string> = {
-    'א': 'a', 'ב': 'b', 'ג': 'g', 'ד': 'd', 'ה': 'h', 'ו': 'v',
-    'ז': 'z', 'ח': 'ch', 'ט': 't', 'י': 'y', 'כ': 'k', 'ך': 'k',
-    'ל': 'l', 'מ': 'm', 'ם': 'm', 'נ': 'n', 'ן': 'n', 'ס': 's',
-    'ע': 'a', 'פ': 'p', 'ף': 'f', 'צ': 'ts', 'ץ': 'ts', 'ק': 'k',
-    'ר': 'r', 'ש': 'sh', 'ת': 't',
-  };
+type AccessMethod = "secure_link" | "phone_password";
 
-  const transliterated = clientName
-    .trim()
-    .split('')
-    .map(ch => hebrewToEnglish[ch] || ch)
-    .join('')
-    .replace(/\s+/g, '.')
-    .replace(/[^a-zA-Z0-9.]/g, '')
-    .toLowerCase();
-
-  const suffix = Math.floor(Math.random() * 900 + 100);
-  return transliterated ? `${transliterated}${suffix}` : `client${suffix}`;
-}
-
-function generatePassword(length = 12): string {
+function randomPassword(length = 20): string {
   const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$";
-  let password = "";
-  for (let i = 0; i < length; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
-}
-
-function generateEmailFromName(clientName: string, domain = "portal.tenarch.co.il"): string {
-  const hebrewToEnglish: Record<string, string> = {
-    'א': 'a', 'ב': 'b', 'ג': 'g', 'ד': 'd', 'ה': 'h', 'ו': 'v',
-    'ז': 'z', 'ח': 'ch', 'ט': 't', 'י': 'y', 'כ': 'k', 'ך': 'k',
-    'ל': 'l', 'מ': 'm', 'ם': 'm', 'נ': 'n', 'ן': 'n', 'ס': 's',
-    'ע': 'a', 'פ': 'p', 'ף': 'f', 'צ': 'ts', 'ץ': 'ts', 'ק': 'k',
-    'ר': 'r', 'ש': 'sh', 'ת': 't',
-  };
-
-  const transliterated = clientName
-    .trim()
-    .split('')
-    .map(ch => hebrewToEnglish[ch] || ch)
-    .join('')
-    .replace(/\s+/g, '.')
-    .replace(/[^a-zA-Z0-9.]/g, '')
-    .toLowerCase();
-
-  const suffix = Math.floor(Math.random() * 900 + 100);
-  const local = transliterated || `client${suffix}`;
-  return `${local}@${domain}`;
+  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
 
 export function CreateClientLoginDialog({
@@ -88,196 +54,272 @@ export function CreateClientLoginDialog({
   clientId,
   clientName,
   clientEmail = "",
+  clientPhone = "",
   onSuccess,
 }: CreateClientLoginDialogProps) {
-  const [email, setEmail] = useState(clientEmail);
-  const [password, setPassword] = useState(() => generatePassword());
-  const [showPassword, setShowPassword] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [created, setCreated] = useState(false);
   const { toast } = useToast();
+  const [email, setEmail] = useState(clientEmail);
+  const [phone, setPhone] = useState(normalizeIsraeliPhone(clientPhone));
+  const [password, setPassword] = useState(normalizeIsraeliPhone(clientPhone));
+  const [method, setMethod] = useState<AccessMethod>("secure_link");
+  const [sendNow, setSendNow] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [created, setCreated] = useState(false);
+  const [inviteSent, setInviteSent] = useState(false);
 
-  const suggestedUsername = useMemo(() => generateUsername(clientName), [clientName]);
+  const portalUrl = `${window.location.origin}/auth`;
 
-  const handleAutoGenerate = () => {
-    if (!email) {
-      setEmail(clientEmail || generateEmailFromName(clientName));
-    }
-    setPassword(generatePassword());
-    toast({ title: "פרטים נוצרו אוטומטית" });
+  useEffect(() => {
+    if (!open) return;
+    const normalizedPhone = normalizeIsraeliPhone(clientPhone);
+    setEmail(clientEmail);
+    setPhone(normalizedPhone);
+    setPassword(normalizedPhone);
+    setMethod("secure_link");
+    setSendNow(true);
+    setCreated(false);
+    setInviteSent(false);
+  }, [open, clientEmail, clientPhone]);
+
+  const sendInvite = async (temporaryPassword?: string) => {
+    const { data, error } = await supabase.functions.invoke("invite-client", {
+      body: { clientId, portalUrl, temporaryPassword },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    setInviteSent(true);
   };
 
   const handleCreate = async () => {
-    if (!email || !password) {
-      toast({ title: "נא למלא אימייל וסיסמה", variant: "destructive" });
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      toast({ title: "יש להזין כתובת אימייל תקינה", variant: "destructive" });
+      return;
+    }
+    if (method === "phone_password" && (!isValidIsraeliPhone(phone) || password.length < 6)) {
+      toast({
+        title: "מספר הטלפון אינו תקין",
+        description: "הסיסמה הזמנית צריכה להיות מספר הטלפון ללא מקפים או רווחים.",
+        variant: "destructive",
+      });
       return;
     }
 
-    setIsLoading(true);
+    setLoading(true);
     try {
+      const accountPassword = method === "secure_link" ? randomPassword() : password;
       const { data, error } = await supabase.functions.invoke("create-client-account", {
-        body: { clientId, email, password, clientName },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      setCreated(true);
-      toast({ title: "חשבון נוצר בהצלחה!", description: `חשבון כניסה נוצר עבור ${clientName}` });
-      onSuccess?.();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "שגיאה ביצירת החשבון";
-      toast({ title: "שגיאה", description: message, variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCopyCredentials = async () => {
-    const text = `פרטי כניסה לפורטל:\nאימייל: ${email}\nסיסמה: ${password}\nקישור: ${window.location.origin}/auth`;
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast({ title: "פרטי הכניסה הועתקו!" });
-  };
-
-  const handleSendInvite = async () => {
-    try {
-      const portalUrl = `${window.location.origin}/auth`;
-      const { error } = await supabase.functions.invoke("invite-client", {
         body: {
           clientId,
-          clientEmail: email,
+          email: normalizedEmail,
+          password: accountPassword,
           clientName,
-          temporaryPassword: password,
-          portalUrl,
+          accessMethod: method,
+          phone,
         },
       });
       if (error) throw error;
-      toast({ title: "הזמנה נשלחה!", description: `נשלח אימייל הזמנה ל-${email}` });
-    } catch {
-      toast({ title: "שגיאה בשליחת ההזמנה", variant: "destructive" });
+      if (data?.error) throw new Error(data.error);
+
+      setEmail(normalizedEmail);
+      setCreated(true);
+      onSuccess?.();
+      if (sendNow) {
+        try {
+          await sendInvite(method === "phone_password" ? accountPassword : undefined);
+          toast({
+            title: "הגישה לפורטל הופעלה",
+            description: `ההזמנה נשלחה אל ${normalizedEmail}`,
+          });
+        } catch (inviteError) {
+          toast({
+            title: "הגישה נוצרה, אך האימייל לא נשלח",
+            description: inviteError instanceof Error ? inviteError.message : "אפשר לשלוח שוב מהחלון.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "הגישה לפורטל הופעלה",
+          description: "אפשר להעתיק ולשלוח את פרטי הכניסה.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "לא ניתן להפעיל את הפורטל",
+        description: error instanceof Error ? error.message : "אירעה שגיאה לא צפויה",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleClose = () => {
-    if (!isLoading) {
-      setCreated(false);
-      setEmail(clientEmail);
-      setPassword(generatePassword());
-      setCopied(false);
-      onOpenChange(false);
+  const credentialsText = method === "phone_password"
+    ? `שלום ${clientName},\nהופעלה עבורך גישה לפורטל הלקוחות.\nשם משתמש: ${email}\nסיסמה זמנית: ${password}\nכניסה: ${portalUrl}\nבכניסה הראשונה תתבקש/י לבחור סיסמה חדשה.`
+    : `שלום ${clientName},\nהופעלה עבורך גישה לפורטל הלקוחות.\nשם המשתמש הוא ${email}.\nקישור הכניסה: ${portalUrl}\nקישור מאובטח להגדרת סיסמה נשלח לאימייל.`;
+
+  const copyCredentials = async () => {
+    await navigator.clipboard.writeText(credentialsText);
+    toast({ title: "פרטי הגישה הועתקו" });
+  };
+
+  const openWhatsApp = () => {
+    if (!isValidIsraeliPhone(phone)) {
+      toast({ title: "לא נמצא מספר טלפון תקין ללקוח", variant: "destructive" });
+      return;
     }
+    window.open(
+      `https://wa.me/${toWhatsAppPhone(phone)}?text=${encodeURIComponent(credentialsText)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
+
+  const close = () => {
+    if (!loading) onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent dir="rtl" className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={close}>
+      <DialogContent dir="rtl" className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>יצירת כניסה ללקוח</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-primary" />
+            הפעלת פורטל עבור {clientName}
+          </DialogTitle>
           <DialogDescription>
-            יצירת שם משתמש וסיסמה עבור {clientName} לגישה לפורטל הלקוחות
+            פרטי הלקוח מולאו אוטומטית. ניתן לערוך אותם לפני יצירת הגישה.
           </DialogDescription>
         </DialogHeader>
 
         {!created ? (
-          <div className="space-y-4">
-            {/* Auto-generate button */}
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleAutoGenerate}
-            >
-              <Wand2 className="h-4 w-4 ml-2" />
-              צור פרטים אוטומטית
-            </Button>
-
-            <div className="space-y-2">
-              <Label>אימייל / שם משתמש</Label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={clientEmail || `${suggestedUsername}@example.com`}
-                dir="ltr"
-              />
-              <p className="text-xs text-muted-foreground">
-                שם משתמש מוצע: <span className="font-mono text-foreground">{suggestedUsername}</span>
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>סיסמה</Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
+          <div className="space-y-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="portal-email">אימייל — שם המשתמש</Label>
+                <div className="relative">
+                  <Mail className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    id="portal-email"
+                    type="email"
                     dir="ltr"
+                    className="pr-9 text-left"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="client@example.com"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPassword(generatePassword())}
-                >
-                  חדש
-                </Button>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="portal-phone">טלפון הלקוח</Label>
+                <div className="relative">
+                  <Phone className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="portal-phone"
+                    dir="ltr"
+                    className="pr-9 text-left"
+                    value={phone}
+                    onChange={(event) => {
+                      const next = normalizeIsraeliPhone(event.target.value);
+                      setPhone(next);
+                      if (method === "phone_password") setPassword(next);
+                    }}
+                    placeholder="0502857658"
+                  />
+                </div>
               </div>
             </div>
+
+            <div className="space-y-2">
+              <Label>דרך ההפעלה</Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setMethod("secure_link")}
+                  className={`rounded-xl border p-4 text-right transition-colors ${method === "secure_link" ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"}`}
+                >
+                  <span className="flex items-center gap-2 font-semibold">
+                    <Link2 className="h-4 w-4" /> קישור מאובטח
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] text-emerald-700">מומלץ</span>
+                  </span>
+                  <span className="mt-1 block text-xs text-muted-foreground">הלקוח מקבל אימייל ובוחר סיסמה בעצמו.</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMethod("phone_password");
+                    setPassword(normalizeIsraeliPhone(phone));
+                  }}
+                  className={`rounded-xl border p-4 text-right transition-colors ${method === "phone_password" ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"}`}
+                >
+                  <span className="flex items-center gap-2 font-semibold"><KeyRound className="h-4 w-4" /> סיסמת טלפון זמנית</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">הלקוח חייב להחליף אותה בכניסה הראשונה.</span>
+                </button>
+              </div>
+            </div>
+
+            {method === "phone_password" && (
+              <div className="space-y-2 rounded-xl bg-muted/40 p-4">
+                <Label htmlFor="temporary-password">סיסמה זמנית</Label>
+                <Input
+                  id="temporary-password"
+                  dir="ltr"
+                  className="text-left font-mono"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value.replace(/\D/g, ""))}
+                />
+                <p className="text-xs text-muted-foreground">המספר נשמר ללא מקפים ורווחים, למשל 0502857658.</p>
+              </div>
+            )}
+
+            <label className="flex cursor-pointer items-center gap-2 rounded-lg border p-3">
+              <Checkbox checked={sendNow} onCheckedChange={(value) => setSendNow(value === true)} />
+              <span className="text-sm">שלח ללקוח הזמנה באימייל מיד לאחר יצירת הגישה</span>
+            </label>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-center">
-              <Check className="h-8 w-8 text-green-600 mx-auto mb-2" />
-              <p className="font-medium text-green-800 dark:text-green-200">החשבון נוצר בהצלחה!</p>
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-center text-emerald-800">
+              <Check className="mx-auto mb-2 h-8 w-8" />
+              <p className="font-semibold">הגישה הופעלה בהצלחה</p>
+              <p className="mt-1 text-sm">{inviteSent ? `ההזמנה נשלחה אל ${email}` : "הגישה מוכנה לשליחה ללקוח."}</p>
             </div>
-
-            <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm" dir="ltr">
-              <div><strong>Email:</strong> {email}</div>
-              <div><strong>Password:</strong> {password}</div>
-              <div><strong>Portal:</strong> {window.location.origin}/auth</div>
-            </div>
-
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={handleCopyCredentials}>
-                {copied ? <Check className="h-4 w-4 ml-1" /> : <Copy className="h-4 w-4 ml-1" />}
-                {copied ? "הועתק!" : "העתק פרטים"}
-              </Button>
-              <Button className="flex-1" onClick={handleSendInvite}>
-                שלח הזמנה באימייל
-              </Button>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {!inviteSent && (
+                <Button
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      await sendInvite(method === "phone_password" ? password : undefined);
+                      toast({ title: "ההזמנה נשלחה" });
+                    } catch (error) {
+                      toast({ title: "שליחת ההזמנה נכשלה", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                  שלח הזמנה
+                </Button>
+              )}
+              <Button variant="outline" onClick={copyCredentials}><Copy className="h-4 w-4" /> העתק פרטים</Button>
+              <Button variant="outline" onClick={openWhatsApp}><MessageCircle className="h-4 w-4 text-emerald-600" /> שלח ב-WhatsApp</Button>
+              <Button variant="outline" onClick={() => window.open(portalUrl, "_blank", "noopener,noreferrer")}><ExternalLink className="h-4 w-4" /> פתח עמוד כניסה</Button>
             </div>
           </div>
         )}
 
         <DialogFooter className="flex-row-reverse gap-2">
-          {!created ? (
-            <>
-              <Button onClick={handleCreate} disabled={isLoading || !email}>
-                {isLoading && <Loader2 className="h-4 w-4 ml-1 animate-spin" />}
-                צור חשבון
-              </Button>
-              <Button variant="outline" onClick={handleClose} disabled={isLoading}>
-                ביטול
-              </Button>
-            </>
-          ) : (
-            <Button variant="outline" onClick={handleClose}>
-              סגור
+          {!created && (
+            <Button onClick={handleCreate} disabled={loading}>
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {sendNow ? "צור גישה ושלח" : "צור גישה"}
             </Button>
           )}
+          <Button variant="outline" onClick={close} disabled={loading}>{created ? "סיום" : "ביטול"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { CreateClientLoginDialog } from "./CreateClientLoginDialog";
 import {
-  KeyRound, Search, Shield, ShieldOff, UserCheck, UserX, Loader2, ExternalLink, MoreVertical
+  KeyRound, Search, Shield, ShieldOff, UserCheck, UserX, Loader2, MoreVertical, RotateCcw
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,6 +31,7 @@ interface ClientAccess {
   id: string;
   name: string;
   email: string | null;
+  phone: string | null;
   user_id: string | null;
   status: string | null;
 }
@@ -44,13 +45,14 @@ export function ClientAccessSection() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showRevokeDialog, setShowRevokeDialog] = useState(false);
   const [revoking, setRevoking] = useState(false);
+  const [resettingClientId, setResettingClientId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchClients = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("clients")
-      .select("id, name, email, user_id, status")
+      .select("id, name, email, phone, user_id, status")
       .order("name");
 
     if (!error && data) {
@@ -82,11 +84,11 @@ export function ClientAccessSection() {
     if (!selectedClient?.user_id) return;
     setRevoking(true);
     try {
-      // Remove user_id from client
-      await supabase
-        .from("clients")
-        .update({ user_id: null })
-        .eq("id", selectedClient.id);
+      const { data, error } = await supabase.functions.invoke("revoke-client-account", {
+        body: { clientId: selectedClient.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({ title: "הגישה בוטלה", description: `גישת הפורטל של ${selectedClient.name} בוטלה` });
       fetchClients();
@@ -96,6 +98,32 @@ export function ClientAccessSection() {
       setRevoking(false);
       setShowRevokeDialog(false);
       setSelectedClient(null);
+    }
+  };
+
+  const handleResetAccess = async (client: ClientAccess) => {
+    setResettingClientId(client.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("invite-client", {
+        body: {
+          clientId: client.id,
+          portalUrl: `${window.location.origin}/auth`,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({
+        title: "קישור מאובטח נשלח",
+        description: `נשלח ל-${client.email} קישור לבחירת סיסמה חדשה.`,
+      });
+    } catch (error) {
+      toast({
+        title: "שליחת הקישור נכשלה",
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    } finally {
+      setResettingClientId(null);
     }
   };
 
@@ -206,6 +234,13 @@ export function ClientAccessSection() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
+                            onClick={() => handleResetAccess(client)}
+                            disabled={resettingClientId === client.id}
+                          >
+                            <RotateCcw className="h-4 w-4 ml-2" />
+                            שלח קישור לאיפוס סיסמה
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
                             onClick={() => {
                               setSelectedClient(client);
                               setShowRevokeDialog(true);
@@ -228,7 +263,7 @@ export function ClientAccessSection() {
                       }}
                     >
                       <KeyRound className="h-3.5 w-3.5 ml-1" />
-                      צור גישה
+                      הפעל פורטל
                     </Button>
                   )}
                 </div>
@@ -246,6 +281,7 @@ export function ClientAccessSection() {
           clientId={selectedClient.id}
           clientName={selectedClient.name}
           clientEmail={selectedClient.email || ""}
+          clientPhone={selectedClient.phone || ""}
           onSuccess={fetchClients}
         />
       )}
