@@ -25,6 +25,7 @@ interface Profile {
 }
 
 type AppRole = "admin" | "super_manager" | "manager" | "employee" | "client";
+const PASSWORD_RECOVERY_KEY = "tenarch_password_recovery";
 
 interface AuthContextType {
   user: User | null;
@@ -36,6 +37,7 @@ interface AuthContextType {
   isSuperManager: boolean;
   isManager: boolean;
   isClient: boolean;
+  isPasswordRecovery: boolean;
   clientId: string | null;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (
@@ -45,6 +47,7 @@ interface AuthContextType {
   ) => Promise<{ error: Error | null }>;
   requestPasswordReset: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
+  completePasswordRecovery: () => void;
   signOut: () => Promise<void>;
   updateProfile: (
     updates: Partial<Profile>,
@@ -60,6 +63,16 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [clientId, setClientId] = useState<string | null>(null);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const search = new URLSearchParams(window.location.search);
+    return (
+      hash.get("type") === "recovery" ||
+      search.get("type") === "recovery" ||
+      sessionStorage.getItem(PASSWORD_RECOVERY_KEY) === "1"
+    );
+  });
 
   const fetchClientId = useCallback(async (userId: string) => {
     const { data } = await supabase
@@ -134,6 +147,11 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         setProfile(null);
         setRoles([]);
         setClientId(null);
+      }
+
+      if (event === "PASSWORD_RECOVERY") {
+        sessionStorage.setItem(PASSWORD_RECOVERY_KEY, "1");
+        setIsPasswordRecovery(true);
       }
 
       setSession(session);
@@ -326,6 +344,11 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     return { error: error ? new Error(error.message) : null };
   };
 
+  const completePasswordRecovery = useCallback(() => {
+    sessionStorage.removeItem(PASSWORD_RECOVERY_KEY);
+    setIsPasswordRecovery(false);
+  }, []);
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
@@ -364,11 +387,13 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       isSuperManager,
       isManager,
       isClient,
+      isPasswordRecovery,
       clientId,
       signIn,
       signUp,
       requestPasswordReset,
       updatePassword,
+      completePasswordRecovery,
       signOut,
       updateProfile,
     }),
@@ -382,7 +407,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       isSuperManager,
       isManager,
       isClient,
+      isPasswordRecovery,
       clientId,
+      completePasswordRecovery,
     ],
   );
 
@@ -406,6 +433,7 @@ export function useAuth(): AuthContextType {
       isSuperManager: false,
       isManager: false,
       isClient: false,
+      isPasswordRecovery: false,
       clientId: null,
       signIn: async () => ({ error: new Error("AuthProvider not mounted") }),
       signUp: async () => ({ error: new Error("AuthProvider not mounted") }),
@@ -415,6 +443,7 @@ export function useAuth(): AuthContextType {
       updatePassword: async () => ({
         error: new Error("AuthProvider not mounted"),
       }),
+      completePasswordRecovery: () => {},
       signOut: async () => {},
       updateProfile: async () => ({
         error: new Error("AuthProvider not mounted"),

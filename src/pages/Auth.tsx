@@ -31,7 +31,17 @@ const signupSchema = loginSchema.extend({
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user, signIn, signUp, requestPasswordReset, updatePassword, isLoading, isClient } = useAuth();
+  const {
+    user,
+    signIn,
+    signUp,
+    requestPasswordReset,
+    updatePassword,
+    completePasswordRecovery,
+    isLoading,
+    isClient,
+    isPasswordRecovery,
+  } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -81,10 +91,10 @@ export default function Auth() {
     const searchParams = new URLSearchParams(window.location.search);
     const type = hashParams.get('type') || searchParams.get('type');
 
-    if (type === 'recovery') {
+    if (type === 'recovery' || isPasswordRecovery) {
       setAuthView('reset');
     }
-  }, []);
+  }, [isPasswordRecovery]);
 
   useEffect(() => {
     if (!user) return;
@@ -286,7 +296,8 @@ export default function Auth() {
       return;
     }
 
-    // Clear recovery fragment to avoid re-triggering reset view on refresh
+    // Clear recovery state and fragment to avoid re-triggering reset view.
+    completePasswordRecovery();
     window.history.replaceState(null, '', '/auth');
 
     toast({

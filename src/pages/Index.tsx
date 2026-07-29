@@ -345,6 +345,21 @@ function DashboardContent() {
   }, [backups, restoreBackup]);
 
   useEffect(() => {
+    const hashParams = new URLSearchParams(
+      window.location.hash.replace(/^#/, ""),
+    );
+    const searchParams = new URLSearchParams(window.location.search);
+    const isRecoveryRedirect =
+      hashParams.get("type") === "recovery" ||
+      searchParams.get("type") === "recovery";
+
+    if (isRecoveryRedirect) {
+      navigate(`/auth${window.location.search}${window.location.hash}`, {
+        replace: true,
+      });
+      return;
+    }
+
     if (!authLoading && !user) {
       navigate("/auth");
     }
