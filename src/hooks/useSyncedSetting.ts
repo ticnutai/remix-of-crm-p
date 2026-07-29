@@ -115,39 +115,43 @@ export function useSyncedSetting<T>({
 
   const setValue = useCallback(
     (next: T | ((prev: T) => T)) => {
-      setValueState((prev) => {
-        const resolved =
-          typeof next === "function" ? (next as (p: T) => T)(prev) : next;
-        writeLocal(key, resolved);
+      const resolved =
+        typeof next === "function"
+          ? (next as (previous: T) => T)(valueRef.current)
+          : next;
 
-        if (skipNextWriteRef.current) {
-          skipNextWriteRef.current = false;
-          return resolved;
-        }
+      valueRef.current = resolved;
+      setValueState(resolved);
+      // Dispatching the same-key sync event from inside a React state updater
+      // can update another component while the first one is still rendering.
+      writeLocal(key, resolved);
 
-        if (cloud && user?.id) {
-          const existing = cloudSaveTimers.get(key);
-          if (existing) window.clearTimeout(existing);
-          const t = window.setTimeout(async () => {
-            cloudSaveTimers.delete(key);
-            try {
-              await supabase.from("user_settings").upsert(
-                {
-                  user_id: user.id,
-                  setting_key: LS_PREFIX + key,
-                  setting_value: resolved as any,
-                  updated_at: new Date().toISOString(),
-                },
-                { onConflict: "user_id,setting_key" },
-              );
-            } catch {
-              /* ignore — LS already saved */
-            }
-          }, debounceMs);
-          cloudSaveTimers.set(key, t);
-        }
-        return resolved;
-      });
+      if (skipNextWriteRef.current) {
+        skipNextWriteRef.current = false;
+        return;
+      }
+
+      if (cloud && user?.id) {
+        const existing = cloudSaveTimers.get(key);
+        if (existing) window.clearTimeout(existing);
+        const timer = window.setTimeout(async () => {
+          cloudSaveTimers.delete(key);
+          try {
+            await supabase.from("user_settings").upsert(
+              {
+                user_id: user.id,
+                setting_key: LS_PREFIX + key,
+                setting_value: resolved as any,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "user_id,setting_key" },
+            );
+          } catch {
+            /* ignore — LS already saved */
+          }
+        }, debounceMs);
+        cloudSaveTimers.set(key, timer);
+      }
     },
     [key, cloud, user?.id, debounceMs],
   );

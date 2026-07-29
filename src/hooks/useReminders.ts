@@ -43,6 +43,8 @@ export interface Reminder {
   is_dismissed: boolean;
   entity_type: string | null;
   entity_id: string | null;
+  client_id?: string | null;
+  client?: { name: string } | null;
   user_id: string;
   created_at: string;
   recipient_phone?: string | null;
@@ -89,14 +91,57 @@ async function fetchRemindersFromDb(): Promise<Reminder[]> {
   // Admins see all non-private reminders; regular users see only their own.
   const { data, error } = await supabase
     .from("reminders")
-    .select("*")
+    .select("*, client:clients(name)")
     .order("remind_at", { ascending: true });
 
   if (error) {
     console.error("Error fetching reminders:", error);
     throw error;
   }
-  return ((data as Reminder[]) || []).map(decodeReminder);
+  const reminders = ((data as unknown as Reminder[]) || []).map(decodeReminder);
+  const stageTaskIds = reminders
+    .filter(
+      (reminder) =>
+        reminder.entity_type === "client_stage_task" && reminder.entity_id,
+    )
+    .map((reminder) => reminder.entity_id as string);
+
+  if (stageTaskIds.length === 0) return reminders;
+
+  const { data: stageTasks, error: stageTasksError } = await supabase
+    .from("client_stage_tasks")
+    .select("id, client_id, client:clients(name)")
+    .in("id", stageTaskIds);
+
+  if (stageTasksError) {
+    console.warn(
+      "Could not resolve reminder clients through stage tasks:",
+      stageTasksError.message,
+    );
+    return reminders;
+  }
+
+  const stageTaskClientMap = new Map(
+    (stageTasks || []).map((task: any) => [
+      task.id,
+      {
+        client_id: task.client_id as string | null,
+        client: task.client as { name: string } | null,
+      },
+    ]),
+  );
+
+  return reminders.map((reminder) => {
+    if (
+      reminder.client_id ||
+      reminder.entity_type !== "client_stage_task" ||
+      !reminder.entity_id
+    ) {
+      return reminder;
+    }
+    const linkedClient = stageTaskClientMap.get(reminder.entity_id);
+    return linkedClient ? { ...reminder, ...linkedClient } : reminder;
+  });
 }
 
 // Module-level lock: prevents duplicate notifications when multiple

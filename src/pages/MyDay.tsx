@@ -18,6 +18,12 @@ import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
 import { DedupToggleButton } from "@/components/DedupToggleButton";
 import { UserFilterMenu, useUserFilter } from "@/components/shared/UserFilterMenu";
+import {
+  ClientGroupingToggle,
+  getItemClientName,
+  groupItemsByClient,
+  useClientGrouping,
+} from "@/components/shared/ClientGroupingToggle";
 import { useDedup } from "@/contexts/DedupContext";
 import {
   Dialog,
@@ -199,6 +205,9 @@ export default function MyDay() {
     });
   const [meetingsView, setMeetingsView] = useSyncedSetting<ViewType>({ key: "myday-meetings-view", defaultValue: "list" });
   const [tasksView, setTasksView] = useSyncedSetting<ViewType>({ key: "myday-tasks-view", defaultValue: "list" });
+  const [groupTasksByClient] = useClientGrouping("tasks");
+  const [groupMeetingsByClient] = useClientGrouping("meetings");
+  const [groupRemindersByClient] = useClientGrouping("reminders");
 
   const showUserFilter = isManager;
   const createTargetUserId =
@@ -889,11 +898,14 @@ export default function MyDay() {
                   <Calendar className="h-5 w-5 text-[hsl(45,80%,45%)]" />
                   פגישות · {selectedDayShortLabel}
                 </CardTitle>
-                <DisplayOptions
-                  viewType={meetingsView}
-                  onViewTypeChange={setMeetingsView}
-                  availableViewTypes={["list", "cards", "grid"]}
-                />
+                <div className="flex items-center gap-2">
+                  <ClientGroupingToggle entity="meetings" iconOnly />
+                  <DisplayOptions
+                    viewType={meetingsView}
+                    onViewTypeChange={setMeetingsView}
+                    availableViewTypes={["list", "cards", "grid"]}
+                  />
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -910,14 +922,26 @@ export default function MyDay() {
                       : "space-y-3",
                   )}
                 >
-                  {visibleMeetings.map((meeting) => {
+                  {(groupMeetingsByClient
+                    ? groupItemsByClient(visibleMeetings).flatMap((group) => group.items)
+                    : visibleMeetings
+                  ).map((meeting, index, items) => {
                     const MeetingIcon =
                       meetingTypeIcons[
                         meeting.meeting_type as keyof typeof meetingTypeIcons
                       ] || Users;
                     return (
+                      <React.Fragment key={meeting.id}>
+                        {groupMeetingsByClient &&
+                          (index === 0 ||
+                            getItemClientName(items[index - 1]) !==
+                              getItemClientName(meeting)) && (
+                            <div className="col-span-full flex items-center gap-2 rounded-lg bg-primary/5 px-3 py-2 text-sm font-bold text-primary">
+                              <User className="h-4 w-4" />
+                              {getItemClientName(meeting)}
+                            </div>
+                          )}
                       <HoverItemWrapper
-                        key={meeting.id}
                         onClick={() => navigate(`/meetings?id=${meeting.id}`)}
                         onEdit={() => navigate(`/meetings?edit=${meeting.id}`)}
                         onDelete={() => handleDeleteMeeting(meeting.id)}
@@ -962,6 +986,7 @@ export default function MyDay() {
                           </div>
                         </div>
                       </HoverItemWrapper>
+                      </React.Fragment>
                     );
                   })}
                 </div>
@@ -984,11 +1009,14 @@ export default function MyDay() {
                   <CheckSquare className="h-5 w-5 text-[hsl(220,60%,25%)]" />
                   משימות · {selectedDayShortLabel}
                 </CardTitle>
-                <DisplayOptions
-                  viewType={tasksView}
-                  onViewTypeChange={setTasksView}
-                  availableViewTypes={["list", "cards", "grid"]}
-                />
+                <div className="flex items-center gap-2">
+                  <ClientGroupingToggle entity="tasks" iconOnly />
+                  <DisplayOptions
+                    viewType={tasksView}
+                    onViewTypeChange={setTasksView}
+                    availableViewTypes={["list", "cards", "grid"]}
+                  />
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -1005,7 +1033,10 @@ export default function MyDay() {
                       : "space-y-2",
                   )}
                 >
-                  {visibleTasks.slice(0, 6).map((task) => {
+                  {(groupTasksByClient
+                    ? groupItemsByClient(visibleTasks).flatMap((group) => group.items)
+                    : visibleTasks
+                  ).slice(0, 6).map((task, index, items) => {
                     const PriorityIcon =
                       priorityIcons[
                         task.priority as keyof typeof priorityIcons
@@ -1019,8 +1050,17 @@ export default function MyDay() {
                       isBefore(parseISO(task.due_date), startOfDay(new Date()));
 
                     return (
+                      <React.Fragment key={task.id}>
+                        {groupTasksByClient &&
+                          (index === 0 ||
+                            getItemClientName(items[index - 1]) !==
+                              getItemClientName(task)) && (
+                            <div className="col-span-full flex items-center gap-2 rounded-lg bg-primary/5 px-3 py-2 text-sm font-bold text-primary">
+                              <User className="h-4 w-4" />
+                              {getItemClientName(task)}
+                            </div>
+                          )}
                       <HoverItemWrapper
-                        key={task.id}
                         onClick={() => navigate(`/tasks?id=${task.id}`)}
                         onEdit={() => navigate(`/tasks?edit=${task.id}`)}
                         onDelete={() => handleDeleteTask(task.id)}
@@ -1091,6 +1131,7 @@ export default function MyDay() {
                           </Badge>
                         </div>
                       </HoverItemWrapper>
+                      </React.Fragment>
                     );
                   })}
                   {visibleTasks.length > 6 && (
@@ -1117,10 +1158,13 @@ export default function MyDay() {
               <Plus className="h-3.5 w-3.5" />
             </Button>
             <CardHeader className="pb-14">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Bell className="h-5 w-5 text-warning" />
-                תזכורות · {selectedDayShortLabel}
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Bell className="h-5 w-5 text-warning" />
+                  תזכורות · {selectedDayShortLabel}
+                </CardTitle>
+                <ClientGroupingToggle entity="reminders" iconOnly />
+              </div>
             </CardHeader>
             <CardContent>
               {visibleReminders.length === 0 ? (
@@ -1130,9 +1174,21 @@ export default function MyDay() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {visibleReminders.map((reminder) => (
+                  {(groupRemindersByClient
+                    ? groupItemsByClient(visibleReminders).flatMap((group) => group.items)
+                    : visibleReminders
+                  ).map((reminder, index, items) => (
+                    <React.Fragment key={reminder.id}>
+                      {groupRemindersByClient &&
+                        (index === 0 ||
+                          getItemClientName(items[index - 1]) !==
+                            getItemClientName(reminder)) && (
+                          <div className="flex items-center gap-2 rounded-lg bg-primary/5 px-3 py-2 text-sm font-bold text-primary">
+                            <User className="h-4 w-4" />
+                            {getItemClientName(reminder)}
+                          </div>
+                        )}
                     <HoverItemWrapper
-                      key={reminder.id}
                       onClick={() =>
                         navigate(
                           `/tasks-meetings?tab=reminders&id=${reminder.id}`,
@@ -1175,6 +1231,7 @@ export default function MyDay() {
                         </div>
                       </div>
                     </HoverItemWrapper>
+                    </React.Fragment>
                   ))}
                 </div>
               )}

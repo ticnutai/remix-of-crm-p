@@ -63,6 +63,7 @@ const REMINDER_FIELDS: SortField[] = ["title", "event_date", "created_by", "crea
 
 const GROUP_LABELS: Record<GroupBy, string> = {
   none: "ללא קיבוץ",
+  client: "לפי לקוח",
   created_by: "לפי משתמש שהוסיף",
   priority: "לפי עדיפות",
   status: "לפי סטטוס",
@@ -70,9 +71,9 @@ const GROUP_LABELS: Record<GroupBy, string> = {
   created_at_date: "לפי תאריך יצירה",
 };
 
-const TASK_GROUPS: GroupBy[] = ["none", "created_by", "priority", "status", "date", "created_at_date"];
-const MEETING_GROUPS: GroupBy[] = ["none", "created_by", "status", "date", "created_at_date"];
-const REMINDER_GROUPS: GroupBy[] = ["none", "created_by", "status", "date", "created_at_date"];
+const TASK_GROUPS: GroupBy[] = ["none", "client", "created_by", "priority", "status", "date", "created_at_date"];
+const MEETING_GROUPS: GroupBy[] = ["none", "client", "created_by", "status", "date", "created_at_date"];
+const REMINDER_GROUPS: GroupBy[] = ["none", "client", "created_by", "status", "date", "created_at_date"];
 
 /** Global cloud-synced sort state for a given entity ('tasks' | 'meetings'). */
 export function useEntitySort(entity: EntityKind) {
@@ -276,6 +277,14 @@ export function getGroupKey(
   resolveUser: (id: string | null | undefined) => string,
 ): string {
   if (groupBy === "none") return "";
+  if (groupBy === "client") {
+    return (
+      item.client?.name ||
+      item.client_name ||
+      item.clients?.name ||
+      "ללא לקוח"
+    );
+  }
   if (groupBy === "created_by") {
     return resolveUser(item.created_by || item.user_id) || "ללא משתמש";
   }

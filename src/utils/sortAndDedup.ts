@@ -11,7 +11,14 @@ export type SortField =
   | "priority"
   | "status";
 export type SortOrder = "asc" | "desc";
-export type GroupBy = "none" | "created_by" | "priority" | "status" | "date" | "created_at_date";
+export type GroupBy =
+  | "none"
+  | "client"
+  | "created_by"
+  | "priority"
+  | "status"
+  | "date"
+  | "created_at_date";
 
 // Priority/status weight maps — give meaningful ordering when sorting by them
 const PRIORITY_WEIGHT: Record<string, number> = {

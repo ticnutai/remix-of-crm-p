@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSyncedSetting } from '@/hooks/useSyncedSetting';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useReminders, Reminder } from '@/hooks/useReminders';
@@ -25,13 +25,19 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bell, Trash2, Check, Clock, Mail, Volume2, BellRing, Plus } from 'lucide-react';
+import { Bell, Trash2, Check, Clock, Mail, Volume2, BellRing, Plus, UserRound } from 'lucide-react';
 import { format, isPast, isFuture, isToday } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { ScopeToggle, ViewScope } from '@/components/shared/ScopeToggle';
+import {
+  ClientGroupingToggle,
+  groupItemsByClient,
+  useClientGrouping,
+} from '@/components/shared/ClientGroupingToggle';
+import { supabase } from '@/integrations/supabase/client';
 
 const reminderTypeIcons: Record<string, React.ReactNode> = {
   browser: <BellRing className="h-4 w-4" />,
@@ -56,6 +62,16 @@ export default function Reminders() {
   const reminders = allReminders.filter(r => effectiveScope !== 'mine' || !user || r.user_id === user.id);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [remindersTab, setRemindersTab] = useSyncedSetting<string>({ key: 'reminders-tab', defaultValue: 'pending' });
+  const [groupByClient] = useClientGrouping('reminders');
+  const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
+
+  useEffect(() => {
+    supabase
+      .from('clients')
+      .select('id, name')
+      .order('name')
+      .then(({ data }) => setClients(data || []));
+  }, []);
 
   const pendingReminders = reminders.filter(r => !r.is_sent && !r.is_dismissed && isFuture(new Date(r.remind_at)));
   const todayReminders = reminders.filter(r => isToday(new Date(r.remind_at)));
@@ -84,7 +100,7 @@ export default function Reminders() {
     return <Badge variant="outline">ממתינה</Badge>;
   };
 
-  const ReminderTable = ({ items }: { items: Reminder[] }) => (
+  const ReminderTableBase = ({ items }: { items: Reminder[] }) => (
     <Table>
       <TableHeader>
         <TableRow>
@@ -162,6 +178,27 @@ export default function Reminders() {
     </Table>
   );
 
+  const ReminderTable = ({ items }: { items: Reminder[] }) => {
+    if (!groupByClient) return <ReminderTableBase items={items} />;
+    const groups = groupItemsByClient(items, clients);
+    return (
+      <div className="space-y-4 p-3">
+        {groups.map((group) => (
+          <section key={group.clientName} className="overflow-hidden rounded-xl border bg-card">
+            <div className="flex items-center justify-between border-b bg-primary/5 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <UserRound className="h-4 w-4 text-primary" />
+                <h3 className="font-bold">{group.clientName}</h3>
+              </div>
+              <Badge variant="secondary">{group.items.length}</Badge>
+            </div>
+            <ReminderTableBase items={group.items} />
+          </section>
+        ))}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <AppLayout>
@@ -189,6 +226,7 @@ export default function Reminders() {
           </div>
           <div className="flex items-center gap-2">
             {isAdmin && <ScopeToggle scope={viewScope} onChange={setViewScope} />}
+            <ClientGroupingToggle entity="reminders" />
             <AddReminderDialog
               trigger={
                 <Button className="gap-2 bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,30%)]">

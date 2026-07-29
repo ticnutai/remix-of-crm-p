@@ -43,6 +43,7 @@ import {
   CheckCheck,
   Pencil,
   Trash2,
+  UserRound,
 } from "lucide-react";
 import { sortItems, SortField, SortOrder } from "@/utils/sortAndDedup";
 import { useReminders, Reminder } from "@/hooks/useReminders";
@@ -66,6 +67,11 @@ import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeti
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
 import { DedupToggleButton } from "@/components/DedupToggleButton";
 import { UserFilterMenu, useUserFilter } from "@/components/shared/UserFilterMenu";
+import {
+  ClientGroupingToggle,
+  groupItemsByClient,
+  useClientGrouping,
+} from "@/components/shared/ClientGroupingToggle";
 import { usePermissions } from "@/hooks/usePermissions";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -149,6 +155,9 @@ const TasksAndMeetings = () => {
     searchParams.get("tab") || "all",
   );
   const [taskView, setTaskView] = useSyncedSetting<ViewType>({ key: "tasks-meetings-view", defaultValue: "list" });
+  const [groupTasksByClient] = useClientGrouping("tasks");
+  const [groupMeetingsByClient] = useClientGrouping("meetings");
+  const [groupRemindersByClient] = useClientGrouping("reminders");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useSyncedSetting<string>({ key: "tasks-status-filter", defaultValue: "all" });
   const [priorityFilter, setPriorityFilter] = useSyncedSetting<string>({ key: "tasks-priority-filter", defaultValue: "all" });
@@ -327,6 +336,9 @@ const TasksAndMeetings = () => {
       }
     },
   );
+
+  const taskClientGroups = groupItemsByClient(sortedTasks, clients);
+  const meetingClientGroups = groupItemsByClient(sortedMeetings, clients);
 
   const [selectionMode, setSelectionMode] = useState<Record<ColumnKey, boolean>>({
     tasks: false,
@@ -894,7 +906,18 @@ const TasksAndMeetings = () => {
             </TabsList>
 
             {activeTab === "tasks" && (
-              <TasksViewToggle view={taskView} onViewChange={setTaskView} />
+              <div className="flex items-center gap-2">
+                <ClientGroupingToggle entity="tasks" />
+                {!groupTasksByClient && (
+                  <TasksViewToggle view={taskView} onViewChange={setTaskView} />
+                )}
+              </div>
+            )}
+            {activeTab === "meetings" && (
+              <ClientGroupingToggle entity="meetings" />
+            )}
+            {activeTab === "reminders" && (
+              <ClientGroupingToggle entity="reminders" />
             )}
             {isAdmin && (
               <UserFilterMenu align="end" showLabel />
@@ -1794,6 +1817,35 @@ const TasksAndMeetings = () => {
               </div>
             ) : (
               <>
+                {groupTasksByClient ? (
+                  <div className="space-y-4">
+                    {taskClientGroups.map((group) => (
+                      <section
+                        key={group.clientName}
+                        className="overflow-hidden rounded-xl border bg-card shadow-sm"
+                      >
+                        <div className="flex items-center justify-between border-b bg-primary/5 px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <UserRound className="h-4 w-4 text-primary" />
+                            <h3 className="font-bold">{group.clientName}</h3>
+                          </div>
+                          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                            {group.items.length} משימות
+                          </span>
+                        </div>
+                        <div className="p-3">
+                          <TasksListView
+                            tasks={group.items}
+                            onEdit={handleEditTask}
+                            onDelete={handleDeleteTask}
+                            onToggleComplete={handleToggleComplete}
+                          />
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                ) : (
+                  <>
                 {taskView === "list" && (
                   <TasksListView
                     tasks={sortedTasks}
@@ -1836,6 +1888,8 @@ const TasksAndMeetings = () => {
                     onMeetingDelete={handleDeleteMeeting}
                   />
                 )}
+                  </>
+                )}
               </>
             )}
           </TabsContent>
@@ -1847,18 +1901,48 @@ const TasksAndMeetings = () => {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : (
-              <MeetingsListView
-                meetings={sortedMeetings}
-                onEdit={handleEditMeeting}
-                onDelete={handleDeleteMeeting}
-                sortOrder={sortOrder}
-              />
+              groupMeetingsByClient ? (
+                <div className="space-y-4">
+                  {meetingClientGroups.map((group) => (
+                    <section
+                      key={group.clientName}
+                      className="overflow-hidden rounded-xl border bg-card shadow-sm"
+                    >
+                      <div className="flex items-center justify-between border-b bg-primary/5 px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <UserRound className="h-4 w-4 text-primary" />
+                          <h3 className="font-bold">{group.clientName}</h3>
+                        </div>
+                        <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                          {group.items.length} פגישות
+                        </span>
+                      </div>
+                      <MeetingsListView
+                        meetings={group.items}
+                        onEdit={handleEditMeeting}
+                        onDelete={handleDeleteMeeting}
+                        sortOrder={sortOrder}
+                      />
+                    </section>
+                  ))}
+                </div>
+              ) : (
+                <MeetingsListView
+                  meetings={sortedMeetings}
+                  onEdit={handleEditMeeting}
+                  onDelete={handleDeleteMeeting}
+                  sortOrder={sortOrder}
+                />
+              )
             )}
           </TabsContent>
 
           {/* Reminders Content */}
           <TabsContent value="reminders" className="mt-4">
-            <RemindersTabContent />
+            <RemindersTabContent
+              groupByClient={groupRemindersByClient}
+              clients={clients}
+            />
           </TabsContent>
         </Tabs>
 

@@ -70,6 +70,7 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
+  UserRound,
 } from "lucide-react";
 import {
   format,
@@ -83,6 +84,7 @@ import { he } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { groupItemsByClient } from "@/components/shared/ClientGroupingToggle";
 
 const reminderTypeIcons: Record<string, React.ReactNode> = {
   browser: <BellRing className="h-4 w-4" />,
@@ -119,7 +121,15 @@ const priorityConfig = {
   },
 };
 
-export function RemindersTabContent() {
+type RemindersTabContentProps = {
+  groupByClient?: boolean;
+  clients?: Array<{ id: string; name: string }>;
+};
+
+export function RemindersTabContent({
+  groupByClient = false,
+  clients = [],
+}: RemindersTabContentProps) {
   const {
     reminders,
     loading,
@@ -384,7 +394,7 @@ export function RemindersTabContent() {
     </TableRow>
   );
 
-  const ReminderTable = ({ items }: { items: Reminder[] }) => {
+  const ReminderTableBase = ({ items }: { items: Reminder[] }) => {
     const { visible, dupMap } = dedupReminders(items);
     return (
       <div className="overflow-x-auto"><Table>
@@ -418,6 +428,35 @@ export function RemindersTabContent() {
           )}
         </TableBody>
       </Table></div>
+    );
+  };
+
+  const ReminderTable = ({ items }: { items: Reminder[] }) => {
+    if (!groupByClient) return <ReminderTableBase items={items} />;
+
+    const groups = groupItemsByClient(items, clients);
+    if (groups.length === 0) return <ReminderTableBase items={items} />;
+
+    return (
+      <div className="space-y-4 p-3">
+        {groups.map((group) => (
+          <section
+            key={group.clientName}
+            className="overflow-hidden rounded-xl border bg-card shadow-sm"
+          >
+            <div className="flex items-center justify-between border-b bg-primary/5 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <UserRound className="h-4 w-4 text-primary" />
+                <h3 className="font-bold">{group.clientName}</h3>
+              </div>
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                {group.items.length} תזכורות
+              </span>
+            </div>
+            <ReminderTableBase items={group.items} />
+          </section>
+        ))}
+      </div>
     );
   };
 

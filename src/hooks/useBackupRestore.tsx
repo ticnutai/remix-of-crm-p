@@ -47,6 +47,7 @@ const BackupContext = createContext<BackupContextType | null>(null);
 const STORAGE_KEY = "ten-arch-crm-backups";
 const VERSION = "1.0.0";
 const MAX_LOCAL_BACKUPS = 2; // Keep only last 2 backups locally — localStorage per-site quota is ~5MB
+const MAX_LOCAL_BACKUP_BYTES = 750 * 1024;
 
 // Helper to check localStorage size
 const getLocalStorageSize = (): number => {
@@ -68,6 +69,23 @@ const cleanOldLocalBackups = (backups: BackupData[]): BackupData[] => {
       new Date(a.metadata.createdAt).getTime(),
   );
   return sorted.slice(0, MAX_LOCAL_BACKUPS);
+};
+
+export const fitBackupsForLocalStorage = (
+  backups: BackupData[],
+  maxBytes = MAX_LOCAL_BACKUP_BYTES,
+): BackupData[] => {
+  const candidates = cleanOldLocalBackups(backups);
+  const fitted: BackupData[] = [];
+
+  for (const backup of candidates) {
+    const next = [...fitted, backup];
+    const bytes = new Blob([JSON.stringify(next)]).size;
+    if (bytes > maxBytes) break;
+    fitted.push(backup);
+  }
+
+  return fitted;
 };
 
 export function BackupProvider({ children }: { children: ReactNode }) {
@@ -92,38 +110,16 @@ export function BackupProvider({ children }: { children: ReactNode }) {
   });
 
   const saveToStorage = useCallback((newBackups: BackupData[]) => {
+    const localBackups = fitBackupsForLocalStorage(newBackups);
     try {
-      // Try to save with limited backups first
-      const limitedBackups = cleanOldLocalBackups(newBackups);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(limitedBackups));
+      if (localBackups.length === 0) {
+        localStorage.removeItem(STORAGE_KEY);
+        return;
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(localBackups));
     } catch (e: any) {
-      console.error("Failed to save backups:", e);
-
-      // Check if it's a quota exceeded error
       if (e.name === "QuotaExceededError" || e.code === 22 || e.code === 1014) {
-        // Try to clean more aggressively - keep only last 2 backups
-        try {
-          const minimalBackups = newBackups
-            .sort(
-              (a, b) =>
-                new Date(b.metadata.createdAt).getTime() -
-                new Date(a.metadata.createdAt).getTime(),
-            )
-            .slice(0, 2);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(minimalBackups));
-          toast({
-            title: "אחסון מקומי מוגבל",
-            description:
-              "נמחקו גיבויים ישנים לפינוי מקום. הגיבויים שלך נשמרים בענן.",
-            variant: "default",
-          });
-          return;
-        } catch (e2) {
-          // Clear local storage for backups entirely
-          localStorage.removeItem(STORAGE_KEY);
-          console.warn("Cleared local backup storage due to quota");
-        }
-
+        localStorage.removeItem(STORAGE_KEY);
         const usedMB = (getLocalStorageSize() / 1024 / 1024).toFixed(2);
         toast({
           title: "האחסון המקומי מלא",
@@ -131,6 +127,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
           variant: "default",
         });
       } else {
+        console.error("Failed to save local backups:", e);
         toast({
           title: "שגיאה בשמירה מקומית",
           description: "הגיבוי נשמר בענן בלבד",

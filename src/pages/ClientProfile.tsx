@@ -20,6 +20,10 @@ import {
   getGroupKey,
 } from "@/components/shared/SortMenu";
 import { UserFilterMenu, useUserFilter } from "@/components/shared/UserFilterMenu";
+import {
+  ClientGroupingToggle,
+  useClientGrouping,
+} from "@/components/shared/ClientGroupingToggle";
 import { sortItems, groupItems } from "@/utils/sortAndDedup";
 import { useProfileNames } from "@/hooks/useProfileNames";
 import { BulkFileUploader } from "@/components/files/BulkFileUploader";
@@ -492,6 +496,9 @@ export default function ClientProfile() {
   const taskSortPref = useEntitySort("tasks");
   const meetingSortPref = useEntitySort("meetings");
   const reminderSortPref = useEntitySort("reminders");
+  const [groupTasksByClient] = useClientGrouping("tasks");
+  const [groupMeetingsByClient] = useClientGrouping("meetings");
+  const [groupRemindersByClient] = useClientGrouping("reminders");
   const resolveUser = useProfileNames([
     ...tasks.map((t: any) => t.created_by),
     ...meetings.map((m: any) => m.created_by),
@@ -538,10 +545,12 @@ export default function ClientProfile() {
   );
   const remindersGroups = useMemo(
     () =>
-      reminderSortPref.groupBy === "none"
+      groupRemindersByClient
+        ? groupItems(sortedReminders, () => client?.name || "ללא לקוח")
+        : reminderSortPref.groupBy === "none"
         ? [{ key: "", items: sortedReminders }]
         : groupItems(sortedReminders, (it) => getGroupKey(it, reminderSortPref.groupBy, "reminders", resolveUser)),
-    [sortedReminders, reminderSortPref.groupBy, resolveUser],
+    [sortedReminders, reminderSortPref.groupBy, resolveUser, groupRemindersByClient, client?.name],
   );
 
   const MANUAL_CONTRACT_SIGNED_DATE_KEY = "contract_signed_date_manual";
@@ -842,17 +851,21 @@ export default function ClientProfile() {
 
   const tasksGroups = useMemo(
     () =>
-      taskSortPref.groupBy === "none"
+      groupTasksByClient
+        ? groupItems(sortedTasks, () => client?.name || "ללא לקוח")
+        : taskSortPref.groupBy === "none"
         ? [{ key: "", items: sortedTasks }]
         : groupItems(sortedTasks, (it) => getGroupKey(it, taskSortPref.groupBy, "tasks", resolveUser)),
-    [sortedTasks, taskSortPref.groupBy, resolveUser],
+    [sortedTasks, taskSortPref.groupBy, resolveUser, groupTasksByClient, client?.name],
   );
   const meetingsGroups = useMemo(
     () =>
-      meetingSortPref.groupBy === "none"
+      groupMeetingsByClient
+        ? groupItems(sortedMeetings, () => client?.name || "ללא לקוח")
+        : meetingSortPref.groupBy === "none"
         ? [{ key: "", items: sortedMeetings }]
         : groupItems(sortedMeetings, (it) => getGroupKey(it, meetingSortPref.groupBy, "meetings", resolveUser)),
-    [sortedMeetings, meetingSortPref.groupBy, resolveUser],
+    [sortedMeetings, meetingSortPref.groupBy, resolveUser, groupMeetingsByClient, client?.name],
   );
   const [editForm, setEditForm] = useState({
     name: "",
@@ -2228,6 +2241,7 @@ export default function ClientProfile() {
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
+                      <ClientGroupingToggle entity="tasks" iconOnly />
                       <SortMenu entity="tasks" iconOnly showGroup={false} />
                       <UserFilterMenu />
                     </div>
@@ -2236,6 +2250,11 @@ export default function ClientProfile() {
                 </CardHeader>
                 <CardContent className="p-0">
                   <ScrollArea className="h-48">
+                    {groupTasksByClient && sortedOpenTasks.length > 0 && (
+                      <div className="border-b bg-primary/5 px-4 py-2 text-right text-sm font-bold text-primary">
+                        {client?.name || "ללא לקוח"}
+                      </div>
+                    )}
                     {sortedOpenTasks
                       .slice(0, 5)
                       .map((task) => (
@@ -2314,6 +2333,7 @@ export default function ClientProfile() {
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
+                      <ClientGroupingToggle entity="meetings" iconOnly />
                       <SortMenu entity="meetings" iconOnly showGroup={false} />
                       <UserFilterMenu />
                     </div>
@@ -2322,6 +2342,11 @@ export default function ClientProfile() {
                 </CardHeader>
                 <CardContent className="p-0">
                   <ScrollArea className="h-48">
+                    {groupMeetingsByClient && sortedUpcomingMeetings.length > 0 && (
+                      <div className="border-b bg-primary/5 px-4 py-2 text-right text-sm font-bold text-primary">
+                        {client?.name || "ללא לקוח"}
+                      </div>
+                    )}
                     {sortedUpcomingMeetings
                       .slice(0, 5)
                       .map((meeting) => {
@@ -2441,6 +2466,7 @@ export default function ClientProfile() {
                           </Button>
                         }
                       />
+                      <ClientGroupingToggle entity="reminders" iconOnly />
                       <SortMenu entity="reminders" iconOnly showGroup={false} />
                       <UserFilterMenu />
                     </div>
@@ -2449,6 +2475,11 @@ export default function ClientProfile() {
                 </CardHeader>
                 <CardContent className="p-0">
                   <ScrollArea className="h-48">
+                    {groupRemindersByClient && sortedReminders.length > 0 && (
+                      <div className="border-b bg-primary/5 px-4 py-2 text-right text-sm font-bold text-primary">
+                        {client?.name || "ללא לקוח"}
+                      </div>
+                    )}
                     {sortedReminders
                       .slice(0, 5)
                       .map((reminder) => (
@@ -2687,7 +2718,10 @@ export default function ClientProfile() {
             <Card className="border border-[hsl(222,47%,25%)]/50">
               <CardHeader className="text-right border-b border-border/50 bg-muted/30">
                 <div className="flex items-center justify-between">
-                  <SortMenu entity="tasks" />
+                  <div className="flex items-center gap-2">
+                    <ClientGroupingToggle entity="tasks" iconOnly />
+                    <SortMenu entity="tasks" />
+                  </div>
                   <CardTitle className="text-lg">משימות</CardTitle>
                 </div>
               </CardHeader>
@@ -2785,7 +2819,10 @@ export default function ClientProfile() {
             <Card className="border border-[hsl(222,47%,25%)]/50">
               <CardHeader className="text-right border-b border-border/50 bg-muted/30">
                 <div className="flex items-center justify-between">
-                  <SortMenu entity="meetings" />
+                  <div className="flex items-center gap-2">
+                    <ClientGroupingToggle entity="meetings" iconOnly />
+                    <SortMenu entity="meetings" />
+                  </div>
                   <CardTitle className="text-lg">פגישות</CardTitle>
                 </div>
               </CardHeader>
@@ -3015,7 +3052,10 @@ export default function ClientProfile() {
             <Card className="border border-[hsl(222,47%,25%)]/50">
               <CardHeader className="text-right border-b border-border/50 bg-muted/30">
                 <div className="flex items-center justify-between">
-                  <SortMenu entity="reminders" />
+                  <div className="flex items-center gap-2">
+                    <ClientGroupingToggle entity="reminders" iconOnly />
+                    <SortMenu entity="reminders" />
+                  </div>
                   <CardTitle className="text-lg">תזכורות</CardTitle>
                 </div>
               </CardHeader>
