@@ -946,7 +946,7 @@ export default function Clients() {
           ? "meetings"
           : "process";
   const [clientTaskViewOverrides, setClientTaskViewOverrides] = useState<
-    Record<string, Exclude<ClientTaskViewContent, "payments">>
+    Record<string, ClientTaskViewContent>
   >({});
   const [clientCardQuickCreate, setClientCardQuickCreate] =
     useState<ClientCardQuickCreate | null>(null);
@@ -3262,7 +3262,7 @@ export default function Clients() {
       clientTaskViewOverrides[client.id] || taskViewContent;
     const renderTaskViewSwitcher = () => {
       const options: Array<{
-        value: Exclude<ClientTaskViewContent, "payments">;
+        value: ClientTaskViewContent;
         label: string;
         icon: typeof Layers;
       }> = [
@@ -3270,6 +3270,7 @@ export default function Clients() {
         { value: "tasks", label: "משימות", icon: CheckSquare },
         { value: "reminders", label: "תזכורות", icon: Bell },
         { value: "meetings", label: "פגישות", icon: Calendar },
+        { value: "payments", label: "תשלומים", icon: CircleDollarSign },
       ];
 
       return (
