@@ -26,6 +26,7 @@ import { useClientStages, type ClientStageTask } from '@/hooks/useClientStages';
 import { AddReminderDialog } from '@/components/reminders/AddReminderDialog';
 import { TaskTimerBadge } from './StageTimerDisplay';
 import { TaskClientMessageButton } from './TaskClientMessageButton';
+import { ActivityFollowUpActions } from '@/components/shared/ActivityFollowUpActions';
 
 interface ClientStagesTrackerProps {
   clientId: string;
@@ -345,6 +346,17 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                                 />
                               </div>
                             )}
+                            {task.due_date && (
+                              <div className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                                מועד: {new Date(task.due_date).toLocaleString('he-IL', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </div>
+                            )}
                           </div>
                           
                           {task.completed && task.completed_at && (
@@ -356,6 +368,15 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                       )}
 
                       <div className="flex gap-1 shrink-0 flex-row-reverse">
+                        <ActivityFollowUpActions
+                          entityType="client_stage_task"
+                          entityId={task.id}
+                          title={task.title}
+                          scheduledAt={task.due_date}
+                          completed={task.completed}
+                          showComplete={false}
+                          compact
+                        />
                         <TaskClientMessageButton
                           clientId={clientId}
                           taskId={task.id}

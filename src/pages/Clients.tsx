@@ -71,6 +71,7 @@ import {
   type ClientProcessControlSettings,
 } from "@/components/clients/ClientProcessControl";
 import { TaskClientMessageButton } from "@/components/client-tabs/TaskClientMessageButton";
+import { ActivityFollowUpActions } from "@/components/shared/ActivityFollowUpActions";
 import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
@@ -281,6 +282,7 @@ interface ClientStageTaskInfo {
   stage_id: string;
   title: string;
   completed: boolean;
+  due_date?: string | null;
   updated_at?: string;
 }
 
@@ -2199,7 +2201,7 @@ export default function Clients() {
               ),
               fetchAllFilterRows(
                 "client_stage_tasks",
-                "id, client_id, stage_id, title, completed, created_at, updated_at",
+                "id, client_id, stage_id, title, completed, due_date, created_at, updated_at",
               ),
               fetchAllFilterRows(
                 "client_payment_stages",
@@ -3663,6 +3665,8 @@ export default function Clients() {
               id: item.id,
               title: item.title,
               date: item.due_date,
+              entityType: "task" as const,
+              completed: item.status === "completed",
             })),
           },
           reminders: {
@@ -3673,6 +3677,8 @@ export default function Clients() {
               id: item.id,
               title: item.title,
               date: item.remind_at,
+              entityType: "reminder" as const,
+              completed: Boolean(item.is_dismissed),
             })),
           },
           meetings: {
@@ -3683,6 +3689,8 @@ export default function Clients() {
               id: item.id,
               title: item.title,
               date: item.start_time,
+              entityType: "meeting" as const,
+              completed: item.status === "completed",
             })),
           },
         }[effectiveTaskViewContent];
@@ -3758,24 +3766,37 @@ export default function Clients() {
                 </div>
               ) : (
                 visibleItems.map((item) => (
-                  <button
+                  <div
                     key={item.id}
-                    type="button"
-                    onClick={() => navigate(`/client-profile/${client.id}`)}
                     className="flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-right transition hover:border-[#d4a843] hover:bg-[#fef9ee]"
                   >
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#1e3a5f]/8 text-[#1e3a5f]">
-                      <ActivityIcon className="h-3.5 w-3.5" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-xs font-semibold text-[#1e3a5f]">
-                        {item.title}
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/client-profile/${client.id}`)}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-right"
+                    >
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#1e3a5f]/8 text-[#1e3a5f]">
+                        <ActivityIcon className="h-3.5 w-3.5" />
                       </span>
-                      <span className="mt-0.5 block text-[10px] text-slate-500">
-                        {formatActivityDate(item.date)}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-semibold text-[#1e3a5f]">
+                          {item.title}
+                        </span>
+                        <span className="mt-0.5 block text-[10px] text-slate-500">
+                          {formatActivityDate(item.date)}
+                        </span>
                       </span>
-                    </span>
-                  </button>
+                    </button>
+                    <ActivityFollowUpActions
+                      entityType={item.entityType}
+                      entityId={item.id}
+                      title={item.title}
+                      scheduledAt={item.date}
+                      completed={item.completed}
+                      compact
+                      onChanged={fetchFilterData}
+                    />
+                  </div>
                 ))
               )}
             </div>
@@ -3883,6 +3904,17 @@ export default function Clients() {
                           taskTitle={task.title}
                           stageName={stage.stage_name}
                           className="ml-1 opacity-60 transition-opacity group-hover/task:opacity-100"
+                        />
+                        <ActivityFollowUpActions
+                          entityType="client_stage_task"
+                          entityId={task.id}
+                          title={task.title}
+                          scheduledAt={task.due_date}
+                          completed={task.completed}
+                          showComplete={false}
+                          compact
+                          onChanged={fetchFilterData}
+                          className="opacity-70 transition-opacity group-hover/task:opacity-100"
                         />
                       </div>
                     ))}

@@ -12,6 +12,7 @@ export interface ClientStageTask {
   auto_timer_days?: number | null;
   completed: boolean;
   completed_at: string | null;
+  due_date?: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;

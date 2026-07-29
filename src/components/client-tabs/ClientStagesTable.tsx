@@ -60,6 +60,7 @@ import { cn } from '@/lib/utils';
 import { useClientStages, ClientStageTask } from '@/hooks/useClientStages';
 import { AddReminderDialog } from '@/components/reminders/AddReminderDialog';
 import { StageTaskActionsPopup, StageTaskIndicator } from './StageTaskActionsPopup';
+import { ActivityFollowUpActions } from '@/components/shared/ActivityFollowUpActions';
 import { TaskPaymentBadge } from './TaskPaymentBadge';
 import { DayCounterCell } from '@/components/tables/DayCounterCell';
 import { format, parseISO } from 'date-fns';
@@ -545,6 +546,15 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                     
                     <TableCell>
                       <div className="flex items-center justify-center gap-1">
+                        <ActivityFollowUpActions
+                          entityType="client_stage_task"
+                          entityId={task.id}
+                          title={task.title}
+                          scheduledAt={task.due_date}
+                          completed={task.completed}
+                          showComplete={false}
+                          compact
+                        />
                         <Button
                           size="sm"
                           variant="ghost"

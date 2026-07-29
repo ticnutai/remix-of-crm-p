@@ -25,6 +25,7 @@ import {
 import { format, parseISO, isPast, isToday, isTomorrow } from "date-fns";
 import { he } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { ActivityFollowUpActions } from "@/components/shared/ActivityFollowUpActions";
 
 const meetingTypes = [
   { value: "in_person", label: "פגישה פיזית", icon: Users },
@@ -175,6 +176,14 @@ export function MeetingsListView({
                       <div className="flex items-start gap-4 flex-row-reverse">
                         {/* Actions */}
                         <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                          <ActivityFollowUpActions
+                            entityType="meeting"
+                            entityId={meeting.id}
+                            title={meeting.title}
+                            scheduledAt={meeting.start_time}
+                            completed={meeting.status === "completed"}
+                            compact
+                          />
                           {/* Duplicate indicator */}
                           {dupMap.has(meeting.id) && (
                             <Button

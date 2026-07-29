@@ -34,13 +34,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -60,7 +53,6 @@ import {
   BellRing,
   Plus,
   Search,
-  AlarmClockPlus,
   MoreHorizontal,
   AlertTriangle,
   ArrowUp,
@@ -77,14 +69,11 @@ import {
   isPast,
   isFuture,
   isToday,
-  addMinutes,
-  addHours,
 } from "date-fns";
 import { he } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { groupItemsByClient } from "@/components/shared/ClientGroupingToggle";
+import { ActivityFollowUpActions } from "@/components/shared/ActivityFollowUpActions";
 
 const reminderTypeIcons: Record<string, React.ReactNode> = {
   browser: <BellRing className="h-4 w-4" />,
@@ -214,29 +203,8 @@ export function RemindersTabContent({
     }
   };
 
-  const handleSnooze = async (reminder: Reminder, minutes: number) => {
-    const newTime = addMinutes(new Date(), minutes);
-    try {
-      await supabase
-        .from("reminders")
-        .update({
-          remind_at: newTime.toISOString(),
-          is_sent: false,
-          is_dismissed: false,
-        })
-        .eq("id", reminder.id);
-      toast.success(
-        `תזכורת נדחתה ל-${format(newTime, "HH:mm", { locale: he })}`,
-      );
-      // Refresh handled by useReminders
-      window.location.reload(); // Simple refresh for now
-    } catch {
-      toast.error("שגיאה בדחיית התזכורת");
-    }
-  };
-
   const getStatusBadge = (reminder: Reminder) => {
-    if (reminder.is_dismissed) return <Badge variant="secondary">בוטלה</Badge>;
+    if (reminder.is_dismissed) return <Badge className="bg-green-600 text-white">הושלמה</Badge>;
     if (reminder.is_sent)
       return <Badge className="bg-green-600 text-white">נשלחה</Badge>;
     if (isPast(new Date(reminder.remind_at)))
@@ -326,45 +294,15 @@ export function RemindersTabContent({
       <TableCell>{getStatusBadge(reminder)}</TableCell>
       <TableCell>
         <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-          {/* Snooze dropdown */}
-          {!reminder.is_dismissed && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  title="נודניק"
-                >
-                  <AlarmClockPlus className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleSnooze(reminder, 5)}>
-                  <Clock className="h-4 w-4 ml-2" />5 דקות
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSnooze(reminder, 15)}>
-                  <Clock className="h-4 w-4 ml-2" />
-                  15 דקות
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSnooze(reminder, 30)}>
-                  <Clock className="h-4 w-4 ml-2" />
-                  30 דקות
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSnooze(reminder, 60)}>
-                  <Clock className="h-4 w-4 ml-2" />
-                  שעה
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => handleSnooze(reminder, 60 * 24)}
-                >
-                  <Clock className="h-4 w-4 ml-2" />
-                  מחר
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          <ActivityFollowUpActions
+            entityType="reminder"
+            entityId={reminder.id}
+            title={reminder.title}
+            scheduledAt={reminder.remind_at}
+            completed={reminder.is_dismissed}
+            showComplete={false}
+            compact
+          />
 
           {/* Dismiss */}
           {!reminder.is_dismissed && !reminder.is_sent && (
@@ -373,7 +311,7 @@ export function RemindersTabContent({
               size="icon"
               className="h-8 w-8"
               onClick={() => dismissReminder(reminder.id)}
-              title="סמן כבוטלה"
+              title="סמן כהושלמה"
             >
               <Check className="h-4 w-4" />
             </Button>

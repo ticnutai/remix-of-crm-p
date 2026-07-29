@@ -124,6 +124,7 @@ import {
 import { useClientFolders } from "@/hooks/useClientFolders";
 import { TaskPaymentBadge } from "./TaskPaymentBadge";
 import { TaskClientMessageButton } from "./TaskClientMessageButton";
+import { ActivityFollowUpActions } from "@/components/shared/ActivityFollowUpActions";
 import { Folder, FolderPlus, ChevronRight, ChevronLeft } from "lucide-react";
 import { useClients } from "@/hooks/useClients";
 import { supabase } from "@/integrations/supabase/client";
@@ -878,6 +879,15 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
               taskId={task.id}
               taskTitle={task.title}
               stageName={stage.stage_name}
+            />
+            <ActivityFollowUpActions
+              entityType="client_stage_task"
+              entityId={task.id}
+              title={task.title}
+              scheduledAt={task.due_date}
+              completed={task.completed}
+              showComplete={false}
+              compact
             />
             <StageTaskActionsPopup
               stageTaskId={task.id}
@@ -1771,6 +1781,15 @@ function SortableExpandedTaskItem({
               <Bell className="h-4 w-4" />
             </Button>
           }
+        />
+        <ActivityFollowUpActions
+          entityType="client_stage_task"
+          entityId={task.id}
+          title={task.title}
+          scheduledAt={task.due_date}
+          completed={task.completed}
+          showComplete={false}
+          compact
         />
       </div>
     </div>
@@ -5101,6 +5120,15 @@ export function ClientStagesBoard({
                                             <Bell className="h-3.5 w-3.5" />
                                           </Button>
                                         }
+                                      />
+                                      <ActivityFollowUpActions
+                                        entityType="client_stage_task"
+                                        entityId={task.id}
+                                        title={task.title}
+                                        scheduledAt={task.due_date}
+                                        completed={task.completed}
+                                        showComplete={false}
+                                        compact
                                       />
                                     </div>
                                   </td>

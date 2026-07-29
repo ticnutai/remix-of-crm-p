@@ -73,6 +73,7 @@ import {
   prepareClientGroupedItems,
   useClientGrouping,
 } from "@/components/shared/ClientGroupingToggle";
+import { ActivityFollowUpActions } from "@/components/shared/ActivityFollowUpActions";
 import { usePermissions } from "@/hooks/usePermissions";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -150,6 +151,7 @@ const TasksAndMeetings = () => {
     loading: remindersLoading,
     deleteReminder,
     dismissReminder,
+    fetchReminders,
   } = useReminders();
 
   const [activeTab, setActiveTab] = useState(
@@ -1284,6 +1286,16 @@ const TasksAndMeetings = () => {
                         >
                           <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
+                        <ActivityFollowUpActions
+                          entityType="task"
+                          entityId={task.id}
+                          title={task.title}
+                          scheduledAt={task.due_date}
+                          completed={task.status === "completed"}
+                          showComplete={false}
+                          compact
+                          onChanged={fetchTasks}
+                        />
                         <button
                           className={`shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-opacity ${selectionMode.tasks ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`}
                           onClick={(event) => {
@@ -1553,6 +1565,16 @@ const TasksAndMeetings = () => {
                         >
                           <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
+                        <ActivityFollowUpActions
+                          entityType="meeting"
+                          entityId={meeting.id}
+                          title={meeting.title}
+                          scheduledAt={meeting.start_time}
+                          completed={meeting.status === "completed"}
+                          showComplete={false}
+                          compact
+                          onChanged={fetchMeetings}
+                        />
                         <button
                           className={`shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-opacity ${selectionMode.meetings ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`}
                           onClick={(event) => {
@@ -1828,6 +1850,16 @@ const TasksAndMeetings = () => {
                         >
                           <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
+                        <ActivityFollowUpActions
+                          entityType="reminder"
+                          entityId={reminder.id}
+                          title={reminder.title}
+                          scheduledAt={reminder.remind_at}
+                          completed={reminder.is_dismissed}
+                          showComplete={false}
+                          compact
+                          onChanged={fetchReminders}
+                        />
                         <button
                           className={`shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-opacity ${selectionMode.reminders ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`}
                           onClick={(event) => {

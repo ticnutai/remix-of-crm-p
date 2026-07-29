@@ -25,6 +25,7 @@ import {
 import { format, parseISO, isPast, isToday } from "date-fns";
 import { he } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { ActivityFollowUpActions } from "@/components/shared/ActivityFollowUpActions";
 import {
   DndContext,
   closestCenter,
@@ -120,6 +121,15 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = React.memo(
           <div className="flex items-center gap-4 flex-row-reverse">
             {/* Actions */}
             <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+              <ActivityFollowUpActions
+                entityType="task"
+                entityId={task.id}
+                title={task.title}
+                scheduledAt={task.due_date}
+                completed={task.status === "completed"}
+                showComplete={false}
+                compact
+              />
               <Button
                 variant="ghost"
                 size="icon"
