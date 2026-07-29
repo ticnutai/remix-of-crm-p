@@ -106,6 +106,48 @@ export type Database = {
           },
         ]
       }
+      activity_postponements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          next_action: string | null
+          postponed_to: string
+          previous_due_at: string | null
+          reason: string
+          sequence_no: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          next_action?: string | null
+          postponed_to: string
+          previous_due_at?: string | null
+          reason: string
+          sequence_no: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          next_action?: string | null
+          postponed_to?: string
+          previous_due_at?: string | null
+          reason?: string
+          sequence_no?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           created_at: string
@@ -2546,6 +2588,7 @@ export type Database = {
           completed: boolean
           completed_at: string | null
           created_at: string
+          due_date: string | null
           id: string
           is_bold: boolean | null
           payment_amount: number | null
@@ -2569,6 +2612,7 @@ export type Database = {
           completed?: boolean
           completed_at?: string | null
           created_at?: string
+          due_date?: string | null
           id?: string
           is_bold?: boolean | null
           payment_amount?: number | null
@@ -2592,6 +2636,7 @@ export type Database = {
           completed?: boolean
           completed_at?: string | null
           created_at?: string
+          due_date?: string | null
           id?: string
           is_bold?: boolean | null
           payment_amount?: number | null
@@ -9816,6 +9861,34 @@ export type Database = {
         Args: { p_file_id: string; p_folder_id: string }
         Returns: boolean
       }
+      postpone_activity: {
+        Args: {
+          p_entity_id: string
+          p_entity_type: string
+          p_next_action?: string
+          p_postponed_to: string
+          p_reason: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          next_action: string | null
+          postponed_to: string
+          previous_due_at: string | null
+          reason: string
+          sequence_no: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_postponements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       qp_next_version_number: {
         Args: { p_document_id: string }
         Returns: number
@@ -9860,6 +9933,14 @@ export type Database = {
           uploaded_by: string
           view_count: number
         }[]
+      }
+      set_activity_completed: {
+        Args: {
+          p_completed?: boolean
+          p_entity_id: string
+          p_entity_type: string
+        }
+        Returns: undefined
       }
       set_inspection_step_completion: {
         Args: { p_completed: boolean; p_step_id: string }
