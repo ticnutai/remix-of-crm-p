@@ -3,7 +3,7 @@ import { List, UsersRound } from "lucide-react";
 import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { cn } from "@/lib/utils";
 
-export type ClientGroupEntity = "tasks" | "meetings" | "reminders";
+export type ClientGroupEntity = "all" | "tasks" | "meetings" | "reminders";
 
 type ClientLike = {
   id: string;
@@ -41,7 +41,7 @@ export function ClientGroupingToggle({
       aria-pressed={grouped}
     >
       {grouped ? <UsersRound className="h-4 w-4" /> : <List className="h-4 w-4" />}
-      {!iconOnly && <span>{grouped ? "לפי לקוח" : "רשימה רגילה"}</span>}
+      {!iconOnly && <span>{grouped ? "לפי לקוח" : "תצוגה כללית"}</span>}
     </Button>
   );
 }
@@ -92,4 +92,28 @@ export function groupItemsByClient<T>(
     if (b.clientName === "ללא לקוח") return -1;
     return a.clientName.localeCompare(b.clientName, "he");
   });
+}
+
+export function prepareClientGroupedItems<T>(
+  items: T[],
+  clients: ClientLike[] = [],
+  grouped = false,
+) {
+  if (!grouped) {
+    return items.map((item) => ({
+      item,
+      clientName: "",
+      groupCount: 0,
+      groupStart: false,
+    }));
+  }
+
+  return groupItemsByClient(items, clients).flatMap((group) =>
+    group.items.map((item, index) => ({
+      item,
+      clientName: group.clientName,
+      groupCount: group.items.length,
+      groupStart: index === 0,
+    })),
+  );
 }

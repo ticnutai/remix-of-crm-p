@@ -7,6 +7,7 @@ import React, {
   useMemo,
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout";
 import { PhoneWithExtras } from "@/components/clients/PhoneWithExtras";
 import { Input } from "@/components/ui/input";
@@ -70,6 +71,11 @@ import {
   type ClientProcessControlSettings,
 } from "@/components/clients/ClientProcessControl";
 import { TaskClientMessageButton } from "@/components/client-tabs/TaskClientMessageButton";
+import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
+import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
+import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
+import type { Task, TaskInsert } from "@/hooks/useTasksOptimized";
+import type { MeetingInsert } from "@/hooks/useMeetingsOptimized";
 import { ViewPresetsMenu, type ViewPresetState } from "@/components/clients/ViewPresetsMenu";
 import {
   usePageCustomizer,
@@ -119,6 +125,7 @@ import {
   ClipboardList,
   CircleDollarSign,
   GripVertical,
+  Plus,
 } from "lucide-react";
 import {
   moveRecentClientBefore,
@@ -337,6 +344,12 @@ type ClientTaskViewContent =
   | "meetings"
   | "payments";
 
+type ClientCardQuickCreate = {
+  clientId: string;
+  clientName: string;
+  kind: Exclude<ClientTaskViewContent, "payments">;
+};
+
 interface ClientStageTemplateInfo {
   id: string;
   name: string;
@@ -532,7 +545,8 @@ export default function Clients() {
   }, []);
 
   const navigate = useNavigate();
-  const { isLoading: authLoading, isAdmin, isManager } = useAuth();
+  const queryClient = useQueryClient();
+  const { user, isLoading: authLoading, isAdmin, isManager } = useAuth();
 
   // Google Sheets integration
   const {
@@ -929,6 +943,34 @@ export default function Clients() {
         : filters.hasMeetings === true
           ? "meetings"
           : "process";
+  const [clientTaskViewOverrides, setClientTaskViewOverrides] = useState<
+    Record<string, Exclude<ClientTaskViewContent, "payments">>
+  >({});
+  const [clientCardQuickCreate, setClientCardQuickCreate] =
+    useState<ClientCardQuickCreate | null>(null);
+  const [stageTaskTitle, setStageTaskTitle] = useState("");
+  const [stageTaskStageId, setStageTaskStageId] = useState("");
+  const [isCreatingClientCardItem, setIsCreatingClientCardItem] =
+    useState(false);
+
+  useEffect(() => {
+    setClientTaskViewOverrides({});
+  }, [taskViewContent]);
+
+  const quickCreateInitialData = useMemo(
+    () =>
+      clientCardQuickCreate
+        ? { clientId: clientCardQuickCreate.clientId }
+        : undefined,
+    [clientCardQuickCreate?.clientId],
+  );
+  const reminderQuickCreateInitialValues = useMemo(
+    () =>
+      clientCardQuickCreate
+        ? { client_id: clientCardQuickCreate.clientId }
+        : undefined,
+    [clientCardQuickCreate?.clientId],
+  );
 
   // client_id -> Array<{ consultantId, profession }>
   const [clientConsultantsMap, setClientConsultantsMap] = useState<
@@ -2363,6 +2405,158 @@ export default function Clients() {
     }
   }, []);
 
+  const openClientCardQuickCreate = useCallback(
+    (
+      client: Client,
+      kind: Exclude<ClientTaskViewContent, "payments">,
+    ) => {
+      setClientCardQuickCreate({
+        clientId: client.id,
+        clientName: client.name,
+        kind,
+      });
+
+      if (kind === "process") {
+        const stages = [...(processStagesByClient.get(client.id) || [])].sort(
+          (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+        );
+        const preferredStage =
+          stages.find((stage) => !stage.is_completed) || stages[0];
+        setStageTaskStageId(preferredStage?.stage_id || "");
+        setStageTaskTitle("");
+      }
+    },
+    [processStagesByClient],
+  );
+
+  const handleCreateClientTask = useCallback(
+    async (task: TaskInsert): Promise<Task> => {
+      if (!clientCardQuickCreate || !user) {
+        throw new Error("לא נמצא לקוח או משתמש מחובר");
+      }
+
+      const { data, error } = await supabase
+        .from("tasks")
+        .insert({
+          ...task,
+          client_id: clientCardQuickCreate.clientId,
+          created_by: user.id,
+        })
+        .select("*, client:clients(name), project:projects(name)")
+        .single();
+
+      if (error) {
+        toast({
+          title: "לא ניתן ליצור את המשימה",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+
+      await Promise.all([
+        fetchFilterData(),
+        queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+      ]);
+      toast({ title: "המשימה נוספה ללקוח" });
+      return data as Task;
+    },
+    [clientCardQuickCreate, fetchFilterData, queryClient, user],
+  );
+
+  const handleCreateClientMeeting = useCallback(
+    async (meeting: MeetingInsert): Promise<{ id?: string }> => {
+      if (!clientCardQuickCreate || !user) {
+        throw new Error("לא נמצא לקוח או משתמש מחובר");
+      }
+
+      const { data, error } = await supabase
+        .from("meetings")
+        .insert({
+          ...meeting,
+          client_id: clientCardQuickCreate.clientId,
+          created_by: user.id,
+        } as any)
+        .select("id")
+        .single();
+
+      if (error) {
+        toast({
+          title: "לא ניתן ליצור את הפגישה",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+
+      await Promise.all([
+        fetchFilterData(),
+        queryClient.invalidateQueries({ queryKey: ["meetings"] }),
+      ]);
+      toast({ title: "הפגישה נוספה ללקוח" });
+      return data || {};
+    },
+    [clientCardQuickCreate, fetchFilterData, queryClient, user],
+  );
+
+  const handleCreateClientStageTask = useCallback(async () => {
+    if (
+      !clientCardQuickCreate ||
+      clientCardQuickCreate.kind !== "process" ||
+      !stageTaskStageId ||
+      !stageTaskTitle.trim()
+    ) {
+      return;
+    }
+
+    setIsCreatingClientCardItem(true);
+    try {
+      const stageTaskCount = clientStageTasks.filter(
+        (task) =>
+          task.client_id === clientCardQuickCreate.clientId &&
+          task.stage_id === stageTaskStageId,
+      ).length;
+      const { data, error } = await supabase
+        .from("client_stage_tasks")
+        .insert({
+          client_id: clientCardQuickCreate.clientId,
+          stage_id: stageTaskStageId,
+          title: stageTaskTitle.trim(),
+          sort_order: stageTaskCount,
+        } as any)
+        .select(
+          "id, client_id, stage_id, title, completed, created_at, updated_at",
+        )
+        .single();
+
+      if (error) throw error;
+
+      setClientStageTasks((current) => [
+        ...current,
+        data as ClientStageTaskInfo,
+      ]);
+      await fetchFilterData();
+      toast({ title: "המשימה נוספה לשלב" });
+      setClientCardQuickCreate(null);
+      setStageTaskTitle("");
+      setStageTaskStageId("");
+    } catch (error: any) {
+      toast({
+        title: "לא ניתן להוסיף משימה לשלב",
+        description: error?.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingClientCardItem(false);
+    }
+  }, [
+    clientCardQuickCreate,
+    clientStageTasks,
+    fetchFilterData,
+    stageTaskStageId,
+    stageTaskTitle,
+  ]);
+
   const fetchCategoriesAndTags = useCallback(async () => {
     try {
       if (!categoriesAndTagsFetch) {
@@ -3062,6 +3256,88 @@ export default function Clients() {
       </div>
     );
     const [showActions, setShowActions] = useState(false);
+    const effectiveTaskViewContent =
+      clientTaskViewOverrides[client.id] || taskViewContent;
+    const renderTaskViewSwitcher = () => {
+      const options: Array<{
+        value: Exclude<ClientTaskViewContent, "payments">;
+        label: string;
+        icon: typeof Layers;
+      }> = [
+        { value: "process", label: "שלבים", icon: Layers },
+        { value: "tasks", label: "משימות", icon: CheckSquare },
+        { value: "reminders", label: "תזכורות", icon: Bell },
+        { value: "meetings", label: "פגישות", icon: Calendar },
+      ];
+
+      return (
+        <div
+          className="flex items-center justify-center gap-1 border-b border-[#d4a843]/25 bg-[#fef9ee]/70 px-3 py-1.5"
+          aria-label={`בחירת תוכן עבור ${client.name}`}
+        >
+          {options.map((option) => {
+            const OptionIcon = option.icon;
+            const isActive = effectiveTaskViewContent === option.value;
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                title={option.label}
+                aria-label={`${option.label} — ${client.name}`}
+                aria-pressed={isActive}
+                onClick={() =>
+                  setClientTaskViewOverrides((current) => {
+                    if (option.value === taskViewContent) {
+                      const next = { ...current };
+                      delete next[client.id];
+                      return next;
+                    }
+
+                    return { ...current, [client.id]: option.value };
+                  })
+                }
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-lg border transition",
+                  isActive
+                    ? "border-[#d4a843] bg-[#1e3a5f] text-[#f1c75b] shadow-sm"
+                    : "border-transparent bg-white/80 text-slate-500 hover:border-[#d4a843]/60 hover:text-[#1e3a5f]",
+                )}
+              >
+                <OptionIcon className="h-3.5 w-3.5" />
+              </button>
+            );
+          })}
+          {effectiveTaskViewContent !== "payments" && (
+            <>
+              <span className="mx-0.5 h-4 w-px bg-[#d4a843]/35" aria-hidden="true" />
+              <button
+                type="button"
+                title={`הוסף ${
+                  effectiveTaskViewContent === "process"
+                    ? "משימה לשלב"
+                    : effectiveTaskViewContent === "tasks"
+                      ? "משימה"
+                      : effectiveTaskViewContent === "reminders"
+                        ? "תזכורת"
+                        : "פגישה"
+                }`}
+                aria-label={`הוסף פריט — ${client.name}`}
+                onClick={() =>
+                  openClientCardQuickCreate(
+                    client,
+                    effectiveTaskViewContent,
+                  )
+                }
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#d4a843] bg-[#d4a843] text-[#1e3a5f] shadow-sm transition hover:scale-105 hover:bg-[#f1c75b]"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            </>
+          )}
+        </div>
+      );
+    };
     const isHighlighted = highlightedClientId === client.id;
     const categoryIconRenderer = category
       ? clientCategoryIconMap[category.icon] || clientCategoryIconMap.FolderOpen
@@ -3164,7 +3440,7 @@ export default function Clients() {
     };
 
     if (viewMode === "tasks") {
-      if (taskViewContent === "payments") {
+      if (effectiveTaskViewContent === "payments") {
         const paymentMode = filters.paymentStatus || "reached";
         const paymentModeLabel = {
           due: "ממתינים לתשלום",
@@ -3255,6 +3531,8 @@ export default function Clients() {
                 <CircleDollarSign className="h-4 w-4" />
               </span>
             </button>
+
+            {renderTaskViewSwitcher()}
 
             <div
               data-client-task-scroll="true"
@@ -3375,7 +3653,7 @@ export default function Clients() {
         );
       }
 
-      if (taskViewContent !== "process") {
+      if (effectiveTaskViewContent !== "process") {
         const activityConfig = {
           tasks: {
             label: "משימות פתוחות",
@@ -3407,7 +3685,7 @@ export default function Clients() {
               date: item.start_time,
             })),
           },
-        }[taskViewContent];
+        }[effectiveTaskViewContent];
         const ActivityIcon = activityConfig.icon;
         const visibleItems =
           processControlSettings.verticalScroll !== false
@@ -3453,6 +3731,8 @@ export default function Clients() {
                 <ActivityIcon className="h-4 w-4" />
               </span>
             </button>
+
+            {renderTaskViewSwitcher()}
 
             <div
               data-client-task-scroll="true"
@@ -3546,6 +3826,8 @@ export default function Clients() {
               <ClipboardList className="h-4 w-4" />
             </span>
           </button>
+
+          {renderTaskViewSwitcher()}
 
           <div
             data-client-task-scroll="true"
@@ -6963,6 +7245,129 @@ export default function Clients() {
               variant="outline"
             >
               סגור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <QuickAddTask
+        open={clientCardQuickCreate?.kind === "tasks"}
+        onOpenChange={(open) => {
+          if (!open) setClientCardQuickCreate(null);
+        }}
+        onSubmit={handleCreateClientTask}
+        clients={clients}
+        initialData={quickCreateInitialData}
+      />
+
+      <QuickAddMeeting
+        open={clientCardQuickCreate?.kind === "meetings"}
+        onOpenChange={(open) => {
+          if (!open) setClientCardQuickCreate(null);
+        }}
+        onSubmit={handleCreateClientMeeting}
+        clients={clients}
+        initialData={quickCreateInitialData}
+      />
+
+      <AddReminderDialog
+        open={clientCardQuickCreate?.kind === "reminders"}
+        onOpenChange={(open) => {
+          if (!open) {
+            setClientCardQuickCreate(null);
+            void fetchFilterData();
+          }
+        }}
+        entityType="client"
+        entityId={clientCardQuickCreate?.clientId}
+        initialValues={reminderQuickCreateInitialValues}
+      />
+
+      <Dialog
+        open={clientCardQuickCreate?.kind === "process"}
+        onOpenChange={(open) => {
+          if (!open) {
+            setClientCardQuickCreate(null);
+            setStageTaskTitle("");
+            setStageTaskStageId("");
+          }
+        }}
+      >
+        <DialogContent dir="rtl" className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              הוספת משימה לשלב — {clientCardQuickCreate?.clientName}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="client-card-stage-select">שלב</Label>
+              <select
+                id="client-card-stage-select"
+                value={stageTaskStageId}
+                onChange={(event) => setStageTaskStageId(event.target.value)}
+                className="h-10 w-full rounded-lg border border-[#d4a843]/60 bg-white px-3 text-right text-[#1e3a5f]"
+              >
+                <option value="">בחר שלב</option>
+                {[
+                  ...(processStagesByClient.get(
+                    clientCardQuickCreate?.clientId || "",
+                  ) || []),
+                ]
+                  .sort(
+                    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+                  )
+                  .map((stage) => (
+                    <option key={stage.id} value={stage.stage_id}>
+                      {stage.stage_name}
+                      {stage.is_completed ? " — הושלם" : ""}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="client-card-stage-task-title">שם המשימה</Label>
+              <Input
+                id="client-card-stage-task-title"
+                value={stageTaskTitle}
+                onChange={(event) => setStageTaskTitle(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void handleCreateClientStageTask();
+                  }
+                }}
+                placeholder="לדוג: קבלת מסמכים מהלקוח"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex-row-reverse gap-2">
+            <Button
+              onClick={() => void handleCreateClientStageTask()}
+              disabled={
+                isCreatingClientCardItem ||
+                !stageTaskStageId ||
+                !stageTaskTitle.trim()
+              }
+              className="gap-2"
+            >
+              {isCreatingClientCardItem ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+              הוסף משימה לשלב
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setClientCardQuickCreate(null)}
+              disabled={isCreatingClientCardItem}
+            >
+              ביטול
             </Button>
           </DialogFooter>
         </DialogContent>

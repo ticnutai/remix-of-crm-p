@@ -70,6 +70,7 @@ import { UserFilterMenu, useUserFilter } from "@/components/shared/UserFilterMen
 import {
   ClientGroupingToggle,
   groupItemsByClient,
+  prepareClientGroupedItems,
   useClientGrouping,
 } from "@/components/shared/ClientGroupingToggle";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -155,6 +156,7 @@ const TasksAndMeetings = () => {
     searchParams.get("tab") || "all",
   );
   const [taskView, setTaskView] = useSyncedSetting<ViewType>({ key: "tasks-meetings-view", defaultValue: "list" });
+  const [groupAllByClient] = useClientGrouping("all");
   const [groupTasksByClient] = useClientGrouping("tasks");
   const [groupMeetingsByClient] = useClientGrouping("meetings");
   const [groupRemindersByClient] = useClientGrouping("reminders");
@@ -509,6 +511,23 @@ const TasksAndMeetings = () => {
       const timeB = new Date(b.remind_at).getTime();
       return (timeA - timeB) * direction;
     }),
+  };
+  const displayedAllColumnItems = {
+    tasks: prepareClientGroupedItems(
+      sortedTasksForAllColumn.tasks,
+      clients,
+      groupAllByClient,
+    ),
+    meetings: prepareClientGroupedItems(
+      sortedTasksForAllColumn.meetings,
+      clients,
+      groupAllByClient,
+    ),
+    reminders: prepareClientGroupedItems(
+      sortedTasksForAllColumn.reminders,
+      clients,
+      groupAllByClient,
+    ),
   };
 
   const getSortFieldLabel = (field: ColumnSortField) => {
@@ -905,6 +924,9 @@ const TasksAndMeetings = () => {
               </TabsTrigger>
             </TabsList>
 
+            {activeTab === "all" && (
+              <ClientGroupingToggle entity="all" />
+            )}
             {activeTab === "tasks" && (
               <div className="flex items-center gap-2">
                 <ClientGroupingToggle entity="tasks" />
@@ -1141,9 +1163,22 @@ const TasksAndMeetings = () => {
                   ) : sortedTasks.length === 0 ? (
                     <p className="text-center text-xs text-muted-foreground py-8">אין משימות</p>
                   ) : (
-                    sortedTasksForAllColumn.tasks.slice(0, 20).map((task, index) => (
+                    displayedAllColumnItems.tasks.slice(0, 20).map((entry, index) => {
+                      const { item: task, clientName, groupCount, groupStart } = entry;
+                      return (
+                      <React.Fragment key={task.id}>
+                        {groupStart && (
+                          <div className="sticky top-0 z-10 flex items-center justify-between gap-2 rounded-md border border-primary/20 bg-primary/10 px-2.5 py-1.5 text-primary shadow-sm">
+                            <span className="flex min-w-0 items-center gap-1.5 text-xs font-bold">
+                              <UserRound className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate">{clientName}</span>
+                            </span>
+                            <span className="rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-semibold">
+                              {groupCount}
+                            </span>
+                          </div>
+                        )}
                       <div
-                        key={task.id}
                         className={`flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right ${
                           selectedTaskIds.includes(task.id)
                             ? "bg-primary/15 ring-1 ring-primary/40"
@@ -1278,7 +1313,9 @@ const TasksAndMeetings = () => {
                           task.priority === "medium" ? "bg-yellow-500" : "bg-green-400"
                         }`} />
                       </div>
-                    ))
+                      </React.Fragment>
+                      );
+                    })
                   )}
                 </div>
                 {filteredTasks.length > 20 && (
@@ -1417,9 +1454,22 @@ const TasksAndMeetings = () => {
                   ) : sortedMeetings.length === 0 ? (
                     <p className="text-center text-xs text-muted-foreground py-8">אין פגישות</p>
                   ) : (
-                    sortedTasksForAllColumn.meetings.slice(0, 20).map((meeting, index) => (
+                    displayedAllColumnItems.meetings.slice(0, 20).map((entry, index) => {
+                      const { item: meeting, clientName, groupCount, groupStart } = entry;
+                      return (
+                      <React.Fragment key={meeting.id}>
+                        {groupStart && (
+                          <div className="sticky top-0 z-10 flex items-center justify-between gap-2 rounded-md border border-blue-500/20 bg-blue-500/10 px-2.5 py-1.5 text-blue-700 shadow-sm">
+                            <span className="flex min-w-0 items-center gap-1.5 text-xs font-bold">
+                              <UserRound className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate">{clientName}</span>
+                            </span>
+                            <span className="rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-semibold">
+                              {groupCount}
+                            </span>
+                          </div>
+                        )}
                       <div
-                        key={meeting.id}
                         className={`flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right ${
                           selectedMeetingIds.includes(meeting.id)
                             ? "bg-blue-500/15 ring-1 ring-blue-500/40"
@@ -1528,7 +1578,9 @@ const TasksAndMeetings = () => {
                           <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
                       </div>
-                    ))
+                      </React.Fragment>
+                      );
+                    })
                   )}
                 </div>
                 {filteredMeetings.length > 20 && (
@@ -1670,9 +1722,22 @@ const TasksAndMeetings = () => {
                   ) : scopedReminders.length === 0 ? (
                     <p className="text-center text-xs text-muted-foreground py-8">אין תזכורות</p>
                   ) : (
-                    sortedTasksForAllColumn.reminders.slice(0, 20).map((reminder, index) => (
+                    displayedAllColumnItems.reminders.slice(0, 20).map((entry, index) => {
+                      const { item: reminder, clientName, groupCount, groupStart } = entry;
+                      return (
+                      <React.Fragment key={reminder.id}>
+                        {groupStart && (
+                          <div className="sticky top-0 z-10 flex items-center justify-between gap-2 rounded-md border border-amber-500/20 bg-amber-500/10 px-2.5 py-1.5 text-amber-700 shadow-sm">
+                            <span className="flex min-w-0 items-center gap-1.5 text-xs font-bold">
+                              <UserRound className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate">{clientName}</span>
+                            </span>
+                            <span className="rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-semibold">
+                              {groupCount}
+                            </span>
+                          </div>
+                        )}
                       <div
-                        key={reminder.id}
                         className={`flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right ${
                           selectedReminderIds.includes(reminder.id)
                             ? "bg-amber-500/15 ring-1 ring-amber-500/40"
@@ -1795,7 +1860,9 @@ const TasksAndMeetings = () => {
                           isDatePast(new Date(reminder.remind_at)) ? "bg-red-500" : "bg-amber-500"
                         }`} />
                       </div>
-                    ))
+                      </React.Fragment>
+                      );
+                    })
                   )}
                 </div>
                 {scopedReminders.length > 20 && (
