@@ -1590,14 +1590,14 @@ export default function ClientProfile() {
 
         {/* Client Info Card - Elegant Navy Border */}
         {displaySettings.showClientCard && <Card className="bg-card/95 backdrop-blur-sm border-2 border-[hsl(222,47%,25%)] shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row items-start justify-between gap-6">
-              {/* Right side - Client info */}
-              <div className="flex items-start gap-4 w-full md:flex-1">
-                <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] flex items-center justify-center shadow-lg flex-shrink-0">
-                  <Building className="h-8 w-8 text-[hsl(45,70%,55%)]" />
+          <CardContent className="p-4 sm:p-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:items-stretch">
+              {/* Client identity */}
+              <div className="flex min-w-0 items-start gap-3 rounded-xl border border-[hsl(222,47%,25%)]/15 bg-gradient-to-l from-[hsl(45,70%,55%)]/10 to-muted/20 p-4">
+                <div className="h-14 w-14 rounded-full bg-gradient-to-br from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] flex items-center justify-center shadow-lg flex-shrink-0">
+                  <Building className="h-7 w-7 text-[hsl(45,70%,55%)]" />
                 </div>
-                <div className="min-w-0 text-right flex-1">
+                <div className="min-w-0 flex-1 self-center text-right">
                   {isAdmin || isManager ? (
                     <button
                       type="button"
@@ -1606,13 +1606,13 @@ export default function ClientProfile() {
                       title="עריכת פרטי הלקוח"
                       aria-label={`עריכת פרטי הלקוח ${client.name}`}
                     >
-                      <span className="truncate text-2xl font-bold text-foreground">
+                      <span className="truncate text-xl font-bold text-foreground">
                         {client.name}
                       </span>
                       <Pencil className="h-4 w-4 shrink-0 text-[hsl(45,70%,42%)] opacity-0 transition-opacity group-hover/client-title:opacity-100 group-focus-visible/client-title:opacity-100" />
                     </button>
                   ) : (
-                    <h1 className="truncate text-2xl font-bold text-foreground">
+                    <h1 className="truncate text-xl font-bold text-foreground">
                       {client.name}
                     </h1>
                   )}
@@ -1629,52 +1629,55 @@ export default function ClientProfile() {
                       </Badge>
                     )}
                   </div>
-
-                  <div className="mt-4 max-w-xl rounded-xl border border-[hsl(222,47%,25%)]/15 bg-gradient-to-l from-[hsl(45,70%,55%)]/10 to-muted/20 p-3">
-                    <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5 text-[hsl(45,70%,42%)]" />
-                      <span>פרטי הנכס</span>
-                    </div>
-                    <div className="grid grid-cols-3 divide-x divide-x-reverse divide-border/60 overflow-hidden rounded-lg border border-border/50 bg-background/80">
-                      {[
-                        { label: "גוש", value: client.gush },
-                        { label: "חלקה", value: client.helka },
-                        { label: "מגרש", value: client.migrash },
-                      ].map((property) => (
-                        <div
-                          key={property.label}
-                          className="min-w-0 px-3 py-2 text-center"
-                        >
-                          <span className="block text-[10px] font-medium text-muted-foreground">
-                            {property.label}
-                          </span>
-                          <span
-                            className={`mt-0.5 block truncate text-sm font-bold ${
-                              property.value
-                                ? "text-foreground"
-                                : "font-medium text-muted-foreground/60"
-                            }`}
-                            title={
-                              property.value || `${property.label} לא הוזן`
-                            }
-                          >
-                            {property.value || "לא הוזן"}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               </div>
 
-              {/* Left side - Contact details */}
-              <div className="flex flex-col items-end gap-3 text-sm bg-muted/30 rounded-xl p-4 border border-border/50 w-full md:w-auto">
+              {/* Property details */}
+              <div className="flex min-w-0 flex-col rounded-xl border border-[hsl(222,47%,25%)]/15 bg-gradient-to-l from-[hsl(45,70%,55%)]/10 to-muted/20 p-3">
+                <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5 text-[hsl(45,70%,42%)]" />
+                  <span>פרטי הנכס</span>
+                </div>
+                <div className="grid flex-1 grid-cols-3 divide-x divide-x-reverse divide-border/60 overflow-hidden rounded-lg border border-border/50 bg-background/80">
+                  {[
+                    { label: "גוש", value: client.gush },
+                    { label: "חלקה", value: client.helka },
+                    { label: "מגרש", value: client.migrash },
+                  ].map((property) => (
+                    <div
+                      key={property.label}
+                      className="flex min-w-0 flex-col items-center justify-center px-3 py-2 text-center"
+                    >
+                      <span className="block text-[10px] font-medium text-muted-foreground">
+                        {property.label}
+                      </span>
+                      <span
+                        className={`mt-0.5 block truncate text-sm font-bold ${
+                          property.value
+                            ? "text-foreground"
+                            : "font-medium text-muted-foreground/60"
+                        }`}
+                        title={property.value || `${property.label} לא הוזן`}
+                      >
+                        {property.value || "לא הוזן"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Contact details */}
+              <div className="flex min-w-0 flex-col items-end justify-center gap-2.5 rounded-xl border border-border/50 bg-muted/30 p-4 text-sm">
+                <div className="mb-0.5 flex w-full items-center gap-2 text-xs font-semibold text-muted-foreground">
+                  <Phone className="h-3.5 w-3.5 text-[hsl(45,70%,42%)]" />
+                  <span>פרטי קשר</span>
+                </div>
                 {client.email && (
                   <a
                     href={`mailto:${client.email}`}
-                    className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors"
+                    className="flex max-w-full items-center gap-2 text-muted-foreground transition-colors hover:text-[hsl(222,47%,40%)]"
                   >
-                    <span>{client.email}</span>
+                    <span className="truncate">{client.email}</span>
                     <Mail className="h-4 w-4" />
                   </a>
                 )}
