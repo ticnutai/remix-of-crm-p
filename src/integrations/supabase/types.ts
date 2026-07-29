@@ -2958,6 +2958,108 @@ export type Database = {
           },
         ]
       }
+      client_task_message_log: {
+        Row: {
+          channel: string
+          client_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          message: string
+          phone_number: string
+          provider: string | null
+          provider_message_id: string | null
+          sent_at: string | null
+          sent_by: string | null
+          stage_id: string | null
+          stage_name: string | null
+          status: string
+          task_id: string | null
+        }
+        Insert: {
+          channel: string
+          client_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message: string
+          phone_number: string
+          provider?: string | null
+          provider_message_id?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          stage_id?: string | null
+          stage_name?: string | null
+          status?: string
+          task_id?: string | null
+        }
+        Update: {
+          channel?: string
+          client_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message?: string
+          phone_number?: string
+          provider?: string | null
+          provider_message_id?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          stage_id?: string | null
+          stage_name?: string | null
+          status?: string
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_task_message_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_task_message_log_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "client_stage_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_task_message_settings: {
+        Row: {
+          created_at: string
+          default_channel: string
+          message_template: string
+          office_name: string
+          preview_before_send: boolean
+          scope: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          default_channel?: string
+          message_template?: string
+          office_name?: string
+          preview_before_send?: boolean
+          scope?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          default_channel?: string
+          message_template?: string
+          office_name?: string
+          preview_before_send?: boolean
+          scope?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           additional_phones: Json
