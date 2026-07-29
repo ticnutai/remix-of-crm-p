@@ -71,6 +71,7 @@ import {
   type ClientProcessControlSettings,
 } from "@/components/clients/ClientProcessControl";
 import { TaskClientMessageButton } from "@/components/client-tabs/TaskClientMessageButton";
+import { TaskPaymentBadge } from "@/components/client-tabs/TaskPaymentBadge";
 import { ActivityFollowUpActions } from "@/components/shared/ActivityFollowUpActions";
 import { TaskElapsedDaysBadge } from "@/components/shared/TaskElapsedDaysBadge";
 import { buildStageTaskElapsedStartMap } from "@/lib/stageTaskElapsed";
@@ -285,6 +286,10 @@ interface ClientStageTaskInfo {
   stage_id: string;
   title: string;
   completed: boolean;
+  payment_amount?: number | null;
+  payment_percentage?: number | null;
+  payment_quote_id?: string | null;
+  payment_step_id?: string | null;
   due_date?: string | null;
   completed_at?: string | null;
   created_at: string;
@@ -2208,7 +2213,7 @@ export default function Clients() {
               ),
               fetchAllFilterRows(
                 "client_stage_tasks",
-                "id, client_id, stage_id, title, completed, completed_at, due_date, created_at, updated_at",
+                "id, client_id, stage_id, title, completed, completed_at, due_date, created_at, updated_at, payment_amount, payment_percentage, payment_quote_id, payment_step_id",
               ),
               fetchAllFilterRows(
                 "client_payment_stages",
@@ -3944,6 +3949,21 @@ export default function Clients() {
                           <span className="mt-0.5 h-4 w-4 shrink-0 rounded border-2 border-slate-300 bg-white" />
                           <span className="text-xs leading-5 text-[#1e3a5f]">{task.title}</span>
                         </button>
+                        <TaskPaymentBadge
+                          clientId={client.id}
+                          stageName={stage.stage_name}
+                          taskTitle={task.title}
+                          paymentAmount={task.payment_amount}
+                          paymentPercentage={task.payment_percentage}
+                          paymentQuoteId={task.payment_quote_id}
+                          paymentStepId={task.payment_step_id}
+                          taskId={task.id}
+                          allOtherTasksCompleted={stageTasks
+                            .filter((stageTask) => stageTask.id !== task.id)
+                            .every((stageTask) => stageTask.completed)}
+                          taskCompleted={task.completed}
+                          className="shrink-0"
+                        />
                         <TaskClientMessageButton
                           clientId={client.id}
                           taskId={task.id}
