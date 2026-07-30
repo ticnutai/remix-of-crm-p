@@ -1302,7 +1302,7 @@ const TasksAndMeetings = () => {
                           completed={task.status === "completed"}
                           showComplete={false}
                           compact
-                          onChanged={fetchTasks}
+                          onChanged={() => { void fetchTasks(); }}
                         />
                         <button
                           className={`shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-opacity ${selectionMode.tasks ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`}
@@ -1581,7 +1581,7 @@ const TasksAndMeetings = () => {
                           completed={meeting.status === "completed"}
                           showComplete={false}
                           compact
-                          onChanged={fetchMeetings}
+                          onChanged={() => { void fetchMeetings(); }}
                         />
                         <button
                           className={`shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent transition-opacity ${selectionMode.meetings ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`}

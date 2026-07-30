@@ -5145,7 +5145,7 @@ export default function Clients() {
       >
         {/* Selection Checkbox */}
         <SelectionCheckbox position="top-left" />
-        {renderProcessControl(viewMode === "minimal")}
+        {renderProcessControl((viewMode as string) === "minimal")}
 
         {/* Quick Classify Button */}
         {!selectionMode && (
@@ -5568,7 +5568,7 @@ export default function Clients() {
                       {pcEnabled("view-presets") && (
                       <ViewPresetsMenu
                         current={{
-                          viewMode,
+                          viewMode: viewMode as ViewPresetState["viewMode"],
                           minimalColumns,
                           sortBy: filters.sortBy,
                           showStagesView,
