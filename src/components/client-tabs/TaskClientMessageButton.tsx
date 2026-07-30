@@ -31,6 +31,7 @@ interface ClientContact {
   phone_secondary: string | null;
   whatsapp: string | null;
   additional_phones: unknown;
+  custom_data: unknown;
 }
 
 interface MessageSettings {
@@ -79,16 +80,41 @@ export function TaskClientMessageButton({
 
   const phones = useMemo(() => {
     if (!client) return [];
+    const customData =
+      client.custom_data &&
+      typeof client.custom_data === "object" &&
+      !Array.isArray(client.custom_data)
+        ? (client.custom_data as Record<string, any>)
+        : {};
+    const storedPhoneLabels =
+      customData.phone_labels &&
+      typeof customData.phone_labels === "object"
+        ? customData.phone_labels
+        : {};
+    const primaryLabel =
+      typeof storedPhoneLabels.primary === "string"
+        ? storedPhoneLabels.primary.trim()
+        : "";
+    const additionalLabels = Array.isArray(storedPhoneLabels.additional)
+      ? storedPhoneLabels.additional
+      : [];
     const additional = Array.isArray(client.additional_phones)
       ? client.additional_phones.filter((phone): phone is string => typeof phone === "string")
       : [];
     const sources = [
+      {
+        value: client.phone || "",
+        label: primaryLabel || "טלפון ראשי",
+      },
       { value: client.whatsapp || "", label: "WhatsApp" },
-      { value: client.phone || "", label: "טלפון ראשי" },
       { value: client.phone_secondary || "", label: "טלפון נוסף" },
       ...additional.map((phone, index) => ({
         value: phone,
-        label: `מספר נוסף ${index + 1}`,
+        label:
+          typeof additionalLabels[index] === "string" &&
+          additionalLabels[index].trim()
+            ? additionalLabels[index].trim()
+            : `מספר נוסף ${index + 1}`,
       })),
     ];
     const candidates = sources.flatMap(({ value, label }) =>
@@ -124,7 +150,7 @@ export function TaskClientMessageButton({
       const [clientResult, settingsResult] = await Promise.all([
         supabase
           .from("clients")
-          .select("id,name,phone,phone_secondary,whatsapp,additional_phones")
+          .select("id,name,phone,phone_secondary,whatsapp,additional_phones,custom_data")
           .eq("id", clientId)
           .single(),
         (supabase as any)

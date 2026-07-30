@@ -556,6 +556,7 @@ export default function ClientProfile() {
   );
 
   const MANUAL_CONTRACT_SIGNED_DATE_KEY = "contract_signed_date_manual";
+  const PHONE_LABELS_CUSTOM_DATA_KEY = "phone_labels";
 
   const { data: clientSavedQuotes = [], isLoading: isQuotesWidgetLoading } = useQuery({
     queryKey: ["client-saved-quotes", clientId],
@@ -691,6 +692,25 @@ export default function ClientProfile() {
         : null;
     const manualValue = customData?.[MANUAL_CONTRACT_SIGNED_DATE_KEY];
     return typeof manualValue === "string" && manualValue.trim() ? manualValue : null;
+  }, [client]);
+
+  const savedPhoneLabels = useMemo(() => {
+    const customData =
+      (client as any)?.custom_data && typeof (client as any).custom_data === "object"
+        ? ((client as any).custom_data as Record<string, any>)
+        : null;
+    const storedLabels = customData?.[PHONE_LABELS_CUSTOM_DATA_KEY];
+    return {
+      primary:
+        typeof storedLabels?.primary === "string"
+          ? storedLabels.primary.trim()
+          : "",
+      additional: Array.isArray(storedLabels?.additional)
+        ? storedLabels.additional.map((label: unknown) =>
+            typeof label === "string" ? label.trim() : "",
+          )
+        : [],
+    };
   }, [client]);
 
   const contractSignedDateForDisplay =
@@ -885,6 +905,13 @@ export default function ClientProfile() {
     taba: "",
     contract_signed_date_manual: "",
   });
+  const [editPhoneLabels, setEditPhoneLabels] = useState<{
+    primary: string;
+    additional: string[];
+  }>({
+    primary: "",
+    additional: [],
+  });
   const [editCustomFieldValues, setEditCustomFieldValues] =
     useState<CustomFieldValues>({});
 
@@ -1050,6 +1077,26 @@ export default function ClientProfile() {
           ] || null,
         ),
       });
+      const customData =
+        (client as any).custom_data &&
+        typeof (client as any).custom_data === "object"
+          ? ((client as any).custom_data as Record<string, any>)
+          : {};
+      const storedPhoneLabels = customData[PHONE_LABELS_CUSTOM_DATA_KEY];
+      const additionalPhones = Array.isArray((client as any).additional_phones)
+        ? ((client as any).additional_phones as string[])
+        : [];
+      setEditPhoneLabels({
+        primary:
+          typeof storedPhoneLabels?.primary === "string"
+            ? storedPhoneLabels.primary
+            : "",
+        additional: additionalPhones.map((_, index) =>
+          typeof storedPhoneLabels?.additional?.[index] === "string"
+            ? storedPhoneLabels.additional[index]
+            : "",
+        ),
+      });
       // Load custom field values from client's custom_data
       setEditCustomFieldValues(parseCustomData((client as any).custom_data));
       setIsEditDialogOpen(true);
@@ -1080,6 +1127,7 @@ export default function ClientProfile() {
       delete existingCustomData[def.field_key];
     }
     delete existingCustomData[MANUAL_CONTRACT_SIGNED_DATE_KEY];
+    delete existingCustomData[PHONE_LABELS_CUSTOM_DATA_KEY];
 
     const mergedCustomData: Record<string, any> = {
       ...existingCustomData,
@@ -1091,9 +1139,23 @@ export default function ClientProfile() {
         contract_signed_date_manual;
     }
 
-    const cleanedAdditional = (editForm.additional_phones || [])
-      .map((p) => (p || "").trim())
-      .filter((p) => p.length > 0);
+    const cleanedAdditionalEntries = (editForm.additional_phones || [])
+      .map((phone, index) => ({
+        phone: (phone || "").trim(),
+        label: (editPhoneLabels.additional[index] || "").trim(),
+      }))
+      .filter(({ phone }) => phone.length > 0);
+    const cleanedAdditional = cleanedAdditionalEntries.map(({ phone }) => phone);
+    const normalizedPhoneLabels = {
+      primary: editPhoneLabels.primary.trim(),
+      additional: cleanedAdditionalEntries.map(({ label }) => label),
+    };
+    if (
+      normalizedPhoneLabels.primary ||
+      normalizedPhoneLabels.additional.some(Boolean)
+    ) {
+      mergedCustomData[PHONE_LABELS_CUSTOM_DATA_KEY] = normalizedPhoneLabels;
+    }
     const updated = await updateClient({
       ...clientFormUpdates,
       additional_phones: cleanedAdditional,
@@ -1683,6 +1745,11 @@ export default function ClientProfile() {
                 )}
                 {isValidPhone(client.phone) && (
                   <div className="flex items-center gap-2">
+                    {savedPhoneLabels.primary && (
+                      <span className="rounded-full bg-background px-2 py-0.5 text-xs font-medium text-foreground">
+                        {savedPhoneLabels.primary}
+                      </span>
+                    )}
                     <a
                       href={`tel:${client.phone}`}
                       className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors"
@@ -1712,6 +1779,32 @@ export default function ClientProfile() {
                     </button>
                   </div>
                 )}
+                {Array.isArray((client as any).additional_phones) &&
+                  ((client as any).additional_phones as unknown[]).map(
+                    (phone, index) =>
+                      typeof phone === "string" &&
+                      isValidPhone(phone) && (
+                        <div
+                          key={`${phone}-${index}`}
+                          className="flex items-center gap-2"
+                        >
+                          {savedPhoneLabels.additional[index] && (
+                            <span className="rounded-full bg-background px-2 py-0.5 text-xs font-medium text-foreground">
+                              {savedPhoneLabels.additional[index]}
+                            </span>
+                          )}
+                          <a
+                            href={`tel:${phone}`}
+                            className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-[hsl(222,47%,40%)]"
+                          >
+                            <span dir="ltr" className="font-mono">
+                              {formatPhoneDisplay(phone)}
+                            </span>
+                            <Phone className="h-4 w-4" />
+                          </a>
+                        </div>
+                      ),
+                  )}
                 {client.website && (
                   <a
                     href={client.website}
@@ -3725,10 +3818,19 @@ export default function ClientProfile() {
                         <button
                           type="button"
                           onClick={() =>
-                            setEditForm((prev) => ({
-                              ...prev,
-                              additional_phones: [...(prev.additional_phones || []), ""],
-                            }))
+                            {
+                              setEditForm((prev) => ({
+                                ...prev,
+                                additional_phones: [
+                                  ...(prev.additional_phones || []),
+                                  "",
+                                ],
+                              }));
+                              setEditPhoneLabels((prev) => ({
+                                ...prev,
+                                additional: [...prev.additional, ""],
+                              }));
+                            }
                           }
                           className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
                           title="הוסף מספר נוסף"
@@ -3737,39 +3839,74 @@ export default function ClientProfile() {
                           הוסף מספר
                         </button>
                       </div>
-                      <Input
-                        value={editForm.phone}
-                        placeholder="מספר ראשי"
-                        onChange={(e) =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            phone: e.target.value,
-                          }))
-                        }
-                      />
+                      <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
+                        <Input
+                          value={editPhoneLabels.primary}
+                          placeholder="שם (לא חובה)"
+                          onChange={(e) =>
+                            setEditPhoneLabels((prev) => ({
+                              ...prev,
+                              primary: e.target.value,
+                            }))
+                          }
+                        />
+                        <Input
+                          value={editForm.phone}
+                          placeholder="מספר ראשי"
+                          inputMode="tel"
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              phone: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
                       {(editForm.additional_phones || []).map((p, idx) => (
                         <div key={idx} className="flex items-center gap-2">
-                          <Input
-                            value={p}
-                            placeholder={`מספר נוסף ${idx + 1}`}
-                            onChange={(e) =>
-                              setEditForm((prev) => {
-                                const next = [...(prev.additional_phones || [])];
-                                next[idx] = e.target.value;
-                                return { ...prev, additional_phones: next };
-                              })
-                            }
-                          />
+                          <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
+                            <Input
+                              value={editPhoneLabels.additional[idx] || ""}
+                              placeholder="שם (לא חובה)"
+                              onChange={(e) =>
+                                setEditPhoneLabels((prev) => {
+                                  const next = [...prev.additional];
+                                  next[idx] = e.target.value;
+                                  return { ...prev, additional: next };
+                                })
+                              }
+                            />
+                            <Input
+                              value={p}
+                              placeholder={`מספר נוסף ${idx + 1}`}
+                              inputMode="tel"
+                              onChange={(e) =>
+                                setEditForm((prev) => {
+                                  const next = [
+                                    ...(prev.additional_phones || []),
+                                  ];
+                                  next[idx] = e.target.value;
+                                  return { ...prev, additional_phones: next };
+                                })
+                              }
+                            />
+                          </div>
                           <button
                             type="button"
-                            onClick={() =>
+                            onClick={() => {
                               setEditForm((prev) => ({
                                 ...prev,
                                 additional_phones: (prev.additional_phones || []).filter(
                                   (_, i) => i !== idx,
                                 ),
-                              }))
-                            }
+                              }));
+                              setEditPhoneLabels((prev) => ({
+                                ...prev,
+                                additional: prev.additional.filter(
+                                  (_, i) => i !== idx,
+                                ),
+                              }));
+                            }}
                             className="text-muted-foreground hover:text-destructive transition-colors p-1"
                             title="הסר מספר"
                           >
