@@ -92,8 +92,14 @@ const DEFAULT_VAT_RATE = 18;
 const UNLINKED_VALUE = "__unlinked__";
 const PAYMENT_TEMPLATES_SETTING_KEY = "client-payment-plan-templates";
 const PAYMENT_PERCENTAGE_STEP = 5;
+const MIN_PAYMENT_AMOUNT = 10;
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
+const parseWholeAmountInput = (value: string) => {
+  if (value === "") return 0;
+  if (!/^\d+$/.test(value)) return null;
+  return Number(value);
+};
 const normalizePaymentPercentage = (value: number) =>
   Math.min(
     100,
@@ -463,6 +469,26 @@ export function ManualPaymentPlanDialog({
     });
   };
 
+  const handleTaskChange = (row: PlanRow, taskId: string) => {
+    const nextTaskId = taskId === UNLINKED_VALUE ? null : taskId;
+    const selectedInAnotherRow = Boolean(
+      nextTaskId &&
+        rows.some(
+          (item) =>
+            item.localId !== row.localId && item.linkedTaskId === nextTaskId,
+        ),
+    );
+    if (selectedInAnotherRow) {
+      toast({
+        title: "המשימה כבר נבחרה",
+        description: "אפשר לשייך כל משימה לשלב תשלום אחד בלבד",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateRow(row.localId, { linkedTaskId: nextTaskId });
+  };
+
   const handleSave = async () => {
     if (!isBalanced) {
       toast({
@@ -472,10 +498,29 @@ export function ManualPaymentPlanDialog({
       });
       return;
     }
-    if (rows.some((row) => !row.name.trim() || row.amount <= 0)) {
+    if (
+      rows.some(
+        (row) =>
+          !row.name.trim() ||
+          row.amount < MIN_PAYMENT_AMOUNT ||
+          !Number.isInteger(row.amount),
+      )
+    ) {
       toast({
         title: "חסרים פרטים",
-        description: "יש להזין שם וסכום בכל שלב תשלום",
+        description: "יש להזין בכל שלב שם וסכום שלם של 10 ₪ ומעלה",
+        variant: "destructive",
+      });
+      return;
+    }
+    const linkedTaskIds = rows
+      .map((row) => row.linkedTaskId)
+      .filter((taskId): taskId is string => Boolean(taskId));
+    if (new Set(linkedTaskIds).size !== linkedTaskIds.length) {
+      toast({
+        title: "יש משימה ששויכה פעמיים",
+        description:
+          "יש לבחור משימה אחרת או להשאיר את השיוך ריק. כל משימה יכולה להשתייך לתשלום אחד בלבד.",
         variant: "destructive",
       });
       return;
@@ -548,11 +593,20 @@ export function ManualPaymentPlanDialog({
                 <Input
                   id="manual-payment-plan-amount"
                   type="number"
-                  min={0}
-                  step="0.01"
+                  min={MIN_PAYMENT_AMOUNT}
+                  step={1}
                   value={projectAmount || ""}
-                  onChange={(event) => updateProjectAmount(Number(event.target.value) || 0)}
-                  placeholder="0"
+                  onChange={(event) => {
+                    const amount = parseWholeAmountInput(event.target.value);
+                    if (amount !== null) updateProjectAmount(amount);
+                  }}
+                  onBlur={() => {
+                    if (projectAmount > 0 && projectAmount < MIN_PAYMENT_AMOUNT) {
+                      updateProjectAmount(MIN_PAYMENT_AMOUNT);
+                    }
+                  }}
+                  inputMode="numeric"
+                  placeholder="10 ומעלה"
                 />
               </div>
               <div className="space-y-2">
@@ -729,6 +783,12 @@ export function ManualPaymentPlanDialog({
                   selectedTask &&
                     (Number(selectedTask.payment_amount) > 0 || selectedTask.payment_step_id),
                 );
+                const selectedTaskIdsInOtherRows = new Set(
+                  rows
+                    .filter((item) => item.localId !== row.localId)
+                    .map((item) => item.linkedTaskId)
+                    .filter((taskId): taskId is string => Boolean(taskId)),
+                );
                 return (
                   <div
                     key={row.localId}
@@ -825,12 +885,20 @@ export function ManualPaymentPlanDialog({
                         <Label>סכום לפני מע״מ</Label>
                         <Input
                           type="number"
-                          min={0}
-                          step="0.01"
+                          min={MIN_PAYMENT_AMOUNT}
+                          step={1}
                           value={row.amount || ""}
-                          onChange={(event) =>
-                            updateAmount(row, Number(event.target.value) || 0)
-                          }
+                          onChange={(event) => {
+                            const amount = parseWholeAmountInput(event.target.value);
+                            if (amount !== null) updateAmount(row, amount);
+                          }}
+                          onBlur={() => {
+                            if (row.amount > 0 && row.amount < MIN_PAYMENT_AMOUNT) {
+                              updateAmount(row, MIN_PAYMENT_AMOUNT);
+                            }
+                          }}
+                          inputMode="numeric"
+                          placeholder="10 ומעלה"
                         />
                       </div>
                       <div className="space-y-1.5 lg:col-span-2">
@@ -856,11 +924,7 @@ export function ManualPaymentPlanDialog({
                         <Label>שיוך למשימה</Label>
                         <Select
                           value={row.linkedTaskId || UNLINKED_VALUE}
-                          onValueChange={(value) =>
-                            updateRow(row.localId, {
-                              linkedTaskId: value === UNLINKED_VALUE ? null : value,
-                            })
-                          }
+                          onValueChange={(value) => handleTaskChange(row, value)}
                           disabled={!selectedStage || loadingOptions}
                         >
                           <SelectTrigger>
@@ -873,11 +937,20 @@ export function ManualPaymentPlanDialog({
                             {availableTasks.map((task) => {
                               const alreadyLinked =
                                 Number(task.payment_amount) > 0 || Boolean(task.payment_step_id);
+                              const selectedInAnotherRow =
+                                selectedTaskIdsInOtherRows.has(task.id);
                               return (
-                                <SelectItem key={task.id} value={task.id} disabled={alreadyLinked}>
+                                <SelectItem
+                                  key={task.id}
+                                  value={task.id}
+                                  disabled={alreadyLinked || selectedInAnotherRow}
+                                >
                                   {task.title}
                                   {task.completed ? " · הושלמה" : ""}
                                   {alreadyLinked ? " · כבר משויך תשלום" : ""}
+                                  {selectedInAnotherRow
+                                    ? " · נבחר בשלב תשלום אחר"
+                                    : ""}
                                 </SelectItem>
                               );
                             })}

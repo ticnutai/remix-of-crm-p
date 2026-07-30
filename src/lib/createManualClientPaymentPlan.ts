@@ -33,6 +33,7 @@ export interface CreateManualClientPaymentPlanResult {
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
 const PAYMENT_PERCENTAGE_STEP = 5;
+const MIN_PAYMENT_AMOUNT = 10;
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -63,8 +64,15 @@ export async function createManualClientPaymentPlan({
     throw new Error("יש להוסיף לפחות שלב תשלום אחד");
   }
 
-  if (normalizedRows.some((row) => !row.name || row.amount <= 0)) {
-    throw new Error("לכל שלב תשלום חייבים להיות שם וסכום תקין");
+  if (
+    normalizedRows.some(
+      (row) =>
+        !row.name ||
+        row.amount < MIN_PAYMENT_AMOUNT ||
+        !Number.isInteger(row.amount),
+    )
+  ) {
+    throw new Error("לכל שלב תשלום חייבים להיות שם וסכום שלם של 10 ₪ ומעלה");
   }
   if (
     normalizedRows.some(
