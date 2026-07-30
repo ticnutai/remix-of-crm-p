@@ -5441,6 +5441,8 @@ export default function Clients() {
             flex-wrap: wrap !important;
           }
           .clients-page-root button { touch-action: manipulation; }
+          .clients-mobile-header div { flex-wrap: wrap !important; row-gap: 8px !important; }
+          .clients-mobile-header { padding: 10px 12px !important; }
           /* Cards: single column, comfortable spacing, natural page scroll */
           .clients-content-grid {
             display: flex !important;
@@ -5470,7 +5472,7 @@ export default function Clients() {
       >
         {/* ═══ Compact Header — Row 1: Title + Buttons + Search ═══ */}
         <div
-          className="group"
+          className="group clients-mobile-header"
           style={{
             background: "linear-gradient(180deg, #1e3a5f 0%, #2d5a87 100%)",
             borderRadius: "12px",
