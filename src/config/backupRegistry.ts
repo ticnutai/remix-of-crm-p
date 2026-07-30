@@ -39,6 +39,11 @@ export const BACKUP_TABLE_REGISTRY: BackupTableDefinition[] = [
     label: "משימות בתבניות שלבים",
     group: "stages",
   },
+  {
+    table: "client_process_categories",
+    label: "סיווג לקוחות לקטגוריות תהליך",
+    group: "stages",
+  },
   { table: "client_stages", label: "שלבי לקוחות", group: "stages" },
   { table: "client_folder_stages", label: "שלבי תיקיות", group: "stages" },
   { table: "client_folder_tasks", label: "משימות תיקיות", group: "stages" },

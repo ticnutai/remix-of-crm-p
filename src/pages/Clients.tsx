@@ -371,6 +371,11 @@ interface ClientStageTemplateInfo {
   stages: Array<{ id: string; stage_name: string }>;
 }
 
+interface ClientProcessCategoryAssignment {
+  client_id: string;
+  stage_template_id: string;
+}
+
 const clientCategoryIconMap: Record<
   string,
   (props: { className?: string; style?: React.CSSProperties }) => React.ReactNode
@@ -417,6 +422,7 @@ type ClientFilterDataPayload = {
   stageTasks: ClientStageTaskInfo[];
   paymentStages: ClientPaymentStageInfo[];
   stageTemplates: ClientStageTemplateInfo[];
+  processCategoryAssignments: ClientProcessCategoryAssignment[];
   reminderClientIds: string[];
   meetingClientIds: string[];
   tasks: ClientTaskActivity[];
@@ -1104,6 +1110,10 @@ export default function Clients() {
     ClientPaymentStageInfo[]
   >([]);
   const [stageTemplates, setStageTemplates] = useState<ClientStageTemplateInfo[]>([]);
+  const [
+    clientProcessCategoryAssignments,
+    setClientProcessCategoryAssignments,
+  ] = useState<ClientProcessCategoryAssignment[]>([]);
   const [clientsWithReminders, setClientsWithReminders] = useState<Set<string>>(
     new Set(),
   );
@@ -1145,6 +1155,16 @@ export default function Clients() {
   const [tagDefinitions, setTagDefinitions] = useState<ClientTagDefinition[]>([]);
   const [latestContractSignedByClient, setLatestContractSignedByClient] =
     useState<Record<string, string>>({});
+
+  const processCategoryTemplatesByClient = useMemo(() => {
+    const result = new Map<string, Set<string>>();
+    clientProcessCategoryAssignments.forEach((assignment) => {
+      const current = result.get(assignment.client_id) || new Set<string>();
+      current.add(assignment.stage_template_id);
+      result.set(assignment.client_id, current);
+    });
+    return result;
+  }, [clientProcessCategoryAssignments]);
 
   const workflowStateByClient = useMemo(() => {
     const result = new Map<
@@ -1420,8 +1440,10 @@ export default function Clients() {
       });
     }
 
-    // Hierarchical workflow filter. Within one template the most specific
-    // selection wins (task > current stage > whole template); templates are OR.
+    // Template-level selection is an independent client classification.
+    // Stage/task selections still inspect the real workflow. Within one
+    // template the most specific selection wins (task > stage > category);
+    // templates are OR.
     const selectedTemplateIds = new Set(filters.stageTemplateIds || []);
     const selectedStages = filters.stageSelections || [];
     const selectedTasks = filters.stageTaskFilters || [];
@@ -1433,14 +1455,14 @@ export default function Clients() {
     if (selectedWorkflowTemplateIds.size > 0) {
       result = result.filter((client) => {
         const clientWorkflows = workflowStateByClient.get(client.id);
-        if (!clientWorkflows) return false;
+        const classifiedTemplates =
+          processCategoryTemplatesByClient.get(client.id);
 
         return Array.from(selectedWorkflowTemplateIds).some((templateId) => {
-          const workflow = clientWorkflows.get(templateId);
-          if (!workflow) return false;
-
           const templateTasks = selectedTasks.filter((task) => task.templateId === templateId);
           if (templateTasks.length > 0) {
+            const workflow = clientWorkflows?.get(templateId);
+            if (!workflow) return false;
             return templateTasks.some((taskFilter) => {
               const matchingTasks = clientStageTasks.filter(
                 (task) =>
@@ -1464,6 +1486,8 @@ export default function Clients() {
 
           const templateStages = selectedStages.filter((stage) => stage.templateId === templateId);
           if (templateStages.length > 0) {
+            const workflow = clientWorkflows?.get(templateId);
+            if (!workflow) return false;
             return templateStages.some(
               (selection) =>
                 workflow.currentStage?.stage_name === selection.stageName ||
@@ -1475,7 +1499,10 @@ export default function Clients() {
             );
           }
 
-          return selectedTemplateIds.has(templateId);
+          return (
+            selectedTemplateIds.has(templateId) &&
+            classifiedTemplates?.has(templateId) === true
+          );
         });
       });
     }
@@ -1695,6 +1722,7 @@ export default function Clients() {
     filters,
     clientStageTasks,
     workflowStateByClient,
+    processCategoryTemplatesByClient,
     clientsWithReminders,
     clientsWithTasks,
     clientsWithMeetings,
@@ -1851,6 +1879,23 @@ export default function Clients() {
 
     return counts;
   }, [clientStages]);
+
+  const stageTemplateCategoryCounts = useMemo(() => {
+    const clientsByTemplate = new Map<string, Set<string>>();
+    clientProcessCategoryAssignments.forEach((assignment) => {
+      const current =
+        clientsByTemplate.get(assignment.stage_template_id) ||
+        new Set<string>();
+      current.add(assignment.client_id);
+      clientsByTemplate.set(assignment.stage_template_id, current);
+    });
+
+    const counts: Record<string, number> = {};
+    clientsByTemplate.forEach((clientIds, templateId) => {
+      counts[templateId] = clientIds.size;
+    });
+    return counts;
+  }, [clientProcessCategoryAssignments]);
 
   const processStagesByClient = useMemo(() => {
     const result = new Map<string, ClientStageInfo[]>();
@@ -2263,6 +2308,7 @@ export default function Clients() {
             paymentStagesRes,
             stageTemplatesRes,
             templateStagesRes,
+            processCategoryAssignmentsRes,
             remindersRes,
             tasksRes,
             meetingsRes,
@@ -2291,6 +2337,9 @@ export default function Clients() {
                 .from("stage_template_stages")
                 .select("id, template_id, stage_name")
                 .order("sort_order"),
+              (supabase as any)
+                .from("client_process_categories")
+                .select("client_id, stage_template_id"),
               supabase
                 .from("reminders")
                 .select(
@@ -2345,6 +2394,7 @@ export default function Clients() {
             paymentStagesRes,
             stageTemplatesRes,
             templateStagesRes,
+            processCategoryAssignmentsRes,
             remindersRes,
             tasksRes,
             meetingsRes,
@@ -2441,6 +2491,8 @@ export default function Clients() {
                 .filter((stage: any) => stage.template_id === template.id)
                 .map((stage: any) => ({ id: stage.id, stage_name: stage.stage_name })),
             })),
+            processCategoryAssignments: (processCategoryAssignmentsRes.data ||
+              []) as ClientProcessCategoryAssignment[],
             reminderClientIds:
               remindersRes.data
                 ?.map((row) => row.client_id || row.entity_id)
@@ -2470,6 +2522,9 @@ export default function Clients() {
         setClientStageTasks(payload.stageTasks);
         setClientPaymentStages(payload.paymentStages);
         setStageTemplates(payload.stageTemplates);
+        setClientProcessCategoryAssignments(
+          payload.processCategoryAssignments,
+        );
         setClientsWithReminders(new Set(payload.reminderClientIds));
         setClientsWithMeetings(new Set(payload.meetingClientIds));
         setClientTasks(payload.tasks);
@@ -2769,6 +2824,15 @@ export default function Clients() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "client_payment_stages" },
+        refreshProcessData,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "client_process_categories",
+        },
         refreshProcessData,
       )
       .on(
@@ -6362,6 +6426,7 @@ export default function Clients() {
           categories={categories}
           categoryCounts={categoryCounts}
           stageCounts={stageCounts}
+          stageTemplateCategoryCounts={stageTemplateCategoryCounts}
           monthAgeCounts={monthAgeCounts}
           allTags={allTags}
           tagColors={Object.fromEntries(
@@ -6371,6 +6436,7 @@ export default function Clients() {
           onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
           onUpdate={() => {
             fetchClients();
+            fetchFilterData();
             fetchCategoriesAndTags();
           }}
         />

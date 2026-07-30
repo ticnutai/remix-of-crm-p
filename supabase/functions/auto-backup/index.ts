@@ -32,6 +32,7 @@ const TABLES_TO_BACKUP = [
   "stage_templates",
   "stage_template_stages",
   "stage_template_tasks",
+  "client_process_categories",
   "client_stages",
   "client_folder_stages",
   "client_folder_tasks",

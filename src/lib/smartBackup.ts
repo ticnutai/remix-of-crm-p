@@ -37,6 +37,7 @@ export const BACKUP_TABLES = {
     "stage_templates", // תבניות שלבים
     "stage_template_stages", // שלבים בתבניות
     "stage_template_tasks", // משימות בתבניות שלבים
+    "client_process_categories", // סיווג רב-ערכי של לקוחות לקטגוריות תהליך
     "inspection_form_folders", // תיקיות טפסי בדיקה
     "inspection_form_templates", // תבניות טפסי בדיקה
     "inspection_form_template_steps", // שלבי תבניות בדיקה

@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { supabase } from "@/integrations/supabase/client";
-import { AddClientsToCategoryDialog } from './AddClientsToCategoryDialog';
+import { ManageStageTemplateClientsDialog } from "./ManageStageTemplateClientsDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -152,6 +152,7 @@ interface ClientsFilterStripProps {
   categories?: ClientCategory[];
   categoryCounts?: Record<string, number>;
   stageCounts?: Record<string, number>;
+  stageTemplateCategoryCounts?: Record<string, number>;
   monthAgeCounts?: {
     ranges: Record<"m4_plus" | "m6_plus" | "m8_plus", number>;
     byExact: Record<number, number>;
@@ -212,6 +213,7 @@ export function ClientsFilterStrip({
   categories = [],
   categoryCounts = {},
   stageCounts = {},
+  stageTemplateCategoryCounts = {},
   monthAgeCounts = {
     ranges: { m4_plus: 0, m6_plus: 0, m8_plus: 0 },
     byExact: {},
@@ -327,8 +329,13 @@ export function ClientsFilterStrip({
     useState<Extract<ClientDateRangeConfig, { kind: "advanced" }>["preset"]>(
       "current_month",
     );
-  const [addToCategoryId, setAddToCategoryId] = useState<string | null>(null);
-  const addToCategory = categories.find((c) => c.id === addToCategoryId);
+  const [managedStageTemplateId, setManagedStageTemplateId] = useState<
+    string | null
+  >(null);
+  const managedStageTemplate =
+    templateStageGroups.find(
+      (template) => template.id === managedStageTemplateId,
+    ) || null;
 
   type ResizeDirection =
     | "top"
@@ -2062,6 +2069,22 @@ export function ClientsFilterStrip({
                         </p>
                       )}
                     </div>
+                    {activeStageTemplate && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1.5 border-[#d4a843] bg-white text-[10px] text-[#1e3a5f] hover:bg-[#fff8e7]"
+                        onMouseDown={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setManagedStageTemplateId(activeStageTemplate.id);
+                        }}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        ניהול לקוחות
+                      </Button>
+                    )}
                     <Layers className="h-4 w-4 text-primary" />
                     <GripVertical className="h-4 w-4 text-muted-foreground" />
                   </div>
@@ -2117,7 +2140,6 @@ export function ClientsFilterStrip({
                         const isExpanded =
                           activeStageTemplateId === template.id ||
                           expandedStageTemplates.has(template.id);
-                        const stageNames = template.stages.map((stage) => stage.stage_name);
                         const selectedCount = (filters.stageSelections || []).filter(
                           (stage) => stage.templateId === template.id,
                         ).length;
@@ -2125,10 +2147,8 @@ export function ClientsFilterStrip({
                         const selectedTaskCount = (filters.stageTaskFilters || []).filter(
                           (task) => task.templateId === template.id,
                         ).length;
-                        const templateClientCount = Array.from(new Set(stageNames)).reduce(
-                          (total, stageName) => total + (stageCounts[stageName] || 0),
-                          0,
-                        );
+                        const templateClientCount =
+                          stageTemplateCategoryCounts[template.id] || 0;
 
                         return (
                           <div
@@ -2182,6 +2202,20 @@ export function ClientsFilterStrip({
                                   {templateClientCount}
                                 </Badge>
                               )}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 shrink-0 rounded-full text-[#9a741d] hover:bg-[#d4a843]/20 hover:text-[#1e3a5f]"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setManagedStageTemplateId(template.id);
+                                }}
+                                aria-label={`נהל לקוחות בקטגוריה ${template.name}`}
+                                title="הוסף או הסר לקוחות מהקטגוריה"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </Button>
                               <Checkbox
                                 checked={templateSelected ? true : selectedCount > 0 || selectedTaskCount > 0 ? "indeterminate" : false}
                                 aria-label={`בחר תהליך ${template.name}`}
@@ -2672,6 +2706,22 @@ export function ClientsFilterStrip({
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
+                          setManagedStageTemplateId(template.id);
+                        }}
+                        className={cn(
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+                          "bg-[#d4a843]/12 text-[#9a741d] hover:bg-[#d4a843]/25 hover:text-[#1e3a5f]",
+                          isActive && "bg-white/10 text-white hover:bg-white/20",
+                        )}
+                        aria-label={`הוסף או הסר לקוחות מהקטגוריה ${template.name}`}
+                        title="ניהול לקוחות בקטגוריה"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
                           openStageTemplateDialog(template.id);
                         }}
                         className={cn(
@@ -2687,6 +2737,15 @@ export function ClientsFilterStrip({
                       >
                         <Layers className="h-3.5 w-3.5" />
                       </button>
+                      <span
+                        className={cn(
+                          "ml-2 text-[9px] font-semibold text-slate-500",
+                          isActive && "text-white/75",
+                        )}
+                        title="מספר הלקוחות המסווגים בקטגוריה"
+                      >
+                        {stageTemplateCategoryCounts[template.id] || 0}
+                      </span>
                     </div>
                   );
                 })
@@ -3029,20 +3088,15 @@ export function ClientsFilterStrip({
       {/* Active Filters Summary removed per user request */}
     </div>
 
-      {/* Add Clients to Category Dialog */}
-      {addToCategory && (
-        <AddClientsToCategoryDialog
-          isOpen={!!addToCategoryId}
-          onClose={() => setAddToCategoryId(null)}
-          categoryId={addToCategory.id}
-          categoryName={addToCategory.name}
-          categoryColor={addToCategory.color || '#d4a843'}
-          onUpdate={() => {
-            onUpdate?.();
-            setAddToCategoryId(null);
-          }}
-        />
-      )}
+      <ManageStageTemplateClientsDialog
+        open={!!managedStageTemplate}
+        onOpenChange={(open) => {
+          if (!open) setManagedStageTemplateId(null);
+        }}
+        stageTemplateId={managedStageTemplate?.id || null}
+        stageTemplateName={managedStageTemplate?.name || ""}
+        onSaved={onUpdate}
+      />
 
       <Dialog open={dateTabsManagerOpen} onOpenChange={setDateTabsManagerOpen}>
         <DialogContent dir="rtl" className="sm:max-w-[700px]">
