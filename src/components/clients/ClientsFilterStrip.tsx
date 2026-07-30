@@ -898,12 +898,12 @@ export function ClientsFilterStrip({
     if (next.length === 0) return;
     setRecentClientsSettings({
       ...recentClientsSettings,
-      activityTypes: next,
+      activityTypes: next as typeof recentClientsSettings.activityTypes,
     });
     if (filters.recentClientsDays) {
       onFiltersChange({
         ...filters,
-        recentActivityTypes: next,
+        recentActivityTypes: next as typeof filters.recentActivityTypes,
       });
     }
   };

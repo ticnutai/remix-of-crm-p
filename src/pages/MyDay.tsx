@@ -537,7 +537,7 @@ export default function MyDay() {
     ]);
 
     if (tasksRes.data) setTasks(tasksRes.data as Task[]);
-    if (meetingsRes.data) setMeetings(meetingsRes.data as Meeting[]);
+    if (meetingsRes.data) setMeetings(meetingsRes.data as unknown as Meeting[]);
     if (remindersRes.data) {
       console.log(
         "📊 [MyDay] Reminders fetched:",
