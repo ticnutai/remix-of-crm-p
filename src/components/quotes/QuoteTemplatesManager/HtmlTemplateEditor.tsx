@@ -187,7 +187,10 @@ import { useClients } from "@/hooks/useClients";
 import { useClientCustomFields } from "@/hooks/useClientCustomFields";
 import CreateFieldDialog from "./flow-engine/editor/CreateFieldDialog";
 import { useCloudPreferences } from "@/hooks/useCloudPreferences";
-import { useQuoteDraftAutosave } from "@/hooks/useQuoteDraftAutosave";
+import {
+  useQuoteDraftAutosave,
+  type AutosaveStatus,
+} from "@/hooks/useQuoteDraftAutosave";
 import { useAuth } from "@/hooks/useAuth";
 import { useGmailIntegration } from "@/hooks/useGmailIntegration";
 import { useGmailAccounts, type GmailAccount } from "@/hooks/useGmailAccounts";
@@ -5083,7 +5086,48 @@ export function HtmlTemplateEditor({
   const [logoSubTab, setLogoSubTab] = useState<"upper" | "lower">("upper");
   const [showEmbeddedVectorEditor, setShowEmbeddedVectorEditor] =
     useState(false);
+  const pendingSavedQuotePaymentsKey = savedQuoteId
+    ? `saved-quote-pending-payments::${savedQuoteId}`
+    : null;
+  const restoredPendingSavedQuotePaymentsRef = useRef(false);
   const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>(() => {
+    if (pendingSavedQuotePaymentsKey) {
+      try {
+        const pending = JSON.parse(
+          localStorage.getItem(pendingSavedQuotePaymentsKey) || "null",
+        );
+        if (Array.isArray(pending)) {
+          restoredPendingSavedQuotePaymentsRef.current = true;
+          return normalizeLegacyPaymentSteps(
+            pending,
+            template.vat_rate ?? globalDefaultVat,
+          ).map((s: any) => ({
+            id: s.id || crypto.randomUUID(),
+            name: s.description || s.name || "",
+            percentage: s.percentage || 0,
+            description: s.description || "",
+            vatRate: s.vatRate,
+            useCustomVat: s.useCustomVat || false,
+            linkSource:
+              s.linkSource ||
+              (s.quoteTemplateItemId ? "quote_template" : "stage_template"),
+            templateStageId: s.templateStageId || "",
+            templateStageName: s.templateStageName || "",
+            templateTaskId: s.templateTaskId || "",
+            templateTaskName: s.templateTaskName || "",
+            quoteTemplateStageId: s.quoteTemplateStageId || "",
+            quoteTemplateStageName: s.quoteTemplateStageName || "",
+            quoteTemplateItemId: s.quoteTemplateItemId || "",
+            quoteTemplateItemText: s.quoteTemplateItemText || "",
+            triggerMode: s.triggerMode || "manual",
+            triggerDate: s.triggerDate || null,
+          }));
+        }
+      } catch {
+        // A malformed pending write must never block opening the quote.
+        localStorage.removeItem(pendingSavedQuotePaymentsKey);
+      }
+    }
     const saved = template.payment_schedule;
     if (savedQuoteId && Array.isArray(saved) && saved.length === 0) {
       return [];
@@ -5369,6 +5413,85 @@ export function HtmlTemplateEditor({
     // draft on top of it can mix content from another document.
     enabled: open && !savedQuoteId,
   });
+  // Existing saved quotes previously kept payment edits only in React state.
+  // A refresh therefore reloaded the old payment_schedule from the database.
+  // Persist each changed schedule immediately, while keeping a tiny local
+  // recovery copy until the server confirms the write.
+  const savedQuotePaymentFirstRunRef = useRef(true);
+  const savedQuotePaymentLastJsonRef = useRef("");
+  const savedQuotePaymentSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const [savedQuotePaymentSaveStatus, setSavedQuotePaymentSaveStatus] =
+    useState<AutosaveStatus>("idle");
+  const visibleAutosaveStatus = savedQuoteId
+    ? savedQuotePaymentSaveStatus
+    : autosaveStatus;
+  useEffect(() => {
+    if (!open || !savedQuoteId || !pendingSavedQuotePaymentsKey) return;
+
+    const payload = toPaymentSchedule(paymentSteps);
+    const json = JSON.stringify(payload);
+    const shouldRecoverPendingWrite =
+      restoredPendingSavedQuotePaymentsRef.current;
+
+    if (savedQuotePaymentFirstRunRef.current) {
+      savedQuotePaymentFirstRunRef.current = false;
+      savedQuotePaymentLastJsonRef.current = json;
+      if (!shouldRecoverPendingWrite) return;
+      restoredPendingSavedQuotePaymentsRef.current = false;
+    } else if (json === savedQuotePaymentLastJsonRef.current) {
+      return;
+    } else {
+      savedQuotePaymentLastJsonRef.current = json;
+    }
+
+    try {
+      localStorage.setItem(pendingSavedQuotePaymentsKey, json);
+    } catch {
+      // Cloud persistence still proceeds when local storage is unavailable.
+    }
+    setSavedQuotePaymentSaveStatus("saving");
+
+    // Serialize writes so a slower earlier request can never overwrite the
+    // latest payment order or a newly added payment step.
+    savedQuotePaymentSaveQueueRef.current =
+      savedQuotePaymentSaveQueueRef.current
+        .catch(() => undefined)
+        .then(async () => {
+          const { data, error } = await (supabase as any)
+            .from("saved_quotes")
+            .update({
+              payment_schedule: payload as any,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", savedQuoteId)
+            .select("id")
+            .maybeSingle();
+
+          if (error) throw error;
+          if (!data?.id) {
+            throw new Error("הצעת המחיר לא נמצאה או שאין הרשאה לעדכן אותה");
+          }
+
+          // Only clear the recovery copy if this is still the newest schedule.
+          if (savedQuotePaymentLastJsonRef.current === json) {
+            try {
+              localStorage.removeItem(pendingSavedQuotePaymentsKey);
+            } catch {
+              /* no-op */
+            }
+            setSavedQuotePaymentSaveStatus("saved");
+          }
+        })
+        .catch((error) => {
+          console.error("Saved quote payment autosave failed:", error);
+          setSavedQuotePaymentSaveStatus("error");
+        });
+  }, [
+    open,
+    paymentSteps,
+    pendingSavedQuotePaymentsKey,
+    savedQuoteId,
+  ]);
 
   // === Flush save on tab switch (שמירה מיידית לענן בכל מעבר טאב) ===
   const isFirstTabRender = useRef(true);
@@ -6236,10 +6359,16 @@ export function HtmlTemplateEditor({
           let persistedQuoteId: string | null = savedQuoteId || null;
           if (savedQuoteId) {
             // Editing an existing saved_quote directly — update by ID
-            await (supabase as any)
+            const { data: updatedQuote, error: updateQuoteError } = await (supabase as any)
               .from("saved_quotes")
               .update(savedQuoteData)
-              .eq("id", savedQuoteId);
+              .eq("id", savedQuoteId)
+              .select("id")
+              .maybeSingle();
+            if (updateQuoteError) throw updateQuoteError;
+            if (!updatedQuote?.id) {
+              throw new Error("הצעת המחיר לא נמצאה או שאין הרשאה לעדכן אותה");
+            }
           } else {
             // Check if already saved (by template_id + client_id + user) — same template+client → update
             const existingQuery = (supabase as any)
@@ -6313,6 +6442,7 @@ export function HtmlTemplateEditor({
         }
       } catch (sqErr) {
         console.warn("Could not save to saved_quotes:", sqErr);
+        if (savedQuoteId) throw sqErr;
       }
 
       toast({ title: "נשמר בהצלחה ☁️", description: "ההצעה נשמרה בהצעות השמורות והתבנית אופסה לשימוש חוזר" });
@@ -6351,7 +6481,10 @@ export function HtmlTemplateEditor({
     upgrades,
     projectDetails,
     allClients,
+    clearDraft,
+    globalDefaultVat,
     pricingTiers,
+    savedQuoteId,
     selectedTier,
     onSave,
     toast,
@@ -15416,24 +15549,24 @@ ${tbAt('footer')}
               </Popover>
 
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground px-2" title="טיוטה אוטומטית - נשמרת בענן תוך כדי עריכה">
-                {autosaveStatus === "saving" && (
+                {visibleAutosaveStatus === "saving" && (
                   <span className="flex items-center gap-1">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
                     שומר...
                   </span>
                 )}
-                {autosaveStatus === "saved" && (
+                {visibleAutosaveStatus === "saved" && (
                   <span className="flex items-center gap-1 text-emerald-600">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
                     נשמר ✓
-                    {autosaveLastSavedAt && (
+                    {!savedQuoteId && autosaveLastSavedAt && (
                       <span className="opacity-70">
                         {autosaveLastSavedAt.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     )}
                   </span>
                 )}
-                {autosaveStatus === "error" && (
+                {visibleAutosaveStatus === "error" && (
                   <span className="flex items-center gap-1 text-destructive">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-destructive" />
                     שגיאה בשמירה אוטומטית

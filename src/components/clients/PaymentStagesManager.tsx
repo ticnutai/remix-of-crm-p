@@ -25,8 +25,13 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { CLIENT_PAYMENT_STAGE_UPDATED_EVENT } from "@/lib/clientPaymentStageEvents";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  CLIENT_PAYMENT_STAGE_UPDATED_EVENT,
+  notifyClientPaymentStageUpdated,
+} from "@/lib/clientPaymentStageEvents";
 import { isVisibleClientPaymentStage } from "@/lib/clientPaymentStages";
+import { ManualPaymentPlanDialog } from "@/components/clients/ManualPaymentPlanDialog";
 import {
   Plus,
   Trash2,
@@ -47,6 +52,7 @@ import {
   ChevronDown,
   ChevronUp,
   Banknote,
+  ListPlus,
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -721,6 +727,7 @@ export default function PaymentStagesManager({
   clientName,
 }: PaymentStagesManagerProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [stages, setStages] = useState<PaymentStage[]>([]);
   const [additionalPayments, setAdditionalPayments] = useState<
     AdditionalPayment[]
@@ -738,6 +745,7 @@ export default function PaymentStagesManager({
     useState<AdditionalPayment | null>(null);
   const [expandedStages, setExpandedStages] = useState(true);
   const [expandedAdditional, setExpandedAdditional] = useState(true);
+  const [manualPlanDialogOpen, setManualPlanDialogOpen] = useState(false);
 
   // =========================================
   // Data fetching
@@ -781,6 +789,16 @@ export default function PaymentStagesManager({
     window.addEventListener(CLIENT_PAYMENT_STAGE_UPDATED_EVENT, handlePaymentStageUpdated);
     return () => window.removeEventListener(CLIENT_PAYMENT_STAGE_UPDATED_EVENT, handlePaymentStageUpdated);
   }, [clientId, fetchData]);
+
+  const refreshPaymentViews = useCallback(async () => {
+    await fetchData();
+    notifyClientPaymentStageUpdated(clientId);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["client-payment-links", clientId] }),
+      queryClient.invalidateQueries({ queryKey: ["client-stages", clientId] }),
+      queryClient.invalidateQueries({ queryKey: ["client-stage-tasks", clientId] }),
+    ]);
+  }, [clientId, fetchData, queryClient]);
 
   // =========================================
   // Summary calculations
@@ -1091,6 +1109,18 @@ export default function PaymentStagesManager({
               <Badge variant="outline">{stages.length}</Badge>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setManualPlanDialogOpen(true);
+                }}
+                className="gap-1 border-primary/30 bg-primary/5"
+              >
+                <ListPlus className="h-4 w-4" />
+                הגדר תוכנית תשלומים
+              </Button>
               <Button
                 size="sm"
                 onClick={(e) => {
@@ -1414,6 +1444,15 @@ export default function PaymentStagesManager({
             : null
         }
         nextStageNumber={stages.length + 1}
+      />
+
+      <ManualPaymentPlanDialog
+        open={manualPlanDialogOpen}
+        onOpenChange={setManualPlanDialogOpen}
+        clientId={clientId}
+        clientName={clientName}
+        existingPaymentStagesCount={stages.length}
+        onCreated={refreshPaymentViews}
       />
 
       <RecordPaymentDialog
