@@ -27,6 +27,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -257,6 +267,8 @@ export function QuoteTemplatesManager() {
     null,
   );
   const [renamingTemplateName, setRenamingTemplateName] = useState("");
+  const [templatePendingDeletion, setTemplatePendingDeletion] =
+    useState<QuoteTemplate | null>(null);
   const [moveToFolderTemplateId, setMoveToFolderTemplateId] = useState<
     string | null
   >(null);
@@ -479,7 +491,13 @@ export function QuoteTemplatesManager() {
   };
 
   // שליפת תיקיות
-  const { data: folders = [] } = useQuery({
+  const {
+    data: folders = [],
+    isError: foldersError,
+    error: foldersLoadError,
+    refetch: refetchFolders,
+    isFetching: foldersFetching,
+  } = useQuery({
     queryKey: ["quote-template-folders"],
     queryFn: async () => {
       const { data, error } = await withAbortTimeout<any>(
@@ -659,16 +677,33 @@ export function QuoteTemplatesManager() {
   // Rename template
   const renameTemplateMutation = useMutation({
     mutationFn: async ({ id, name }: { id: string; name: string }) => {
-      const { error } = await (supabase as any)
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        throw new Error("יש להזין שם לתבנית");
+      }
+
+      const { data, error } = await (supabase as any)
         .from("quote_templates")
-        .update({ name, updated_at: new Date().toISOString() })
-        .eq("id", id);
+        .update({ name: trimmedName, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .select("id, name")
+        .single();
       if (error) throw error;
+      if (!data?.id) throw new Error("שם התבנית לא נשמר");
+      return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["quote-templates-advanced"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["quote-templates-advanced"] });
       setRenamingTemplateId(null);
+      setRenamingTemplateName("");
       toast({ title: "השם עודכן" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "שינוי השם נכשל",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -749,11 +784,19 @@ export function QuoteTemplatesManager() {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["quote-templates-advanced"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["quote-templates-advanced"] });
+      setTemplatePendingDeletion(null);
       toast({
         title: "נמחק",
         description: "התבנית נמחקה",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "מחיקת התבנית נכשלה",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
@@ -879,10 +922,8 @@ export function QuoteTemplatesManager() {
     });
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("למחוק את התבנית?")) {
-      deleteMutation.mutate(id);
-    }
+  const handleDelete = (template: QuoteTemplate) => {
+    setTemplatePendingDeletion(template);
   };
 
   const openTemplateInDocumentEditor = (templateId: string) => {
@@ -917,7 +958,13 @@ export function QuoteTemplatesManager() {
   });
 
   // Group templates by folder
-  const unfolderedTemplates = filteredTemplates.filter((t) => !t.folder_id);
+  const knownFolderIds = new Set(folders.map((folder) => folder.id));
+  // A template must never disappear just because its folder could not be loaded
+  // (for example because of a temporary timeout/RLS issue) or was deleted.
+  const unfolderedTemplates = filteredTemplates.filter(
+    (template) =>
+      !template.folder_id || !knownFolderIds.has(template.folder_id),
+  );
   const templatesByFolder = folders.reduce<Record<string, QuoteTemplate[]>>(
     (acc, f) => {
       acc[f.id] = filteredTemplates.filter((t) => t.folder_id === f.id);
@@ -1027,12 +1074,57 @@ export function QuoteTemplatesManager() {
               return (
                 <tr key={template.id} className="border-t hover:bg-muted/30 transition-colors">
                   <td className="px-3 py-2 align-top min-w-0">
-                    <div
-                      className="text-sm font-semibold leading-snug truncate"
-                      title={template.name}
-                    >
-                      {template.name}
-                    </div>
+                    {renamingTemplateId === template.id ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={renamingTemplateName}
+                          onChange={(event) => setRenamingTemplateName(event.target.value)}
+                          className="h-8 min-w-0 text-sm font-semibold"
+                          autoFocus
+                          onKeyDown={(event) => {
+                            if (
+                              event.key === "Enter" &&
+                              renamingTemplateName.trim() &&
+                              !renameTemplateMutation.isPending
+                            ) {
+                              renameTemplateMutation.mutate({
+                                id: template.id,
+                                name: renamingTemplateName,
+                              });
+                            }
+                            if (event.key === "Escape") {
+                              setRenamingTemplateId(null);
+                              setRenamingTemplateName("");
+                            }
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 shrink-0 p-0"
+                          title="שמור שם"
+                          disabled={
+                            !renamingTemplateName.trim() ||
+                            renameTemplateMutation.isPending
+                          }
+                          onClick={() =>
+                            renameTemplateMutation.mutate({
+                              id: template.id,
+                              name: renamingTemplateName,
+                            })
+                          }
+                        >
+                          ✓
+                        </Button>
+                      </div>
+                    ) : (
+                      <div
+                        className="text-sm font-semibold leading-snug truncate"
+                        title={template.name}
+                      >
+                        {template.name}
+                      </div>
+                    )}
                     <div
                       className="text-xs text-muted-foreground truncate"
                       title={template.description || "ללא תיאור"}
@@ -1085,7 +1177,11 @@ export function QuoteTemplatesManager() {
                         variant="outline"
                         size="sm"
                         className="h-8 shrink-0"
-                        onClick={() => handleEdit(template)}
+                        title="שנה שם"
+                        onClick={() => {
+                          setRenamingTemplateId(template.id);
+                          setRenamingTemplateName(template.name);
+                        }}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
@@ -1096,6 +1192,15 @@ export function QuoteTemplatesManager() {
                         onClick={() => setPreviewTemplate(template)}
                       >
                         <Eye className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        title="מחק תבנית"
+                        onClick={() => handleDelete(template)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </td>
@@ -1177,6 +1282,10 @@ export function QuoteTemplatesManager() {
                   <Button
                     size="sm"
                     variant="ghost"
+                    disabled={
+                      !renamingTemplateName.trim() ||
+                      renameTemplateMutation.isPending
+                    }
                     onClick={() =>
                       renameTemplateMutation.mutate({
                         id: template.id,
@@ -1247,7 +1356,7 @@ export function QuoteTemplatesManager() {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={() => handleDelete(template.id)}
+                    onClick={() => handleDelete(template)}
                     className="text-destructive"
                   >
                     <Trash2 className="h-4 w-4 ml-2" />
@@ -1349,6 +1458,15 @@ export function QuoteTemplatesManager() {
                   </Button>
                 </>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                title="מחק תבנית"
+                onClick={() => handleDelete(template)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -1489,6 +1607,32 @@ export function QuoteTemplatesManager() {
           </SelectContent>
         </Select>
       </div>
+
+      {foldersError && !isLoading && !templatesError && (
+        <Card className="border-amber-400/60 bg-amber-50/70">
+          <CardContent className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-amber-950">
+                התבניות מוצגות ללא מבנה התיקיות
+              </p>
+              <p className="text-xs text-amber-900/75">
+                {(foldersLoadError as Error)?.message ||
+                  "טעינת התיקיות נכשלה זמנית. התבניות עצמן לא נפגעו."}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="shrink-0 border-amber-500/60 text-amber-950 hover:bg-amber-100"
+              disabled={foldersFetching}
+              onClick={() => refetchFolders()}
+            >
+              {foldersFetching ? "טוען תיקיות..." : "נסה לטעון תיקיות שוב"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Content */}
       {isLoading ? (
@@ -2193,6 +2337,47 @@ export function QuoteTemplatesManager() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!templatePendingDeletion}
+        onOpenChange={(open) => {
+          if (!open && !deleteMutation.isPending) {
+            setTemplatePendingDeletion(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>למחוק את תבנית הצעת המחיר?</AlertDialogTitle>
+            <AlertDialogDescription>
+              התבנית
+              {" "}
+              <span className="font-semibold text-foreground">
+                {templatePendingDeletion?.name}
+              </span>
+              {" "}
+              תימחק לצמיתות. פעולה זו אינה ניתנת לביטול.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>
+              ביטול
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!templatePendingDeletion || deleteMutation.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                if (templatePendingDeletion) {
+                  deleteMutation.mutate(templatePendingDeletion.id);
+                }
+              }}
+            >
+              {deleteMutation.isPending ? "מוחק..." : "מחק תבנית"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Template Dialogs */}
       <AdvancedTemplateDialog
