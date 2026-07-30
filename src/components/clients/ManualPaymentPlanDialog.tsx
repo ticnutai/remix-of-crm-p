@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
+  BookCopy,
   Calculator,
   CheckCircle2,
   Link2,
   Loader2,
   Plus,
   Receipt,
+  Save,
   Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import {
   createManualClientPaymentPlan,
   type ManualPaymentPlanRowInput,
@@ -61,17 +64,33 @@ interface PlanRow extends ManualPaymentPlanRowInput {
   selectedClientStageId: string;
 }
 
+interface PaymentTemplateStep {
+  name: string;
+  percentage: number;
+  vatRate: number;
+}
+
+interface PaymentTemplate {
+  id: string;
+  name: string;
+  steps: PaymentTemplateStep[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface ManualPaymentPlanDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clientId: string;
   clientName: string;
   existingPaymentStagesCount: number;
+  initialTemplatesOpen?: boolean;
   onCreated: () => void | Promise<void>;
 }
 
 const DEFAULT_VAT_RATE = 18;
 const UNLINKED_VALUE = "__unlinked__";
+const PAYMENT_TEMPLATES_SETTING_KEY = "client-payment-plan-templates";
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
@@ -99,6 +118,7 @@ export function ManualPaymentPlanDialog({
   clientId,
   clientName,
   existingPaymentStagesCount,
+  initialTemplatesOpen = false,
   onCreated,
 }: ManualPaymentPlanDialogProps) {
   const { toast } = useToast();
@@ -110,6 +130,12 @@ export function ManualPaymentPlanDialog({
   const [tasks, setTasks] = useState<ClientTaskOption[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [paymentTemplates, setPaymentTemplates] = useSyncedSetting<PaymentTemplate[]>({
+    key: PAYMENT_TEMPLATES_SETTING_KEY,
+    defaultValue: [],
+  });
 
   const loadClientStagesAndTasks = useCallback(async () => {
     if (!clientId) return;
@@ -142,12 +168,14 @@ export function ManualPaymentPlanDialog({
         })),
       );
       setTasks(
-        (tasksResult.data || []).map((task: any) => ({
-          ...task,
-          stageId: String(task.stage_id),
-          completed: Boolean(task.completed),
-          sortOrder: Number(task.sort_order || 0),
-        })),
+        (tasksResult.data || [])
+          .filter((task: any) => String(task.title || "").includes("תשלום"))
+          .map((task: any) => ({
+            ...task,
+            stageId: String(task.stage_id),
+            completed: Boolean(task.completed),
+            sortOrder: Number(task.sort_order || 0),
+          })),
       );
     } catch (error: any) {
       toast({
@@ -166,8 +194,10 @@ export function ManualPaymentPlanDialog({
     setProjectAmount(0);
     setDefaultVatRate(DEFAULT_VAT_RATE);
     setRows([createEmptyRow(0)]);
+    setTemplatesOpen(initialTemplatesOpen);
+    setTemplateName("");
     void loadClientStagesAndTasks();
-  }, [loadClientStagesAndTasks, open]);
+  }, [initialTemplatesOpen, loadClientStagesAndTasks, open]);
 
   const totalAmount = useMemo(
     () => round2(rows.reduce((sum, row) => sum + Number(row.amount || 0), 0)),
@@ -273,8 +303,105 @@ export function ManualPaymentPlanDialog({
 
   const tasksForStage = (stage: ClientStageOption) =>
     tasks.filter(
-      (task) => task.stageId === stage.id || task.stageId === stage.sourceStageId,
+      (task) =>
+        task.title.includes("תשלום") &&
+        (task.stageId === stage.id || task.stageId === stage.sourceStageId),
     );
+
+  const savePaymentTemplate = () => {
+    const normalizedName = templateName.trim();
+    const normalizedSteps = rows.map((row) => ({
+      name: row.name.trim(),
+      percentage: Number(row.percentage || 0),
+      vatRate: Number(row.vatRate || defaultVatRate || DEFAULT_VAT_RATE),
+    }));
+    const percentageSum =
+      Math.round(
+        normalizedSteps.reduce((sum, step) => sum + step.percentage, 0) * 1000,
+      ) / 1000;
+
+    if (!normalizedName) {
+      toast({
+        title: "יש לתת שם לתבנית",
+        description: "השם יעזור לזהות את חלוקת התשלומים בפעם הבאה",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (
+      normalizedSteps.length === 0 ||
+      normalizedSteps.some((step) => !step.name || step.percentage <= 0) ||
+      Math.abs(percentageSum - 100) > 0.01
+    ) {
+      toast({
+        title: "לא ניתן לשמור את התבנית",
+        description: "לכל שלב צריך להיות שם ואחוז חיובי, וסך האחוזים חייב להיות 100%",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const existing = paymentTemplates.find(
+      (template) => template.name.trim() === normalizedName,
+    );
+    setPaymentTemplates((current) =>
+      existing
+        ? current.map((template) =>
+            template.id === existing.id
+              ? { ...template, steps: normalizedSteps, updatedAt: now }
+              : template,
+          )
+        : [
+            ...current,
+            {
+              id: crypto.randomUUID(),
+              name: normalizedName,
+              steps: normalizedSteps,
+              createdAt: now,
+              updatedAt: now,
+            },
+          ],
+    );
+    setTemplateName("");
+    toast({
+      title: existing ? "תבנית התשלום עודכנה" : "תבנית התשלום נשמרה",
+      description: `${normalizedSteps.length} שלבים · 100%`,
+    });
+  };
+
+  const applyPaymentTemplate = (template: PaymentTemplate) => {
+    if (!Array.isArray(template.steps) || template.steps.length === 0) return;
+    setRows(
+      template.steps.map((step) => ({
+        localId: crypto.randomUUID(),
+        name: step.name,
+        amount:
+          projectAmount > 0
+            ? round2((projectAmount * Number(step.percentage || 0)) / 100)
+            : 0,
+        percentage: Number(step.percentage || 0),
+        vatRate: Number(step.vatRate || defaultVatRate || DEFAULT_VAT_RATE),
+        linkedStageId: null,
+        linkedTaskId: null,
+        selectedClientStageId: UNLINKED_VALUE,
+      })),
+    );
+    setPlanTitle(template.name);
+    setDefaultVatRate(
+      Number(template.steps[0]?.vatRate || defaultVatRate || DEFAULT_VAT_RATE),
+    );
+    toast({
+      title: "תבנית התשלום נטענה",
+      description: "השיוכים נשארו ריקים כדי לבחור את המשימות של הלקוח הנוכחי",
+    });
+  };
+
+  const deletePaymentTemplate = (templateId: string) => {
+    setPaymentTemplates((current) =>
+      current.filter((template) => template.id !== templateId),
+    );
+  };
 
   const handleStageChange = (row: PlanRow, selectedStageId: string) => {
     if (selectedStageId === UNLINKED_VALUE) {
@@ -424,6 +551,24 @@ export function ManualPaymentPlanDialog({
                 >
                   השלם יתרה בשורה האחרונה
                 </Button>
+                <Button
+                  type="button"
+                  variant={templatesOpen ? "default" : "outline"}
+                  onClick={() => setTemplatesOpen((current) => !current)}
+                  className="gap-2"
+                  aria-expanded={templatesOpen}
+                >
+                  <BookCopy className="h-4 w-4" />
+                  תבניות תשלום
+                  {paymentTemplates.length > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="h-5 min-w-5 justify-center rounded-full px-1.5"
+                    >
+                      {paymentTemplates.length}
+                    </Badge>
+                  )}
+                </Button>
               </div>
               <Badge
                 variant="outline"
@@ -442,6 +587,94 @@ export function ManualPaymentPlanDialog({
                 {totalPercentage}%
               </Badge>
             </div>
+
+            {templatesOpen && (
+              <section className="space-y-3 rounded-2xl border border-primary/25 bg-primary/[0.035] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                      <BookCopy className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">תבניות תשלום מוכנות</h3>
+                      <p className="text-xs text-muted-foreground">
+                        התבנית שומרת שמות, אחוזים ומע״מ בלבד. שיוך למשימות נבחר בנפרד לכל לקוח.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex min-w-[280px] flex-1 items-center gap-2 md:max-w-md">
+                    <Input
+                      value={templateName}
+                      onChange={(event) => setTemplateName(event.target.value)}
+                      placeholder="שם לתבנית הנוכחית..."
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          savePaymentTemplate();
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      onClick={savePaymentTemplate}
+                      className="shrink-0 gap-1.5"
+                    >
+                      <Save className="h-4 w-4" />
+                      שמור
+                    </Button>
+                  </div>
+                </div>
+
+                {paymentTemplates.length === 0 ? (
+                  <div className="rounded-xl border border-dashed bg-background/70 px-4 py-5 text-center text-sm text-muted-foreground">
+                    עדיין אין תבניות. הגדר את השלבים והאחוזים, הזן שם ולחץ שמור.
+                  </div>
+                ) : (
+                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                    {paymentTemplates.map((template) => (
+                      <div
+                        key={template.id}
+                        className="flex items-center gap-2 rounded-xl border bg-background p-3 shadow-sm"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => applyPaymentTemplate(template)}
+                          className="min-w-0 flex-1 text-right"
+                        >
+                          <span className="block truncate font-medium">{template.name}</span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
+                            {template.steps.length} שלבים ·{" "}
+                            {template.steps.reduce(
+                              (sum, step) => sum + Number(step.percentage || 0),
+                              0,
+                            )}
+                            %
+                          </span>
+                        </button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => applyPaymentTemplate(template)}
+                        >
+                          החל
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 shrink-0 text-destructive"
+                          onClick={() => deletePaymentTemplate(template.id)}
+                          aria-label={`מחק את התבנית ${template.name}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
 
             <div className="space-y-3">
               {rows.map((row, index) => {
@@ -587,6 +820,11 @@ export function ManualPaymentPlanDialog({
                             })}
                           </SelectContent>
                         </Select>
+                        {selectedStage && availableTasks.length === 0 && !loadingOptions && (
+                          <p className="text-xs text-muted-foreground">
+                            בשלב זה אין משימות ששמן כולל „תשלום”
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -624,7 +862,7 @@ export function ManualPaymentPlanDialog({
             <div className="text-sm text-muted-foreground">
               {loadingOptions
                 ? "טוען את שלבי הלקוח..."
-                : `${stages.length} שלבים ו־${tasks.length} משימות זמינים לשיוך`}
+                : `${stages.length} שלבים ו־${tasks.length} משימות תשלום זמינים לשיוך`}
             </div>
             <div className="flex gap-2">
               <Button

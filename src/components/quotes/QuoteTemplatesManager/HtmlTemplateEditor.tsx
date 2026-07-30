@@ -254,6 +254,52 @@ interface PaymentStep {
   triggerDate?: string | null;
 }
 
+const PAYMENT_PERCENTAGE_STEP = 5;
+
+const clampPaymentPercentage = (value: number, maxPercentage = 100) => {
+  const safeMaximum = Math.max(
+    0,
+    Math.min(
+      100,
+      Math.floor(maxPercentage / PAYMENT_PERCENTAGE_STEP) *
+        PAYMENT_PERCENTAGE_STEP,
+    ),
+  );
+  const safeValue = Number.isFinite(value) ? value : 0;
+  const steppedValue =
+    Math.round(safeValue / PAYMENT_PERCENTAGE_STEP) *
+    PAYMENT_PERCENTAGE_STEP;
+
+  return Math.max(0, Math.min(safeMaximum, steppedValue));
+};
+
+const normalizePaymentPercentages = (steps: PaymentStep[]) => {
+  let remainingPercentage = 100;
+
+  return steps.map((step) => {
+    const percentage = clampPaymentPercentage(
+      Number(step.percentage) || 0,
+      remainingPercentage,
+    );
+    remainingPercentage -= percentage;
+    return { ...step, percentage };
+  });
+};
+
+const getAvailablePaymentPercentage = (
+  steps: PaymentStep[],
+  currentStepId: string,
+) =>
+  Math.max(
+    0,
+    100 -
+      steps.reduce(
+        (total, step) =>
+          step.id === currentStepId ? total : total + step.percentage,
+        0,
+      ),
+  );
+
 interface StageTemplateTaskOption {
   id: string;
   title: string;
@@ -2807,6 +2853,7 @@ function PaymentStepEditor({
   templateKey,
   onPreferenceChange,
   basePrice = 0,
+  maxPercentage = 100,
 }: {
   step: PaymentStep;
   onUpdate: (step: PaymentStep) => void;
@@ -2818,8 +2865,12 @@ function PaymentStepEditor({
   templateKey?: string;
   onPreferenceChange?: () => void;
   basePrice?: number;
+  maxPercentage?: number;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [percentageInput, setPercentageInput] = useState(
+    String(step.percentage),
+  );
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [assignmentSourceTab, setAssignmentSourceTab] =
     useState<AssignmentSourceTab>("stage-template");
@@ -2888,6 +2939,23 @@ function PaymentStepEditor({
       return "stage-template";
     }
   });
+
+  useEffect(() => {
+    setPercentageInput(String(step.percentage));
+  }, [step.percentage]);
+
+  const commitPercentage = useCallback(
+    (rawValue: string) => {
+      const percentage = clampPaymentPercentage(
+        Number.parseFloat(rawValue) || 0,
+        maxPercentage,
+      );
+      setPercentageInput(String(percentage));
+      onUpdate({ ...step, percentage });
+    },
+    [maxPercentage, onUpdate, step],
+  );
+
   const effectiveVat = step.useCustomVat ? (step.vatRate ?? defaultVatRate) : defaultVatRate;
   const selectedTemplateStage = useMemo(
     () => templateStages.find((s) => s.id === step.templateStageId) || null,
@@ -3388,25 +3456,37 @@ function PaymentStepEditor({
             onChange={(e) => {
               const amt = parseFloat(e.target.value) || 0;
               const pct = basePrice > 0
-                ? Math.round((amt / basePrice) * 10000) / 100
+                ? clampPaymentPercentage(
+                    (amt / basePrice) * 100,
+                    maxPercentage,
+                  )
                 : 0;
               onUpdate({ ...step, percentage: pct });
             }}
             className="w-24 text-center"
             min={0}
+            max={Math.round((basePrice * maxPercentage) / 100)}
+            step={Math.max(1, Math.round((basePrice * PAYMENT_PERCENTAGE_STEP) / 100))}
             title="סכום בש״ח - עדכון דו-כיווני עם האחוז"
           />
           <span className="text-gray-500">₪</span>
           <Input
             type="number"
-            value={step.percentage}
-            onChange={(e) =>
-              onUpdate({ ...step, percentage: parseFloat(e.target.value) || 0 })
-            }
+            value={percentageInput}
+            onChange={(e) => setPercentageInput(e.target.value)}
+            onBlur={(e) => commitPercentage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                commitPercentage(e.currentTarget.value);
+                e.currentTarget.blur();
+              }
+            }}
             className="w-16 text-center"
             min={0}
-            max={100}
-            step="0.01"
+            max={maxPercentage}
+            step={PAYMENT_PERCENTAGE_STEP}
+            inputMode="numeric"
+            title={`אחוז התשלום: בקפיצות של ${PAYMENT_PERCENTAGE_STEP}, עד ${maxPercentage}%`}
           />
           <span className="text-gray-500">%</span>
           <Button
@@ -4886,7 +4966,10 @@ export function HtmlTemplateEditor({
     }
     return "מתקדם";
   });
-  const [activeTab, setActiveTab] = useState("flow-v2");
+  const [activeTab, setActiveTab] = useState("project");
+  useEffect(() => {
+    if (open) setActiveTab("project");
+  }, [open, template.id]);
   const exactA4PrintRef = useRef<(() => Promise<void>) | null>(null);
   const exactA4PdfBlobRef = useRef<(() => Promise<Blob>) | null>(null);
   const exactA4PdfWaitersRef = useRef<
@@ -5090,7 +5173,7 @@ export function HtmlTemplateEditor({
     ? `saved-quote-pending-payments::${savedQuoteId}`
     : null;
   const restoredPendingSavedQuotePaymentsRef = useRef(false);
-  const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>(() => {
+  const [paymentSteps, setPaymentStepsState] = useState<PaymentStep[]>(() => {
     if (pendingSavedQuotePaymentsKey) {
       try {
         const pending = JSON.parse(
@@ -5161,6 +5244,22 @@ export function HtmlTemplateEditor({
       { id: "4", name: "היתר בנייה", percentage: 20, description: "" },
     ].map((step) => ({ ...step, triggerMode: "manual" as const, triggerDate: null }));
   });
+  const setPaymentSteps = useCallback(
+    (nextValue: React.SetStateAction<PaymentStep[]>) => {
+      setPaymentStepsState((previousSteps) => {
+        const nextSteps =
+          typeof nextValue === "function"
+            ? nextValue(previousSteps)
+            : nextValue;
+        return normalizePaymentPercentages(nextSteps);
+      });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    setPaymentSteps((previousSteps) => previousSteps);
+  }, [setPaymentSteps]);
   const [designSettings, setDesignSettings] = useState<DesignSettings>(() => {
     const ds = template.design_settings as any;
     if (ds && ds.primaryColor) {
@@ -5413,6 +5512,7 @@ export function HtmlTemplateEditor({
     // draft on top of it can mix content from another document.
     enabled: open && !savedQuoteId,
   });
+
   // Existing saved quotes previously kept payment edits only in React state.
   // A refresh therefore reloaded the old payment_schedule from the database.
   // Persist each changed schedule immediately, while keeping a tiny local
@@ -5591,13 +5691,6 @@ export function HtmlTemplateEditor({
         if (Array.isArray(data.pricingTiers)) setPricingTiers(data.pricingTiers);
         if (data.projectDetails) setProjectDetails(data.projectDetails);
         if (typeof data.selectedTier === "string") setSelectedTier(data.selectedTier);
-        if (typeof data.activeTab === "string") {
-          setActiveTab(
-            data.activeTab === "preview" || data.activeTab === "split" || data.activeTab === "pages"
-              ? "flow-v2"
-              : data.activeTab,
-          );
-        }
         toast({
           title: source === "cloud" ? "טיוטה שוחזרה מהענן" : "טיוטה שוחזרה",
           description: "הצעת המחיר שוחזרה למצב שבו עזבת אותה",
@@ -6181,7 +6274,7 @@ export function HtmlTemplateEditor({
         stageTemplateName: pd.stageTemplateName || "",
       });
     }
-  }, [template]);
+  }, [template, setPaymentSteps]);
 
   const handleSave = useCallback(async (updateTemplate = true) => {
     setIsSaving(true);
@@ -7316,7 +7409,7 @@ export function HtmlTemplateEditor({
         prev.map((tb) => (String(tb.id) === tid ? { ...tb, [field]: v } : tb)),
       );
     }
-  }, []);
+  }, [setPaymentSteps]);
 
 
   // Helper: convert image URL to base64 data URL for standalone exports
@@ -10363,10 +10456,25 @@ ${tbAt('footer')}
                         quoteTemplateStages={editedTemplate.stages || []}
                         onPreferenceChange={saveToCloud}
                         basePrice={basePrice}
+                        maxPercentage={getAvailablePaymentPercentage(
+                          paymentSteps,
+                          step.id,
+                        )}
                         onUpdate={(updated) =>
                           setPaymentSteps(
                             paymentSteps.map((s) =>
-                              s.id === step.id ? updated : s,
+                              s.id === step.id
+                                ? {
+                                    ...updated,
+                                    percentage: clampPaymentPercentage(
+                                      updated.percentage,
+                                      getAvailablePaymentPercentage(
+                                        paymentSteps,
+                                        step.id,
+                                      ),
+                                    ),
+                                  }
+                                : s,
                             ),
                           )
                         }

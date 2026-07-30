@@ -52,6 +52,7 @@ import {
   ChevronDown,
   ChevronUp,
   Banknote,
+  BookCopy,
   ListPlus,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -746,6 +747,7 @@ export default function PaymentStagesManager({
   const [expandedStages, setExpandedStages] = useState(true);
   const [expandedAdditional, setExpandedAdditional] = useState(true);
   const [manualPlanDialogOpen, setManualPlanDialogOpen] = useState(false);
+  const [manualPlanTemplatesOpen, setManualPlanTemplatesOpen] = useState(false);
 
   // =========================================
   // Data fetching
@@ -1114,12 +1116,27 @@ export default function PaymentStagesManager({
                 variant="outline"
                 onClick={(e) => {
                   e.stopPropagation();
+                  setManualPlanTemplatesOpen(false);
                   setManualPlanDialogOpen(true);
                 }}
                 className="gap-1 border-primary/30 bg-primary/5"
               >
                 <ListPlus className="h-4 w-4" />
                 הגדר תוכנית תשלומים
+              </Button>
+              <Button
+                size="icon"
+                variant="outline"
+                title="תבניות תשלום"
+                aria-label="פתח תבניות תשלום"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setManualPlanTemplatesOpen(true);
+                  setManualPlanDialogOpen(true);
+                }}
+                className="h-9 w-9 border-primary/30 bg-primary/5"
+              >
+                <BookCopy className="h-4 w-4" />
               </Button>
               <Button
                 size="sm"
@@ -1452,6 +1469,7 @@ export default function PaymentStagesManager({
         clientId={clientId}
         clientName={clientName}
         existingPaymentStagesCount={stages.length}
+        initialTemplatesOpen={manualPlanTemplatesOpen}
         onCreated={refreshPaymentViews}
       />
 
