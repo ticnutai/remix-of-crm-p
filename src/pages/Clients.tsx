@@ -6574,6 +6574,8 @@ export default function Clients() {
 
                     <div
                       ref={scrollContainerRef}
+                      className="clients-content-grid"
+
                       style={{
                         flex: 1,
                         minHeight: 0,
