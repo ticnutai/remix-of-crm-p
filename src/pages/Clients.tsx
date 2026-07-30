@@ -5416,9 +5416,49 @@ export default function Clients() {
           <style>{`@keyframes clients-progress-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }`}</style>
         </div>
       )}
+      {/* Mobile-only adaptations (<=767px) — full functionality, no horizontal scroll */}
+      <style>{`
+        @media (max-width: 767px) {
+          .clients-page-root {
+            height: auto !important;
+            min-height: calc(100dvh - 90px);
+            gap: 12px !important;
+            overflow: visible !important;
+            padding: 0 2px !important;
+          }
+          .clients-page-root * { max-width: 100%; }
+          /* Reveal hover-only toolbars (no hover on touch) */
+          .clients-page-root .group .invisible,
+          .clients-page-root .group .max-w-0 {
+            visibility: visible !important;
+            opacity: 1 !important;
+            max-width: none !important;
+            pointer-events: auto !important;
+          }
+          /* Header + toolbars wrap instead of overflowing */
+          .clients-page-root [style*="flex-wrap: nowrap"],
+          .clients-page-root [style*="flexWrap: nowrap"] {
+            flex-wrap: wrap !important;
+          }
+          .clients-page-root button { touch-action: manipulation; }
+          /* Cards: single column, comfortable spacing, natural page scroll */
+          .clients-content-grid {
+            display: flex !important;
+            flex-direction: column !important;
+            grid-template-columns: none !important;
+            gap: 12px !important;
+            overflow: visible !important;
+            max-height: none !important;
+          }
+          .clients-content-grid > * { width: 100% !important; min-width: 0 !important; }
+          /* Any inner horizontal strips scroll instead of breaking layout */
+          .clients-page-root .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+        }
+      `}</style>
       {/* Page Layout - Header strip above framed content */}
       <div
         dir="rtl"
+        className="clients-page-root"
         style={{
           height: "calc(100vh - 100px)",
           display: "flex",
@@ -5426,6 +5466,7 @@ export default function Clients() {
           gap: "34px",
           overflow: "hidden",
         }}
+
       >
         {/* ═══ Compact Header — Row 1: Title + Buttons + Search ═══ */}
         <div
