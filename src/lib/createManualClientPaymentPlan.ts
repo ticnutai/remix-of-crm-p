@@ -32,6 +32,7 @@ export interface CreateManualClientPaymentPlanResult {
 }
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
+const PAYMENT_PERCENTAGE_STEP = 5;
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -65,6 +66,19 @@ export async function createManualClientPaymentPlan({
   if (normalizedRows.some((row) => !row.name || row.amount <= 0)) {
     throw new Error("לכל שלב תשלום חייבים להיות שם וסכום תקין");
   }
+  if (
+    normalizedRows.some(
+      (row) =>
+        row.percentage <= 0 ||
+        row.percentage > 100 ||
+        Math.abs(row.percentage % PAYMENT_PERCENTAGE_STEP) > 0.001,
+    ) ||
+    Math.abs(
+      normalizedRows.reduce((sum, row) => sum + row.percentage, 0) - 100,
+    ) > 0.01
+  ) {
+    throw new Error("אחוזי התשלום חייבים להיות בכפולות של 5 ולהסתכם ב־100%");
+  }
 
   const linkedTaskIds = normalizedRows
     .map((row) => row.linkedTaskId)
@@ -74,6 +88,13 @@ export async function createManualClientPaymentPlan({
   }
 
   const taskMap = new Map(existingTasks.map((task) => [task.id, task]));
+  const invalidLinkedTasks = linkedTaskIds.filter((taskId) => {
+    const task = taskMap.get(taskId);
+    return !task || !String(task.title || "").includes("תשלום");
+  });
+  if (invalidLinkedTasks.length > 0) {
+    throw new Error("ניתן לשייך תשלום רק למשימה ששמה כולל את המילה „תשלום”");
+  }
   const alreadyLinkedTasks = linkedTaskIds
     .map((taskId) => taskMap.get(taskId))
     .filter(

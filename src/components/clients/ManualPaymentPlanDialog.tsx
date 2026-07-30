@@ -91,8 +91,18 @@ interface ManualPaymentPlanDialogProps {
 const DEFAULT_VAT_RATE = 18;
 const UNLINKED_VALUE = "__unlinked__";
 const PAYMENT_TEMPLATES_SETTING_KEY = "client-payment-plan-templates";
+const PAYMENT_PERCENTAGE_STEP = 5;
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
+const normalizePaymentPercentage = (value: number) =>
+  Math.min(
+    100,
+    Math.max(
+      0,
+      Math.round((Number(value) || 0) / PAYMENT_PERCENTAGE_STEP) *
+        PAYMENT_PERCENTAGE_STEP,
+    ),
+  );
 
 const createEmptyRow = (index: number): PlanRow => ({
   localId: crypto.randomUUID(),
@@ -153,6 +163,7 @@ export function ManualPaymentPlanDialog({
             "id, stage_id, title, completed, sort_order, payment_amount, payment_percentage, payment_quote_id, payment_step_id",
           )
           .eq("client_id", clientId)
+          .ilike("title", "%תשלום%")
           .order("sort_order"),
       ]);
 
@@ -223,17 +234,34 @@ export function ManualPaymentPlanDialog({
   };
 
   const updatePercentage = (row: PlanRow, percentage: number) => {
+    const otherRowsPercentage = rows
+      .filter((item) => item.localId !== row.localId)
+      .reduce((sum, item) => sum + Number(item.percentage || 0), 0);
+    const maxAvailablePercentage = Math.max(
+      0,
+      Math.floor((100 - otherRowsPercentage) / PAYMENT_PERCENTAGE_STEP) *
+        PAYMENT_PERCENTAGE_STEP,
+    );
+    const normalizedPercentage = Math.min(
+      normalizePaymentPercentage(percentage),
+      maxAvailablePercentage,
+    );
     updateRow(row.localId, {
-      percentage,
-      amount: projectAmount > 0 ? round2((projectAmount * percentage) / 100) : 0,
+      percentage: normalizedPercentage,
+      amount:
+        projectAmount > 0
+          ? round2((projectAmount * normalizedPercentage) / 100)
+          : 0,
     });
   };
 
   const updateAmount = (row: PlanRow, amount: number) => {
-    updateRow(row.localId, {
-      amount,
-      percentage: projectAmount > 0 ? Math.round((amount * 100000) / projectAmount) / 1000 : 0,
-    });
+    if (projectAmount <= 0) {
+      updateRow(row.localId, { amount });
+      return;
+    }
+    const percentage = normalizePaymentPercentage((amount * 100) / projectAmount);
+    updatePercentage(row, percentage);
   };
 
   const updateProjectAmount = (amount: number) => {
@@ -274,19 +302,17 @@ export function ManualPaymentPlanDialog({
 
   const distributeEvenly = () => {
     if (projectAmount <= 0 || rows.length === 0) return;
-    const basePercentage = Math.floor((100 / rows.length) * 1000) / 1000;
-    const baseAmount = round2((projectAmount * basePercentage) / 100);
+    const totalUnits = 100 / PAYMENT_PERCENTAGE_STEP;
+    const baseUnits = Math.floor(totalUnits / rows.length);
+    const extraUnits = totalUnits % rows.length;
     setRows((current) =>
       current.map((row, index) => {
-        const isLast = index === current.length - 1;
+        const percentage =
+          (baseUnits + (index < extraUnits ? 1 : 0)) * PAYMENT_PERCENTAGE_STEP;
         return {
           ...row,
-          percentage: isLast
-            ? Math.round((100 - basePercentage * (current.length - 1)) * 1000) / 1000
-            : basePercentage,
-          amount: isLast
-            ? round2(projectAmount - baseAmount * (current.length - 1))
-            : baseAmount,
+          percentage,
+          amount: round2((projectAmount * percentage) / 100),
         };
       }),
     );
@@ -294,11 +320,11 @@ export function ManualPaymentPlanDialog({
 
   const balanceLastRow = () => {
     if (projectAmount <= 0 || rows.length === 0) return;
-    const amountBeforeLast = rows
+    const percentageBeforeLast = rows
       .slice(0, -1)
-      .reduce((sum, row) => sum + Number(row.amount || 0), 0);
+      .reduce((sum, row) => sum + Number(row.percentage || 0), 0);
     const lastRow = rows[rows.length - 1];
-    updateAmount(lastRow, round2(Math.max(projectAmount - amountBeforeLast, 0)));
+    updatePercentage(lastRow, Math.max(100 - percentageBeforeLast, 0));
   };
 
   const tasksForStage = (stage: ClientStageOption) =>
@@ -312,7 +338,7 @@ export function ManualPaymentPlanDialog({
     const normalizedName = templateName.trim();
     const normalizedSteps = rows.map((row) => ({
       name: row.name.trim(),
-      percentage: Number(row.percentage || 0),
+      percentage: normalizePaymentPercentage(Number(row.percentage || 0)),
       vatRate: Number(row.vatRate || defaultVatRate || DEFAULT_VAT_RATE),
     }));
     const percentageSum =
@@ -373,19 +399,35 @@ export function ManualPaymentPlanDialog({
   const applyPaymentTemplate = (template: PaymentTemplate) => {
     if (!Array.isArray(template.steps) || template.steps.length === 0) return;
     setRows(
-      template.steps.map((step) => ({
-        localId: crypto.randomUUID(),
-        name: step.name,
-        amount:
-          projectAmount > 0
-            ? round2((projectAmount * Number(step.percentage || 0)) / 100)
-            : 0,
-        percentage: Number(step.percentage || 0),
-        vatRate: Number(step.vatRate || defaultVatRate || DEFAULT_VAT_RATE),
-        linkedStageId: null,
-        linkedTaskId: null,
-        selectedClientStageId: UNLINKED_VALUE,
-      })),
+      template.steps.map((step, index) => {
+        const previousPercentage = template.steps
+          .slice(0, index)
+          .reduce(
+            (sum, previousStep) =>
+              sum + normalizePaymentPercentage(Number(previousStep.percentage || 0)),
+            0,
+          );
+        const percentage =
+          index === template.steps.length - 1
+            ? Math.max(0, 100 - previousPercentage)
+            : Math.min(
+                normalizePaymentPercentage(Number(step.percentage || 0)),
+                Math.max(0, 100 - previousPercentage),
+              );
+        return {
+          localId: crypto.randomUUID(),
+          name: step.name,
+          amount:
+            projectAmount > 0
+              ? round2((projectAmount * percentage) / 100)
+              : 0,
+          percentage,
+          vatRate: Number(step.vatRate || defaultVatRate || DEFAULT_VAT_RATE),
+          linkedStageId: null,
+          linkedTaskId: null,
+          selectedClientStageId: UNLINKED_VALUE,
+        };
+      }),
     );
     setPlanTitle(template.name);
     setDefaultVatRate(
@@ -747,16 +789,37 @@ export function ManualPaymentPlanDialog({
                       </div>
                       <div className="space-y-1.5 lg:col-span-2">
                         <Label>אחוז</Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={100}
-                          step="0.001"
-                          value={row.percentage || ""}
-                          onChange={(event) =>
-                            updatePercentage(row, Number(event.target.value) || 0)
-                          }
-                        />
+                        <Select
+                          value={row.percentage > 0 ? String(row.percentage) : undefined}
+                          onValueChange={(value) => updatePercentage(row, Number(value))}
+                        >
+                          <SelectTrigger aria-label={`אחוז תשלום ${index + 1}`}>
+                            <SelectValue placeholder="בחר אחוז" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from(
+                              { length: 100 / PAYMENT_PERCENTAGE_STEP },
+                              (_, percentageIndex) =>
+                                (percentageIndex + 1) * PAYMENT_PERCENTAGE_STEP,
+                            ).map((percentage) => {
+                              const otherRowsPercentage = rows
+                                .filter((item) => item.localId !== row.localId)
+                                .reduce(
+                                  (sum, item) => sum + Number(item.percentage || 0),
+                                  0,
+                                );
+                              return (
+                                <SelectItem
+                                  key={percentage}
+                                  value={String(percentage)}
+                                  disabled={percentage + otherRowsPercentage > 100}
+                                >
+                                  {percentage}%
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-1.5 lg:col-span-2">
                         <Label>סכום לפני מע״מ</Label>
