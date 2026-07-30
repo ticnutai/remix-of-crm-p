@@ -12,6 +12,7 @@ export interface ManualPaymentPlanRowInput {
 interface ExistingTaskPaymentState {
   id: string;
   title: string;
+  stageId?: string | null;
   payment_amount?: number | null;
   payment_percentage?: number | null;
   payment_quote_id?: string | null;
@@ -64,33 +65,20 @@ export async function createManualClientPaymentPlan({
     throw new Error("יש להוסיף לפחות שלב תשלום אחד");
   }
 
-  if (
-    normalizedRows.some(
-      (row) =>
-        !row.name ||
-        row.amount < MIN_PAYMENT_AMOUNT ||
-        !Number.isInteger(row.amount),
-    )
-  ) {
+  if (normalizedRows.some((row) => !row.name || row.amount < MIN_PAYMENT_AMOUNT || !Number.isInteger(row.amount))) {
     throw new Error("לכל שלב תשלום חייבים להיות שם וסכום שלם של 10 ₪ ומעלה");
   }
   if (
     normalizedRows.some(
       (row) =>
-        row.percentage <= 0 ||
-        row.percentage > 100 ||
-        Math.abs(row.percentage % PAYMENT_PERCENTAGE_STEP) > 0.001,
+        row.percentage <= 0 || row.percentage > 100 || Math.abs(row.percentage % PAYMENT_PERCENTAGE_STEP) > 0.001,
     ) ||
-    Math.abs(
-      normalizedRows.reduce((sum, row) => sum + row.percentage, 0) - 100,
-    ) > 0.01
+    Math.abs(normalizedRows.reduce((sum, row) => sum + row.percentage, 0) - 100) > 0.01
   ) {
     throw new Error("אחוזי התשלום חייבים להיות בכפולות של 5 ולהסתכם ב־100%");
   }
 
-  const linkedTaskIds = normalizedRows
-    .map((row) => row.linkedTaskId)
-    .filter((id): id is string => Boolean(id));
+  const linkedTaskIds = normalizedRows.map((row) => row.linkedTaskId).filter((id): id is string => Boolean(id));
   if (new Set(linkedTaskIds).size !== linkedTaskIds.length) {
     throw new Error("לא ניתן לשייך את אותה משימה ליותר מתשלום אחד");
   }
@@ -105,16 +93,11 @@ export async function createManualClientPaymentPlan({
   }
   const alreadyLinkedTasks = linkedTaskIds
     .map((taskId) => taskMap.get(taskId))
-    .filter(
-      (task): task is ExistingTaskPaymentState =>
-        Boolean(task && (Number(task.payment_amount) > 0 || task.payment_step_id)),
+    .filter((task): task is ExistingTaskPaymentState =>
+      Boolean(task && (Number(task.payment_amount) > 0 || task.payment_step_id)),
     );
   if (alreadyLinkedTasks.length > 0) {
-    throw new Error(
-      `למשימות הבאות כבר משויך תשלום: ${alreadyLinkedTasks
-        .map((task) => task.title)
-        .join(", ")}`,
-    );
+    throw new Error(`למשימות הבאות כבר משויך תשלום: ${alreadyLinkedTasks.map((task) => task.title).join(", ")}`);
   }
 
   const { data: authData, error: authError } = await supabase.auth.getUser();
@@ -144,7 +127,7 @@ export async function createManualClientPaymentPlan({
       vat_rate: row.vatRate,
       quote_id: null,
       payment_step_id: `client_payment_stage:${id}`,
-      linked_stage_id: row.linkedStageId,
+      linked_stage_id: row.linkedStageId || (row.linkedTaskId ? taskMap.get(row.linkedTaskId)?.stageId : null) || null,
       linked_task_id: row.linkedTaskId,
       created_by: authData.user?.id || null,
     };
@@ -154,9 +137,7 @@ export async function createManualClientPaymentPlan({
   const updatedTaskIds: string[] = [];
 
   try {
-    const { error: insertError } = await (supabase as any)
-      .from("client_payment_stages")
-      .insert(rowsToInsert);
+    const { error: insertError } = await (supabase as any).from("client_payment_stages").insert(rowsToInsert);
     if (insertError) throw insertError;
 
     for (let index = 0; index < normalizedRows.length; index += 1) {
@@ -201,10 +182,7 @@ export async function createManualClientPaymentPlan({
         })
         .in("id", updatedTaskIds);
     }
-    await (supabase as any)
-      .from("client_payment_stages")
-      .delete()
-      .in("id", insertedIds);
+    await (supabase as any).from("client_payment_stages").delete().in("id", insertedIds);
 
     throw new Error(`שמירת תוכנית התשלומים נכשלה: ${getErrorMessage(error)}`);
   }

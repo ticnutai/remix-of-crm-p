@@ -25,20 +25,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSyncedSetting } from "@/hooks/useSyncedSetting";
-import {
-  createManualClientPaymentPlan,
-  type ManualPaymentPlanRowInput,
-} from "@/lib/createManualClientPaymentPlan";
+import { createManualClientPaymentPlan, type ManualPaymentPlanRowInput } from "@/lib/createManualClientPaymentPlan";
 
 interface ClientStageOption {
   id: string;
@@ -50,6 +41,8 @@ interface ClientStageOption {
 interface ClientTaskOption {
   id: string;
   stageId: string;
+  stageName: string;
+  stagePosition: number;
   title: string;
   completed: boolean;
   sortOrder: number;
@@ -61,7 +54,6 @@ interface ClientTaskOption {
 
 interface PlanRow extends ManualPaymentPlanRowInput {
   localId: string;
-  selectedClientStageId: string;
 }
 
 interface PaymentTemplateStep {
@@ -101,14 +93,7 @@ const parseWholeAmountInput = (value: string) => {
   return Number(value);
 };
 const normalizePaymentPercentage = (value: number) =>
-  Math.min(
-    100,
-    Math.max(
-      0,
-      Math.round((Number(value) || 0) / PAYMENT_PERCENTAGE_STEP) *
-        PAYMENT_PERCENTAGE_STEP,
-    ),
-  );
+  Math.min(100, Math.max(0, Math.round((Number(value) || 0) / PAYMENT_PERCENTAGE_STEP) * PAYMENT_PERCENTAGE_STEP));
 
 const createEmptyRow = (index: number): PlanRow => ({
   localId: crypto.randomUUID(),
@@ -118,7 +103,6 @@ const createEmptyRow = (index: number): PlanRow => ({
   vatRate: DEFAULT_VAT_RATE,
   linkedStageId: null,
   linkedTaskId: null,
-  selectedClientStageId: UNLINKED_VALUE,
 });
 
 const formatCurrency = (amount: number) =>
@@ -176,23 +160,35 @@ export function ManualPaymentPlanDialog({
       if (stagesResult.error) throw stagesResult.error;
       if (tasksResult.error) throw tasksResult.error;
 
-      setStages(
-        (stagesResult.data || []).map((stage: any) => ({
-          id: stage.id,
-          sourceStageId: String(stage.stage_id || stage.id),
-          name: stage.stage_name || "שלב ללא שם",
-          sortOrder: Number(stage.sort_order || 0),
-        })),
-      );
+      const normalizedStages = (stagesResult.data || []).map((stage: any) => ({
+        id: stage.id,
+        sourceStageId: String(stage.stage_id || stage.id),
+        name: stage.stage_name || "שלב ללא שם",
+        sortOrder: Number(stage.sort_order || 0),
+      }));
+      setStages(normalizedStages);
       setTasks(
         (tasksResult.data || [])
           .filter((task: any) => String(task.title || "").includes("תשלום"))
-          .map((task: any) => ({
-            ...task,
-            stageId: String(task.stage_id),
-            completed: Boolean(task.completed),
-            sortOrder: Number(task.sort_order || 0),
-          })),
+          .map((task: any) => {
+            const taskStageId = String(task.stage_id);
+            const stageIndex = normalizedStages.findIndex(
+              (stage) => stage.id === taskStageId || stage.sourceStageId === taskStageId,
+            );
+            const stage = stageIndex >= 0 ? normalizedStages[stageIndex] : null;
+            return {
+              ...task,
+              stageId: stage?.sourceStageId || taskStageId,
+              stageName: stage?.name || "שלב לא ידוע",
+              stagePosition: stageIndex >= 0 ? stageIndex + 1 : normalizedStages.length + 1,
+              completed: Boolean(task.completed),
+              sortOrder: Number(task.sort_order || 0),
+            };
+          })
+          .sort(
+            (firstTask, secondTask) =>
+              firstTask.stagePosition - secondTask.stagePosition || firstTask.sortOrder - secondTask.sortOrder,
+          ),
       );
     } catch (error: any) {
       toast({
@@ -216,27 +212,16 @@ export function ManualPaymentPlanDialog({
     void loadClientStagesAndTasks();
   }, [initialTemplatesOpen, loadClientStagesAndTasks, open]);
 
-  const totalAmount = useMemo(
-    () => round2(rows.reduce((sum, row) => sum + Number(row.amount || 0), 0)),
-    [rows],
-  );
+  const totalAmount = useMemo(() => round2(rows.reduce((sum, row) => sum + Number(row.amount || 0), 0)), [rows]);
   const totalPercentage = useMemo(
-    () =>
-      Math.round(
-        rows.reduce((sum, row) => sum + Number(row.percentage || 0), 0) * 1000,
-      ) / 1000,
+    () => Math.round(rows.reduce((sum, row) => sum + Number(row.percentage || 0), 0) * 1000) / 1000,
     [rows],
   );
   const remainingAmount = round2(projectAmount - totalAmount);
-  const isBalanced =
-    projectAmount > 0 &&
-    Math.abs(remainingAmount) <= 0.01 &&
-    Math.abs(totalPercentage - 100) <= 0.01;
+  const isBalanced = projectAmount > 0 && Math.abs(remainingAmount) <= 0.01 && Math.abs(totalPercentage - 100) <= 0.01;
 
   const updateRow = (localId: string, patch: Partial<PlanRow>) => {
-    setRows((current) =>
-      current.map((row) => (row.localId === localId ? { ...row, ...patch } : row)),
-    );
+    setRows((current) => current.map((row) => (row.localId === localId ? { ...row, ...patch } : row)));
   };
 
   const updatePercentage = (row: PlanRow, percentage: number) => {
@@ -245,19 +230,12 @@ export function ManualPaymentPlanDialog({
       .reduce((sum, item) => sum + Number(item.percentage || 0), 0);
     const maxAvailablePercentage = Math.max(
       0,
-      Math.floor((100 - otherRowsPercentage) / PAYMENT_PERCENTAGE_STEP) *
-        PAYMENT_PERCENTAGE_STEP,
+      Math.floor((100 - otherRowsPercentage) / PAYMENT_PERCENTAGE_STEP) * PAYMENT_PERCENTAGE_STEP,
     );
-    const normalizedPercentage = Math.min(
-      normalizePaymentPercentage(percentage),
-      maxAvailablePercentage,
-    );
+    const normalizedPercentage = Math.min(normalizePaymentPercentage(percentage), maxAvailablePercentage);
     updateRow(row.localId, {
       percentage: normalizedPercentage,
-      amount:
-        projectAmount > 0
-          ? round2((projectAmount * normalizedPercentage) / 100)
-          : 0,
+      amount: projectAmount > 0 ? round2((projectAmount * normalizedPercentage) / 100) : 0,
     });
   };
 
@@ -291,9 +269,7 @@ export function ManualPaymentPlanDialog({
   };
 
   const removeRow = (localId: string) => {
-    setRows((current) =>
-      current.length === 1 ? current : current.filter((row) => row.localId !== localId),
-    );
+    setRows((current) => (current.length === 1 ? current : current.filter((row) => row.localId !== localId)));
   };
 
   const moveRow = (index: number, direction: -1 | 1) => {
@@ -313,8 +289,7 @@ export function ManualPaymentPlanDialog({
     const extraUnits = totalUnits % rows.length;
     setRows((current) =>
       current.map((row, index) => {
-        const percentage =
-          (baseUnits + (index < extraUnits ? 1 : 0)) * PAYMENT_PERCENTAGE_STEP;
+        const percentage = (baseUnits + (index < extraUnits ? 1 : 0)) * PAYMENT_PERCENTAGE_STEP;
         return {
           ...row,
           percentage,
@@ -326,19 +301,10 @@ export function ManualPaymentPlanDialog({
 
   const balanceLastRow = () => {
     if (projectAmount <= 0 || rows.length === 0) return;
-    const percentageBeforeLast = rows
-      .slice(0, -1)
-      .reduce((sum, row) => sum + Number(row.percentage || 0), 0);
+    const percentageBeforeLast = rows.slice(0, -1).reduce((sum, row) => sum + Number(row.percentage || 0), 0);
     const lastRow = rows[rows.length - 1];
     updatePercentage(lastRow, Math.max(100 - percentageBeforeLast, 0));
   };
-
-  const tasksForStage = (stage: ClientStageOption) =>
-    tasks.filter(
-      (task) =>
-        task.title.includes("תשלום") &&
-        (task.stageId === stage.id || task.stageId === stage.sourceStageId),
-    );
 
   const savePaymentTemplate = () => {
     const normalizedName = templateName.trim();
@@ -347,10 +313,7 @@ export function ManualPaymentPlanDialog({
       percentage: normalizePaymentPercentage(Number(row.percentage || 0)),
       vatRate: Number(row.vatRate || defaultVatRate || DEFAULT_VAT_RATE),
     }));
-    const percentageSum =
-      Math.round(
-        normalizedSteps.reduce((sum, step) => sum + step.percentage, 0) * 1000,
-      ) / 1000;
+    const percentageSum = Math.round(normalizedSteps.reduce((sum, step) => sum + step.percentage, 0) * 1000) / 1000;
 
     if (!normalizedName) {
       toast({
@@ -374,15 +337,11 @@ export function ManualPaymentPlanDialog({
     }
 
     const now = new Date().toISOString();
-    const existing = paymentTemplates.find(
-      (template) => template.name.trim() === normalizedName,
-    );
+    const existing = paymentTemplates.find((template) => template.name.trim() === normalizedName);
     setPaymentTemplates((current) =>
       existing
         ? current.map((template) =>
-            template.id === existing.id
-              ? { ...template, steps: normalizedSteps, updatedAt: now }
-              : template,
+            template.id === existing.id ? { ...template, steps: normalizedSteps, updatedAt: now } : template,
           )
         : [
             ...current,
@@ -408,37 +367,24 @@ export function ManualPaymentPlanDialog({
       template.steps.map((step, index) => {
         const previousPercentage = template.steps
           .slice(0, index)
-          .reduce(
-            (sum, previousStep) =>
-              sum + normalizePaymentPercentage(Number(previousStep.percentage || 0)),
-            0,
-          );
+          .reduce((sum, previousStep) => sum + normalizePaymentPercentage(Number(previousStep.percentage || 0)), 0);
         const percentage =
           index === template.steps.length - 1
             ? Math.max(0, 100 - previousPercentage)
-            : Math.min(
-                normalizePaymentPercentage(Number(step.percentage || 0)),
-                Math.max(0, 100 - previousPercentage),
-              );
+            : Math.min(normalizePaymentPercentage(Number(step.percentage || 0)), Math.max(0, 100 - previousPercentage));
         return {
           localId: crypto.randomUUID(),
           name: step.name,
-          amount:
-            projectAmount > 0
-              ? round2((projectAmount * percentage) / 100)
-              : 0,
+          amount: projectAmount > 0 ? round2((projectAmount * percentage) / 100) : 0,
           percentage,
           vatRate: Number(step.vatRate || defaultVatRate || DEFAULT_VAT_RATE),
           linkedStageId: null,
           linkedTaskId: null,
-          selectedClientStageId: UNLINKED_VALUE,
         };
       }),
     );
     setPlanTitle(template.name);
-    setDefaultVatRate(
-      Number(template.steps[0]?.vatRate || defaultVatRate || DEFAULT_VAT_RATE),
-    );
+    setDefaultVatRate(Number(template.steps[0]?.vatRate || defaultVatRate || DEFAULT_VAT_RATE));
     toast({
       title: "תבנית התשלום נטענה",
       description: "השיוכים נשארו ריקים כדי לבחור את המשימות של הלקוח הנוכחי",
@@ -446,37 +392,13 @@ export function ManualPaymentPlanDialog({
   };
 
   const deletePaymentTemplate = (templateId: string) => {
-    setPaymentTemplates((current) =>
-      current.filter((template) => template.id !== templateId),
-    );
-  };
-
-  const handleStageChange = (row: PlanRow, selectedStageId: string) => {
-    if (selectedStageId === UNLINKED_VALUE) {
-      updateRow(row.localId, {
-        selectedClientStageId: UNLINKED_VALUE,
-        linkedStageId: null,
-        linkedTaskId: null,
-      });
-      return;
-    }
-
-    const stage = stages.find((item) => item.id === selectedStageId);
-    updateRow(row.localId, {
-      selectedClientStageId: selectedStageId,
-      linkedStageId: stage?.sourceStageId || selectedStageId,
-      linkedTaskId: null,
-    });
+    setPaymentTemplates((current) => current.filter((template) => template.id !== templateId));
   };
 
   const handleTaskChange = (row: PlanRow, taskId: string) => {
     const nextTaskId = taskId === UNLINKED_VALUE ? null : taskId;
     const selectedInAnotherRow = Boolean(
-      nextTaskId &&
-        rows.some(
-          (item) =>
-            item.localId !== row.localId && item.linkedTaskId === nextTaskId,
-        ),
+      nextTaskId && rows.some((item) => item.localId !== row.localId && item.linkedTaskId === nextTaskId),
     );
     if (selectedInAnotherRow) {
       toast({
@@ -486,7 +408,11 @@ export function ManualPaymentPlanDialog({
       });
       return;
     }
-    updateRow(row.localId, { linkedTaskId: nextTaskId });
+    const selectedTask = tasks.find((task) => task.id === nextTaskId);
+    updateRow(row.localId, {
+      linkedTaskId: nextTaskId,
+      linkedStageId: selectedTask?.stageId || null,
+    });
   };
 
   const handleSave = async () => {
@@ -498,14 +424,7 @@ export function ManualPaymentPlanDialog({
       });
       return;
     }
-    if (
-      rows.some(
-        (row) =>
-          !row.name.trim() ||
-          row.amount < MIN_PAYMENT_AMOUNT ||
-          !Number.isInteger(row.amount),
-      )
-    ) {
+    if (rows.some((row) => !row.name.trim() || row.amount < MIN_PAYMENT_AMOUNT || !Number.isInteger(row.amount))) {
       toast({
         title: "חסרים פרטים",
         description: "יש להזין בכל שלב שם וסכום שלם של 10 ₪ ומעלה",
@@ -513,14 +432,11 @@ export function ManualPaymentPlanDialog({
       });
       return;
     }
-    const linkedTaskIds = rows
-      .map((row) => row.linkedTaskId)
-      .filter((taskId): taskId is string => Boolean(taskId));
+    const linkedTaskIds = rows.map((row) => row.linkedTaskId).filter((taskId): taskId is string => Boolean(taskId));
     if (new Set(linkedTaskIds).size !== linkedTaskIds.length) {
       toast({
         title: "יש משימה ששויכה פעמיים",
-        description:
-          "יש לבחור משימה אחרת או להשאיר את השיוך ריק. כל משימה יכולה להשתייך לתשלום אחד בלבד.",
+        description: "יש לבחור משימה אחרת או להשאיר את השיוך ריק. כל משימה יכולה להשתייך לתשלום אחד בלבד.",
         variant: "destructive",
       });
       return;
@@ -573,8 +489,8 @@ export function ManualPaymentPlanDialog({
           <div className="space-y-5 p-6">
             {existingPaymentStagesCount > 0 && (
               <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-                ללקוח כבר קיימים {existingPaymentStagesCount} שלבי תשלום. התוכנית החדשה תתווסף
-                אליהם ולא תמחק או תשנה תשלומים קיימים.
+                ללקוח כבר קיימים {existingPaymentStagesCount} שלבי תשלום. התוכנית החדשה תתווסף אליהם ולא תמחק או תשנה
+                תשלומים קיימים.
               </div>
             )}
 
@@ -639,12 +555,7 @@ export function ManualPaymentPlanDialog({
                   <Calculator className="h-4 w-4" />
                   חלק שווה בשווה
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={balanceLastRow}
-                  disabled={projectAmount <= 0}
-                >
+                <Button type="button" variant="ghost" onClick={balanceLastRow} disabled={projectAmount <= 0}>
                   השלם יתרה בשורה האחרונה
                 </Button>
                 <Button
@@ -657,10 +568,7 @@ export function ManualPaymentPlanDialog({
                   <BookCopy className="h-4 w-4" />
                   תבניות תשלום
                   {paymentTemplates.length > 0 && (
-                    <Badge
-                      variant="secondary"
-                      className="h-5 min-w-5 justify-center rounded-full px-1.5"
-                    >
+                    <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5">
                       {paymentTemplates.length}
                     </Badge>
                   )}
@@ -674,13 +582,8 @@ export function ManualPaymentPlanDialog({
                     : "border-amber-300 bg-amber-50 text-amber-800"
                 }
               >
-                {isBalanced ? (
-                  <CheckCircle2 className="ml-1 h-4 w-4" />
-                ) : (
-                  <Calculator className="ml-1 h-4 w-4" />
-                )}
-                {formatCurrency(totalAmount)} מתוך {formatCurrency(projectAmount)} ·{" "}
-                {totalPercentage}%
+                {isBalanced ? <CheckCircle2 className="ml-1 h-4 w-4" /> : <Calculator className="ml-1 h-4 w-4" />}
+                {formatCurrency(totalAmount)} מתוך {formatCurrency(projectAmount)} · {totalPercentage}%
               </Badge>
             </div>
 
@@ -710,11 +613,7 @@ export function ManualPaymentPlanDialog({
                         }
                       }}
                     />
-                    <Button
-                      type="button"
-                      onClick={savePaymentTemplate}
-                      className="shrink-0 gap-1.5"
-                    >
+                    <Button type="button" onClick={savePaymentTemplate} className="shrink-0 gap-1.5">
                       <Save className="h-4 w-4" />
                       שמור
                     </Button>
@@ -740,11 +639,7 @@ export function ManualPaymentPlanDialog({
                           <span className="block truncate font-medium">{template.name}</span>
                           <span className="mt-0.5 block text-xs text-muted-foreground">
                             {template.steps.length} שלבים ·{" "}
-                            {template.steps.reduce(
-                              (sum, step) => sum + Number(step.percentage || 0),
-                              0,
-                            )}
-                            %
+                            {template.steps.reduce((sum, step) => sum + Number(step.percentage || 0), 0)}%
                           </span>
                         </button>
                         <Button
@@ -774,14 +669,9 @@ export function ManualPaymentPlanDialog({
 
             <div className="space-y-3">
               {rows.map((row, index) => {
-                const selectedStage = stages.find(
-                  (stage) => stage.id === row.selectedClientStageId,
-                );
-                const availableTasks = selectedStage ? tasksForStage(selectedStage) : [];
                 const selectedTask = tasks.find((task) => task.id === row.linkedTaskId);
                 const selectedTaskAlreadyLinked = Boolean(
-                  selectedTask &&
-                    (Number(selectedTask.payment_amount) > 0 || selectedTask.payment_step_id),
+                  selectedTask && (Number(selectedTask.payment_amount) > 0 || selectedTask.payment_step_id),
                 );
                 const selectedTaskIdsInOtherRows = new Set(
                   rows
@@ -790,15 +680,10 @@ export function ManualPaymentPlanDialog({
                     .filter((taskId): taskId is string => Boolean(taskId)),
                 );
                 return (
-                  <div
-                    key={row.localId}
-                    className="rounded-2xl border border-border/70 bg-background p-4 shadow-sm"
-                  >
+                  <div key={row.localId} className="rounded-2xl border border-border/70 bg-background p-4 shadow-sm">
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
-                        <Badge className="h-7 min-w-7 justify-center rounded-full">
-                          {index + 1}
-                        </Badge>
+                        <Badge className="h-7 min-w-7 justify-center rounded-full">{index + 1}</Badge>
                         <span className="font-semibold">שלב תשלום</span>
                       </div>
                       <div className="flex items-center gap-1">
@@ -859,15 +744,11 @@ export function ManualPaymentPlanDialog({
                           <SelectContent>
                             {Array.from(
                               { length: 100 / PAYMENT_PERCENTAGE_STEP },
-                              (_, percentageIndex) =>
-                                (percentageIndex + 1) * PAYMENT_PERCENTAGE_STEP,
+                              (_, percentageIndex) => (percentageIndex + 1) * PAYMENT_PERCENTAGE_STEP,
                             ).map((percentage) => {
                               const otherRowsPercentage = rows
                                 .filter((item) => item.localId !== row.localId)
-                                .reduce(
-                                  (sum, item) => sum + Number(item.percentage || 0),
-                                  0,
-                                );
+                                .reduce((sum, item) => sum + Number(item.percentage || 0), 0);
                               return (
                                 <SelectItem
                                   key={percentage}
@@ -901,64 +782,49 @@ export function ManualPaymentPlanDialog({
                           placeholder="10 ומעלה"
                         />
                       </div>
-                      <div className="space-y-1.5 lg:col-span-2">
-                        <Label>שיוך לשלב</Label>
-                        <Select
-                          value={row.selectedClientStageId}
-                          onValueChange={(value) => handleStageChange(row, value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="ללא שיוך" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={UNLINKED_VALUE}>ללא שיוך</SelectItem>
-                            {stages.map((stage) => (
-                              <SelectItem key={stage.id} value={stage.id}>
-                                {stage.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5 lg:col-span-3">
-                        <Label>שיוך למשימה</Label>
+                      <div className="space-y-1.5 lg:col-span-5">
+                        <Label>שיוך למשימת תשלום</Label>
                         <Select
                           value={row.linkedTaskId || UNLINKED_VALUE}
                           onValueChange={(value) => handleTaskChange(row, value)}
-                          disabled={!selectedStage || loadingOptions}
+                          disabled={loadingOptions}
                         >
                           <SelectTrigger>
-                            <SelectValue
-                              placeholder={loadingOptions ? "טוען..." : "בחר משימה"}
-                            />
+                            <SelectValue placeholder={loadingOptions ? "טוען..." : "בחר משימה ששמה כולל „תשלום”"} />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value={UNLINKED_VALUE}>ללא שיוך למשימה</SelectItem>
-                            {availableTasks.map((task) => {
-                              const alreadyLinked =
-                                Number(task.payment_amount) > 0 || Boolean(task.payment_step_id);
-                              const selectedInAnotherRow =
-                                selectedTaskIdsInOtherRows.has(task.id);
+                            {tasks.map((task) => {
+                              const alreadyLinked = Number(task.payment_amount) > 0 || Boolean(task.payment_step_id);
+                              const selectedInAnotherRow = selectedTaskIdsInOtherRows.has(task.id);
                               return (
                                 <SelectItem
                                   key={task.id}
                                   value={task.id}
                                   disabled={alreadyLinked || selectedInAnotherRow}
                                 >
-                                  {task.title}
-                                  {task.completed ? " · הושלמה" : ""}
-                                  {alreadyLinked ? " · כבר משויך תשלום" : ""}
-                                  {selectedInAnotherRow
-                                    ? " · נבחר בשלב תשלום אחר"
-                                    : ""}
+                                  <span className="flex min-w-0 flex-col text-right">
+                                    <span>
+                                      {task.title}
+                                      {task.completed ? " · הושלמה" : ""}
+                                      {alreadyLinked ? " · כבר משויך תשלום" : ""}
+                                      {selectedInAnotherRow ? " · נבחר בשלב תשלום אחר" : ""}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      שלב {task.stagePosition}: {task.stageName}
+                                    </span>
+                                  </span>
                                 </SelectItem>
                               );
                             })}
                           </SelectContent>
                         </Select>
-                        {selectedStage && availableTasks.length === 0 && !loadingOptions && (
+                        {tasks.length === 0 && !loadingOptions && (
+                          <p className="text-xs text-muted-foreground">לא נמצאו אצל הלקוח משימות ששמן כולל „תשלום”</p>
+                        )}
+                        {selectedTask && (
                           <p className="text-xs text-muted-foreground">
-                            בשלב זה אין משימות ששמן כולל „תשלום”
+                            שלב {selectedTask.stagePosition}: {selectedTask.stageName}
                           </p>
                         )}
                       </div>
@@ -974,9 +840,7 @@ export function ManualPaymentPlanDialog({
                       {row.linkedTaskId && (
                         <span
                           className={
-                            selectedTaskAlreadyLinked
-                              ? "text-destructive"
-                              : "flex items-center gap-1 text-emerald-700"
+                            selectedTaskAlreadyLinked ? "text-destructive" : "flex items-center gap-1 text-emerald-700"
                           }
                         >
                           <Link2 className="h-3.5 w-3.5" />
@@ -997,16 +861,11 @@ export function ManualPaymentPlanDialog({
           <div className="flex w-full flex-wrap items-center justify-between gap-3">
             <div className="text-sm text-muted-foreground">
               {loadingOptions
-                ? "טוען את שלבי הלקוח..."
-                : `${stages.length} שלבים ו־${tasks.length} משימות תשלום זמינים לשיוך`}
+                ? "טוען את משימות התשלום של הלקוח..."
+                : `${tasks.length} משימות תשלום זמינות לשיוך מתוך ${stages.length} שלבים`}
             </div>
             <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={saving}
-              >
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
                 ביטול
               </Button>
               <Button
