@@ -44,10 +44,10 @@ function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
   return {
     navy: theme.background,
     gold: theme.border,
-    goldLight: theme.label,
+    goldLight: theme.inputText,
     goldDark: theme.buttonBorder,
     navyLight: theme.inputBg,
-    navyDark: theme.background,
+    navyDark: "#0F1F3D",
   };
 }
 
@@ -57,7 +57,7 @@ const brandedInputStyle: React.CSSProperties = {
   borderColor: "#d8ac27",
   color: "#0F1F3D",
 };
-const brandedInputClass = "placeholder:text-slate-400";
+const brandedInputClass = "placeholder:text-slate-500";
 
 // Priority options
 const priorities = [
@@ -65,24 +65,24 @@ const priorities = [
     value: "low",
     label: "נמוכה",
     icon: ArrowDown,
-    color: "text-green-500",
-    bgColor: "bg-green-500/20",
+    color: "text-emerald-700",
+    bgColor: "bg-emerald-50",
     borderColor: "border-green-500",
   },
   {
     value: "medium",
     label: "בינונית",
     icon: ArrowRight,
-    color: "text-yellow-500",
-    bgColor: "bg-yellow-500/20",
+    color: "text-amber-700",
+    bgColor: "bg-amber-50",
     borderColor: "border-yellow-500",
   },
   {
     value: "high",
     label: "גבוהה",
     icon: ArrowUp,
-    color: "text-red-500",
-    bgColor: "bg-red-500/20",
+    color: "text-red-700",
+    bgColor: "bg-red-50",
     borderColor: "border-red-500",
   },
 ];
@@ -146,7 +146,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
       const trimmed = value.trim();
       if (!trimmed) return null;
       // dd/MM/yyyy or dd-MM-yyyy or dd.MM.yyyy
-      const dmy = trimmed.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+      const dmy = trimmed.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
       if (dmy) {
         const [, d, m, y] = dmy;
         const year = y.length === 2 ? 2000 + parseInt(y, 10) : parseInt(y, 10);
@@ -361,91 +361,6 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                 />
               </div>
 
-              {/* Description */}
-              <div className="space-y-2">
-                <Label
-                  htmlFor="description"
-                  className="text-sm font-medium"
-                  style={{ color: sidebarColors.goldLight }}
-                >
-                  תיאור (אופציונלי)
-                </Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="פרטים נוספים..."
-                  rows={2}
-                  className={cn("text-right resize-none", brandedInputClass)}
-                  style={brandedInputStyle}
-                />
-              </div>
-
-              {/* Priority Selection */}
-              <div className="space-y-2">
-                <Label
-                  className="text-sm font-medium"
-                  style={{ color: sidebarColors.goldLight }}
-                >
-                  עדיפות
-                </Label>
-                <div className="flex gap-2">
-                  {priorities.map((p) => {
-                    const Icon = p.icon;
-                    const isSelected = priority === p.value;
-                    return (
-                      <button
-                        key={p.value}
-                        type="button"
-                        onClick={() => setPriority(p.value)}
-                        className={cn(
-                          "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border-2 transition-all",
-                          isSelected ? p.borderColor : "border-transparent",
-                          isSelected
-                            ? p.bgColor
-                            : `bg-[${sidebarColors.navyLight}]50`,
-                          p.color,
-                        )}
-                        style={{
-                          background: isSelected
-                            ? undefined
-                            : `${sidebarColors.navyLight}50`,
-                        }}
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span className="text-xs font-medium">{p.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Due Date + Optional Time — SmartDateTimePicker */}
-              <SmartDateTimePicker
-                label="תאריך יעד"
-                value={dueDate}
-                onChange={setDueDate}
-                showTime
-                time={dueTime}
-                onTimeChange={setDueTime}
-                accent={{
-                  gold: sidebarColors.gold,
-                  goldLight: sidebarColors.goldLight,
-                  navy: sidebarColors.navy,
-                  navyDark: sidebarColors.navyDark,
-                }}
-                error={dateError}
-              />
-
-
-              {/* Assign to team member */}
-              <AssigneePicker
-                label="שייך לעובד"
-                value={assignedTo}
-                onChange={setAssignedTo}
-                placeholder="בחר עובד מבצע"
-              />
-
               {/* Client Assignment - Multi Select */}
               <div className="space-y-2">
                 <Label
@@ -504,7 +419,10 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                   >
                     <div className="p-2 border-b" style={{ borderColor: `${sidebarColors.gold}30` }}>
                       <div className="relative">
-                        <Search className="absolute right-2.5 top-2.5 h-4 w-4" style={{ color: `${sidebarColors.goldLight}60` }} />
+                        <Search
+                          className="absolute right-2.5 top-2.5 h-4 w-4"
+                          style={{ color: `${sidebarColors.goldLight}B3` }}
+                        />
                         <Input
                           placeholder="חיפוש לקוח..."
                           value={clientSearch}
@@ -548,7 +466,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                               <div className="flex-1 text-right">
                                 <div className="font-medium">{client.name}</div>
                                 {client.email && (
-                                  <div className="text-xs opacity-60">{client.email}</div>
+                                  <div className="text-xs opacity-80">{client.email}</div>
                                 )}
                               </div>
                             </button>
@@ -558,7 +476,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                         !clientSearch ||
                         c.name.toLowerCase().includes(clientSearch.toLowerCase())
                       ).length === 0 && (
-                        <div className="text-center py-4 text-sm" style={{ color: `${sidebarColors.goldLight}60` }}>
+                        <div className="text-center py-4 text-sm" style={{ color: `${sidebarColors.goldLight}CC` }}>
                           לא נמצאו לקוחות
                         </div>
                       )}
@@ -566,6 +484,87 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                   </PopoverContent>
                 </Popover>
               </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="description"
+                  className="text-sm font-medium"
+                  style={{ color: sidebarColors.goldLight }}
+                >
+                  תיאור (אופציונלי)
+                </Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="פרטים נוספים..."
+                  rows={2}
+                  className={cn("text-right resize-none", brandedInputClass)}
+                  style={brandedInputStyle}
+                />
+              </div>
+
+              {/* Priority Selection */}
+              <div className="space-y-2">
+                <Label
+                  className="text-sm font-medium"
+                  style={{ color: sidebarColors.goldLight }}
+                >
+                  עדיפות
+                </Label>
+                <div className="flex gap-2">
+                  {priorities.map((p) => {
+                    const Icon = p.icon;
+                    const isSelected = priority === p.value;
+                    return (
+                      <button
+                        key={p.value}
+                        type="button"
+                        onClick={() => setPriority(p.value)}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border-2 transition-all",
+                          isSelected ? p.borderColor : "border-transparent",
+                          isSelected ? p.bgColor : "bg-white",
+                          p.color,
+                        )}
+                        style={{
+                          background: isSelected ? undefined : "#FFFFFF",
+                        }}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span className="text-xs font-medium">{p.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Due Date + Optional Time — SmartDateTimePicker */}
+              <SmartDateTimePicker
+                label="תאריך יעד"
+                value={dueDate}
+                onChange={setDueDate}
+                showTime
+                time={dueTime}
+                onTimeChange={setDueTime}
+                accent={{
+                  gold: sidebarColors.gold,
+                  goldLight: sidebarColors.goldLight,
+                  navy: sidebarColors.navy,
+                  navyDark: sidebarColors.navyDark,
+                }}
+                error={dateError}
+              />
+
+
+              {/* Assign to team member */}
+              <AssigneePicker
+                label="שייך לעובד"
+                value={assignedTo}
+                onChange={setAssignedTo}
+                placeholder="בחר עובד מבצע"
+              />
 
               {/* Reminder & Calendar Sync */}
               <InlineReminderSection

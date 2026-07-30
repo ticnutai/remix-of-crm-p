@@ -996,6 +996,8 @@ export function ClientsFilterStrip({
     Boolean(filters.paymentStatus) ||
     Boolean(filters.recentClientsDays) ||
     filters.tags.length > 0 ||
+    (filters.consultantIds?.length || 0) > 0 ||
+    (filters.consultantProfessions?.length || 0) > 0 ||
     !!filters.customDateRange ||
     (filters.monthAgeRanges && filters.monthAgeRanges.length > 0) ||
     filters.exactMonth !== null ||
@@ -1016,6 +1018,8 @@ export function ClientsFilterStrip({
       recentActivityTypes: filters.recentActivityTypes,
       categories: [],
       tags: [],
+      consultantIds: [],
+      consultantProfessions: [],
       hiddenClassifications: [],
       monthAgeRanges: [],
       exactMonth: null,

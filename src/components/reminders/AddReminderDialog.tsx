@@ -36,10 +36,10 @@ function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
   return {
     navy: theme.background,
     gold: theme.border,
-    goldLight: theme.label,
+    goldLight: theme.inputText,
     goldDark: theme.buttonBorder,
     navyLight: theme.inputBg,
-    navyDark: theme.background,
+    navyDark: "#0F1F3D",
   };
 }
 
@@ -49,7 +49,7 @@ const brandedInputStyle: React.CSSProperties = {
   borderColor: '#d8ac27',
   color: '#0F1F3D',
 };
-const brandedInputClass = 'placeholder:text-slate-400';
+const brandedInputClass = 'placeholder:text-slate-500';
 
 interface AddReminderDialogProps {
   entityType?: string;
@@ -139,7 +139,7 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
   const parseManualDate = (value: string): Date | null => {
     const trimmed = value.trim();
     if (!trimmed) return null;
-    const dmy = trimmed.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    const dmy = trimmed.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
     if (dmy) {
       const [, d, m, y] = dmy;
       const year = y.length === 2 ? 2000 + parseInt(y, 10) : parseInt(y, 10);
@@ -542,50 +542,6 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
               />
             </div>
 
-            {/* Assignee - who owns this reminder */}
-            <AssigneePicker
-              label="שייך ל..."
-              value={assignedUserId}
-              onChange={(v) => setAssignedUserId(v)}
-              placeholder="בחר משתמש (ברירת מחדל: אני)"
-            />
-            
-            
-            {/* Remind At — SmartDateTimePicker (date + TimeWheelPicker) */}
-            <SmartDateTimePicker
-              value={form.remind_at ? new Date(form.remind_at) : undefined}
-              onChange={(d) => {
-                if (!d) {
-                  setReminderDateText('');
-                  setReminderDateError('יש להזין תאריך');
-                  setForm((f) => ({ ...f, remind_at: '' }));
-                  return;
-                }
-                const dateStr = format(d, 'dd/MM/yyyy');
-                setReminderDateText(dateStr);
-                const tStr = reminderTimeText || '09:00';
-                if (!reminderTimeText) setReminderTimeText(tStr);
-                updateRemindAt(dateStr, tStr);
-              }}
-              showTime
-              time={reminderTimeText || '09:00'}
-              onTimeChange={(t) => handleReminderTimeChange(t)}
-              label="מתי להזכיר"
-              required
-              accent={{
-                gold: sidebarColors.gold,
-                goldLight: sidebarColors.goldLight,
-                navy: sidebarColors.navy,
-                navyDark: sidebarColors.navyDark,
-              }}
-              error={reminderDateError}
-            />
-            {form.remind_at && !reminderDateError && (
-              <p className="text-xs" style={{ color: sidebarColors.goldLight }}>
-                {format(new Date(form.remind_at), 'EEEE, d בMMMM yyyy בשעה HH:mm', { locale: he })}
-              </p>
-            )}
-
             {/* Client Assignment - Multi Select */}
             <div className="space-y-2">
               <Label className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
@@ -640,7 +596,10 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                 >
                   <div className="p-2 border-b" style={{ borderColor: `${sidebarColors.gold}30` }}>
                     <div className="relative">
-                      <Search className="absolute right-2.5 top-2.5 h-4 w-4" style={{ color: `${sidebarColors.goldLight}60` }} />
+                      <Search
+                        className="absolute right-2.5 top-2.5 h-4 w-4"
+                        style={{ color: `${sidebarColors.goldLight}B3` }}
+                      />
                       <Input
                         placeholder="חיפוש לקוח..."
                         value={clientSearch}
@@ -683,7 +642,7 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                             <div className="flex-1 text-right">
                               <div className="font-medium">{client.name}</div>
                               {client.email && (
-                                <div className="text-xs opacity-60">{client.email}</div>
+                                <div className="text-xs opacity-80">{client.email}</div>
                               )}
                             </div>
                           </button>
@@ -693,7 +652,7 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                       !clientSearch ||
                       c.name.toLowerCase().includes(clientSearch.toLowerCase())
                     ).length === 0 && (
-                      <div className="text-center py-4 text-sm" style={{ color: `${sidebarColors.goldLight}60` }}>
+                      <div className="text-center py-4 text-sm" style={{ color: `${sidebarColors.goldLight}CC` }}>
                         לא נמצאו לקוחות
                       </div>
                     )}
@@ -701,6 +660,50 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                 </PopoverContent>
               </Popover>
             </div>
+
+            {/* Assignee - who owns this reminder */}
+            <AssigneePicker
+              label="שייך ל..."
+              value={assignedUserId}
+              onChange={(v) => setAssignedUserId(v)}
+              placeholder="בחר משתמש (ברירת מחדל: אני)"
+            />
+
+
+            {/* Remind At — SmartDateTimePicker (date + TimeWheelPicker) */}
+            <SmartDateTimePicker
+              value={form.remind_at ? new Date(form.remind_at) : undefined}
+              onChange={(d) => {
+                if (!d) {
+                  setReminderDateText('');
+                  setReminderDateError('יש להזין תאריך');
+                  setForm((f) => ({ ...f, remind_at: '' }));
+                  return;
+                }
+                const dateStr = format(d, 'dd/MM/yyyy');
+                setReminderDateText(dateStr);
+                const tStr = reminderTimeText || '09:00';
+                if (!reminderTimeText) setReminderTimeText(tStr);
+                updateRemindAt(dateStr, tStr);
+              }}
+              showTime
+              time={reminderTimeText || '09:00'}
+              onTimeChange={(t) => handleReminderTimeChange(t)}
+              label="מתי להזכיר"
+              required
+              accent={{
+                gold: sidebarColors.gold,
+                goldLight: sidebarColors.goldLight,
+                navy: sidebarColors.navy,
+                navyDark: sidebarColors.navyDark,
+              }}
+              error={reminderDateError}
+            />
+            {form.remind_at && !reminderDateError && (
+              <p className="text-xs" style={{ color: sidebarColors.goldLight }}>
+                {format(new Date(form.remind_at), 'EEEE, d בMMMM yyyy בשעה HH:mm', { locale: he })}
+              </p>
+            )}
 
             {/* Reminder Types */}
             <div className="space-y-2">
@@ -850,7 +853,7 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                 className="hidden"
                 onChange={handleUploadRingtone}
               />
-              {isUploading && <p className="text-xs" style={{ color: `${sidebarColors.goldLight}60` }}>מעלה...</p>}
+              {isUploading && <p className="text-xs" style={{ color: `${sidebarColors.goldLight}CC` }}>מעלה...</p>}
             </div>
 
             {/* Recipients - Email */}

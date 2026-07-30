@@ -57,10 +57,10 @@ function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
   return {
     navy: theme.background,
     gold: theme.border,
-    goldLight: theme.label,
+    goldLight: theme.inputText,
     goldDark: theme.buttonBorder,
     navyLight: theme.inputBg,
-    navyDark: theme.background,
+    navyDark: "#0F1F3D",
   };
 }
 
@@ -70,7 +70,7 @@ const brandedInputStyle: React.CSSProperties = {
   borderColor: "#d8ac27",
   color: "#0F1F3D",
 };
-const brandedInputClass = "placeholder:text-slate-400";
+const brandedInputClass = "placeholder:text-slate-500";
 
 // Meeting type options
 const meetingTypes = [
@@ -78,24 +78,24 @@ const meetingTypes = [
     value: "in_person",
     label: "פגישה פיזית",
     icon: Users,
-    color: "text-blue-400",
-    bgColor: "bg-blue-500/20",
+    color: "text-blue-700",
+    bgColor: "bg-blue-50",
     borderColor: "border-blue-500",
   },
   {
     value: "video",
     label: "שיחת וידאו",
     icon: Video,
-    color: "text-purple-400",
-    bgColor: "bg-purple-500/20",
+    color: "text-purple-700",
+    bgColor: "bg-purple-50",
     borderColor: "border-purple-500",
   },
   {
     value: "phone",
     label: "שיחת טלפון",
     icon: Phone,
-    color: "text-green-400",
-    bgColor: "bg-green-500/20",
+    color: "text-emerald-700",
+    bgColor: "bg-emerald-50",
     borderColor: "border-green-500",
   },
 ];
@@ -177,7 +177,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     const parseManualDate = (value: string): Date | null => {
       const trimmed = value.trim();
       if (!trimmed) return null;
-      const dmy = trimmed.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+      const dmy = trimmed.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
       if (dmy) {
         const [, d, m, y] = dmy;
         const year = y.length === 2 ? 2000 + parseInt(y, 10) : parseInt(y, 10);
@@ -588,6 +588,130 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                 />
               </div>
 
+              {/* Client Assignment - Multi Select */}
+              <div className="space-y-2">
+                <Label
+                  className="text-sm font-medium"
+                  style={{ color: sidebarColors.goldLight }}
+                >
+                  שיוך ללקוחות
+                </Label>
+                {/* Selected clients chips */}
+                {selectedClients.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedClients.map(client => (
+                      <div
+                        key={client.id}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                        style={{
+                          background: `${sidebarColors.gold}20`,
+                          border: `1px solid ${sidebarColors.gold}50`,
+                          color: sidebarColors.goldLight,
+                        }}
+                      >
+                        <span>{client.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeClient(client.id)}
+                          className="p-0.5 rounded-full hover:bg-white/10 transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Popover open={isClientPickerOpen} onOpenChange={setIsClientPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-start gap-2"
+                      style={{
+                        ...brandedInputStyle,
+                        color: selectedClients.length > 0 ? sidebarColors.navyDark : "#64748b",
+                      }}
+                    >
+                      <UserPlus className="h-4 w-4 ml-auto" style={{ color: sidebarColors.gold }} />
+                      {selectedClients.length > 0 ? `${selectedClients.length} לקוחות נבחרו — הוסף עוד` : "בחר לקוח או איש קשר"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[320px] p-0 overflow-hidden"
+                    align="start"
+                    style={{
+                      background: sidebarColors.navy,
+                      border: `1px solid ${sidebarColors.gold}40`,
+                    }}
+                  >
+                    <div className="p-2 border-b" style={{ borderColor: `${sidebarColors.gold}30` }}>
+                      <div className="relative">
+                        <Search
+                          className="absolute right-2.5 top-2.5 h-4 w-4"
+                          style={{ color: `${sidebarColors.goldLight}B3` }}
+                        />
+                        <Input
+                          placeholder="חיפוש לקוח..."
+                          value={clientSearch}
+                          onChange={(e) => setClientSearch(e.target.value)}
+                          className={cn("pr-9 text-right text-sm", brandedInputClass)}
+                          style={brandedInputStyle}
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-[200px] overflow-y-auto p-1 gold-scrollbar">
+                      {clients
+                        .filter(c =>
+                          !clientSearch ||
+                          c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                          c.email?.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                          c.phone?.includes(clientSearch)
+                        )
+                        .map(client => {
+                          const isSelected = clientIds.includes(client.id);
+                          return (
+                            <button
+                              key={client.id}
+                              type="button"
+                              onClick={() => toggleClient(client.id)}
+                              className={cn(
+                                "w-full text-right px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2",
+                                isSelected ? "bg-white/15" : "hover:bg-white/10"
+                              )}
+                              style={{ color: sidebarColors.goldLight }}
+                            >
+                              <div
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                                style={{
+                                  background: isSelected ? `${sidebarColors.gold}40` : `${sidebarColors.gold}25`,
+                                  color: sidebarColors.gold,
+                                }}
+                              >
+                                {isSelected ? "✓" : client.name.charAt(0)}
+                              </div>
+                              <div className="flex-1 text-right">
+                                <div className="font-medium">{client.name}</div>
+                                {client.email && (
+                                  <div className="text-xs opacity-80">{client.email}</div>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      {clients.filter(c =>
+                        !clientSearch ||
+                        c.name.toLowerCase().includes(clientSearch.toLowerCase())
+                      ).length === 0 && (
+                        <div className="text-center py-4 text-sm" style={{ color: `${sidebarColors.goldLight}CC` }}>
+                          לא נמצאו לקוחות
+                        </div>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
               {/* Meeting Type Selection */}
               <div className="space-y-2">
                 <Label
@@ -612,9 +736,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                           type.color,
                         )}
                         style={{
-                          background: isSelected
-                            ? undefined
-                            : `${sidebarColors.navyLight}50`,
+                          background: isSelected ? undefined : "#FFFFFF",
                         }}
                       >
                         <Icon className="h-5 w-5" />
@@ -754,127 +876,6 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                 onChange={setAttendees}
                 placeholder="הוסף עובדים משתתפים"
               />
-
-              {/* Client Assignment - Multi Select */}
-              <div className="space-y-2">
-                <Label
-                  className="text-sm font-medium"
-                  style={{ color: sidebarColors.goldLight }}
-                >
-                  שיוך ללקוחות
-                </Label>
-                {/* Selected clients chips */}
-                {selectedClients.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedClients.map(client => (
-                      <div
-                        key={client.id}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
-                        style={{
-                          background: `${sidebarColors.gold}20`,
-                          border: `1px solid ${sidebarColors.gold}50`,
-                          color: sidebarColors.goldLight,
-                        }}
-                      >
-                        <span>{client.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeClient(client.id)}
-                          className="p-0.5 rounded-full hover:bg-white/10 transition-colors"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <Popover open={isClientPickerOpen} onOpenChange={setIsClientPickerOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full justify-start gap-2"
-                      style={{
-                        ...brandedInputStyle,
-                        color: selectedClients.length > 0 ? sidebarColors.navyDark : "#64748b",
-                      }}
-                    >
-                      <UserPlus className="h-4 w-4 ml-auto" style={{ color: sidebarColors.gold }} />
-                      {selectedClients.length > 0 ? `${selectedClients.length} לקוחות נבחרו — הוסף עוד` : "בחר לקוח או איש קשר"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-[320px] p-0 overflow-hidden"
-                    align="start"
-                    style={{
-                      background: sidebarColors.navy,
-                      border: `1px solid ${sidebarColors.gold}40`,
-                    }}
-                  >
-                    <div className="p-2 border-b" style={{ borderColor: `${sidebarColors.gold}30` }}>
-                      <div className="relative">
-                        <Search className="absolute right-2.5 top-2.5 h-4 w-4" style={{ color: `${sidebarColors.goldLight}60` }} />
-                        <Input
-                          placeholder="חיפוש לקוח..."
-                          value={clientSearch}
-                          onChange={(e) => setClientSearch(e.target.value)}
-                          className={cn("pr-9 text-right text-sm", brandedInputClass)}
-                          style={brandedInputStyle}
-                          autoFocus
-                        />
-                      </div>
-                    </div>
-                    <div className="max-h-[200px] overflow-y-auto p-1 gold-scrollbar">
-                      {clients
-                        .filter(c =>
-                          !clientSearch ||
-                          c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
-                          c.email?.toLowerCase().includes(clientSearch.toLowerCase()) ||
-                          c.phone?.includes(clientSearch)
-                        )
-                        .map(client => {
-                          const isSelected = clientIds.includes(client.id);
-                          return (
-                            <button
-                              key={client.id}
-                              type="button"
-                              onClick={() => toggleClient(client.id)}
-                              className={cn(
-                                "w-full text-right px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2",
-                                isSelected ? "bg-white/15" : "hover:bg-white/10"
-                              )}
-                              style={{ color: sidebarColors.goldLight }}
-                            >
-                              <div
-                                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                                style={{
-                                  background: isSelected ? `${sidebarColors.gold}40` : `${sidebarColors.gold}25`,
-                                  color: sidebarColors.gold,
-                                }}
-                              >
-                                {isSelected ? "✓" : client.name.charAt(0)}
-                              </div>
-                              <div className="flex-1 text-right">
-                                <div className="font-medium">{client.name}</div>
-                                {client.email && (
-                                  <div className="text-xs opacity-60">{client.email}</div>
-                                )}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      {clients.filter(c =>
-                        !clientSearch ||
-                        c.name.toLowerCase().includes(clientSearch.toLowerCase())
-                      ).length === 0 && (
-                        <div className="text-center py-4 text-sm" style={{ color: `${sidebarColors.goldLight}60` }}>
-                          לא נמצאו לקוחות
-                        </div>
-                      )}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
 
               {/* Reminder & Calendar Sync */}
               <InlineReminderSection
