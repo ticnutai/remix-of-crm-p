@@ -3,12 +3,14 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { AppLayout } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -60,6 +62,7 @@ import {
   FolderPlus,
   GripVertical,
   Layers3,
+  ListPlus,
   ListChecks,
   Loader2,
   LockKeyhole,
@@ -295,11 +298,22 @@ export default function InspectionForms() {
   );
   const [creatingTasks, setCreatingTasks] = useState(false);
   const [draftTaskRows, setDraftTaskRows] = useState<DraftTaskRow[]>([]);
+  const [bulkTasksDialogOpen, setBulkTasksDialogOpen] = useState(false);
+  const bulkTasksDialogOpenRef = useRef(false);
+  const [bulkTasksText, setBulkTasksText] = useState("");
   const [bulkStepsDialogOpen, setBulkStepsDialogOpen] = useState(false);
   const [bulkStepsText, setBulkStepsText] = useState("");
   const [templateBeingRenamed, setTemplateBeingRenamed] =
     useState<InspectionTemplate | null>(null);
   const [templateRenameValue, setTemplateRenameValue] = useState("");
+  const [runBeingRenamed, setRunBeingRenamed] =
+    useState<InspectionRun | null>(null);
+  const [runRenameValue, setRunRenameValue] = useState("");
+  const [runSelectionMode, setRunSelectionMode] = useState(false);
+  const [selectedRunIds, setSelectedRunIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [pendingDeleteRunIds, setPendingDeleteRunIds] = useState<string[]>([]);
   const [draggedLibraryItem, setDraggedLibraryItem] =
     useState<DraggedLibraryItem | null>(null);
   const [libraryDropTarget, setLibraryDropTarget] = useState<string | null>(
@@ -314,10 +328,16 @@ export default function InspectionForms() {
     { key: crypto.randomUUID(), title: "", description: "" },
   ]);
   const parsedBulkSteps = parsePastedSteps(bulkStepsText);
+  const parsedBulkTasks = parsePastedSteps(bulkTasksText);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (options?: {
+    showLoading?: boolean;
+    preserveRunOrder?: boolean;
+  }) => {
     if (!user) return;
-    setLoading(true);
+    const showLoading = options?.showLoading ?? true;
+    const preserveRunOrder = options?.preserveRunOrder ?? false;
+    if (showLoading) setLoading(true);
     try {
       const [
         templatesResult,
@@ -375,7 +395,20 @@ export default function InspectionForms() {
         ...run,
         steps: sortSteps(run.steps),
       }));
-      setRuns(nextRuns);
+      setRuns((currentRuns) => {
+        if (!preserveRunOrder || currentRuns.length === 0) return nextRuns;
+        const currentOrder = new Map(
+          currentRuns.map((run, index) => [run.id, index]),
+        );
+        return [...nextRuns].sort((first, second) => {
+          const firstPosition = currentOrder.get(first.id);
+          const secondPosition = currentOrder.get(second.id);
+          if (firstPosition == null && secondPosition == null) return 0;
+          if (firstPosition == null) return 1;
+          if (secondPosition == null) return -1;
+          return firstPosition - secondPosition;
+        });
+      });
       if (tasksResult.error) throw tasksResult.error;
       setFormTasks((tasksResult.data ?? []) as FormTask[]);
       setOpenRunIds((current) => {
@@ -404,7 +437,7 @@ export default function InspectionForms() {
       console.error("Failed to load inspection forms", error);
       toast.error("לא ניתן לטעון את טפסי הבדיקה");
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [user]);
 
@@ -501,6 +534,35 @@ export default function InspectionForms() {
   const openTaskDialog = (run: InspectionRun) => {
     setTaskDialogRun(run);
     setDraftTaskRows([emptyTaskRow(), emptyTaskRow(), emptyTaskRow()]);
+  };
+
+  const openBulkTasksDialog = () => {
+    setBulkTasksText("");
+    bulkTasksDialogOpenRef.current = true;
+    setBulkTasksDialogOpen(true);
+  };
+
+  const addBulkTasksToDraft = () => {
+    if (parsedBulkTasks.length === 0) {
+      toast.error("יש להדביק לפחות שורה אחת");
+      return;
+    }
+
+    setDraftTaskRows((rows) => [
+      ...rows.filter((row) => row.title.trim()),
+      ...parsedBulkTasks.map((title) => ({
+        ...emptyTaskRow(),
+        title,
+      })),
+    ]);
+    bulkTasksDialogOpenRef.current = false;
+    setBulkTasksDialogOpen(false);
+    setBulkTasksText("");
+    toast.success(
+      parsedBulkTasks.length === 1
+        ? "המשימה נוספה לרשימה"
+        : `${parsedBulkTasks.length} משימות נוספו לרשימה`,
+    );
   };
 
   const openBulkStepsDialog = () => {
@@ -740,7 +802,7 @@ export default function InspectionForms() {
       });
       if (error) throw error;
       toast.success(step.is_completed ? "השלב נפתח מחדש" : "השלב סומן כהושלם");
-      await fetchData();
+      await fetchData({ showLoading: false, preserveRunOrder: true });
     } catch (error) {
       console.error("Failed to update inspection step", error);
       toast.error("לא ניתן לעדכן את השלב");
@@ -786,6 +848,85 @@ export default function InspectionForms() {
     } finally {
       setBusyId(null);
     }
+  };
+
+  const openRunRenameDialog = (run: InspectionRun) => {
+    setRunBeingRenamed(run);
+    setRunRenameValue(run.template_name);
+  };
+
+  const renameRun = async () => {
+    if (!runBeingRenamed || !runRenameValue.trim()) return;
+    setBusyId(runBeingRenamed.id);
+    try {
+      const { error } = await db
+        .from("inspection_form_runs")
+        .update({ template_name: runRenameValue.trim() })
+        .eq("id", runBeingRenamed.id);
+      if (error) throw error;
+      toast.success("שם הטופס עודכן");
+      setRunBeingRenamed(null);
+      setRunRenameValue("");
+      await fetchData({ showLoading: false, preserveRunOrder: true });
+    } catch (error) {
+      console.error("Failed to rename inspection run", error);
+      toast.error("לא ניתן לעדכן את שם הטופס");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const deleteRuns = async (runIds: string[]) => {
+    if (runIds.length === 0) return;
+    setPendingDeleteRunIds(runIds);
+  };
+
+  const confirmDeleteRuns = async () => {
+    const runIds = pendingDeleteRunIds;
+    if (runIds.length === 0) return;
+    setBusyId(runIds.length === 1 ? runIds[0] : "bulk-run-delete");
+    try {
+      const { error } = await db
+        .from("inspection_form_runs")
+        .delete()
+        .in("id", runIds);
+      if (error) throw error;
+      toast.success(
+        runIds.length === 1
+          ? "הטופס נמחק"
+          : `${runIds.length} טפסים נמחקו`,
+      );
+      setSelectedRunIds(new Set());
+      setPendingDeleteRunIds([]);
+      setOpenRunIds((current) => {
+        const next = new Set(current);
+        runIds.forEach((id) => next.delete(id));
+        return next;
+      });
+      await fetchData();
+    } catch (error) {
+      console.error("Failed to delete inspection runs", error);
+      toast.error("לא ניתן למחוק את הטפסים");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const toggleRunSelection = (runId: string) => {
+    setSelectedRunIds((current) => {
+      const next = new Set(current);
+      if (next.has(runId)) next.delete(runId);
+      else next.add(runId);
+      return next;
+    });
+  };
+
+  const toggleSelectAllActiveRuns = () => {
+    setSelectedRunIds((current) =>
+      activeRuns.every((run) => current.has(run.id))
+        ? new Set()
+        : new Set(activeRuns.map((run) => run.id)),
+    );
   };
 
   const deactivateTemplate = async (template: InspectionTemplate) => {
@@ -1228,7 +1369,57 @@ export default function InspectionForms() {
                     actionLabel="לספריית הטפסים"
                   />
                 ) : (
-                  activeRuns.map((run) => (
+                  <>
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-muted/30 p-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant={runSelectionMode ? "default" : "outline"}
+                          onClick={() => {
+                            setRunSelectionMode((current) => !current);
+                            setSelectedRunIds(new Set());
+                          }}
+                        >
+                          <CheckSquare2 className="ml-2 h-4 w-4" />
+                          בחירה מרובה
+                        </Button>
+                        {runSelectionMode && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={toggleSelectAllActiveRuns}
+                          >
+                            {activeRuns.every((run) => selectedRunIds.has(run.id))
+                              ? "נקה הכול"
+                              : "בחר הכול"}
+                          </Button>
+                        )}
+                      </div>
+                      {runSelectionMode && (
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">
+                            נבחרו {selectedRunIds.size}
+                          </Badge>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            disabled={
+                              selectedRunIds.size === 0 ||
+                              busyId === "bulk-run-delete"
+                            }
+                            onClick={() => void deleteRuns([...selectedRunIds])}
+                          >
+                            {busyId === "bulk-run-delete" ? (
+                              <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="ml-2 h-4 w-4" />
+                            )}
+                            מחק נבחרים
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    {activeRuns.map((run) => (
                     <RunCard
                       key={run.id}
                       run={run}
@@ -1247,8 +1438,14 @@ export default function InspectionForms() {
                       onArchive={() => archiveRun(run)}
                       onAddTasks={() => openTaskDialog(run)}
                       onOpenTask={(task) => navigate(`/tasks?id=${task.id}`)}
+                      selectionMode={runSelectionMode}
+                      selected={selectedRunIds.has(run.id)}
+                      onToggleSelection={() => toggleRunSelection(run.id)}
+                      onRename={() => openRunRenameDialog(run)}
+                      onDelete={() => void deleteRuns([run.id])}
                     />
-                  ))
+                    ))}
+                  </>
                 )}
               </TabsContent>
 
@@ -1893,6 +2090,119 @@ export default function InspectionForms() {
       </Dialog>
 
       <Dialog
+        open={pendingDeleteRunIds.length > 0}
+        onOpenChange={(open) => {
+          if (!open && busyId !== "bulk-run-delete") {
+            setPendingDeleteRunIds([]);
+          }
+        }}
+      >
+        <DialogContent
+          dir="rtl"
+          className="max-w-md border-2 border-destructive/60"
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+                <Trash2 className="h-5 w-5" />
+              </span>
+              {pendingDeleteRunIds.length === 1
+                ? "מחיקת הטופס"
+                : `מחיקת ${pendingDeleteRunIds.length} טפסים`}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm leading-6 text-muted-foreground">
+            השלבים והסימונים של הטופס יימחקו. משימות CRM שנוצרו ממנו
+            יישארו במערכת, אך ללא שיוך לטופס שנמחק.
+          </p>
+          <DialogFooter className="gap-2 sm:justify-start">
+            <Button
+              variant="destructive"
+              onClick={() => void confirmDeleteRuns()}
+              disabled={busyId !== null}
+            >
+              {busyId !== null ? (
+                <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="ml-2 h-4 w-4" />
+              )}
+              אישור מחיקה
+            </Button>
+            <Button
+              variant="outline"
+              disabled={busyId !== null}
+              onClick={() => setPendingDeleteRunIds([])}
+            >
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(runBeingRenamed)}
+        onOpenChange={(open) => {
+          if (!open && busyId !== runBeingRenamed?.id) {
+            setRunBeingRenamed(null);
+            setRunRenameValue("");
+          }
+        }}
+      >
+        <DialogContent
+          dir="rtl"
+          className="max-w-md border-2 border-[hsl(45,80%,45%)]"
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(45,100%,93%)] text-[hsl(220,60%,25%)]">
+                <Pencil className="h-5 w-5" />
+              </span>
+              עריכת שם הטופס הפעיל
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="inspection-run-rename">שם הטופס</Label>
+            <Input
+              id="inspection-run-rename"
+              value={runRenameValue}
+              onChange={(event) => setRunRenameValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && runRenameValue.trim()) {
+                  event.preventDefault();
+                  void renameRun();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:justify-start">
+            <Button
+              onClick={() => void renameRun()}
+              disabled={!runRenameValue.trim() || busyId === runBeingRenamed?.id}
+              className="bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,20%)]"
+            >
+              {busyId === runBeingRenamed?.id ? (
+                <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="ml-2 h-4 w-4" />
+              )}
+              שמור שם
+            </Button>
+            <Button
+              variant="outline"
+              disabled={busyId === runBeingRenamed?.id}
+              onClick={() => {
+                setRunBeingRenamed(null);
+                setRunRenameValue("");
+              }}
+            >
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
         open={Boolean(templateBeingRenamed)}
         onOpenChange={(open) => {
           if (!open && busyId !== templateBeingRenamed?.id) {
@@ -2153,9 +2463,13 @@ export default function InspectionForms() {
       <Dialog
         open={Boolean(taskDialogRun)}
         onOpenChange={(open) => {
+          if (!open && bulkTasksDialogOpenRef.current) return;
           if (!open && !creatingTasks) {
             setTaskDialogRun(null);
             setDraftTaskRows([]);
+            bulkTasksDialogOpenRef.current = false;
+            setBulkTasksDialogOpen(false);
+            setBulkTasksText("");
           }
         }}
       >
@@ -2164,7 +2478,8 @@ export default function InspectionForms() {
           className="max-h-[92vh] max-w-5xl overflow-hidden border-2 border-[hsl(45,80%,45%)] p-0"
         >
           <DialogHeader className="border-b bg-gradient-to-l from-[hsl(220,60%,24%)] to-[hsl(214,52%,34%)] px-6 py-5 text-white">
-            <DialogTitle className="flex items-center gap-3 text-xl">
+            <DialogTitle className="flex items-center justify-between gap-3 pl-8 text-xl">
+              <span className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(45,80%,55%)] text-[hsl(220,60%,20%)]">
                 <CheckSquare2 className="h-5 w-5" />
               </span>
@@ -2176,6 +2491,18 @@ export default function InspectionForms() {
                   </span>
                 )}
               </span>
+              </span>
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                onClick={openBulkTasksDialog}
+                title="הוספת משימות מרובה"
+                aria-label="פתח הוספת משימות מרובה"
+                className="h-10 w-10 shrink-0 rounded-full border-white/50 bg-white/10 text-white hover:bg-[hsl(45,80%,55%)] hover:text-[hsl(220,60%,20%)]"
+              >
+                <ListPlus className="h-5 w-5" />
+              </Button>
             </DialogTitle>
           </DialogHeader>
 
@@ -2306,6 +2633,96 @@ export default function InspectionForms() {
             </Button>
             <span className="self-center text-xs text-muted-foreground">
               שורות ריקות לא יישמרו
+            </span>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={bulkTasksDialogOpen}
+        onOpenChange={(open) => {
+          bulkTasksDialogOpenRef.current = open;
+          setBulkTasksDialogOpen(open);
+          if (!open) setBulkTasksText("");
+        }}
+      >
+        <DialogContent
+          dir="rtl"
+          className="max-h-[92vh] max-w-3xl overflow-hidden border-2 border-[hsl(45,80%,45%)] p-0"
+        >
+          <DialogHeader className="border-b bg-gradient-to-l from-[hsl(220,60%,24%)] to-[hsl(214,52%,34%)] px-6 py-5 text-white">
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(45,80%,55%)] text-[hsl(220,60%,20%)]">
+                <ListPlus className="h-5 w-5" />
+              </span>
+              הוספת משימות מרובה
+            </DialogTitle>
+            <p className="pr-[52px] text-sm text-white/70">
+              העתק רשימה מ־Word והדבק כאן. כל שורה תהפוך למשימה נפרדת.
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-4 px-5 py-5 md:px-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Label htmlFor="bulk-inspection-tasks" className="text-base">
+                  הדבק את רשימת המשימות
+                </Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  מספור ותבליטים רגילים מ־Word יוסרו אוטומטית. שורות ריקות ידולגו.
+                </p>
+              </div>
+              <Badge
+                variant="secondary"
+                className="shrink-0 rounded-full px-3 py-1.5 text-sm"
+              >
+                {parsedBulkTasks.length} משימות
+              </Badge>
+            </div>
+
+            <Textarea
+              id="bulk-inspection-tasks"
+              value={bulkTasksText}
+              onChange={(event) => setBulkTasksText(event.target.value)}
+              placeholder={
+                "בדיקת פרטי הלקוח\nאימות המסמכים שהתקבלו\nבדיקת חתימות\nאישור סופי"
+              }
+              className="min-h-[330px] resize-y rounded-2xl border-2 bg-background p-4 text-base leading-8 focus-visible:border-[hsl(45,80%,45%)]"
+              autoFocus
+            />
+
+            {parsedBulkTasks.length > 0 && (
+              <p className="rounded-xl bg-[hsl(45,90%,94%)] px-4 py-3 text-sm text-[hsl(220,60%,25%)]">
+                לאחר ההוספה המשימות יופיעו בדיאלוג הקודם, ושם ניתן לבחור לכל
+                משימה עובד אחראי ותאריך יעד.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 border-t bg-muted/20 px-6 py-4 sm:justify-start">
+            <Button
+              type="button"
+              onClick={addBulkTasksToDraft}
+              disabled={parsedBulkTasks.length === 0}
+              className="min-w-40 bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,20%)]"
+            >
+              <ListPlus className="ml-2 h-4 w-4" />
+              {parsedBulkTasks.length > 0
+                ? `הוסף ${parsedBulkTasks.length} משימות`
+                : "הוסף משימות"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                bulkTasksDialogOpenRef.current = false;
+                setBulkTasksDialogOpen(false);
+              }}
+            >
+              ביטול
+            </Button>
+            <span className="self-center text-xs text-muted-foreground">
+              אפשר להדביק גם עשרות שורות בפעולה אחת
             </span>
           </DialogFooter>
         </DialogContent>
@@ -2505,6 +2922,11 @@ function RunCard({
   onArchive,
   onAddTasks,
   onOpenTask,
+  selectionMode = false,
+  selected = false,
+  onToggleSelection,
+  onRename,
+  onDelete,
 }: {
   run: InspectionRun;
   isOpen: boolean;
@@ -2518,6 +2940,11 @@ function RunCard({
   onArchive: () => void;
   onAddTasks: () => void;
   onOpenTask: (task: FormTask) => void;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onToggleSelection?: () => void;
+  onRename?: () => void;
+  onDelete?: () => void;
 }) {
   const RunIcon = getIcon(run.icon_name);
   const completedCount = run.steps.filter((step) => step.is_completed).length;
@@ -2536,17 +2963,26 @@ function RunCard({
   return (
     <Card
       className={cn(
-        "overflow-hidden border-2 transition-all",
+        "group overflow-hidden border-2 transition-all",
+        selected && "border-[hsl(220,60%,25%)] ring-2 ring-[hsl(220,60%,25%)]/20",
         run.is_pinned
           ? "border-[hsl(45,80%,45%)] shadow-[0_12px_35px_rgba(30,58,95,0.15)]"
           : "border-border hover:border-[hsl(45,80%,45%)]/70",
       )}
     >
       <div className="flex items-center gap-2 p-3 md:gap-3 md:p-4">
+        {selectionMode && (
+          <Checkbox
+            checked={selected}
+            onCheckedChange={onToggleSelection}
+            aria-label={`בחר את ${run.template_name}`}
+            className="h-5 w-5 shrink-0"
+          />
+        )}
         <button
           type="button"
           className="flex min-w-0 flex-1 items-center gap-3 text-right"
-          onClick={onToggleOpen}
+          onClick={selectionMode ? onToggleSelection : onToggleOpen}
         >
           <span
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-md"
@@ -2587,7 +3023,39 @@ function RunCard({
           </span>
         </button>
 
-        <Button
+        {!selectionMode && onRename && (
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={onRename}
+            className="h-9 w-9 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+            title="ערוך את שם הטופס"
+            aria-label={`ערוך את שם ${run.template_name}`}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        )}
+        {!selectionMode && onDelete && (
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={onDelete}
+            disabled={busyId === run.id}
+            className="h-9 w-9 shrink-0 text-destructive opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100"
+            title="מחק את הטופס"
+            aria-label={`מחק את ${run.template_name}`}
+          >
+            {busyId === run.id ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+          </Button>
+        )}
+
+        {!selectionMode && <Button
           type="button"
           size="sm"
           onClick={onAddTasks}
@@ -2596,9 +3064,9 @@ function RunCard({
         >
           <Plus className="h-4 w-4 md:ml-1" />
           <span className="hidden md:inline">הוסף משימות</span>
-        </Button>
+        </Button>}
 
-        <button
+        {!selectionMode && <button
           type="button"
           aria-label={expanded ? "כווץ טופס" : "פתח טופס"}
           onClick={onToggleOpen}
@@ -2609,7 +3077,7 @@ function RunCard({
           ) : (
             <ChevronDown className="h-4 w-4" />
           )}
-        </button>
+        </button>}
       </div>
 
       {expanded && (

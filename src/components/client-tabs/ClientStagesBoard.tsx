@@ -181,6 +181,17 @@ const iconOptions = [
   },
 ];
 
+const parseBulkTaskTitles = (value: string) =>
+  value
+    .split(/\r?\n/)
+    .map((line) =>
+      line
+        .trim()
+        .replace(/^(?:(?:[•●▪◦‣⁃*-])|(?:\d+[.)])|(?:[א-ת][.)]))\s+/u, "")
+        .trim(),
+    )
+    .filter(Boolean);
+
 // Predefined colors for background and text
 const BACKGROUND_COLORS = [
   {
@@ -3059,10 +3070,7 @@ export function ClientStagesBoard({
   }, [addTaskDialog, contactsLoaded]);
   const handleBulkAdd = async () => {
     if (!bulkAddDialog || !bulkAddDialog.tasks.trim()) return;
-    const titles = bulkAddDialog.tasks
-      .split("\n")
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
+    const titles = parseBulkTaskTitles(bulkAddDialog.tasks);
     if (titles.length > 0) {
       await addBulkTasks(bulkAddDialog.stageId, titles);
       setBulkAddDialog(null);
@@ -5269,7 +5277,29 @@ export function ClientStagesBoard({
       >
         <DialogContent className="sm:max-w-[440px]" dir="rtl">
           <DialogHeader className="text-right">
-            <DialogTitle>הוספת משימה / טאב טיימר</DialogTitle>
+            <DialogTitle className="flex items-center justify-between gap-3 pl-8">
+              <span>הוספת משימה / טאב טיימר</span>
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                className="h-9 w-9 shrink-0 rounded-full border-[hsl(45,80%,45%)] text-[hsl(220,60%,25%)] hover:bg-[hsl(45,90%,94%)]"
+                title="הוספת משימות מרובה"
+                aria-label="פתח הוספת משימות מרובה"
+                onClick={() => {
+                  if (!addTaskDialog) return;
+                  const stageId = addTaskDialog.stageId;
+                  setAddTaskDialog(null);
+                  setClientPickerOpen(false);
+                  setBulkAddDialog({ stageId, tasks: "" });
+                }}
+              >
+                <ListPlus className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+            <DialogDescription className="text-right">
+              משימה אחת, או לחיצה על אייקון הרשימה להוספת משימות מרובה
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <Tabs
@@ -5596,43 +5626,78 @@ export function ClientStagesBoard({
       {/* Bulk Add Dialog */}
       <Dialog
         open={bulkAddDialog !== null}
-        onOpenChange={() => setBulkAddDialog(null)}
+        onOpenChange={(open) => {
+          if (!open) setBulkAddDialog(null);
+        }}
       >
-        <DialogContent className="text-right" dir="rtl">
-          <DialogHeader className="text-right">
-            <DialogTitle className="text-right">
-              הוספת משימות מרובות
+        <DialogContent
+          className="max-h-[92vh] max-w-3xl overflow-hidden border-2 border-[hsl(45,80%,45%)] p-0 text-right"
+          dir="rtl"
+        >
+          <DialogHeader className="border-b bg-gradient-to-l from-[hsl(220,60%,24%)] to-[hsl(214,52%,34%)] px-6 py-5 text-white">
+            <DialogTitle className="flex items-center gap-3 text-right text-xl">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(45,80%,55%)] text-[hsl(220,60%,20%)]">
+                <ListPlus className="h-5 w-5" />
+              </span>
+              הוספת משימות מרובה
             </DialogTitle>
-            <DialogDescription className="text-right">
-              הזן משימה אחת בכל שורה
-            </DialogDescription>
+            <p className="pr-[52px] text-right text-sm text-white/70">
+              העתק רשימה מ־Word והדבק כאן. כל שורה תהפוך למשימה נפרדת.
+            </p>
           </DialogHeader>
-          <Textarea
-            value={bulkAddDialog?.tasks || ""}
-            onChange={(e) =>
-              setBulkAddDialog(
-                bulkAddDialog
-                  ? {
-                      ...bulkAddDialog,
-                      tasks: e.target.value,
-                    }
-                  : null,
-              )
-            }
-            placeholder="משימה 1&#10;משימה 2&#10;משימה 3"
-            rows={10}
-            className="font-mono text-right"
-          />
-          <DialogFooter className="flex-row-reverse gap-2">
+          <div className="space-y-4 px-5 py-5 md:px-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-right text-base font-medium">
+                  הדבק את רשימת המשימות
+                </p>
+                <p className="mt-1 text-right text-xs text-muted-foreground">
+                  מספור ותבליטים רגילים מ־Word יוסרו אוטומטית. שורות ריקות ידולגו.
+                </p>
+              </div>
+              <Badge
+                variant="secondary"
+                className="shrink-0 rounded-full px-3 py-1.5 text-sm"
+              >
+                {parseBulkTaskTitles(bulkAddDialog?.tasks || "").length} משימות
+              </Badge>
+            </div>
+            <Textarea
+              value={bulkAddDialog?.tasks || ""}
+              onChange={(e) =>
+                setBulkAddDialog(
+                  bulkAddDialog
+                    ? {
+                        ...bulkAddDialog,
+                        tasks: e.target.value,
+                      }
+                    : null,
+                )
+              }
+              placeholder={
+                "בדיקת פרטי הלקוח\nאימות המסמכים שהתקבלו\nבדיקת חתימות\nאישור סופי"
+              }
+              className="min-h-[330px] resize-y rounded-2xl border-2 bg-background p-4 text-right text-base leading-8 focus-visible:border-[hsl(45,80%,45%)]"
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="gap-2 border-t bg-muted/20 px-6 py-4 sm:justify-start">
+            <Button
+              onClick={handleBulkAdd}
+              disabled={parseBulkTaskTitles(bulkAddDialog?.tasks || "").length === 0}
+              className="min-w-40 bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,20%)]"
+            >
+              <ListPlus className="ml-2 h-4 w-4" />
+              {parseBulkTaskTitles(bulkAddDialog?.tasks || "").length > 0
+                ? `צור ${parseBulkTaskTitles(bulkAddDialog?.tasks || "").length} משימות`
+                : "צור משימות"}
+            </Button>
             <Button variant="outline" onClick={() => setBulkAddDialog(null)}>
               ביטול
             </Button>
-            <Button onClick={handleBulkAdd}>
-              הוסף{" "}
-              {bulkAddDialog?.tasks.split("\n").filter((t) => t.trim())
-                .length || 0}{" "}
-              משימות
-            </Button>
+            <span className="self-center text-xs text-muted-foreground">
+              אפשר להדביק גם עשרות שורות בפעולה אחת
+            </span>
           </DialogFooter>
         </DialogContent>
       </Dialog>
