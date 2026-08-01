@@ -54,6 +54,7 @@ import {
   CircleDollarSign,
   CircleCheckBig,
   CircleAlert,
+  Pin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConsultantsFilterPopover } from "./ConsultantsFilterPopover";
@@ -137,6 +138,15 @@ interface ClientCategory {
   name: string;
   color: string;
   icon: string;
+}
+
+interface PinnedStageShortcut {
+  kind: "stage" | "task";
+  templateId: string;
+  stageId: string;
+  stageName: string;
+  taskId?: string;
+  label: string;
 }
 
 interface ClientsFilterStripProps {
@@ -231,6 +241,18 @@ export function ClientsFilterStrip({
     "stages" | "recent" | "payments" | null
   >(null);
   const [activeStageTemplateId, setActiveStageTemplateId] = useState<string | null>(null);
+  const [quickSelectedTemplateId, setQuickSelectedTemplateId] =
+    useState<string | null>(() =>
+      filters.stageTemplateIds?.length === 1
+        ? filters.stageTemplateIds[0]
+        : null,
+    );
+  const [pinnedStageShortcuts, setPinnedStageShortcuts] = useSyncedSetting<
+    PinnedStageShortcut[]
+  >({
+    key: "clients-pinned-stage-shortcuts-v1",
+    defaultValue: [],
+  });
   const [expandedStageTemplates, setExpandedStageTemplates] = useState<Set<string>>(
     () => new Set(),
   );
@@ -589,6 +611,78 @@ export function ClientsFilterStrip({
     });
   };
 
+  const togglePinnedStageShortcut = (shortcut: PinnedStageShortcut) => {
+    setPinnedStageShortcuts((current) => {
+      const exists = current.some(
+        (item) =>
+          item.kind === shortcut.kind &&
+          item.templateId === shortcut.templateId &&
+          item.stageId === shortcut.stageId &&
+          item.taskId === shortcut.taskId,
+      );
+      return exists
+        ? current.filter(
+            (item) =>
+              !(
+                item.kind === shortcut.kind &&
+                item.templateId === shortcut.templateId &&
+                item.stageId === shortcut.stageId &&
+                item.taskId === shortcut.taskId
+              ),
+          )
+        : [...current, shortcut];
+    });
+  };
+
+  const isStageShortcutPinned = (
+    kind: "stage" | "task",
+    templateId: string,
+    stageId: string,
+    taskId?: string,
+  ) =>
+    pinnedStageShortcuts.some(
+      (item) =>
+        item.kind === kind &&
+        item.templateId === templateId &&
+        item.stageId === stageId &&
+        item.taskId === taskId,
+    );
+
+  const applyPinnedShortcut = (shortcut: PinnedStageShortcut) => {
+    if (shortcut.kind === "stage") {
+      onFiltersChange({
+        ...filters,
+        stages: [shortcut.stageName],
+        stageTemplateIds: [],
+        stageSelections: [
+          {
+            templateId: shortcut.templateId,
+            stageId: shortcut.stageId,
+            stageName: shortcut.stageName,
+          },
+        ],
+        stageTaskFilters: [],
+      });
+      return;
+    }
+
+    onFiltersChange({
+      ...filters,
+      stages: [],
+      stageTemplateIds: [],
+      stageSelections: [],
+      stageTaskFilters: [
+        {
+          templateId: shortcut.templateId,
+          stageId: shortcut.stageId,
+          taskId: shortcut.taskId || "",
+          title: shortcut.label,
+          status: "incomplete",
+        },
+      ],
+    });
+  };
+
   const toggleStageTemplate = (templateId: string) => {
     setExpandedStageTemplates((current) => {
       const next = new Set(current);
@@ -832,6 +926,7 @@ export function ClientsFilterStrip({
       stageTaskFilters: [],
       stageTemplateIds: templateOnlySelected ? [] : [templateId],
     });
+    setQuickSelectedTemplateId(templateId);
     closeStagesDialog();
   };
 
@@ -2271,6 +2366,44 @@ export function ClientsFilterStrip({
                                             {stageClientCount}
                                           </Badge>
                                         )}
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className={cn(
+                                            "h-7 w-7 shrink-0 rounded-full",
+                                            isStageShortcutPinned(
+                                              "stage",
+                                              template.id,
+                                              stage.stage_id,
+                                            )
+                                              ? "bg-[#fff1bf] text-[#9a741d]"
+                                              : "text-muted-foreground hover:bg-[#fff8e7] hover:text-[#9a741d]",
+                                          )}
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            togglePinnedStageShortcut({
+                                              kind: "stage",
+                                              templateId: template.id,
+                                              stageId: stage.stage_id,
+                                              stageName: stage.stage_name,
+                                              label: stage.stage_name,
+                                            });
+                                          }}
+                                          title="נעץ שלב בשורת הקיצורים"
+                                          aria-label={`נעץ את השלב ${stage.stage_name}`}
+                                        >
+                                          <Pin
+                                            className={cn(
+                                              "h-3.5 w-3.5",
+                                              isStageShortcutPinned(
+                                                "stage",
+                                                template.id,
+                                                stage.stage_id,
+                                              ) && "fill-current",
+                                            )}
+                                          />
+                                        </Button>
                                       </div>
 
                                       {stageExpanded && stage.tasks.length > 0 && (
@@ -2290,6 +2423,46 @@ export function ClientsFilterStrip({
                                                   onCheckedChange={() => toggleStageTask(template.id, stage.stage_id, task.id, task.title)}
                                                 />
                                                 <span className="min-w-0 flex-1 truncate text-right text-xs">{task.title}</span>
+                                                <Button
+                                                  type="button"
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className={cn(
+                                                    "h-6 w-6 shrink-0 rounded-full",
+                                                    isStageShortcutPinned(
+                                                      "task",
+                                                      template.id,
+                                                      stage.stage_id,
+                                                      task.id,
+                                                    )
+                                                      ? "bg-[#fff1bf] text-[#9a741d]"
+                                                      : "text-muted-foreground hover:bg-[#fff8e7] hover:text-[#9a741d]",
+                                                  )}
+                                                  onClick={() =>
+                                                    togglePinnedStageShortcut({
+                                                      kind: "task",
+                                                      templateId: template.id,
+                                                      stageId: stage.stage_id,
+                                                      stageName: stage.stage_name,
+                                                      taskId: task.id,
+                                                      label: task.title,
+                                                    })
+                                                  }
+                                                  title="נעץ משימה בשורת הקיצורים"
+                                                  aria-label={`נעץ את המשימה ${task.title}`}
+                                                >
+                                                  <Pin
+                                                    className={cn(
+                                                      "h-3 w-3",
+                                                      isStageShortcutPinned(
+                                                        "task",
+                                                        template.id,
+                                                        stage.stage_id,
+                                                        task.id,
+                                                      ) && "fill-current",
+                                                    )}
+                                                  />
+                                                </Button>
                                                 {selectedTask && (
                                                   <button
                                                     type="button"
@@ -2616,34 +2789,7 @@ export function ClientsFilterStrip({
           className="mt-2 overflow-hidden rounded-xl border border-[#d4a843]/70 bg-gradient-to-l from-[#fffaf0] via-white to-[#f7f9fc] shadow-[0_8px_24px_rgba(30,58,95,0.08)]"
           aria-label="קיצורי דרך לתהליכים"
         >
-          <div className="flex items-center gap-2 border-b border-[#d4a843]/25 px-3 py-1.5">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#1e3a5f] text-[#e7b941] shadow-sm">
-              <Layers className="h-4 w-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-[#1e3a5f]">
-                בחירת תהליך מהירה
-              </p>
-              <p className="text-[10px] text-slate-500">
-                לחיצה על שם התהליך מסננת לקוחות; האייקון פותח שלבים ומשימות
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 shrink-0 rounded-full text-slate-500 hover:bg-[#1e3a5f]/10 hover:text-[#1e3a5f]"
-              onClick={() => {
-                setActiveQuickPanel(null);
-                closeStagesDialog();
-              }}
-              aria-label="סגור קיצורי תהליכים"
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-
-          <div className="overflow-x-auto px-3 py-2.5 [scrollbar-color:#d4a843_transparent] [scrollbar-width:thin]">
+          <div className="overflow-x-auto border-b border-[#d4a843]/25 px-3 py-2 [scrollbar-color:#d4a843_transparent] [scrollbar-width:thin]">
             <div className="flex min-w-max items-center gap-2">
               {stageTemplatesLoading ? (
                 <span className="px-3 py-2 text-xs text-slate-500">
@@ -2750,8 +2896,79 @@ export function ClientsFilterStrip({
                   );
                 })
               )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 rounded-full text-slate-500 hover:bg-[#1e3a5f]/10 hover:text-[#1e3a5f]"
+                onClick={() => {
+                  setActiveQuickPanel(null);
+                  closeStagesDialog();
+                }}
+                aria-label="סגור קיצורי תהליכים"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
             </div>
           </div>
+
+          {quickSelectedTemplateId && (
+            <div className="overflow-x-auto px-3 py-2 [scrollbar-color:#d4a843_transparent] [scrollbar-width:thin]">
+              <div className="flex min-w-max items-center gap-2">
+                {pinnedStageShortcuts.filter(
+                  (shortcut) =>
+                    shortcut.templateId === quickSelectedTemplateId,
+                ).length === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openStageTemplateDialog(quickSelectedTemplateId)
+                    }
+                    className="flex h-9 items-center gap-2 rounded-xl border border-dashed border-[#d4a843] bg-white px-3 text-xs font-semibold text-[#1e3a5f] hover:bg-[#fff8e7]"
+                  >
+                    <Pin className="h-3.5 w-3.5 text-[#d4a843]" />
+                    בחר שלבים או משימות לנעיצה
+                  </button>
+                ) : (
+                  <>
+                    {pinnedStageShortcuts
+                      .filter(
+                        (shortcut) =>
+                          shortcut.templateId === quickSelectedTemplateId,
+                      )
+                      .map((shortcut) => (
+                        <button
+                          key={`${shortcut.kind}-${shortcut.stageId}-${shortcut.taskId || "stage"}`}
+                          type="button"
+                          onClick={() => applyPinnedShortcut(shortcut)}
+                          className="flex h-9 max-w-[250px] items-center gap-2 rounded-xl border border-[#d4a843]/70 bg-white px-3 text-xs font-semibold text-[#1e3a5f] shadow-sm transition-colors hover:border-[#d4a843] hover:bg-[#fff8e7]"
+                          title={`${shortcut.kind === "stage" ? "שלב" : "משימה"}: ${shortcut.label}`}
+                        >
+                          <Pin className="h-3.5 w-3.5 shrink-0 fill-[#d4a843] text-[#d4a843]" />
+                          <span className="truncate">{shortcut.label}</span>
+                          {shortcut.kind === "task" && (
+                            <span className="text-[9px] font-normal text-slate-500">
+                              {shortcut.stageName}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openStageTemplateDialog(quickSelectedTemplateId)
+                      }
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#d4a843]/60 bg-white text-[#9a741d] hover:bg-[#fff8e7]"
+                      aria-label="ערוך נעוצים"
+                      title="ערוך נעוצים"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
