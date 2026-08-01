@@ -622,6 +622,7 @@ interface SortableTaskProps {
     } | null>
   >;
   handleToggleTask: (task: ClientStageTask) => void;
+  handleToggleCheck: (taskId: string) => void;
   handleUpdateTask: (taskId: string, title: string) => void;
   handleDeleteTask: (taskId: string) => void;
   updateTaskStyle?: (
@@ -645,6 +646,8 @@ interface SortableTaskProps {
 const isTimerTabTask = (task: ClientStageTask) =>
   task.task_type === "timer_tab" && Boolean(task.auto_timer_days);
 
+const isProgressTask = (task: ClientStageTask) => task.task_type !== "check";
+
 const SortableTaskItem = React.memo(function SortableTaskItem({
   task,
   stage,
@@ -655,6 +658,7 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
   editingTask,
   setEditingTask,
   handleToggleTask,
+  handleToggleCheck,
   handleUpdateTask,
   handleDeleteTask,
   updateTaskStyle,
@@ -682,6 +686,7 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
     backgroundColor: task.background_color || undefined,
   };
   const isTimerTab = isTimerTabTask(task);
+  const isCheck = task.task_type === "check";
   const isTimerTabActive =
     isTimerTab && Boolean(task.started_at && task.target_working_days);
   const canStartTimerTab =
@@ -741,12 +746,24 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
             </Badge>
           )}
 
-          {/* Completion Toggle - Green glowing checkmark when completed */}
+          {/* Completion toggle, or independent green/red check state */}
           <button
-            onClick={() => handleToggleTask(task)}
+            onClick={() =>
+              isCheck ? handleToggleCheck(task.id) : handleToggleTask(task)
+            }
             className="shrink-0 mt-0.5 focus:outline-none"
+            aria-label={isCheck ? `שנה מצב בדיקה ${task.title}` : undefined}
           >
-            {task.completed ? (
+            {isCheck ? (
+              <span
+                className={cn(
+                  "block h-5 w-5 rounded-full border-2 transition-colors",
+                  task.check_marked
+                    ? "border-red-600 bg-red-600"
+                    : "border-emerald-500 bg-transparent",
+                )}
+              />
+            ) : task.completed ? (
               <CheckCircle2
                 className="h-5 w-5 text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.7)] animate-pulse"
                 style={{
@@ -814,11 +831,15 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
                   "text-sm text-right break-words text-[#1a2c5f] dark:text-slate-200",
                   task.completed &&
                     "line-through text-emerald-600 dark:text-emerald-400",
+                  isCheck &&
+                    (task.check_marked
+                      ? "text-red-600 dark:text-red-400"
+                      : "text-emerald-600 dark:text-emerald-400"),
                   task.is_bold && "font-bold",
                   isTimerTab && "flex items-center justify-end gap-1.5",
                 )}
                 style={{
-                  color: task.text_color || undefined,
+                  color: isCheck ? undefined : task.text_color || undefined,
                 }}
               >
                 {isTimerTab && <Timer className="h-3.5 w-3.5 shrink-0 text-sky-600" />}
@@ -834,7 +855,7 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
                 paymentStepId={task.payment_step_id}
                 taskId={task.id}
                 allOtherTasksCompleted={(stage.tasks || [])
-                  .filter((stageTask) => stageTask.id !== task.id)
+                  .filter((stageTask) => stageTask.id !== task.id && isProgressTask(stageTask))
                   .every((stageTask) => stageTask.completed)}
                 taskCompleted={task.completed}
                 className="mt-1"
@@ -2248,6 +2269,7 @@ export function ClientStagesBoard({
     addTask,
     addBulkTasks,
     toggleTask,
+    toggleCheckMarked,
     updateTask,
     updateTaskCompletedDate,
     updateTaskStyle,
@@ -2751,7 +2773,7 @@ export function ClientStagesBoard({
   const [addTaskDialog, setAddTaskDialog] = useState<{
     stageId: string;
     title: string;
-    taskType: "task" | "timer_tab";
+    taskType: "task" | "timer_tab" | "check";
     autoTimerDays: string;
     linkedClientId?: string | null;
     linkedContactId?: string | null;
@@ -2821,6 +2843,9 @@ export function ClientStagesBoard({
     if (toggled && shouldAutoStartOnComplete && task.auto_timer_days) {
       await startTaskTimer?.(task.id, task.auto_timer_days);
     }
+  };
+  const handleToggleCheck = async (taskId: string) => {
+    await toggleCheckMarked(taskId);
   };
   const handleAddTask = async (stageId: string) => {
     if (!addingTask || !addingTask.title.trim()) return;
@@ -3294,9 +3319,10 @@ export function ClientStagesBoard({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [copiedStage, pasteStageData]);
   const calculateProgress = (stage: (typeof stages)[0]) => {
-    if (!stage.tasks || stage.tasks.length === 0) return 100;
-    const completed = stage.tasks.filter((t) => t.completed).length;
-    return Math.round((completed / stage.tasks.length) * 100);
+    const progressTasks = (stage.tasks || []).filter(isProgressTask);
+    if (progressTasks.length === 0) return 100;
+    const completed = progressTasks.filter((t) => t.completed).length;
+    return Math.round((completed / progressTasks.length) * 100);
   };
 
   // Sort stages for RTL (reverse order so first stage appears on the right)
@@ -3316,7 +3342,9 @@ export function ClientStagesBoard({
     > = {};
     sortedStages.forEach((stage) => {
       const progress = calculateProgress(stage);
-      const hasIncompleteTask = (stage.tasks || []).some((task) => !task.completed);
+      const hasIncompleteTask = (stage.tasks || []).some(
+        (task) => isProgressTask(task) && !task.completed,
+      );
       const isCompleted = !hasIncompleteTask;
       info[stage.stage_id] = {
         isCompleted,
@@ -3901,7 +3929,9 @@ export function ClientStagesBoard({
                 ) : (
                   <div className="space-y-3">
                     {startedStages.map((s) => {
-                      const openInStage = (s.tasks || []).filter((t) => !t.completed);
+                      const openInStage = (s.tasks || []).filter(
+                        (t) => isProgressTask(t) && !t.completed,
+                      );
                       if (openInStage.length === 0) return null;
                       const SIcon = getStageIcon(s.stage_icon);
                       return (
@@ -3944,8 +3974,8 @@ export function ClientStagesBoard({
           const Icon = getStageIcon(stage.stage_icon);
           const progress = calculateProgress(stage);
           const completedTasks =
-            stage.tasks?.filter((t) => t.completed).length || 0;
-          const totalTasks = stage.tasks?.length || 0;
+            stage.tasks?.filter((t) => isProgressTask(t) && t.completed).length || 0;
+          const totalTasks = stage.tasks?.filter(isProgressTask).length || 0;
           const isHovered = hoveredStage === stage.stage_id;
           const isCustomStage = stage.stage_id.startsWith("custom_");
 
@@ -4554,6 +4584,7 @@ export function ClientStagesBoard({
                             editingTask={editingTask}
                             setEditingTask={setEditingTask}
                             handleToggleTask={handleToggleTask}
+                            handleToggleCheck={handleToggleCheck}
                             handleUpdateTask={handleUpdateTask}
                             handleDeleteTask={handleDeleteTask}
                             updateTaskStyle={updateTaskStyle}
@@ -4630,8 +4661,8 @@ export function ClientStagesBoard({
               const Icon = getStageIcon(expandedStageData.stage_icon);
               const progress = calculateProgress(expandedStageData);
               const completedTasks =
-                expandedStageData.tasks?.filter((t) => t.completed).length || 0;
-              const totalTasks = expandedStageData.tasks?.length || 0;
+                expandedStageData.tasks?.filter((t) => isProgressTask(t) && t.completed).length || 0;
+              const totalTasks = expandedStageData.tasks?.filter(isProgressTask).length || 0;
               const allSelected =
                 expandedStageData.tasks &&
                 expandedStageData.tasks.length > 0 &&
@@ -5012,7 +5043,7 @@ export function ClientStagesBoard({
                                     }
                                     clientId={clientId}
                                     allOtherTasksCompleted={(expandedStageData.tasks || [])
-                                      .filter((stageTask) => stageTask.id !== task.id)
+                                      .filter((stageTask) => stageTask.id !== task.id && isProgressTask(stageTask))
                                       .every((stageTask) => stageTask.completed)}
                                     setEditingTask={setEditingTask}
                                     handleToggleTask={handleToggleTask}
@@ -5278,7 +5309,7 @@ export function ClientStagesBoard({
         <DialogContent className="sm:max-w-[440px]" dir="rtl">
           <DialogHeader className="text-right">
             <DialogTitle className="flex items-center justify-between gap-3 pl-8">
-              <span>הוספת משימה / טאב טיימר</span>
+              <span>הוספת משימה / טאב טיימר / בדיקה</span>
               <Button
                 type="button"
                 size="icon"
@@ -5309,16 +5340,17 @@ export function ClientStagesBoard({
                   prev
                     ? {
                         ...prev,
-                        taskType: value as "task" | "timer_tab",
+                        taskType: value as "task" | "timer_tab" | "check",
                       }
                     : null,
                 )
               }
               dir="rtl"
             >
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="task">משימה רגילה</TabsTrigger>
                 <TabsTrigger value="timer_tab">טאב טיימר</TabsTrigger>
+                <TabsTrigger value="check">בדיקה</TabsTrigger>
               </TabsList>
             </Tabs>
 
@@ -5336,6 +5368,8 @@ export function ClientStagesBoard({
               placeholder={
                 addTaskDialog?.taskType === "timer_tab"
                   ? "שם טאב הטיימר..."
+                  : addTaskDialog?.taskType === "check"
+                    ? "שם הבדיקה..."
                   : "שם המשימה..."
               }
               className="text-right"
@@ -5614,7 +5648,11 @@ export function ClientStagesBoard({
               }
             >
               <Plus className="h-4 w-4 ml-2" />
-              {addTaskDialog?.taskType === "timer_tab" ? "הוסף טאב" : "הוסף"}
+              {addTaskDialog?.taskType === "timer_tab"
+                ? "הוסף טאב"
+                : addTaskDialog?.taskType === "check"
+                  ? "הוסף בדיקה"
+                  : "הוסף"}
             </Button>
             <Button variant="ghost" onClick={() => setAddTaskDialog(null)}>
               ביטול

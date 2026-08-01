@@ -15,7 +15,7 @@ export interface TemplateTask {
   template_stage_id: string | null;
   title: string;
   sort_order: number;
-  task_type?: "task" | "timer_tab" | null;
+  task_type?: "task" | "timer_tab" | "check" | null;
   auto_timer_days?: number | null;
   // Content fields (saved when includeTaskContent is true)
   completed?: boolean;
@@ -47,11 +47,16 @@ export interface StageTemplate {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  structure_version?: number;
+  sync_required?: boolean;
   stages?: TemplateStage[];
   tasks?: TemplateTask[]; // For single-stage templates
 }
 
-type TemplateTaskType = "task" | "timer_tab";
+type TemplateTaskType = "task" | "timer_tab" | "check";
+
+const normalizeTemplateTaskType = (value: unknown): TemplateTaskType =>
+  value === "timer_tab" ? "timer_tab" : value === "check" ? "check" : "task";
 
 export interface ClientStage {
   id: string;
@@ -65,7 +70,7 @@ export interface ClientStage {
     title: string;
     completed: boolean;
     sort_order: number;
-    task_type?: "task" | "timer_tab" | null;
+    task_type?: "task" | "timer_tab" | "check" | null;
     auto_timer_days?: number | null;
     completed_at?: string | null;
     background_color?: string | null;
@@ -194,7 +199,7 @@ export function useStageTemplates() {
               template_stage_id: templateStage.id,
               title: task.title,
               sort_order: task.sort_order ?? index,
-              task_type: isTimerTab ? "timer_tab" : "task",
+              task_type: normalizeTemplateTaskType(task.task_type),
               auto_timer_days: isTimerTab ? task.auto_timer_days || null : null,
             };
           });
@@ -352,7 +357,7 @@ export function useStageTemplates() {
                 template_stage_id: templateStage.id,
                 title: task.title,
                 sort_order: task.sort_order ?? index,
-                task_type: isTimerTab ? "timer_tab" : "task",
+                task_type: normalizeTemplateTaskType(task.task_type),
                 auto_timer_days: isTimerTab ? task.auto_timer_days || null : null,
               };
 
@@ -464,6 +469,8 @@ export function useStageTemplates() {
                 stage_name: templateStage.stage_name,
                 stage_icon: templateStage.stage_icon,
                 sort_order: existingStagesCount + templateStage.sort_order,
+                source_template_id: templateId,
+                source_template_stage_id: templateStage.id,
                 ...(folderId ? { folder_id: folderId } : {}),
               });
 
@@ -483,8 +490,10 @@ export function useStageTemplates() {
                   title: task.title,
                   sort_order: task.sort_order,
                   completed: false,
-                  task_type: isTimerTab ? "timer_tab" : "task",
+                  task_type: normalizeTemplateTaskType(task.task_type),
                   auto_timer_days: isTimerTab ? task.auto_timer_days || null : null,
+                  source_template_id: templateId,
+                  source_template_task_id: task.id,
                 };
 
                 // If template includes content, apply saved task state
@@ -513,6 +522,17 @@ export function useStageTemplates() {
           }
         }
 
+        await db.from("client_stage_template_assignments").upsert(
+          {
+            client_id: clientId,
+            template_id: templateId,
+            synced_version: template.structure_version || 1,
+            applied_at: new Date().toISOString(),
+            last_synced_at: new Date().toISOString(),
+          },
+          { onConflict: "client_id,template_id" },
+        );
+
         const contentNote = includesContent ? " (כולל מילוי)" : "";
         toast({
           title: "התבנית הוחלה בהצלחה",
@@ -530,6 +550,33 @@ export function useStageTemplates() {
       }
     },
     [templates, toast],
+  );
+
+  const syncTemplateToClients = useCallback(
+    async (templateId: string) => {
+      try {
+        const { data, error } = await db.rpc("sync_stage_template_to_clients", {
+          p_template_id: templateId,
+        });
+        if (error) throw error;
+        const result = data || {};
+        toast({
+          title: "הלקוחות עודכנו בהצלחה",
+          description: `${result.clients_updated || 0} לקוחות · ${result.added_stages || 0} שלבים חדשים · ${result.added_tasks || 0} משימות חדשות`,
+        });
+        await loadTemplates();
+        return result;
+      } catch (error) {
+        console.error("Error syncing template clients:", error);
+        toast({
+          title: "עדכון הלקוחות נכשל",
+          description: error instanceof Error ? error.message : "לא ניתן לסנכרן את התבנית",
+          variant: "destructive",
+        });
+        return null;
+      }
+    },
+    [toast, loadTemplates],
   );
 
   // Copy stages from another client
@@ -1168,6 +1215,7 @@ export function useStageTemplates() {
     saveMultiStageTemplate,
     saveFolderStagesAsTemplate,
     applyTemplate,
+    syncTemplateToClients,
     applyTemplateToFolder,
     copyStagesFromClient,
     updateTemplate,

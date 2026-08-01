@@ -111,7 +111,8 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
   const { 
     stages, 
     loading, 
-    toggleTask, 
+    toggleTask,
+    toggleCheckMarked,
     updateTask,
     updateTaskCompletedDate,
     updateTaskStyle,
@@ -165,7 +166,7 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
           stageIcon: stage.stage_icon,
           stageOrder: stage.sort_order,
           allOtherTasksCompleted: (stage.tasks || [])
-            .filter((stageTask) => stageTask.id !== task.id)
+            .filter((stageTask) => stageTask.id !== task.id && stageTask.task_type !== 'check')
             .every((stageTask) => stageTask.completed),
         });
       });
@@ -215,6 +216,10 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
   };
 
   const handleToggleTask = async (task: ClientStageTask) => {
+    if (task.task_type === 'check') {
+      await toggleCheckMarked(task.id);
+      return;
+    }
     const shouldAutoStartOnComplete =
       isTimerTabTask(task) &&
       !task.completed &&
@@ -421,7 +426,13 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                         className="h-8 px-2"
                         onClick={() => handleToggleTask(task)}
                       >
-                        {task.completed ? (
+                        {task.task_type === 'check' ? (
+                          task.check_marked ? (
+                            <span className="h-5 w-5 rounded-full bg-red-600" />
+                          ) : (
+                            <Circle className="h-5 w-5 text-emerald-600" />
+                          )
+                        ) : task.completed ? (
                           <CheckCircle2 className="h-5 w-5 text-green-600" />
                         ) : (
                           <Circle className="h-5 w-5 text-muted-foreground" />

@@ -44,10 +44,10 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTrackerProps) {
-  const { stages, loading, addTask, addBulkTasks, toggleTask, updateTask, deleteTask, startTaskTimer, bulkSetTasksCompleted } = useClientStages(clientId);
+  const { stages, loading, addTask, addBulkTasks, toggleTask, toggleCheckMarked, updateTask, deleteTask, startTaskTimer, bulkSetTasksCompleted } = useClientStages(clientId);
 
   const [editingTask, setEditingTask] = useState<{ stageId: string; taskId: string; title: string } | null>(null);
-  const [addingTask, setAddingTask] = useState<{ stageId: string; title: string; taskType: 'task' | 'timer_tab'; autoTimerDays: string } | null>(null);
+  const [addingTask, setAddingTask] = useState<{ stageId: string; title: string; taskType: 'task' | 'timer_tab' | 'check'; autoTimerDays: string } | null>(null);
   const [bulkAddDialog, setBulkAddDialog] = useState<{ stageId: string; tasks: string } | null>(null);
   const [selectedStageIds, setSelectedStageIds] = useState<Set<string>>(new Set());
 
@@ -113,6 +113,10 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
   };
 
   const handleToggleTask = async (task: ClientStageTask) => {
+    if (task.task_type === 'check') {
+      await toggleCheckMarked(task.id);
+      return;
+    }
     const shouldAutoStartOnComplete =
       isTimerTabTask(task) &&
       !task.completed &&
@@ -156,7 +160,7 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
         autoTimerDays,
       });
     } else {
-      await addTask(stageId, addingTask.title);
+      await addTask(stageId, addingTask.title, { taskType: addingTask.taskType });
     }
     setAddingTask(null);
   };
@@ -188,9 +192,10 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
   };
 
   const calculateProgress = (stage: typeof stages[0]) => {
-    if (!stage.tasks || stage.tasks.length === 0) return 0;
-    const completed = stage.tasks.filter(t => t.completed).length;
-    return Math.round((completed / stage.tasks.length) * 100);
+    const progressTasks = (stage.tasks || []).filter(t => t.task_type !== 'check');
+    if (progressTasks.length === 0) return 0;
+    const completed = progressTasks.filter(t => t.completed).length;
+    return Math.round((completed / progressTasks.length) * 100);
   };
 
   if (loading) {
@@ -208,8 +213,8 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
       {stages.map((stage) => {
         const Icon = getStageIcon(stage.stage_icon);
         const progress = calculateProgress(stage);
-        const completedTasks = stage.tasks?.filter(t => t.completed).length || 0;
-        const totalTasks = stage.tasks?.length || 0;
+        const completedTasks = stage.tasks?.filter(t => t.task_type !== 'check' && t.completed).length || 0;
+        const totalTasks = stage.tasks?.filter(t => t.task_type !== 'check').length || 0;
 
         return (
           <Card key={stage.id} className="overflow-hidden">
@@ -299,9 +304,14 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                       )}
                     >
                       <Checkbox
-                        checked={task.completed}
+                        checked={task.task_type === 'check' ? Boolean(task.check_marked) : task.completed}
                         onCheckedChange={() => handleToggleTask(task)}
-                        className="shrink-0"
+                        className={cn(
+                          "shrink-0",
+                          task.task_type === 'check' && (task.check_marked
+                            ? "border-red-600 data-[state=checked]:bg-red-600"
+                            : "border-emerald-500"),
+                        )}
                       />
                       
                       {editingTask?.taskId === task.id ? (
@@ -351,7 +361,8 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                           >
                             <span className={cn(
                               "flex items-center justify-end gap-1.5 text-sm",
-                              task.completed && "line-through text-gray-500"
+                              task.completed && task.task_type !== 'check' && "line-through text-gray-500",
+                              task.task_type === 'check' && (task.check_marked ? "text-red-600" : "text-emerald-600")
                             )}>
                               {isTimerTabTask(task) && <Timer className="h-3.5 w-3.5 text-sky-600 shrink-0" />}
                               <span>{task.title}</span>
@@ -468,6 +479,13 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                     >
                       טאב טיימר
                     </Button>
+                    <Button
+                      size="sm"
+                      variant={addingTask.taskType === 'check' ? 'default' : 'outline'}
+                      onClick={() => setAddingTask({ ...addingTask, taskType: 'check', autoTimerDays: '' })}
+                    >
+                      בדיקה
+                    </Button>
                   </div>
                   <div className="flex gap-2 flex-row-reverse">
                     <Input
@@ -480,7 +498,7 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                           setAddingTask(null);
                         }
                       }}
-                      placeholder={addingTask.taskType === 'timer_tab' ? 'שם טאב הטיימר...' : 'שם המשימה...'}
+                      placeholder={addingTask.taskType === 'timer_tab' ? 'שם טאב הטיימר...' : addingTask.taskType === 'check' ? 'שם הבדיקה...' : 'שם המשימה...'}
                       className="h-8 text-right"
                       autoFocus
                     />
@@ -517,7 +535,7 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                     onClick={() => setAddingTask({ stageId: stage.stage_id, title: '', taskType: 'task', autoTimerDays: '' })}
                   >
                     <Plus className="h-4 w-4 ml-2" />
-                    הוסף משימה / טאב
+                    הוסף משימה / טאב / בדיקה
                   </Button>
                   <Button
                     size="sm"

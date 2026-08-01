@@ -45,6 +45,7 @@ import {
   X,
   Check,
   GripVertical,
+  RefreshCw,
 } from "lucide-react";
 import {
   useStageTemplates,
@@ -116,7 +117,7 @@ interface SortableStageItemProps {
   onToggleStageTasksForUpgrade: (taskIds: string[]) => void;
   handleUpdateTaskTimerConfig: (
     taskId: string,
-    taskType: "task" | "timer_tab",
+    taskType: "task" | "timer_tab" | "check",
     autoTimerDays: number | null,
   ) => void;
 }
@@ -349,8 +350,12 @@ function SortableStageItem({
           {(stage.tasks || []).map((task: any) => {
             const isTaskRenaming = renamingTask?.taskId === task.id;
             const isTaskDeleting = deletingTaskId === task.id;
-            const taskType: "task" | "timer_tab" =
-              task.task_type === "timer_tab" ? "timer_tab" : "task";
+            const taskType: "task" | "timer_tab" | "check" =
+              task.task_type === "timer_tab"
+                ? "timer_tab"
+                : task.task_type === "check"
+                  ? "check"
+                  : "task";
             return (
               <div key={task.id} className="flex items-center gap-2 pr-4">
                 <Checkbox
@@ -389,13 +394,13 @@ function SortableStageItem({
                       <Select
                         value={taskType}
                         onValueChange={(value) => {
-                          const nextType = value as "task" | "timer_tab";
-                          if (nextType === "task") {
+                          const nextType = value as "task" | "timer_tab" | "check";
+                          if (nextType !== "timer_tab") {
                             const approved = confirm(
-                              "מעבר למשימה רגילה יבטל את טאב הטיימר וימחק את ימי הטיימר. להמשיך?",
+                              `מעבר ל${nextType === "check" ? "בדיקה" : "משימה רגילה"} יבטל את טאב הטיימר וימחק את ימי הטיימר. להמשיך?`,
                             );
                             if (!approved) return;
-                            handleUpdateTaskTimerConfig(task.id, "task", null);
+                            handleUpdateTaskTimerConfig(task.id, nextType, null);
                             return;
                           }
                           const fallbackDays =
@@ -411,6 +416,7 @@ function SortableStageItem({
                         <SelectContent>
                           <SelectItem value="task">משימה</SelectItem>
                           <SelectItem value="timer_tab">טאב טיימר</SelectItem>
+                          <SelectItem value="check">בדיקה</SelectItem>
                         </SelectContent>
                       </Select>
                       {taskType === "timer_tab" && (
@@ -1141,7 +1147,9 @@ export function SaveAllStagesDialog({
                                       <div className="text-[11px] text-muted-foreground">
                                         {task.task_type === "timer_tab"
                                           ? "טאב טיימר"
-                                          : "משימה רגילה"}
+                                          : task.task_type === "check"
+                                            ? "בדיקה"
+                                            : "משימה רגילה"}
                                       </div>
                                     </div>
                                     {task.completed && (
@@ -1231,6 +1239,7 @@ export function ApplyTemplateDialog({
     updateTemplateTaskTimerSettings,
     bulkUpgradeTemplateTasksToTimerTabs,
     reorderTemplateStages,
+    syncTemplateToClients,
   } = useStageTemplates();
 
   const dndSensors = useSensors(
@@ -1272,6 +1281,16 @@ export function ApplyTemplateDialog({
     useState<Record<string, Set<string>>>({});
   const [upgradeDaysByTemplate, setUpgradeDaysByTemplate] = useState<Record<string, string>>({});
   const [bulkUpgradingTemplateId, setBulkUpgradingTemplateId] = useState<string | null>(null);
+  const [syncingTemplateId, setSyncingTemplateId] = useState<string | null>(null);
+
+  const handleSyncTemplate = async (template: StageTemplate, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!template.sync_required || syncingTemplateId) return;
+    if (!confirm("לעדכן את השלבים והמשימות בכל הלקוחות שנוצרו מתבנית זו? סימוני השלמה, הערות ומידע קיים יישמרו.")) return;
+    setSyncingTemplateId(template.id);
+    await syncTemplateToClients(template.id);
+    setSyncingTemplateId(null);
+  };
 
   const handleStageDragEnd = async (event: DragEndEvent, template: StageTemplate) => {
     const { active, over } = event;
@@ -1343,7 +1362,7 @@ export function ApplyTemplateDialog({
 
   const handleUpdateTaskTimerConfig = async (
     taskId: string,
-    taskType: "task" | "timer_tab",
+    taskType: "task" | "timer_tab" | "check",
     autoTimerDays: number | null,
   ) => {
     await updateTemplateTaskTimerSettings(taskId, taskType, autoTimerDays);
@@ -1617,6 +1636,21 @@ export function ApplyTemplateDialog({
                               </Button>
                             ) : (
                               <>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className={cn(
+                                    "h-7 w-7",
+                                    template.sync_required
+                                      ? "text-amber-600 hover:text-amber-700"
+                                      : "text-muted-foreground/40",
+                                  )}
+                                  disabled={!template.sync_required || syncingTemplateId === template.id}
+                                  onClick={(e) => handleSyncTemplate(template, e)}
+                                  title={template.sync_required ? "עדכן שלבים ומשימות אצל כל לקוחות התבנית" : "התבנית מסונכרנת"}
+                                >
+                                  <RefreshCw className={cn("h-3.5 w-3.5", syncingTemplateId === template.id && "animate-spin")} />
+                                </Button>
                                 <Button
                                   size="icon"
                                   variant="ghost"

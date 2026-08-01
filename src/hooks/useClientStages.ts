@@ -8,7 +8,8 @@ export interface ClientStageTask {
   client_id: string;
   stage_id: string;
   title: string;
-  task_type?: "task" | "timer_tab";
+  task_type?: "task" | "timer_tab" | "check";
+  check_marked?: boolean;
   auto_timer_days?: number | null;
   completed: boolean;
   completed_at: string | null;
@@ -90,7 +91,7 @@ function removeDuplicateTasks(tasks: ClientStageTask[]): ClientStageTask[] {
 type AddTaskOptions = {
   linkedClientId?: string | null;
   linkedContactId?: string | null;
-  taskType?: "task" | "timer_tab";
+  taskType?: "task" | "timer_tab" | "check";
   autoTimerDays?: number | null;
 };
 
@@ -224,8 +225,10 @@ export function useClientStages(clientId: string) {
           : {}),
       };
 
-      if (taskType === "timer_tab") {
+      if (taskType !== "task") {
         fullInsert.task_type = taskType;
+      }
+      if (taskType === "timer_tab") {
         fullInsert.auto_timer_days = options?.autoTimerDays ?? null;
       }
 
@@ -263,6 +266,8 @@ export function useClientStages(clientId: string) {
         description:
           taskType === "timer_tab"
             ? "טאב הטיימר נוסף בהצלחה"
+            : taskType === "check"
+              ? "הבדיקה נוספה בהצלחה"
             : "המשימה נוספה בהצלחה",
       });
       return data;
@@ -373,6 +378,33 @@ export function useClientStages(clientId: string) {
       toast({
         title: "שגיאה",
         description: "לא ניתן לעדכן משימה",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const toggleCheckMarked = async (taskId: string) => {
+    try {
+      const task = tasks.find((item) => item.id === taskId);
+      if (!task || task.task_type !== "check") return false;
+      const checkMarked = !Boolean(task.check_marked);
+      const { error } = await supabase
+        .from("client_stage_tasks")
+        .update({ check_marked: checkMarked } as any)
+        .eq("id", taskId);
+      if (error) throw error;
+      setTasks((current) =>
+        current.map((item) =>
+          item.id === taskId ? { ...item, check_marked: checkMarked } : item,
+        ),
+      );
+      return true;
+    } catch (error) {
+      console.error("Error toggling check row:", error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לעדכן את הבדיקה",
         variant: "destructive",
       });
       return false;
@@ -1365,6 +1397,12 @@ export function useClientStages(clientId: string) {
         if (!templateStageId || !stage.tasks) continue;
 
         for (const task of stage.tasks) {
+          const taskType =
+            task.task_type === "timer_tab"
+              ? "timer_tab"
+              : task.task_type === "check"
+                ? "check"
+                : "task";
           const isTimerTab =
             task.task_type === "timer_tab" && Boolean(task.auto_timer_days);
 
@@ -1373,7 +1411,7 @@ export function useClientStages(clientId: string) {
             template_stage_id: templateStageId,
             title: task.title,
             sort_order: task.sort_order,
-            task_type: isTimerTab ? "timer_tab" : "task",
+            task_type: taskType,
             auto_timer_days: isTimerTab ? task.auto_timer_days || null : null,
             // Include full content if requested
             ...(includeTaskContent && {
@@ -1467,6 +1505,8 @@ export function useClientStages(clientId: string) {
         stage_icon: ts.stage_icon,
         sort_order: currentMaxOrder + 1 + index,
         target_working_days: (ts as any).target_working_days || null,
+        source_template_id: templateId,
+        source_template_stage_id: ts.id,
       }));
 
       const { data: newStages, error: insertStagesError } = await supabase
@@ -1498,6 +1538,12 @@ export function useClientStages(clientId: string) {
       if (templateTasks && templateTasks.length > 0) {
         const tasksToInsert = templateTasks.map((tt) => {
           const clientStageId = stageIdMap.get(tt.template_stage_id);
+          const taskType =
+            (tt as any).task_type === "timer_tab"
+              ? "timer_tab"
+              : (tt as any).task_type === "check"
+                ? "check"
+                : "task";
           const isTimerTab =
             (tt as any).task_type === "timer_tab" &&
             Boolean((tt as any).auto_timer_days);
@@ -1507,10 +1553,12 @@ export function useClientStages(clientId: string) {
             stage_id: clientStageId,
             title: tt.title,
             sort_order: tt.sort_order,
-            task_type: isTimerTab ? "timer_tab" : "task",
+            task_type: taskType,
             auto_timer_days: isTimerTab ? (tt as any).auto_timer_days || null : null,
             completed: includeContent ? Boolean((tt as any).completed) : false,
             completed_at: includeContent ? ((tt as any).completed_at ?? null) : null,
+            source_template_id: templateId,
+            source_template_task_id: tt.id,
             // Include styling if present and includeContent is true
             ...(includeContent && {
               background_color: (tt as any).background_color || null,
@@ -1528,6 +1576,22 @@ export function useClientStages(clientId: string) {
 
         if (insertTasksError) throw insertTasksError;
       }
+
+      const { data: templateMeta } = await (supabase as any)
+        .from("stage_templates")
+        .select("structure_version")
+        .eq("id", templateId)
+        .maybeSingle();
+      await (supabase as any).from("client_stage_template_assignments").upsert(
+        {
+          client_id: clientId,
+          template_id: templateId,
+          synced_version: templateMeta?.structure_version || 1,
+          applied_at: new Date().toISOString(),
+          last_synced_at: new Date().toISOString(),
+        },
+        { onConflict: "client_id,template_id" },
+      );
 
       // Reload data
       await loadData();
@@ -1616,6 +1680,7 @@ export function useClientStages(clientId: string) {
     addTask,
     addBulkTasks,
     toggleTask,
+    toggleCheckMarked,
     updateTask,
     updateTaskCompletedDate,
     updateTaskStyle,

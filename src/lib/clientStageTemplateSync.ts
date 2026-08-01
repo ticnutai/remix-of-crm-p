@@ -54,6 +54,11 @@ export async function syncClientStagesFromTemplate({
   }
 
   const templateTasks = (templateTasksRaw || []) as any[];
+  const { data: templateMeta } = await (supabase as any)
+    .from("stage_templates")
+    .select("structure_version")
+    .eq("id", templateId)
+    .maybeSingle();
 
   const shouldClearAll =
     Boolean(clearAllOnTemplateChange) &&
@@ -82,6 +87,12 @@ export async function syncClientStagesFromTemplate({
     }
 
     clearedAll = true;
+
+    await (supabase as any)
+      .from("client_stage_template_assignments")
+      .delete()
+      .eq("client_id", clientId)
+      .eq("template_id", previousTemplateId);
   }
 
   const { data: existingStagesRaw, error: existingStagesError } = await supabase
@@ -150,6 +161,8 @@ export async function syncClientStagesFromTemplate({
           stage_icon: templateStage.stage_icon,
           sort_order: nextStageSortOrder + 1,
           target_working_days: templateStage.target_working_days || null,
+          source_template_id: templateId,
+          source_template_stage_id: templateStage.id,
         })
         .select()
         .single();
@@ -166,16 +179,25 @@ export async function syncClientStagesFromTemplate({
       if (stageNameKey) {
         stagesByName.set(stageNameKey, matchedStage);
       }
+    } else if (!matchedStage.source_template_stage_id) {
+      await (supabase as any)
+        .from("client_stages")
+        .update({
+          source_template_id: templateId,
+          source_template_stage_id: templateStage.id,
+        })
+        .eq("id", matchedStage.id);
     }
 
     templateStageToClientStage.set(templateStage.id, matchedStage.stage_id);
   }
 
-  const existingTaskKeys = new Set<string>(
-    existingTasks.map(
-      (task) => `${task.stage_id}::${normalizeText(task.title)}`,
-    ),
-  );
+  const existingTasksByKey = new Map<string, any>();
+  existingTasks.forEach((task) => {
+    const key = `${task.stage_id}::${normalizeText(task.title)}`;
+    if (!existingTasksByKey.has(key)) existingTasksByKey.set(key, task);
+  });
+  const existingTaskKeys = new Set(existingTasksByKey.keys());
 
   const stageTaskSortOrder = new Map<string, number>();
   existingTasks.forEach((task) => {
@@ -195,11 +217,29 @@ export async function syncClientStagesFromTemplate({
     if (!titleKey) continue;
 
     const taskKey = `${clientStageId}::${titleKey}`;
-    if (existingTaskKeys.has(taskKey)) continue;
+    if (existingTaskKeys.has(taskKey)) {
+      const matchedTask = existingTasksByKey.get(taskKey);
+      if (matchedTask && !matchedTask.source_template_task_id) {
+        await (supabase as any)
+          .from("client_stage_tasks")
+          .update({
+            source_template_id: templateId,
+            source_template_task_id: templateTask.id,
+          })
+          .eq("id", matchedTask.id);
+      }
+      continue;
+    }
 
     const nextTaskSortOrder = (stageTaskSortOrder.get(clientStageId) ?? -1) + 1;
     stageTaskSortOrder.set(clientStageId, nextTaskSortOrder);
 
+    const taskType =
+      templateTask.task_type === "timer_tab"
+        ? "timer_tab"
+        : templateTask.task_type === "check"
+          ? "check"
+          : "task";
     const isTimerTab =
       templateTask.task_type === "timer_tab" &&
       Boolean(templateTask.auto_timer_days);
@@ -209,8 +249,10 @@ export async function syncClientStagesFromTemplate({
       stage_id: clientStageId,
       title: templateTask.title,
       sort_order: nextTaskSortOrder,
-      task_type: isTimerTab ? "timer_tab" : "task",
+      task_type: taskType,
       auto_timer_days: isTimerTab ? templateTask.auto_timer_days || null : null,
+      source_template_id: templateId,
+      source_template_task_id: templateTask.id,
     });
 
     existingTaskKeys.add(taskKey);
@@ -227,6 +269,17 @@ export async function syncClientStagesFromTemplate({
 
     addedTasks = tasksToInsert.length;
   }
+
+  await (supabase as any).from("client_stage_template_assignments").upsert(
+    {
+      client_id: clientId,
+      template_id: templateId,
+      synced_version: templateMeta?.structure_version || 1,
+      applied_at: new Date().toISOString(),
+      last_synced_at: new Date().toISOString(),
+    },
+    { onConflict: "client_id,template_id" },
+  );
 
   return {
     addedStages,

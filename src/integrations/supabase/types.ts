@@ -2623,6 +2623,7 @@ export type Database = {
         Row: {
           auto_timer_days: number | null
           background_color: string | null
+          check_marked: boolean
           client_id: string
           completed: boolean
           completed_at: string | null
@@ -2635,6 +2636,8 @@ export type Database = {
           payment_quote_id: string | null
           payment_step_id: string | null
           sort_order: number
+          source_template_id: string | null
+          source_template_task_id: string | null
           stage_id: string
           started_at: string | null
           target_working_days: number | null
@@ -2647,6 +2650,7 @@ export type Database = {
         Insert: {
           auto_timer_days?: number | null
           background_color?: string | null
+          check_marked?: boolean
           client_id: string
           completed?: boolean
           completed_at?: string | null
@@ -2659,6 +2663,8 @@ export type Database = {
           payment_quote_id?: string | null
           payment_step_id?: string | null
           sort_order?: number
+          source_template_id?: string | null
+          source_template_task_id?: string | null
           stage_id: string
           started_at?: string | null
           target_working_days?: number | null
@@ -2671,6 +2677,7 @@ export type Database = {
         Update: {
           auto_timer_days?: number | null
           background_color?: string | null
+          check_marked?: boolean
           client_id?: string
           completed?: boolean
           completed_at?: string | null
@@ -2683,6 +2690,8 @@ export type Database = {
           payment_quote_id?: string | null
           payment_step_id?: string | null
           sort_order?: number
+          source_template_id?: string | null
+          source_template_task_id?: string | null
           stage_id?: string
           started_at?: string | null
           target_working_days?: number | null
@@ -2719,6 +2728,8 @@ export type Database = {
           id: string
           is_completed: boolean | null
           sort_order: number
+          source_template_id: string | null
+          source_template_stage_id: string | null
           stage_icon: string | null
           stage_id: string
           stage_name: string
@@ -2736,6 +2747,8 @@ export type Database = {
           id?: string
           is_completed?: boolean | null
           sort_order?: number
+          source_template_id?: string | null
+          source_template_stage_id?: string | null
           stage_icon?: string | null
           stage_id: string
           stage_name: string
@@ -2753,6 +2766,8 @@ export type Database = {
           id?: string
           is_completed?: boolean | null
           sort_order?: number
+          source_template_id?: string | null
+          source_template_stage_id?: string | null
           stage_icon?: string | null
           stage_id?: string
           stage_name?: string
@@ -8657,6 +8672,8 @@ export type Database = {
           includes_task_content: boolean | null
           is_multi_stage: boolean | null
           name: string
+          structure_version: number
+          sync_required: boolean
           updated_at: string
         }
         Insert: {
@@ -8669,6 +8686,8 @@ export type Database = {
           includes_task_content?: boolean | null
           is_multi_stage?: boolean | null
           name: string
+          structure_version?: number
+          sync_required?: boolean
           updated_at?: string
         }
         Update: {
@@ -8681,6 +8700,8 @@ export type Database = {
           includes_task_content?: boolean | null
           is_multi_stage?: boolean | null
           name?: string
+          structure_version?: number
+          sync_required?: boolean
           updated_at?: string
         }
         Relationships: []
