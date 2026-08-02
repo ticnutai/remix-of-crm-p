@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { countLinkedClientsByTemplate } from "@/lib/client-template-lineage";
 
 // Helper to access tables not yet in generated types
 // Remove after running migration and regenerating types
@@ -49,6 +50,7 @@ export interface StageTemplate {
   updated_at: string;
   structure_version?: number;
   sync_required?: boolean;
+  linked_client_count?: number;
   stages?: TemplateStage[];
   tasks?: TemplateTask[]; // For single-stage templates
 }
@@ -111,6 +113,17 @@ async function fetchStageTemplates(): Promise<StageTemplate[]> {
 
   if (tasksError) throw tasksError;
 
+  // This is deliberately the lineage table, not client_process_categories.
+  // A category is only a classification; an assignment means the client's
+  // workflow was actually created from this template and may be synchronized.
+  const { data: assignmentsData, error: assignmentsError } = await db
+    .from("client_stage_template_assignments")
+    .select("client_id, template_id");
+
+  if (assignmentsError) throw assignmentsError;
+
+  const linkedClientsByTemplate = countLinkedClientsByTemplate(assignmentsData || []);
+
   // Combine data
   return (templatesData || []).map((template) => {
     const templateStages = (stagesData || [])
@@ -128,6 +141,7 @@ async function fetchStageTemplates(): Promise<StageTemplate[]> {
 
     return {
       ...template,
+      linked_client_count: linkedClientsByTemplate.get(template.id) || 0,
       stages: templateStages,
       tasks: templateTasks,
     };

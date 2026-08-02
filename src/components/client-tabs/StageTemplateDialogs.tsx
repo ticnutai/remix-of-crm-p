@@ -1298,7 +1298,8 @@ export function ApplyTemplateDialog({
   const handleSyncTemplate = async (template: StageTemplate, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!template.sync_required || syncingTemplateId) return;
-    if (!confirm("לעדכן את השלבים והמשימות בכל הלקוחות שנוצרו מתבנית זו? סימוני השלמה, הערות ומידע קיים יישמרו.")) return;
+    const linkedClients = template.linked_client_count || 0;
+    if (!confirm(`לעדכן ${linkedClients} לקוחות שנוצרו מתבנית זו?\n\nסימוני השלמה, הערות ומידע קיים יישמרו. לקוחות שרק סווגו לקטגוריה לא ישתנו.`)) return;
     setSyncingTemplateId(template.id);
     await syncTemplateToClients(template.id);
     setSyncingTemplateId(null);
@@ -1643,6 +1644,9 @@ export function ApplyTemplateDialog({
                                   כולל מילוי
                                 </Badge>
                               )}
+                              <Badge variant="secondary" className="text-[10px]">
+                                {template.linked_client_count || 0} לקוחות מקושרים
+                              </Badge>
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
@@ -1670,7 +1674,9 @@ export function ApplyTemplateDialog({
                                   )}
                                   disabled={!template.sync_required || syncingTemplateId === template.id}
                                   onClick={(e) => handleSyncTemplate(template, e)}
-                                  title={template.sync_required ? "עדכן שלבים ומשימות אצל כל לקוחות התבנית" : "התבנית מסונכרנת"}
+                                  title={template.sync_required
+                                    ? `עדכן שלבים ומשימות אצל ${template.linked_client_count || 0} לקוחות מקושרים`
+                                    : `התבנית מסונכרנת עם ${template.linked_client_count || 0} לקוחות`}
                                 >
                                   <RefreshCw className={cn("h-3.5 w-3.5", syncingTemplateId === template.id && "animate-spin")} />
                                 </Button>

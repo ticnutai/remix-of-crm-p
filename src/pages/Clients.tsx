@@ -88,6 +88,7 @@ import {
   type PageFeature,
 } from "@/components/page-customizer/PageCustomizer";
 import { isValidPhoneForDisplay } from "@/lib/phone-utils";
+import { workflowContainsSelectedTemplateStage } from "@/lib/client-template-lineage";
 import { isVisibleClientPaymentStage } from "@/lib/clientPaymentStages";
 import {
   Users,
@@ -1488,15 +1489,7 @@ export default function Clients() {
           if (templateStages.length > 0) {
             const workflow = clientWorkflows?.get(templateId);
             if (!workflow) return false;
-            return templateStages.some(
-              (selection) =>
-                workflow.currentStage?.stage_name === selection.stageName ||
-                workflow.currentStage?.stage_id ===
-                  `template_${selection.templateId}_${selection.stageId}` ||
-                workflow.currentStage?.stage_id.startsWith(
-                  `template_${selection.templateId}_${selection.stageId}_`,
-                ),
-            );
+            return workflowContainsSelectedTemplateStage(workflow.stages, templateStages);
           }
 
           return (
