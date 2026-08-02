@@ -755,25 +755,66 @@ export default function Contacts() {
   // ── Render ──────────────────────────────────────────────────
   return (
     <AppLayout>
+      <style>{`
+        @media (max-width: 767px) {
+          .contacts-page-root { padding-bottom: 5rem; }
+          /* prevent horizontal scroll */
+          .contacts-page-root, .contacts-page-root * { max-width: 100%; }
+          .contacts-page-root .contacts-row {
+            flex-wrap: wrap;
+            row-gap: 0.5rem;
+            padding: 0.75rem 0.625rem;
+            border-color: hsl(var(--border));
+          }
+          .contacts-page-root .contacts-row > .contacts-row-main { flex: 1 1 100%; min-width: 0; order: 2; }
+          .contacts-page-root .contacts-row > .contacts-row-actions {
+            flex: 1 1 100%;
+            order: 3;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.375rem;
+          }
+          .contacts-page-root .contacts-row-actions button { height: 2.25rem; min-width: 2.25rem; }
+          .contacts-page-root .contacts-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.125rem;
+          }
+          .contacts-page-root .contacts-meta > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .contacts-page-root .contacts-stats {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding-bottom: 0.25rem;
+          }
+          .contacts-page-root .contacts-stats::-webkit-scrollbar { display: none; }
+          .contacts-page-root .contacts-stats > * { flex: 0 0 auto; }
+        }
+      `}</style>
       <div
-        className="container mx-auto py-4 px-2 md:py-6 md:px-4 max-w-7xl"
+        className="contacts-page-root container mx-auto py-3 px-2 md:py-6 md:px-4 max-w-7xl"
         dir="rtl"
       >
         {/* Header */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4 md:mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
+              <Users className="h-5 w-5 md:h-6 md:w-6 text-blue-600 dark:text-blue-400" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold">אנשי קשר</h1>
-              <p className="text-muted-foreground text-sm">
+            <div className="min-w-0">
+              <h1 className="text-xl md:text-2xl font-bold">אנשי קשר</h1>
+              <p className="text-muted-foreground text-xs md:text-sm">
                 ייבוא, קישור וניהול אנשי קשר מ-Gmail, Google ולקוחות קיימים
               </p>
             </div>
           </div>
           {/* Google Connection Status */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full md:w-auto">
+
             {isGoogleConnected ? (
               <>
                 <Badge className="bg-green-100 text-green-700 border-green-300 gap-1">
