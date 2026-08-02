@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { MessageCircle, MessageSquareText, Save, Send, Settings2 } from "lucide-react";
+import { BriefcaseBusiness, MessageCircle, MessageSquareText, Plus, Save, Send, Settings2, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,6 +23,7 @@ import {
 } from "@/lib/taskMessage";
 
 type MessageChannel = "whatsapp" | "sms";
+type RecipientType = "client" | "manual" | "consultant";
 
 interface ClientContact {
   id: string;
@@ -40,6 +41,13 @@ interface MessageSettings {
   message_template: string;
   default_channel: MessageChannel;
   preview_before_send: boolean;
+}
+
+interface ConsultantContact {
+  id: string;
+  name: string;
+  profession: string;
+  phone: string | null;
 }
 
 interface TaskClientMessageButtonProps {
@@ -77,6 +85,13 @@ export function TaskClientMessageButton({
   const [channel, setChannel] = useState<MessageChannel>("whatsapp");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [message, setMessage] = useState("");
+  const [recipientType, setRecipientType] = useState<RecipientType>("client");
+  const [consultants, setConsultants] = useState<ConsultantContact[]>([]);
+  const [selectedConsultantId, setSelectedConsultantId] = useState("");
+  const [showAddClientPhone, setShowAddClientPhone] = useState(false);
+  const [newClientPhone, setNewClientPhone] = useState("");
+  const [newClientPhoneLabel, setNewClientPhoneLabel] = useState("");
+  const [savingClientPhone, setSavingClientPhone] = useState(false);
 
   const phones = useMemo(() => {
     if (!client) return [];
@@ -147,7 +162,7 @@ export function TaskClientMessageButton({
     let cancelled = false;
     setLoading(true);
     void (async () => {
-      const [clientResult, settingsResult] = await Promise.all([
+      const [clientResult, settingsResult, consultantsResult] = await Promise.all([
         supabase
           .from("clients")
           .select("id,name,phone,phone_secondary,whatsapp,additional_phones,custom_data")
@@ -158,6 +173,11 @@ export function TaskClientMessageButton({
           .select("scope,office_name,message_template,default_channel,preview_before_send")
           .eq("scope", "default")
           .maybeSingle(),
+        supabase
+          .from("consultants")
+          .select("id,name,profession,phone")
+          .not("phone", "is", null)
+          .order("name"),
       ]);
       if (cancelled) return;
       if (clientResult.error || !clientResult.data) {
@@ -174,6 +194,10 @@ export function TaskClientMessageButton({
         ? ({ ...DEFAULT_SETTINGS, ...settingsResult.data } as MessageSettings)
         : DEFAULT_SETTINGS;
       setClient(loadedClient);
+      setConsultants((consultantsResult.data || []) as ConsultantContact[]);
+      setRecipientType("client");
+      setSelectedConsultantId("");
+      setShowAddClientPhone(false);
       setSettings(loadedSettings);
       setChannel(loadedSettings.default_channel);
       setMessage(buildMessage(loadedSettings, loadedClient));
@@ -189,7 +213,7 @@ export function TaskClientMessageButton({
   }, [buildMessage, clientId, open]);
 
   useEffect(() => {
-    if (!client) return;
+    if (!client || recipientType !== "client") return;
     const preferred = channel === "whatsapp"
       ? client.whatsapp || client.phone
       : client.phone || client.phone_secondary;
@@ -197,7 +221,62 @@ export function TaskClientMessageButton({
     if (preferredPhone && !phones.some(({ value }) => value === normalizeTaskMessagePhone(phoneNumber))) {
       setPhoneNumber(preferredPhone);
     }
-  }, [channel, client, phoneNumber, phones]);
+  }, [channel, client, phoneNumber, phones, recipientType]);
+
+  const selectConsultant = (consultantId: string) => {
+    setSelectedConsultantId(consultantId);
+    const consultant = consultants.find((item) => item.id === consultantId);
+    setPhoneNumber(extractTaskMessagePhones(consultant?.phone || "")[0] || "");
+  };
+
+  const saveClientPhone = async () => {
+    if (!client) return;
+    const normalized = normalizeTaskMessagePhone(newClientPhone);
+    if (!normalized) {
+      toast({ title: "יש להזין מספר טלפון תקין", variant: "destructive" });
+      return;
+    }
+    const localPhone = normalized.startsWith("972")
+      ? `0${normalized.slice(3)}`
+      : newClientPhone.replace(/[^\d+]/g, "");
+    const existing = Array.isArray(client.additional_phones)
+      ? client.additional_phones.filter((value): value is string => typeof value === "string")
+      : [];
+    if (existing.some((value) => normalizeTaskMessagePhone(value) === normalized) ||
+        phones.some(({ value }) => normalizeTaskMessagePhone(value) === normalized)) {
+      setPhoneNumber(normalized);
+      setShowAddClientPhone(false);
+      toast({ title: "המספר כבר קיים אצל הלקוח ונבחר לשליחה" });
+      return;
+    }
+    const customData = client.custom_data && typeof client.custom_data === "object" && !Array.isArray(client.custom_data)
+      ? { ...(client.custom_data as Record<string, any>) }
+      : {};
+    const phoneLabels = customData.phone_labels && typeof customData.phone_labels === "object"
+      ? { ...customData.phone_labels }
+      : {};
+    const labels = Array.isArray(phoneLabels.additional) ? [...phoneLabels.additional] : [];
+    labels.push(newClientPhoneLabel.trim() || `מספר נוסף ${existing.length + 1}`);
+    phoneLabels.additional = labels;
+    customData.phone_labels = phoneLabels;
+
+    setSavingClientPhone(true);
+    const { error } = await supabase
+      .from("clients")
+      .update({ additional_phones: [...existing, localPhone], custom_data: customData } as any)
+      .eq("id", client.id);
+    setSavingClientPhone(false);
+    if (error) {
+      toast({ title: "שמירת המספר נכשלה", description: error.message, variant: "destructive" });
+      return;
+    }
+    setClient({ ...client, additional_phones: [...existing, localPhone], custom_data: customData });
+    setPhoneNumber(normalized);
+    setNewClientPhone("");
+    setNewClientPhoneLabel("");
+    setShowAddClientPhone(false);
+    toast({ title: "המספר נוסף ללקוח ונבחר לשליחה" });
+  };
 
   const saveSettings = async () => {
     if (!settings.message_template.trim()) {
@@ -264,6 +343,8 @@ export function TaskClientMessageButton({
         channel,
         phoneNumber,
         message: message.trim(),
+        recipientType,
+        consultantId: recipientType === "consultant" ? selectedConsultantId : null,
       },
     });
     setSending(false);
@@ -376,6 +457,36 @@ export function TaskClientMessageButton({
             </div>
           ) : (
             <div className={cn("space-y-4", loading && "pointer-events-none opacity-60")}>
+              <div className="space-y-2">
+                <Label>שליחה אל</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    ["client", "לקוח", UserRound],
+                    ["manual", "מספר ידני", MessageCircle],
+                    ["consultant", "בעל מקצוע", BriefcaseBusiness],
+                  ] as const).map(([value, label, Icon]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={cn(
+                        "flex h-10 items-center justify-center gap-1.5 rounded-lg border text-xs font-semibold transition",
+                        recipientType === value
+                          ? "border-[#d4a843] bg-[#1e3a5f] text-white"
+                          : "bg-white text-[#1e3a5f] hover:bg-[#fef9ee]",
+                      )}
+                      onClick={() => {
+                        setRecipientType(value);
+                        if (value === "manual") setPhoneNumber("");
+                        if (value === "client") setPhoneNumber(phones[0]?.value || "");
+                        if (value === "consultant") selectConsultant(selectedConsultantId);
+                      }}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="task-message-channel">ערוץ שליחה</Label>
@@ -390,7 +501,17 @@ export function TaskClientMessageButton({
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="task-message-phone">מספר של הלקוח</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="task-message-phone">
+                      {recipientType === "client" ? "מספר של הלקוח" : recipientType === "consultant" ? "בחירת בעל מקצוע" : "מספר לשליחה"}
+                    </Label>
+                    {recipientType === "client" && (
+                      <button type="button" className="flex items-center gap-1 text-[11px] font-semibold text-[#1e3a5f] hover:text-[#d4a843]" onClick={() => setShowAddClientPhone((value) => !value)}>
+                        <Plus className="h-3 w-3" /> הוסף מספר
+                      </button>
+                    )}
+                  </div>
+                  {recipientType === "client" ? (
                   <select
                     id="task-message-phone"
                     className="h-10 w-full rounded-md border bg-background px-3"
@@ -403,8 +524,40 @@ export function TaskClientMessageButton({
                       <option key={`${label}-${value}`} value={value}>{label} — {value}</option>
                     ))}
                   </select>
+                  ) : recipientType === "consultant" ? (
+                    <select
+                      id="task-message-phone"
+                      className="h-10 w-full rounded-md border bg-background px-3"
+                      value={selectedConsultantId}
+                      onChange={(event) => selectConsultant(event.target.value)}
+                    >
+                      <option value="">בחר בעל מקצוע...</option>
+                      {consultants.map((consultant) => (
+                        <option key={consultant.id} value={consultant.id}>
+                          {consultant.name} · {consultant.profession} · {consultant.phone}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input
+                      id="task-message-phone"
+                      dir="ltr"
+                      value={phoneNumber}
+                      onChange={(event) => setPhoneNumber(event.target.value)}
+                      placeholder="0501234567 או +972501234567"
+                    />
+                  )}
                 </div>
               </div>
+              {recipientType === "client" && showAddClientPhone && (
+                <div className="grid gap-2 rounded-xl border border-[#d4a843]/50 bg-[#fef9ee] p-3 sm:grid-cols-[1fr_1fr_auto]">
+                  <Input dir="ltr" value={newClientPhone} onChange={(event) => setNewClientPhone(event.target.value)} placeholder="מספר טלפון" />
+                  <Input value={newClientPhoneLabel} onChange={(event) => setNewClientPhoneLabel(event.target.value)} placeholder="שם ליד המספר (אופציונלי)" />
+                  <Button type="button" disabled={savingClientPhone || !newClientPhone.trim()} onClick={() => void saveClientPhone()}>
+                    {savingClientPhone ? "שומר..." : "הוסף ובחר"}
+                  </Button>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="task-message-body">הודעה לפני שליחה</Label>
                 <Textarea

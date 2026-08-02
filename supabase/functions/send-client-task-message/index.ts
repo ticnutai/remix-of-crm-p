@@ -15,6 +15,8 @@ interface SendRequest {
   channel: Channel;
   phoneNumber: string;
   message: string;
+  recipientType?: "client" | "manual" | "consultant";
+  consultantId?: string | null;
 }
 
 function normalizePhone(value: unknown): string {
@@ -189,7 +191,7 @@ serve(async (req) => {
       return respond({ success: false, error: "ההתחברות אינה תקפה" }, 401);
     }
 
-    const { clientId, taskId, channel, phoneNumber, message } =
+    const { clientId, taskId, channel, phoneNumber, message, recipientType = "client", consultantId } =
       (await req.json()) as SendRequest;
     if (!clientId || !taskId || !["whatsapp", "sms"].includes(channel)) {
       return respond({ success: false, error: "בקשת השליחה אינה מלאה" }, 400);
@@ -219,8 +221,26 @@ serve(async (req) => {
     }
 
     const phone = normalizePhone(phoneNumber);
-    if (!phone || !collectClientPhones(client).has(phone)) {
+    if (!phone) {
+      return respond({ success: false, error: "מספר הטלפון אינו תקין" }, 400);
+    }
+    if (recipientType === "client" && !collectClientPhones(client).has(phone)) {
       return respond({ success: false, error: "המספר אינו משויך ללקוח הנוכחי" }, 400);
+    }
+    if (recipientType === "consultant") {
+      if (!consultantId) {
+        return respond({ success: false, error: "לא נבחר בעל מקצוע" }, 400);
+      }
+      const { data: consultant } = await admin
+        .from("consultants")
+        .select("id,phone")
+        .eq("id", consultantId)
+        .maybeSingle();
+      if (!consultant || normalizePhone(consultant.phone) !== phone) {
+        return respond({ success: false, error: "מספר בעל המקצוע אינו תואם לרשומה שנבחרה" }, 400);
+      }
+    } else if (recipientType !== "client" && recipientType !== "manual") {
+      return respond({ success: false, error: "סוג הנמען אינו תקין" }, 400);
     }
 
     const { data: stage } = await admin
