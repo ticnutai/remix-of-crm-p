@@ -766,7 +766,7 @@ export default function Contacts() {
             padding: 0.75rem 0.625rem;
             border-color: hsl(var(--border));
           }
-          .contacts-page-root .contacts-row > .contacts-row-main { flex: 1 1 100%; min-width: 0; order: 2; }
+          .contacts-page-root .contacts-row > .contacts-row-main { flex: 1 1 auto; min-width: 0; order: 2; }
           .contacts-page-root .contacts-row > .contacts-row-actions {
             flex: 1 1 100%;
             order: 3;
