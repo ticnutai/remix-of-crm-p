@@ -1,5 +1,6 @@
 // BubbleToolbar — סרגל צף מעל בחירת טקסט. ללא אנימציה, עם הגדרות משתמש (סדר/הסתרה/שורות/תצוגה).
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { BubbleMenu } from "@tiptap/react/menus";
 import type { Editor } from "@tiptap/react";
 import {
@@ -29,6 +30,8 @@ import {
   ChevronUp,
   ChevronDown,
   RotateCcw,
+  Paintbrush,
+  X,
 } from "lucide-react";
 import {
   Popover,
@@ -62,7 +65,7 @@ const DEFAULT_ORDER = [
   "font","size","color","gradient","sep4",
   "alignRight","alignCenter","alignLeft","alignJustify","sep5",
   "letterSpacing","wordSpacing","sep6",
-  "link","clear","copy",
+  "link","formatPainter","clear","copy",
 ];
 
 const DEFAULT_CFG: BubbleCfg = {
@@ -204,6 +207,7 @@ const TOOL_META: Record<string, { label: string; isSeparator?: boolean }> = {
   letterSpacing: { label: "מרווח אותיות" },
   wordSpacing: { label: "מרווח מילים" },
   link: { label: "קישור" },
+  formatPainter: { label: "התאם טקסט" },
   clear: { label: "נקה עיצוב" },
   copy: { label: "העתק" },
   sep1: { label: "מפריד 1", isSeparator: true },
@@ -214,13 +218,68 @@ const TOOL_META: Record<string, { label: string; isSeparator?: boolean }> = {
   sep6: { label: "מפריד 6", isSeparator: true },
 };
 
+interface CapturedTextFormat {
+  sourceFrom: number;
+  sourceTo: number;
+  textStyle: Record<string, unknown>;
+  highlight: Record<string, unknown> | null;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  strike: boolean;
+  textAlign: string | null;
+}
+
+function compactAttributes(attributes: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(attributes).filter(([, value]) => value !== null && value !== undefined && value !== ""),
+  );
+}
+
+function getRenderedTextFormat(editor: Editor, position: number) {
+  const safePosition = Math.max(1, Math.min(position, editor.state.doc.content.size));
+  const resolvedPosition = editor.state.doc.resolve(safePosition);
+  const textStyleMark = resolvedPosition.marks().find((mark) => mark.type.name === "textStyle");
+  const resolved = editor.view.domAtPos(safePosition);
+  const element = resolved.node instanceof Text
+    ? resolved.node.parentElement
+    : resolved.node instanceof HTMLElement
+      ? (resolved.node.matches("span, a, strong, em, u, s")
+          ? resolved.node
+          : resolved.node.querySelector<HTMLElement>("span, a, strong, em, u, s") || resolved.node)
+      : resolved.node.parentElement;
+  if (!element) return null;
+  const style = window.getComputedStyle(element);
+  const numericWeight = Number.parseInt(style.fontWeight, 10);
+  return {
+    textStyle: compactAttributes({
+      ...(textStyleMark?.attrs || editor.getAttributes("textStyle")),
+      fontSize: style.fontSize,
+      fontFamily: style.fontFamily,
+      color: textStyleMark?.attrs?.color || style.color,
+      letterSpacing: style.letterSpacing === "normal" ? null : style.letterSpacing,
+      wordSpacing: style.wordSpacing === "normal" ? null : style.wordSpacing,
+    }),
+    bold: editor.isActive("bold") || style.fontWeight === "bold" || (!Number.isNaN(numericWeight) && numericWeight >= 600),
+    italic: editor.isActive("italic") || style.fontStyle === "italic",
+    underline: editor.isActive("underline") || style.textDecorationLine.includes("underline"),
+    strike: editor.isActive("strike") || style.textDecorationLine.includes("line-through"),
+    textAlign: style.textAlign || null,
+  };
+}
+
 /* ============================================================
    הרכיב הראשי
    ============================================================ */
 export default function BubbleToolbar({ editor }: Props) {
   const [copied, setCopied] = useState(false);
+  const [formatPainterActive, setFormatPainterActive] = useState(false);
   const [, force] = useState(0);
   const extrasCountRef = useRef(0);
+  const capturedFormatRef = useRef<CapturedTextFormat | null>(null);
+  const painterTimerRef = useRef<number | null>(null);
+  const painterApplyingRef = useRef(false);
+  const lastPaintedRangeRef = useRef("");
   const [cfg, setCfg] = useState<BubbleCfg>(() => loadCfg());
 
   // האזנה לשינויי קונפיג מכרטיסיות אחרות / סנכרון ענן
@@ -252,6 +311,61 @@ export default function BubbleToolbar({ editor }: Props) {
     editor.on("selectionUpdate", handler);
     return () => { editor.off("selectionUpdate", handler); };
   }, [editor]);
+
+  const stopFormatPainter = useCallback(() => {
+    capturedFormatRef.current = null;
+    lastPaintedRangeRef.current = "";
+    if (painterTimerRef.current !== null) window.clearTimeout(painterTimerRef.current);
+    painterTimerRef.current = null;
+    setFormatPainterActive(false);
+  }, []);
+
+  const applyCapturedFormat = useCallback(() => {
+    const format = capturedFormatRef.current;
+    if (!editor || !format || painterApplyingRef.current) return;
+    const { from, to, empty } = editor.state.selection;
+    const rangeKey = `${from}:${to}`;
+    if (empty || (from === format.sourceFrom && to === format.sourceTo) || rangeKey === lastPaintedRangeRef.current) return;
+
+    painterApplyingRef.current = true;
+    lastPaintedRangeRef.current = rangeKey;
+    const existingLink = compactAttributes(editor.getAttributes("link") as Record<string, unknown>);
+    let chain: any = editor.chain().focus().setTextSelection({ from, to }).unsetAllMarks();
+    if (format.bold) chain = chain.setBold();
+    if (format.italic) chain = chain.setItalic();
+    if (format.underline) chain = chain.setUnderline();
+    if (format.strike) chain = chain.setStrike();
+    if (Object.keys(format.textStyle).length > 0) chain = chain.setMark("textStyle", format.textStyle);
+    if (format.highlight) chain = chain.setHighlight(format.highlight);
+    if (Object.keys(existingLink).length > 0) chain = chain.setLink(existingLink);
+    if (format.textAlign) chain = chain.setTextAlign(format.textAlign);
+    chain.run();
+    window.setTimeout(() => { painterApplyingRef.current = false; }, 0);
+  }, [editor]);
+
+  useEffect(() => {
+    if (!editor || !formatPainterActive) return;
+    const handleSelectionUpdate = () => {
+      if (painterApplyingRef.current) return;
+      if (painterTimerRef.current !== null) window.clearTimeout(painterTimerRef.current);
+      // ההשהיה הקצרה מונעת צביעה חלקית בזמן שהמשתמש עדיין גורר את הבחירה.
+      painterTimerRef.current = window.setTimeout(applyCapturedFormat, 120);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") stopFormatPainter();
+    };
+    editor.on("selectionUpdate", handleSelectionUpdate);
+    editor.view.dom.addEventListener("mouseup", handleSelectionUpdate);
+    editor.view.dom.addEventListener("touchend", handleSelectionUpdate);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      editor.off("selectionUpdate", handleSelectionUpdate);
+      editor.view.dom.removeEventListener("mouseup", handleSelectionUpdate);
+      editor.view.dom.removeEventListener("touchend", handleSelectionUpdate);
+      window.removeEventListener("keydown", handleKeyDown);
+      if (painterTimerRef.current !== null) window.clearTimeout(painterTimerRef.current);
+    };
+  }, [applyCapturedFormat, editor, formatPainterActive, stopFormatPainter]);
 
   const bubbleOptions = useMemo(
     () => ({
@@ -297,6 +411,31 @@ export default function BubbleToolbar({ editor }: Props) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1200);
     } catch { /* ignore */ }
+  };
+
+  const toggleFormatPainter = () => {
+    if (formatPainterActive) {
+      stopFormatPainter();
+      return;
+    }
+    const { from, to, empty } = editor.state.selection;
+    if (empty) return;
+    const rendered = getRenderedTextFormat(editor, from);
+    if (!rendered) return;
+    const highlight = compactAttributes(editor.getAttributes("highlight") as Record<string, unknown>);
+    capturedFormatRef.current = {
+      sourceFrom: from,
+      sourceTo: to,
+      textStyle: rendered.textStyle,
+      highlight: Object.keys(highlight).length > 0 ? highlight : null,
+      bold: rendered.bold,
+      italic: rendered.italic,
+      underline: rendered.underline,
+      strike: rendered.strike,
+      textAlign: rendered.textAlign,
+    };
+    lastPaintedRangeRef.current = `${from}:${to}`;
+    setFormatPainterActive(true);
   };
 
   const promptLink = () => {
@@ -369,13 +508,21 @@ export default function BubbleToolbar({ editor }: Props) {
             </PopoverContent>
           </Popover>
         );
-      case "color":
+      case "color": {
+        const activeTextColor = String(editor.getAttributes("textStyle").color || "");
         return (
           <Popover key={id}>
             <PopoverTrigger asChild>
-              <button type="button" onMouseDown={preserveEditorSelection} title="צבעים" className={`inline-flex flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1 min-w-[40px] ${mode==="icon-label"?"h-[46px]":"h-[36px]"} text-foreground hover:bg-muted transition-none`}>
+              <button type="button" onMouseDown={preserveEditorSelection} title={activeTextColor ? `צבע טקסט פעיל: ${activeTextColor}` : "צבעים"} className={`relative inline-flex flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1 min-w-[40px] ${mode==="icon-label"?"h-[46px]":"h-[36px]"} text-foreground hover:bg-muted transition-none`}>
                 <Palette className="h-[19px] w-[19px]" strokeWidth={2.2} />
                 {mode === "icon-label" && <span className="text-[10px] leading-none">צבע</span>}
+                {activeTextColor && (
+                  <span
+                    aria-label={`צבע פעיל ${activeTextColor}`}
+                    className="absolute inset-x-1 bottom-0 h-1 rounded-full border border-black/10"
+                    style={{ backgroundColor: activeTextColor }}
+                  />
+                )}
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 overflow-hidden" align="center" onOpenAutoFocus={(e) => e.preventDefault()} onMouseDownCapture={preserveEditorSelection}>
@@ -395,6 +542,7 @@ export default function BubbleToolbar({ editor }: Props) {
             </PopoverContent>
           </Popover>
         );
+      }
       case "gradient":
         return (
           <Popover key={id}>
@@ -464,6 +612,7 @@ export default function BubbleToolbar({ editor }: Props) {
             )}
           </React.Fragment>
         );
+      case "formatPainter": return <ToolBtn key={id} mode={mode} icon={Paintbrush} label="התאם" title="התאם טקסט — העתק עיצוב והחל אותו על טקסטים נוספים" active={formatPainterActive} onClick={toggleFormatPainter} />;
       case "clear": return <ToolBtn key={id} mode={mode} icon={Eraser} label="נקה" title="נקה עיצוב" onClick={() => apply((c) => c.unsetAllMarks().clearNodes())} />;
       case "copy": return <ToolBtn key={id} mode={mode} icon={Copy} label={copied ? "הועתק" : "העתק"} onClick={copySelection} active={copied} />;
       default: return null;
@@ -480,6 +629,7 @@ export default function BubbleToolbar({ editor }: Props) {
   });
 
   return (
+    <>
     <BubbleMenu
       editor={editor}
       options={bubbleOptions}
@@ -513,6 +663,23 @@ export default function BubbleToolbar({ editor }: Props) {
         ))}
       </div>
     </BubbleMenu>
+    {formatPainterActive && createPortal(
+      <div
+        dir="rtl"
+        className="fixed bottom-6 left-1/2 z-[10000] flex -translate-x-1/2 items-center gap-3 rounded-full border border-primary/30 bg-popover px-4 py-2 text-sm font-medium text-foreground shadow-2xl"
+        role="status"
+      >
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <Paintbrush className="h-4 w-4" />
+        </span>
+        <span>מברשת העיצוב פעילה — סמן טקסט נוסף</span>
+        <button type="button" onClick={stopFormatPainter} className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground" title="סיום (Esc)">
+          <X className="h-4 w-4" />
+        </button>
+      </div>,
+      document.body,
+    )}
+    </>
   );
 }
 

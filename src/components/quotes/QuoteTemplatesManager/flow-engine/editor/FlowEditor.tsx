@@ -778,6 +778,11 @@ export default function FlowEditor({
       </div>
       <style>{`
         .flow-editor-content { padding: 1.5rem; font-family: ${preset?.fonts.body || "Heebo, Arial, sans-serif"}; font-size: ${preset?.fonts.size || "11pt"}; line-height: ${preset?.spacing.lineHeight || "1.55"}; color: ${preset?.colors.text || "hsl(var(--foreground))"}; }
+        /* צבע inline הוא מקור האמת. WebKit עשוי להשאיר text-fill שקוף אחרי גרדיאנט
+           ולגרום לצבע שנשמר במסמך להיראות רגיל/שקוף רק בתוך מצב העריכה. */
+        .flow-editor-content span[style*="color"]:not([data-gradient]) {
+          -webkit-text-fill-color: currentColor;
+        }
         /* גוש לוח תשלומים — נגרר ביחידה אחת */
         .flow-editor-content .payments-block {
           position: relative;
