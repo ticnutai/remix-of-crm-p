@@ -835,8 +835,9 @@ export default function Contacts() {
               <Button
                 onClick={handleConnectGoogle}
                 disabled={isGoogleConnecting}
-                className="bg-blue-600 hover:bg-blue-700 gap-2"
+                className="bg-blue-600 hover:bg-blue-700 gap-2 w-full md:w-auto"
               >
+
                 {isGoogleConnecting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
