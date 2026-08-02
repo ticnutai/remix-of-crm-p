@@ -21,6 +21,8 @@ export interface ClientProcessTask {
   stageId: string;
   title: string;
   completed: boolean;
+  taskType?: string | null;
+  checkMarked?: boolean | null;
   createdAt?: string | null;
   completedAt?: string | null;
   updatedAt?: string | null;
@@ -44,6 +46,7 @@ interface ClientProcessControlProps {
   compact?: boolean;
   onSettingsChange: (settings: ClientProcessControlSettings) => void;
   onToggleTask: (taskId: string, completed: boolean) => Promise<void>;
+  onToggleCheck: (taskId: string, marked: boolean) => Promise<void>;
   onOpenProcess: () => void;
 }
 
@@ -56,6 +59,7 @@ export function ClientProcessControl({
   compact = false,
   onSettingsChange,
   onToggleTask,
+  onToggleCheck,
   onOpenProcess,
 }: ClientProcessControlProps) {
   const [open, setOpen] = useState(false);
@@ -87,9 +91,14 @@ export function ClientProcessControl({
   );
   const stageHasTasks = (stage: ClientProcessStage) =>
     tasks.some((task) => task.stageId === stage.stageId);
+  const isVisibleTask = (task: ClientProcessTask) =>
+    task.taskType === "check" || !task.completed;
   const stageHasOpenTasks = (stage: ClientProcessStage) =>
     tasks.some(
-      (task) => task.stageId === stage.stageId && !task.completed,
+      (task) =>
+        task.stageId === stage.stageId &&
+        task.taskType !== "check" &&
+        !task.completed,
     );
   // The operational "current stage" is the first stage with unfinished work.
   // Stage completion flags are not populated consistently for older records,
@@ -105,7 +114,7 @@ export function ClientProcessControl({
   const activeTasks = activeStage
     ? tasks.filter((task) => task.stageId === activeStage.stageId)
     : [];
-  const openTasks = activeTasks.filter((task) => !task.completed);
+  const openTasks = activeTasks.filter(isVisibleTask);
   const stagesForPreview = useMemo(() => {
     let remainingTasks = settings.tasksToShow;
 
@@ -113,7 +122,7 @@ export function ClientProcessControl({
       .map((stage) => ({
         stage,
         openTasks: tasks.filter(
-          (task) => task.stageId === stage.stageId && !task.completed,
+          (task) => task.stageId === stage.stageId && isVisibleTask(task),
         ),
       }))
       .filter(({ openTasks: stageTasks }) => stageTasks.length > 0)
@@ -139,7 +148,11 @@ export function ClientProcessControl({
   const toggleTask = async (task: ClientProcessTask) => {
     setUpdatingTaskId(task.id);
     try {
-      await onToggleTask(task.id, !task.completed);
+      if (task.taskType === "check") {
+        await onToggleCheck(task.id, !task.checkMarked);
+      } else {
+        await onToggleTask(task.id, !task.completed);
+      }
     } finally {
       setUpdatingTaskId(null);
     }
@@ -285,11 +298,11 @@ export function ClientProcessControl({
                     {activeStage?.name || "כל השלבים הושלמו"}
                   </div>
                   <div className="mt-0.5 text-[11px] text-slate-500">
-                    מוצגות רק משימות שטרם הושלמו
+                    משימות פתוחות ובדיקות
                   </div>
                 </div>
                 <div className="rounded-full bg-white px-2 py-1 text-xs font-bold text-[#1e3a5f] shadow-sm">
-                  {openTasks.length} פתוחות
+                  {openTasks.length} פריטים
                 </div>
               </div>
             </div>
@@ -311,7 +324,7 @@ export function ClientProcessControl({
             >
               {stagesForPreview.length === 0 ? (
                 <div className="py-5 text-center text-sm text-slate-500">
-                  אין משימות פתוחות להצגה
+                  אין משימות או בדיקות להצגה
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -334,10 +347,29 @@ export function ClientProcessControl({
                             className="flex min-w-0 flex-1 items-start gap-2 py-2 text-right disabled:opacity-60"
                             onClick={() => void toggleTask(task)}
                           >
-                            <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-slate-300 bg-white">
-                              {updatingTaskId === task.id && <Check className="h-3 w-3 text-emerald-500" />}
+                            <span
+                              className={cn(
+                                "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                                task.taskType === "check"
+                                  ? task.checkMarked
+                                    ? "border-red-500 bg-red-500"
+                                    : "border-emerald-500 bg-white"
+                                  : "rounded border-slate-300 bg-white",
+                              )}
+                            >
+                              {updatingTaskId === task.id && task.taskType !== "check" && (
+                                <Check className="h-3 w-3 text-emerald-500" />
+                              )}
                             </span>
-                            <span className="text-xs">{task.title}</span>
+                            <span
+                              className={cn(
+                                "text-xs",
+                                task.taskType === "check" &&
+                                  (task.checkMarked ? "text-red-600" : "text-emerald-600"),
+                              )}
+                            >
+                              {task.title}
+                            </span>
                           </button>
                           <TaskClientMessageButton
                             clientId={clientId}

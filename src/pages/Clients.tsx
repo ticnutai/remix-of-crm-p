@@ -291,6 +291,8 @@ interface ClientStageTaskInfo {
   stage_id: string;
   title: string;
   completed: boolean;
+  task_type?: string | null;
+  check_marked?: boolean | null;
   payment_amount?: number | null;
   payment_percentage?: number | null;
   payment_quote_id?: string | null;
@@ -2006,6 +2008,33 @@ export default function Clients() {
     [clientStageTasks],
   );
 
+  const handleToggleStageCheck = useCallback(
+    async (taskId: string, marked: boolean) => {
+      const previousTasks = clientStageTasks;
+      setClientStageTasks((current) =>
+        current.map((task) =>
+          task.id === taskId ? { ...task, check_marked: marked } : task,
+        ),
+      );
+
+      const { error } = await supabase
+        .from("client_stage_tasks")
+        .update({ check_marked: marked } as any)
+        .eq("id", taskId);
+
+      if (error) {
+        setClientStageTasks(previousTasks);
+        toast({
+          title: "לא ניתן לעדכן את הבדיקה",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+    },
+    [clientStageTasks],
+  );
+
   const selectedWorkflowStageByClient = useMemo(() => {
     const result = new Map<string, { stageName: string | null; templateName: string }>();
     const selectedTemplateIds = Array.from(new Set([
@@ -2349,7 +2378,7 @@ export default function Clients() {
               ),
               fetchAllFilterRows(
                 "client_stage_tasks",
-                "id, client_id, stage_id, title, completed, completed_at, due_date, created_at, updated_at, payment_amount, payment_percentage, payment_quote_id, payment_step_id",
+                "id, client_id, stage_id, title, completed, task_type, check_marked, completed_at, due_date, created_at, updated_at, payment_amount, payment_percentage, payment_quote_id, payment_step_id",
               ),
               fetchAllFilterRows(
                 "client_payment_stages",
@@ -3584,12 +3613,15 @@ export default function Clients() {
             stageId: task.stage_id,
             title: task.title,
             completed: Boolean(task.completed),
+            taskType: task.task_type,
+            checkMarked: task.check_marked,
             completedAt: task.completed_at,
             createdAt: task.created_at,
             updatedAt: task.updated_at,
           }))}
           onSettingsChange={setProcessControlSettings}
           onToggleTask={handleToggleStageTask}
+          onToggleCheck={handleToggleStageCheck}
           onOpenProcess={() => navigate(`/client-profile/${client.id}`)}
         />
       );
@@ -4030,7 +4062,9 @@ export default function Clients() {
         .map((stage) => ({
           stage,
           tasks: clientTasks.filter(
-            (task) => task.stage_id === stage.stage_id && !task.completed,
+            (task) =>
+              task.stage_id === stage.stage_id &&
+              (task.task_type === "check" || !task.completed),
           ),
         }))
         .filter((group) => group.tasks.length > 0)
@@ -4112,10 +4146,37 @@ export default function Clients() {
                         <button
                           type="button"
                           className="flex min-w-0 flex-1 items-start gap-2 py-2.5 text-right"
-                          onClick={() => void handleToggleStageTask(task.id, true)}
+                          onClick={() =>
+                            void (task.task_type === "check"
+                              ? handleToggleStageCheck(
+                                  task.id,
+                                  !task.check_marked,
+                                )
+                              : handleToggleStageTask(task.id, true))
+                          }
                         >
-                          <span className="mt-0.5 h-4 w-4 shrink-0 rounded border-2 border-slate-300 bg-white" />
-                          <span className="text-xs leading-5 text-[#1e3a5f]">{task.title}</span>
+                          <span
+                            className={cn(
+                              "mt-0.5 h-4 w-4 shrink-0 border-2 transition-colors",
+                              task.task_type === "check"
+                                ? task.check_marked
+                                  ? "rounded-full border-red-500 bg-red-500"
+                                  : "rounded-full border-emerald-500 bg-white"
+                                : "rounded border-slate-300 bg-white",
+                            )}
+                          />
+                          <span
+                            className={cn(
+                              "text-xs leading-5",
+                              task.task_type === "check"
+                                ? task.check_marked
+                                  ? "text-red-600"
+                                  : "text-emerald-600"
+                                : "text-[#1e3a5f]",
+                            )}
+                          >
+                            {task.title}
+                          </span>
                         </button>
                         <TaskPaymentBadge
                           clientId={client.id}

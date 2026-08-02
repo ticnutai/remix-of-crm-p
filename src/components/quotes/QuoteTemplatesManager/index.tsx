@@ -445,32 +445,32 @@ export function QuoteTemplatesManager() {
   const getFolderTemplatesContainerClass = () => {
     switch (folderLayoutMode) {
       case "dense":
-        return "grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3";
+        return "grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-3";
       case "list":
         return "flex flex-col gap-3";
       case "expanded":
-        return "grid md:grid-cols-1 xl:grid-cols-2 gap-5";
+        return "grid grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))] gap-5";
       case "table":
         return "";
       case "grid":
       default:
-        return "grid md:grid-cols-2 lg:grid-cols-3 gap-4";
+        return "grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] gap-4";
     }
   };
 
   const getUngroupedTemplatesContainerClass = () => {
     switch (ungroupedLayoutMode) {
       case "dense":
-        return "grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3";
+        return "grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-3";
       case "list":
         return "flex flex-col gap-3";
       case "expanded":
-        return "grid md:grid-cols-1 xl:grid-cols-2 gap-5";
+        return "grid grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))] gap-5";
       case "table":
         return "";
       case "grid":
       default:
-        return "grid md:grid-cols-2 lg:grid-cols-3 gap-4";
+        return "grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] gap-4";
     }
   };
 
@@ -1251,7 +1251,7 @@ export function QuoteTemplatesManager() {
           setDraggedTemplateId(null);
           setDragOverFolderId(null);
         }}
-        className={`overflow-hidden hover:shadow-lg transition-all group cursor-move ${
+        className={`min-w-0 overflow-hidden hover:shadow-lg transition-all group cursor-move ${
           draggedTemplateId === template.id ? "opacity-40 scale-95" : ""
           } ${
           isQuickLayout ? "border-primary/30" : ""
@@ -1260,8 +1260,8 @@ export function QuoteTemplatesManager() {
         <div className="h-2" style={{ backgroundColor: primaryColor }} />
 
         <CardHeader className={cardHeaderClassName}>
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
+          <div className="flex min-w-0 items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
               {isRenaming ? (
                 <div className="flex gap-2 items-center">
                   <Input
@@ -1300,10 +1300,10 @@ export function QuoteTemplatesManager() {
                 <CardTitle
                   className={
                     isCompactLayout
-                      ? "text-sm leading-snug line-clamp-2"
+                      ? "break-words text-sm leading-snug line-clamp-2"
                       : isExpandedLayout
-                        ? "text-base leading-snug line-clamp-2"
-                        : "text-sm md:text-base leading-snug line-clamp-2"
+                        ? "break-words text-base leading-snug line-clamp-2"
+                        : "break-words text-sm md:text-base leading-snug line-clamp-2"
                   }
                 >
                   {template.name}
@@ -1322,7 +1322,7 @@ export function QuoteTemplatesManager() {
               )}
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               {/* Template actions dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -1382,12 +1382,10 @@ export function QuoteTemplatesManager() {
         <CardContent className={cardContentClassName}>
           <div className="space-y-3">
             {!isQuickLayout && (
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>{stagesCount} שלבים</span>
-                <span>•</span>
-                <span>{itemsCount} פריטים</span>
-                <span>•</span>
-                <span>{template.validity_days} יום</span>
+              <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="rounded-full bg-muted px-2 py-1 whitespace-nowrap">{stagesCount} שלבים</span>
+                <span className="rounded-full bg-muted px-2 py-1 whitespace-nowrap">{itemsCount} פריטים</span>
+                <span className="rounded-full bg-muted px-2 py-1 whitespace-nowrap">{template.validity_days} יום</span>
               </div>
             )}
 
@@ -1408,10 +1406,10 @@ export function QuoteTemplatesManager() {
             )}
 
             {!isQuickLayout && (
-              <div className="flex items-center justify-between py-2 border-t">
+              <div className="flex min-w-0 items-center justify-between gap-3 border-t py-2">
                 <span className="font-medium">סה״כ:</span>
                 <span
-                  className={`font-bold ${isCompactLayout ? "text-base" : "text-lg"}`}
+                  className={`min-w-0 truncate font-bold ${isCompactLayout ? "text-base" : "text-lg"}`}
                   style={{ color: primaryColor }}
                 >
                   ₪{calculateTotal(template).toLocaleString()}
@@ -1419,10 +1417,10 @@ export function QuoteTemplatesManager() {
               </div>
             )}
 
-            <div className={`flex gap-2 ${isQuickLayout ? "flex-nowrap" : "flex-wrap"}`}>
+            <div className={isQuickLayout ? "flex flex-nowrap gap-2" : "grid grid-cols-4 gap-2"}>
               <Button
                 size="sm"
-                className="flex-1 bg-[#d8ac27] hover:bg-[#c49b22] text-white"
+                className={`${isQuickLayout ? "flex-1" : "col-span-4 w-full"} whitespace-nowrap bg-[#d8ac27] text-white hover:bg-[#c49b22]`}
                 onClick={() => navigate(`/quote-templates/editor/${template.id}`)}
               >
                 <ExternalLink className="h-4 w-4 ml-1" />
@@ -1434,7 +1432,7 @@ export function QuoteTemplatesManager() {
                 size="sm"
                 onClick={() => handleDuplicate(template)}
                 title="שכפל תבנית"
-                className={isQuickLayout ? "px-4" : undefined}
+                className={isQuickLayout ? "px-4" : "w-full"}
               >
                 <Copy className="h-4 w-4" />
                 {isQuickLayout ? <span className="mr-1">שכפל</span> : null}
@@ -1445,6 +1443,7 @@ export function QuoteTemplatesManager() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="w-full"
                     onClick={() => handleEdit(template)}
                   >
                     <Pencil className="h-4 w-4" />
@@ -1452,6 +1451,7 @@ export function QuoteTemplatesManager() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="w-full"
                     onClick={() => setPreviewTemplate(template)}
                   >
                     <Eye className="h-4 w-4" />
@@ -1461,7 +1461,7 @@ export function QuoteTemplatesManager() {
               <Button
                 variant="outline"
                 size="sm"
-                className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                className={`${isQuickLayout ? "" : "w-full"} border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive`}
                 title="מחק תבנית"
                 onClick={() => handleDelete(template)}
               >

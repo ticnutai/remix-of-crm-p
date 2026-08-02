@@ -2944,8 +2944,8 @@ export function ClientsFilterStrip({
           className="mt-2 overflow-hidden rounded-xl border border-[#d4a843]/70 bg-gradient-to-l from-[#fffaf0] via-white to-[#f7f9fc] shadow-[0_8px_24px_rgba(30,58,95,0.08)]"
           aria-label="קיצורי דרך לתהליכים"
         >
-          <div className="overflow-x-auto border-b border-[#d4a843]/25 px-3 py-2 [scrollbar-color:#d4a843_transparent] [scrollbar-width:thin]">
-            <div className="flex min-w-max items-center gap-2">
+          <div className="overflow-x-auto px-3 py-2 [scrollbar-color:#d4a843_transparent] [scrollbar-width:thin]">
+            <div className="flex min-w-full w-max items-center gap-2">
               {stageTemplatesLoading ? (
                 <span className="px-3 py-2 text-xs text-slate-500">
                   טוען תהליכים...
@@ -3051,6 +3051,67 @@ export function ClientsFilterStrip({
                   );
                 })
               )}
+
+              {quickSelectedTemplateId && (
+                <>
+                  <span className="min-w-3 flex-1" aria-hidden="true" />
+                  <span className="mx-1 h-6 w-px shrink-0 bg-[#d4a843]/30" aria-hidden="true" />
+                  {pinnedStageShortcuts.filter(
+                    (shortcut) =>
+                      shortcut.templateId === quickSelectedTemplateId &&
+                      (shortcut.scope || "template") === "template",
+                  ).length === 0 ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openStageTemplateDialog(quickSelectedTemplateId)
+                      }
+                      className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-[#d4a843] bg-white px-2.5 text-[11px] font-semibold text-[#1e3a5f] hover:bg-[#fff8e7]"
+                    >
+                      <Pin className="h-3 w-3 text-[#d4a843]" />
+                      בחר קיצור נעוץ
+                    </button>
+                  ) : (
+                    <>
+                      {pinnedStageShortcuts
+                        .filter(
+                          (shortcut) =>
+                            shortcut.templateId === quickSelectedTemplateId &&
+                            (shortcut.scope || "template") === "template",
+                        )
+                        .map((shortcut) => (
+                          <button
+                            key={`${shortcut.kind}-${shortcut.stageId}-${shortcut.taskId || "stage"}`}
+                            type="button"
+                            onClick={() => applyPinnedShortcut(shortcut)}
+                            className="flex h-8 max-w-[190px] shrink-0 items-center gap-1.5 rounded-lg border border-[#d4a843]/70 bg-white px-2.5 text-[11px] font-semibold text-[#1e3a5f] shadow-sm transition-colors hover:border-[#d4a843] hover:bg-[#fff8e7]"
+                            title={`${shortcut.kind === "stage" ? "שלב" : "משימה"}: ${shortcut.label}`}
+                          >
+                            <Pin className="h-3 w-3 shrink-0 fill-[#d4a843] text-[#d4a843]" />
+                            <span className="truncate">{shortcut.label}</span>
+                            {shortcut.kind === "task" && (
+                              <span className="max-w-[70px] truncate text-[8px] font-normal text-slate-500">
+                                {shortcut.stageName}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openStageTemplateDialog(quickSelectedTemplateId)
+                        }
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#d4a843]/60 bg-white text-[#9a741d] hover:bg-[#fff8e7]"
+                        aria-label="ערוך קיצורים נעוצים"
+                        title="ערוך קיצורים נעוצים"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+
               <Button
                 type="button"
                 variant="ghost"
@@ -3066,66 +3127,6 @@ export function ClientsFilterStrip({
               </Button>
             </div>
           </div>
-
-          {quickSelectedTemplateId && (
-            <div className="overflow-x-auto px-3 py-2 [scrollbar-color:#d4a843_transparent] [scrollbar-width:thin]">
-              <div className="flex min-w-max items-center gap-2">
-                {pinnedStageShortcuts.filter(
-                  (shortcut) =>
-                    shortcut.templateId === quickSelectedTemplateId &&
-                    (shortcut.scope || "template") === "template",
-                ).length === 0 ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      openStageTemplateDialog(quickSelectedTemplateId)
-                    }
-                    className="flex h-9 items-center gap-2 rounded-xl border border-dashed border-[#d4a843] bg-white px-3 text-xs font-semibold text-[#1e3a5f] hover:bg-[#fff8e7]"
-                  >
-                    <Pin className="h-3.5 w-3.5 text-[#d4a843]" />
-                    בחר שלבים או משימות לנעיצה
-                  </button>
-                ) : (
-                  <>
-                    {pinnedStageShortcuts
-                      .filter(
-                        (shortcut) =>
-                          shortcut.templateId === quickSelectedTemplateId &&
-                          (shortcut.scope || "template") === "template",
-                      )
-                      .map((shortcut) => (
-                        <button
-                          key={`${shortcut.kind}-${shortcut.stageId}-${shortcut.taskId || "stage"}`}
-                          type="button"
-                          onClick={() => applyPinnedShortcut(shortcut)}
-                          className="flex h-9 max-w-[250px] items-center gap-2 rounded-xl border border-[#d4a843]/70 bg-white px-3 text-xs font-semibold text-[#1e3a5f] shadow-sm transition-colors hover:border-[#d4a843] hover:bg-[#fff8e7]"
-                          title={`${shortcut.kind === "stage" ? "שלב" : "משימה"}: ${shortcut.label}`}
-                        >
-                          <Pin className="h-3.5 w-3.5 shrink-0 fill-[#d4a843] text-[#d4a843]" />
-                          <span className="truncate">{shortcut.label}</span>
-                          {shortcut.kind === "task" && (
-                            <span className="text-[9px] font-normal text-slate-500">
-                              {shortcut.stageName}
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        openStageTemplateDialog(quickSelectedTemplateId)
-                      }
-                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#d4a843]/60 bg-white text-[#9a741d] hover:bg-[#fff8e7]"
-                      aria-label="ערוך נעוצים"
-                      title="ערוך נעוצים"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
