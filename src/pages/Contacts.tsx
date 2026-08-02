@@ -850,7 +850,8 @@ export default function Contacts() {
         </div>
 
         {/* Stats Bar */}
-        <div className="flex flex-wrap gap-3 mb-4">
+        <div className="contacts-stats flex flex-wrap gap-2 md:gap-3 mb-3 md:mb-4">
+
           <Badge variant="outline" className="text-sm px-3 py-1">
             <Mail className="h-3 w-3 ml-1" />
             {stats.total} שולחים
