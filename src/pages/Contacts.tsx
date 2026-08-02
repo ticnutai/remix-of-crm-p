@@ -847,7 +847,7 @@ export default function Contacts() {
         <Card className="relative">
           <CardContent className="p-0">
             {/* Search Bar */}
-            <div className="px-6 py-4">
+            <div className="px-3 md:px-6 py-3 md:py-4">
               <div className="relative">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -899,7 +899,7 @@ export default function Contacts() {
 
               {/* ─── Tab: Email Senders ─────────────────────────── */}
               <TabsContent value="senders" className="mt-0">
-                <div className="px-6 py-2 flex items-center justify-between">
+                <div className="px-3 md:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Select
                       value={filterType}
@@ -945,7 +945,7 @@ export default function Contacts() {
                     </Button>
                   )}
                 </div>
-                <div className="px-6 pb-4 space-y-1">
+                <div className="px-3 md:px-6 pb-4 space-y-1">
                   {filteredSenders.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <Mail className="h-10 w-10 mx-auto mb-3 opacity-50" />
@@ -1137,7 +1137,7 @@ export default function Contacts() {
 
               {/* ─── Tab: Google Contacts ───────────────────────── */}
               <TabsContent value="google" className="mt-0">
-                <div className="px-6 py-2 flex items-center justify-between">
+                <div className="px-3 md:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     {!googleFetched ? (
                       <Button
@@ -1200,7 +1200,7 @@ export default function Contacts() {
                     </Button>
                   )}
                 </div>
-                <div className="px-6 pb-4 space-y-1">
+                <div className="px-3 md:px-6 pb-4 space-y-1">
                   {!isGoogleConnected && !isLoadingGoogle ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <WifiOff className="h-10 w-10 mx-auto mb-3 opacity-50" />
@@ -1328,7 +1328,7 @@ export default function Contacts() {
 
               {/* ─── Tab: Existing Clients ──────────────────────── */}
               <TabsContent value="clients" className="mt-0">
-                <div className="px-6 py-2 flex items-center justify-between">
+                <div className="px-3 md:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
                   <Badge variant="secondary" className="text-xs">
                     {filteredClients.length} לקוחות
                   </Badge>
@@ -1345,7 +1345,7 @@ export default function Contacts() {
                     רענון
                   </Button>
                 </div>
-                <div className="px-6 pb-4 space-y-1">
+                <div className="px-3 md:px-6 pb-4 space-y-1">
                   {isLoadingClients ? (
                     <div className="text-center py-12">
                       <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin text-blue-500" />
@@ -1527,7 +1527,7 @@ export default function Contacts() {
 
               {/* ─── Tab: Smart Matching ────────────────────────── */}
               <TabsContent value="smart" className="mt-0">
-                <div className="px-6 py-2 flex items-center justify-between">
+                <div className="px-3 md:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Button
                       variant="ghost"
