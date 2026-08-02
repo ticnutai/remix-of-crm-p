@@ -9,6 +9,24 @@ export interface ClientWorkflowStage {
   stage_name: string;
 }
 
+export interface TemplateTaskSelection {
+  templateId: string;
+  stageId: string;
+}
+
+function matchesTemplateStage(
+  stage: ClientWorkflowStage,
+  selection: TemplateStageSelection | TemplateTaskSelection,
+): boolean {
+  return (
+    stage.stage_id === `template_${selection.templateId}_${selection.stageId}` ||
+    stage.stage_id.startsWith(
+      `template_${selection.templateId}_${selection.stageId}_`,
+    ) ||
+    ("stageName" in selection && stage.stage_name === selection.stageName)
+  );
+}
+
 export function workflowContainsSelectedTemplateStage(
   stages: ClientWorkflowStage[],
   selections: TemplateStageSelection[],
@@ -20,6 +38,25 @@ export function workflowContainsSelectedTemplateStage(
         stage.stage_id === `template_${selection.templateId}_${selection.stageId}` ||
         stage.stage_id.startsWith(`template_${selection.templateId}_${selection.stageId}_`),
     ),
+  );
+}
+
+export function getSelectedWorkflowStageIds(
+  stages: ClientWorkflowStage[],
+  stageSelections: TemplateStageSelection[],
+  taskSelections: TemplateTaskSelection[],
+): Set<string> {
+  const activeSelections =
+    taskSelections.length > 0 ? taskSelections : stageSelections;
+
+  return new Set(
+    stages
+      .filter((stage) =>
+        activeSelections.some((selection) =>
+          matchesTemplateStage(stage, selection),
+        ),
+      )
+      .map((stage) => stage.stage_id),
   );
 }
 

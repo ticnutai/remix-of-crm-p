@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   countLinkedClientsByTemplate,
+  getSelectedWorkflowStageIds,
   workflowContainsSelectedTemplateStage,
 } from "@/lib/client-template-lineage";
 
@@ -31,6 +32,34 @@ describe("client template lineage", () => {
       { stage_id: "template_local-plan_contact", stage_name: "התקשרות לקוח" },
     ];
     expect(workflowContainsSelectedTemplateStage(stages, [printSelection])).toBe(false);
+  });
+
+  it("renders the selected future stage instead of the current stage", () => {
+    const stages = [
+      { stage_id: "template_local-plan_contact", stage_name: "התקשרות לקוח" },
+      { stage_id: "template_local-plan_print", stage_name: "הדפסה" },
+    ];
+
+    expect(
+      Array.from(getSelectedWorkflowStageIds(stages, [printSelection], [])),
+    ).toEqual(["template_local-plan_print"]);
+  });
+
+  it("gives a selected task precedence over a broader stage selection", () => {
+    const stages = [
+      { stage_id: "template_local-plan_contact", stage_name: "התקשרות לקוח" },
+      { stage_id: "template_local-plan_print", stage_name: "הדפסה" },
+    ];
+
+    expect(
+      Array.from(
+        getSelectedWorkflowStageIds(
+          stages,
+          [{ ...printSelection, stageId: "contact", stageName: "התקשרות לקוח" }],
+          [{ templateId: "local-plan", stageId: "print" }],
+        ),
+      ),
+    ).toEqual(["template_local-plan_print"]);
   });
 
   it("counts unique linked clients per template", () => {

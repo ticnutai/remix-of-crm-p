@@ -88,7 +88,10 @@ import {
   type PageFeature,
 } from "@/components/page-customizer/PageCustomizer";
 import { isValidPhoneForDisplay } from "@/lib/phone-utils";
-import { workflowContainsSelectedTemplateStage } from "@/lib/client-template-lineage";
+import {
+  getSelectedWorkflowStageIds,
+  workflowContainsSelectedTemplateStage,
+} from "@/lib/client-template-lineage";
 import { isVisibleClientPaymentStage } from "@/lib/clientPaymentStages";
 import {
   Users,
@@ -2018,10 +2021,39 @@ export default function Clients() {
       if (!matchedTemplateId) return;
       const matchedTemplate = stageTemplates.find((template) => template.id === matchedTemplateId);
       if (!matchedTemplate) return;
-      const currentStage = workflows?.get(matchedTemplateId)?.currentStage || null;
+      const workflow = workflows?.get(matchedTemplateId);
+      const selectedStage = (filters.stageSelections || [])
+        .filter((selection) => selection.templateId === matchedTemplateId)
+        .map((selection) =>
+          workflow?.stages.find(
+            (stage) =>
+              stage.stage_name === selection.stageName ||
+              stage.stage_id ===
+                `template_${selection.templateId}_${selection.stageId}` ||
+              stage.stage_id.startsWith(
+                `template_${selection.templateId}_${selection.stageId}_`,
+              ),
+          ),
+        )
+        .find(Boolean);
+      const selectedTaskStage = (filters.stageTaskFilters || [])
+        .filter((selection) => selection.templateId === matchedTemplateId)
+        .map((selection) =>
+          workflow?.stages.find(
+            (stage) =>
+              stage.stage_id ===
+                `template_${selection.templateId}_${selection.stageId}` ||
+              stage.stage_id.startsWith(
+                `template_${selection.templateId}_${selection.stageId}_`,
+              ),
+          ),
+        )
+        .find(Boolean);
+      const displayedStage =
+        selectedTaskStage || selectedStage || workflow?.currentStage || null;
 
       result.set(client.id, {
-        stageName: currentStage?.stage_name || null,
+        stageName: displayedStage?.stage_name || null,
         templateName: matchedTemplate.name,
       });
     });
@@ -3965,6 +3997,20 @@ export default function Clients() {
       const orderedStages = [...(processStagesByClient.get(client.id) || [])]
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
       const clientTasks = processTasksByClient.get(client.id) || [];
+      const selectedTaskFilters = filters.stageTaskFilters || [];
+      const selectedStageFilters = filters.stageSelections || [];
+      const matchingSelectedStageIds = getSelectedWorkflowStageIds(
+        orderedStages,
+        selectedStageFilters,
+        selectedTaskFilters,
+      );
+      const hasExplicitWorkflowItemFilter =
+        selectedTaskFilters.length > 0 || selectedStageFilters.length > 0;
+      const stagesForDisplay = hasExplicitWorkflowItemFilter
+        ? orderedStages.filter((stage) =>
+            matchingSelectedStageIds.has(stage.stage_id),
+          )
+        : orderedStages;
       const stageTaskElapsedStarts = buildStageTaskElapsedStartMap(
         orderedStages.map((stage) => ({
           stageId: stage.stage_id,
@@ -3980,7 +4026,7 @@ export default function Clients() {
           completedAt: task.completed_at,
         })),
       );
-      const stageGroups = orderedStages
+      const stageGroups = stagesForDisplay
         .map((stage) => ({
           stage,
           tasks: clientTasks.filter(
