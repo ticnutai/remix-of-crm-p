@@ -755,25 +755,66 @@ export default function Contacts() {
   // ── Render ──────────────────────────────────────────────────
   return (
     <AppLayout>
+      <style>{`
+        @media (max-width: 767px) {
+          .contacts-page-root { padding-bottom: 5rem; }
+          /* prevent horizontal scroll */
+          .contacts-page-root, .contacts-page-root * { max-width: 100%; }
+          .contacts-page-root .contacts-row {
+            flex-wrap: wrap;
+            row-gap: 0.5rem;
+            padding: 0.75rem 0.625rem;
+            border-color: hsl(var(--border));
+          }
+          .contacts-page-root .contacts-row > .contacts-row-main { flex: 1 1 auto; min-width: 0; order: 2; }
+          .contacts-page-root .contacts-row > .contacts-row-actions {
+            flex: 1 1 100%;
+            order: 3;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.375rem;
+          }
+          .contacts-page-root .contacts-row-actions button { height: 2.25rem; min-width: 2.25rem; }
+          .contacts-page-root .contacts-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.125rem;
+          }
+          .contacts-page-root .contacts-meta > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .contacts-page-root .contacts-stats {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding-bottom: 0.25rem;
+          }
+          .contacts-page-root .contacts-stats::-webkit-scrollbar { display: none; }
+          .contacts-page-root .contacts-stats > * { flex: 0 0 auto; }
+        }
+      `}</style>
       <div
-        className="container mx-auto py-4 px-2 md:py-6 md:px-4 max-w-7xl"
+        className="contacts-page-root container mx-auto py-3 px-2 md:py-6 md:px-4 max-w-7xl"
         dir="rtl"
       >
         {/* Header */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4 md:mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
+              <Users className="h-5 w-5 md:h-6 md:w-6 text-blue-600 dark:text-blue-400" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold">אנשי קשר</h1>
-              <p className="text-muted-foreground text-sm">
+            <div className="min-w-0">
+              <h1 className="text-xl md:text-2xl font-bold">אנשי קשר</h1>
+              <p className="text-muted-foreground text-xs md:text-sm">
                 ייבוא, קישור וניהול אנשי קשר מ-Gmail, Google ולקוחות קיימים
               </p>
             </div>
           </div>
           {/* Google Connection Status */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full md:w-auto">
+
             {isGoogleConnected ? (
               <>
                 <Badge className="bg-green-100 text-green-700 border-green-300 gap-1">
@@ -794,8 +835,9 @@ export default function Contacts() {
               <Button
                 onClick={handleConnectGoogle}
                 disabled={isGoogleConnecting}
-                className="bg-blue-600 hover:bg-blue-700 gap-2"
+                className="bg-blue-600 hover:bg-blue-700 gap-2 w-full md:w-auto"
               >
+
                 {isGoogleConnecting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
@@ -808,7 +850,8 @@ export default function Contacts() {
         </div>
 
         {/* Stats Bar */}
-        <div className="flex flex-wrap gap-3 mb-4">
+        <div className="contacts-stats flex flex-wrap gap-2 md:gap-3 mb-3 md:mb-4">
+
           <Badge variant="outline" className="text-sm px-3 py-1">
             <Mail className="h-3 w-3 ml-1" />
             {stats.total} שולחים
@@ -847,7 +890,7 @@ export default function Contacts() {
         <Card className="relative">
           <CardContent className="p-0">
             {/* Search Bar */}
-            <div className="px-6 py-4">
+            <div className="px-3 md:px-6 py-3 md:py-4">
               <div className="relative">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -873,22 +916,35 @@ export default function Contacts() {
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mx-6 mt-4 grid grid-cols-4 h-10">
-                <TabsTrigger value="senders" className="text-xs">
-                  <Mail className="h-3.5 w-3.5 ml-1" />
+              <TabsList className="mx-3 md:mx-6 mt-3 md:mt-4 grid grid-cols-2 md:grid-cols-4 h-auto md:h-10 gap-1 p-1">
+                <TabsTrigger
+                  value="senders"
+                  className="text-[11px] md:text-xs h-9 md:h-auto"
+                >
+                  <Mail className="h-3.5 w-3.5 ml-1 shrink-0" />
                   שולחי מייל
                 </TabsTrigger>
-                <TabsTrigger value="google" className="text-xs">
-                  <Globe className="h-3.5 w-3.5 ml-1" />
+                <TabsTrigger
+                  value="google"
+                  className="text-[11px] md:text-xs h-9 md:h-auto"
+                >
+                  <Globe className="h-3.5 w-3.5 ml-1 shrink-0" />
                   Google
                 </TabsTrigger>
-                <TabsTrigger value="clients" className="text-xs">
-                  <UserCheck className="h-3.5 w-3.5 ml-1" />
+                <TabsTrigger
+                  value="clients"
+                  className="text-[11px] md:text-xs h-9 md:h-auto"
+                >
+                  <UserCheck className="h-3.5 w-3.5 ml-1 shrink-0" />
                   לקוחות
                 </TabsTrigger>
-                <TabsTrigger value="smart" className="text-xs">
-                  <Sparkles className="h-3.5 w-3.5 ml-1" />
-                  התאמה חכמה
+                <TabsTrigger
+                  value="smart"
+                  className="text-[11px] md:text-xs h-9 md:h-auto"
+                >
+                  <Sparkles className="h-3.5 w-3.5 ml-1 shrink-0" />
+                  <span className="hidden md:inline">התאמה חכמה</span>
+                  <span className="md:hidden">התאמות</span>
                   {smartMatches.length > 0 && (
                     <span className="mr-1 bg-purple-500 text-white text-[10px] rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
                       {smartMatches.length}
@@ -897,9 +953,10 @@ export default function Contacts() {
                 </TabsTrigger>
               </TabsList>
 
+
               {/* ─── Tab: Email Senders ─────────────────────────── */}
               <TabsContent value="senders" className="mt-0">
-                <div className="px-6 py-2 flex items-center justify-between">
+                <div className="px-3 md:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Select
                       value={filterType}
@@ -945,7 +1002,7 @@ export default function Contacts() {
                     </Button>
                   )}
                 </div>
-                <div className="px-6 pb-4 space-y-1">
+                <div className="px-3 md:px-6 pb-4 space-y-1">
                   {filteredSenders.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <Mail className="h-10 w-10 mx-auto mb-3 opacity-50" />
@@ -975,7 +1032,7 @@ export default function Contacts() {
                     filteredSenders.map((sender) => (
                       <div key={sender.email} className="space-y-0">
                         <div
-                          className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${sender.linkedClientId ? "bg-green-50/50 border-green-200" : "hover:bg-muted/50 border-transparent"}`}
+                          className={`contacts-row flex items-center gap-3 p-3 rounded-lg border transition-colors ${sender.linkedClientId ? "bg-green-50/50 border-green-200" : "hover:bg-muted/50 border-transparent"}`}
                         >
                           {!sender.linkedClientId && (
                             <Checkbox
@@ -983,7 +1040,7 @@ export default function Contacts() {
                               onCheckedChange={() => toggleSender(sender.email)}
                             />
                           )}
-                          <div className="flex-1 min-w-0">
+                          <div className="contacts-row-main flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-sm truncate">
                                 {sender.name}
@@ -1018,7 +1075,7 @@ export default function Contacts() {
                               {sender.linkedClientName}
                             </Badge>
                           ) : (
-                            <div className="flex gap-1">
+                            <div className="contacts-row-actions flex gap-1">
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -1097,7 +1154,7 @@ export default function Contacts() {
                                     }}
                                   >
                                     <Mail className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-500" />
-                                    <div className="flex-1 min-w-0">
+                                    <div className="contacts-row-main flex-1 min-w-0">
                                       <div className="flex items-center justify-between gap-2">
                                         <span
                                           className={`truncate font-medium ${
@@ -1137,7 +1194,7 @@ export default function Contacts() {
 
               {/* ─── Tab: Google Contacts ───────────────────────── */}
               <TabsContent value="google" className="mt-0">
-                <div className="px-6 py-2 flex items-center justify-between">
+                <div className="px-3 md:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     {!googleFetched ? (
                       <Button
@@ -1200,7 +1257,7 @@ export default function Contacts() {
                     </Button>
                   )}
                 </div>
-                <div className="px-6 pb-4 space-y-1">
+                <div className="px-3 md:px-6 pb-4 space-y-1">
                   {!isGoogleConnected && !isLoadingGoogle ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <WifiOff className="h-10 w-10 mx-auto mb-3 opacity-50" />
@@ -1252,7 +1309,7 @@ export default function Contacts() {
                       return (
                         <div
                           key={contact.resourceName}
-                          className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${isAlreadyClient ? "bg-green-50/50 border-green-200" : "hover:bg-muted/50 border-transparent"}`}
+                          className={`contacts-row flex items-center gap-3 p-3 rounded-lg border transition-colors ${isAlreadyClient ? "bg-green-50/50 border-green-200" : "hover:bg-muted/50 border-transparent"}`}
                         >
                           {!isAlreadyClient && (
                             <Checkbox
@@ -1277,11 +1334,11 @@ export default function Contacts() {
                               </span>
                             </div>
                           )}
-                          <div className="flex-1 min-w-0">
+                          <div className="contacts-row-main flex-1 min-w-0">
                             <div className="font-medium text-sm truncate">
                               {contact.name}
                             </div>
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <div className="contacts-meta flex items-center gap-3 text-xs text-muted-foreground">
                               {contact.email && (
                                 <span className="flex items-center gap-1 truncate">
                                   <Mail className="h-3 w-3" />
@@ -1328,7 +1385,7 @@ export default function Contacts() {
 
               {/* ─── Tab: Existing Clients ──────────────────────── */}
               <TabsContent value="clients" className="mt-0">
-                <div className="px-6 py-2 flex items-center justify-between">
+                <div className="px-3 md:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
                   <Badge variant="secondary" className="text-xs">
                     {filteredClients.length} לקוחות
                   </Badge>
@@ -1345,7 +1402,7 @@ export default function Contacts() {
                     רענון
                   </Button>
                 </div>
-                <div className="px-6 pb-4 space-y-1">
+                <div className="px-3 md:px-6 pb-4 space-y-1">
                   {isLoadingClients ? (
                     <div className="text-center py-12">
                       <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin text-blue-500" />
@@ -1368,14 +1425,14 @@ export default function Contacts() {
                       return (
                         <div key={client.id} className="space-y-0">
                           <div
-                            className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${senderData ? "bg-blue-50/50 border-blue-200" : "hover:bg-muted/50 border-transparent"}`}
+                            className={`contacts-row flex items-center gap-3 p-3 rounded-lg border transition-colors ${senderData ? "bg-blue-50/50 border-blue-200" : "hover:bg-muted/50 border-transparent"}`}
                           >
                             <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
                               <span className="text-xs font-medium text-indigo-700">
                                 {client.name?.charAt(0) || "?"}
                               </span>
                             </div>
-                            <div className="flex-1 min-w-0">
+                            <div className="contacts-row-main flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium text-sm truncate">
                                   {client.name}
@@ -1389,7 +1446,7 @@ export default function Contacts() {
                                   </Badge>
                                 )}
                               </div>
-                              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <div className="contacts-meta flex items-center gap-3 text-xs text-muted-foreground">
                                 {client.email && (
                                   <span className="flex items-center gap-1 truncate">
                                     <Mail className="h-3 w-3" />
@@ -1484,7 +1541,7 @@ export default function Contacts() {
                                             : "text-blue-500"
                                         }`}
                                       />
-                                      <div className="flex-1 min-w-0">
+                                      <div className="contacts-row-main flex-1 min-w-0">
                                         <div className="flex items-center justify-between gap-2">
                                           <span
                                             className={`truncate font-medium ${
@@ -1527,7 +1584,7 @@ export default function Contacts() {
 
               {/* ─── Tab: Smart Matching ────────────────────────── */}
               <TabsContent value="smart" className="mt-0">
-                <div className="px-6 py-2 flex items-center justify-between">
+                <div className="px-3 md:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Button
                       variant="ghost"
@@ -1559,7 +1616,7 @@ export default function Contacts() {
                     </Button>
                   )}
                 </div>
-                <div className="px-6 pb-4 space-y-2">
+                <div className="px-3 md:px-6 pb-4 space-y-2">
                   {smartMatches.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <Sparkles className="h-10 w-10 mx-auto mb-3 opacity-50" />
@@ -1580,7 +1637,7 @@ export default function Contacts() {
                             checked={selectedMatches.has(key)}
                             onCheckedChange={() => toggleMatch(key)}
                           />
-                          <div className="flex-1 min-w-0">
+                          <div className="contacts-row-main flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">
                               {match.sender.name}
                             </div>
@@ -1623,7 +1680,7 @@ export default function Contacts() {
             {/* ─── Link to Client Overlay ─────────────────────── */}
             {linkDialogSender && (
               <div className="absolute inset-0 bg-background/95 flex flex-col z-10 rounded-lg">
-                <div className="px-6 pt-6 pb-3">
+                <div className="px-3 md:px-6 pt-4 md:pt-6 pb-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold flex items-center gap-2">
                       <Link2 className="h-5 w-5 text-purple-600" />
@@ -1641,14 +1698,14 @@ export default function Contacts() {
                     בחר לקוח לקישור עם {linkDialogSender.email}
                   </p>
                 </div>
-                <div className="px-6 py-2">
+                <div className="px-3 md:px-6 py-2">
                   <Input
                     placeholder="חפש לקוח..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
-                <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-1">
+                <div className="flex-1 overflow-y-auto px-3 md:px-6 pb-4 space-y-1">
                   {filteredClients
                     .filter(
                       (c) => !c.email || c.email !== linkDialogSender.email,
@@ -1656,7 +1713,7 @@ export default function Contacts() {
                     .map((client) => (
                       <div
                         key={client.id}
-                        className="flex items-center gap-3 p-3 rounded-lg border hover:bg-purple-50/50 cursor-pointer transition-colors"
+                        className="contacts-row flex items-center gap-3 p-3 rounded-lg border hover:bg-purple-50/50 cursor-pointer transition-colors"
                         onClick={() =>
                           handleLinkSenderToClient(linkDialogSender, client.id)
                         }
@@ -1666,7 +1723,7 @@ export default function Contacts() {
                             {client.name?.charAt(0) || "?"}
                           </span>
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div className="contacts-row-main flex-1 min-w-0">
                           <div className="font-medium text-sm truncate">
                             {client.name}
                           </div>

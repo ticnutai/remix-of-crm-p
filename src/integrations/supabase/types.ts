@@ -2718,6 +2718,45 @@ export type Database = {
           },
         ]
       }
+      client_stage_template_assignments: {
+        Row: {
+          applied_at: string
+          client_id: string
+          last_synced_at: string
+          synced_version: number
+          template_id: string
+        }
+        Insert: {
+          applied_at?: string
+          client_id: string
+          last_synced_at?: string
+          synced_version?: number
+          template_id: string
+        }
+        Update: {
+          applied_at?: string
+          client_id?: string
+          last_synced_at?: string
+          synced_version?: number
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_stage_template_assignments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_stage_template_assignments_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "stage_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_stages: {
         Row: {
           client_id: string
@@ -10020,6 +10059,10 @@ export type Database = {
       start_inspection_form: {
         Args: { p_template_id: string }
         Returns: string
+      }
+      sync_stage_template_to_clients: {
+        Args: { p_template_id: string }
+        Returns: Json
       }
       toggle_file_star: { Args: { p_file_id: string }; Returns: boolean }
       toggle_file_tag: {
