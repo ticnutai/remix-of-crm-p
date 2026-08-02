@@ -54,6 +54,16 @@ import {
 } from "@/hooks/useStageTemplates";
 import { useClientFolders, ClientFolder } from "@/hooks/useClientFolders";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { Folder, CheckCircle } from "lucide-react";
 import {
@@ -1282,6 +1292,8 @@ export function ApplyTemplateDialog({
   const [upgradeDaysByTemplate, setUpgradeDaysByTemplate] = useState<Record<string, string>>({});
   const [bulkUpgradingTemplateId, setBulkUpgradingTemplateId] = useState<string | null>(null);
   const [syncingTemplateId, setSyncingTemplateId] = useState<string | null>(null);
+  const [templatePendingDelete, setTemplatePendingDelete] = useState<StageTemplate | null>(null);
+  const [deletingTemplate, setDeletingTemplate] = useState(false);
 
   const handleSyncTemplate = async (template: StageTemplate, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1482,8 +1494,19 @@ export function ApplyTemplateDialog({
 
   const handleDelete = async (templateId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm("האם למחוק את התבנית?")) {
-      await deleteTemplate(templateId);
+    const template = templates.find((item) => item.id === templateId);
+    if (template) setTemplatePendingDelete(template);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!templatePendingDelete || deletingTemplate) return;
+    setDeletingTemplate(true);
+    const deleted = await deleteTemplate(templatePendingDelete.id);
+    setDeletingTemplate(false);
+    if (deleted) {
+      if (expandedTemplate === templatePendingDelete.id) setExpandedTemplate(null);
+      if (editingTemplate === templatePendingDelete.id) setEditingTemplate(null);
+      setTemplatePendingDelete(null);
     }
   };
 
@@ -1656,6 +1679,8 @@ export function ApplyTemplateDialog({
                                   variant="ghost"
                                   className="h-7 w-7"
                                   onClick={(e) => handleStartEdit(template, e)}
+                                  title={`ערוך את התבנית ${template.name}`}
+                                  aria-label={`ערוך את התבנית ${template.name}`}
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
@@ -1664,6 +1689,8 @@ export function ApplyTemplateDialog({
                                   variant="ghost"
                                   className="h-7 w-7 text-destructive hover:text-destructive"
                                   onClick={(e) => handleDelete(template.id, e)}
+                                  title={`מחק את התבנית ${template.name}`}
+                                  aria-label={`מחק את התבנית ${template.name}`}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
@@ -2009,6 +2036,37 @@ export function ApplyTemplateDialog({
             סגור
           </Button>
         </DialogFooter>
+
+        <AlertDialog
+          open={templatePendingDelete !== null}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen && !deletingTemplate) setTemplatePendingDelete(null);
+          }}
+        >
+          <AlertDialogContent dir="rtl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>מחיקת תבנית</AlertDialogTitle>
+              <AlertDialogDescription>
+                האם למחוק את התבנית „{templatePendingDelete?.name}”? הפעולה תמחק את
+                התבנית והשלבים שבתוכה, אך לא תשנה שלבים ומשימות שכבר קיימים אצל לקוחות.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deletingTemplate}>ביטול</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={deletingTemplate}
+                onClick={(event) => {
+                  event.preventDefault();
+                  void handleConfirmDelete();
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deletingTemplate && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                מחק תבנית
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );

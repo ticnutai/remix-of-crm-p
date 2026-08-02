@@ -4620,7 +4620,7 @@ export function ClientStagesBoard({
                       }
                     >
                       <Plus className="h-4 w-4 ml-2" />
-                      הוסף משימה / טאב
+                      הוסף משימה / טאב / בדיקה
                     </Button>
                     <Button
                       size="sm"
@@ -5260,7 +5260,7 @@ export function ClientStagesBoard({
                       }}
                     >
                       <Plus className="h-4 w-4 ml-2" />
-                      הוסף משימה / טאב
+                      הוסף משימה / טאב / בדיקה
                     </Button>
                     <Button
                       variant="outline"
@@ -6292,7 +6292,7 @@ export function ClientStagesBoard({
                       </div>
                       <Button size="sm" variant="outline" className="w-full h-7 text-xs">
                         <Plus className="h-3.5 w-3.5 ml-1" />
-                        הוסף משימה / טאב
+                        הוסף משימה / טאב / בדיקה
                       </Button>
                     </div>
                   </div>
