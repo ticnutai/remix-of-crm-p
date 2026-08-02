@@ -25,6 +25,11 @@ import {
 import type { FrameDesignSettings, SectionTitleConfig } from "../frameStyles";
 
 const PX_TO_MM = 25.4 / 96;
+// Paged.js places running footers inside the physical bottom margin. A small
+// configured gap can still let the final text line touch/overlap a tall image
+// strip after font metrics are rounded during pagination. Keep a print-safe
+// clearance above image footers regardless of the editor setting.
+const FOOTER_STRIP_SAFE_GAP_MM = 10;
 
 function pxToMm(value: number, fallback: number) {
   const safe = Number.isFinite(value) ? value : fallback;
@@ -275,6 +280,9 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   );
   const headerContentGapMm = pxToMm(headerContentGapPx, 18);
   const footerContentGapMm = pxToMm(footerContentGapPx, 18);
+  const effectiveFooterContentGapMm = hasFooterStrip
+    ? Math.max(footerContentGapMm, FOOTER_STRIP_SAFE_GAP_MM)
+    : footerContentGapMm;
   const headerStripWidthPercent = clampFlowNumber(
     branding.headerStripWidthPercent,
     FLOW_STRIP_LIMITS.widthPercent.fallback,
@@ -298,7 +306,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   const bottomMargin = !showFooter
     ? m.bottom
     : hasFooterStrip
-    ? footerStripMm + footerContentGapMm + (!pageNumberAtTop && page.showPageNumbers ? pageNumberReserveMm : 0)
+    ? footerStripMm + effectiveFooterContentGapMm + (!pageNumberAtTop && page.showPageNumbers ? pageNumberReserveMm : 0)
     : Math.max(
         0,
         m.bottom +

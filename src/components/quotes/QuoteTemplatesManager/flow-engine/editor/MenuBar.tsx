@@ -237,6 +237,15 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
   if (!editor) return null;
 
   const apply = (cb: (chain: any) => any) => applyAcrossRanges(editor, cb);
+  const applyNormalText = () =>
+    apply((chain) =>
+      chain
+        .clearNodes()
+        .unsetAllMarks()
+        .unsetFontFamily()
+        .setFontSize(null)
+        .setTextAlign("right"),
+    );
   const groups = groupDynamicFields(fields);
 
   const renderText = () => (
@@ -431,6 +440,13 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
   const renderParagraph = () => (
     <>
       <ToolGroup>
+        <ToolButton
+          active={editor.isActive("paragraph")}
+          onClick={applyNormalText}
+          title="טקסט רגיל — הסר הגדרת כותרת ויישר לימין"
+        >
+          <Pilcrow className="h-3.5 w-3.5" />
+        </ToolButton>
         <ToolButton
           active={editor.isActive("heading", { level: 1 })}
           onClick={() => apply((c) => c.toggleHeading({ level: 1 }))}

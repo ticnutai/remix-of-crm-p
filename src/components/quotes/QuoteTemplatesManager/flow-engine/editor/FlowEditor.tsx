@@ -377,6 +377,10 @@ export default function FlowEditor({
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
         history: { depth: 200, newGroupDelay: 400 },
+        // These marks are configured explicitly below. Disabling StarterKit's
+        // bundled copies prevents duplicate extension registrations in Tiptap.
+        underline: false,
+        link: false,
       } as any),
       AdvancedTextStyle,
       Color,

@@ -6,6 +6,13 @@ const RUNNING_ELEMENT_SELECTOR = ".running-header, .running-footer";
  * so only the margin copy may be made visible for the printed bitmap.
  */
 export function stabilizeRunningElementsForPrint(clonedPage: HTMLElement) {
+  // Diagnostics are useful in the live preview only. html2canvas clones the
+  // full document, including the host's persisted `flow-diag` class; leaving
+  // it in place burns debug labels and outlines into the PDF/print bitmap.
+  clonedPage.ownerDocument
+    .querySelectorAll<HTMLElement>(".flow-diag")
+    .forEach((element) => element.classList.remove("flow-diag"));
+
   clonedPage
     .querySelectorAll<HTMLElement>(RUNNING_ELEMENT_SELECTOR)
     .forEach((element) => {

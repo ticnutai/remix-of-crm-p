@@ -4,6 +4,7 @@ import { stabilizeRunningElementsForPrint } from "./printClone";
 describe("stabilizeRunningElementsForPrint", () => {
   it("keeps only Paged.js margin copies visible", () => {
     const page = document.createElement("div");
+    document.body.classList.add("flow-diag");
     page.innerHTML = `
       <div class="pagedjs_margin pagedjs_margin-top-center">
         <div class="pagedjs_margin-content">
@@ -33,5 +34,6 @@ describe("stabilizeRunningElementsForPrint", () => {
     expect(sourceHeader?.style.getPropertyValue("display")).toBe("none");
     expect(sourceFooter?.style.getPropertyValue("display")).toBe("none");
     expect(sourceHeader?.style.getPropertyPriority("display")).toBe("important");
+    expect(document.body.classList.contains("flow-diag")).toBe(false);
   });
 });

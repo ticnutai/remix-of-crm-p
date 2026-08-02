@@ -86,6 +86,16 @@ describe("renderFlowToHtml", () => {
     expect(html).toContain("margin: 38.35mm 0mm 34.35mm 0mm");
   });
 
+  it("reserves a safe content gap above an image footer strip", () => {
+    const fixture = documentFixture();
+    fixture.branding.footerStripContentGapPx = 0;
+
+    const html = renderFlowToHtml(fixture);
+
+    // 90px strip = 23.813mm, plus a 10mm safety gap and 7mm for page numbers.
+    expect(html).toContain("margin: 44.45mm 0mm 40.813mm 0mm");
+  });
+
   it("applies the unified design-tab frame, background and typography to A4", () => {
     const fixture = documentFixture();
     fixture.branding.baseFontSizePx = 19;

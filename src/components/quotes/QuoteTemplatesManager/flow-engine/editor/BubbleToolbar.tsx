@@ -20,6 +20,7 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Pilcrow,
   Link2,
   Link2Off,
   Eraser,
@@ -60,7 +61,7 @@ interface BubbleCfg {
 
 const DEFAULT_ORDER = [
   "bold","italic","underline","sep1",
-  "h1","h2","h3","sep2",
+  "h1","h2","h3","normalText","sep2",
   "bullet","ordered","sep3",
   "font","size","color","gradient","sep4",
   "alignRight","alignCenter","alignLeft","alignJustify","sep5",
@@ -194,6 +195,7 @@ const TOOL_META: Record<string, { label: string; isSeparator?: boolean }> = {
   h1: { label: "כותרת 1" },
   h2: { label: "כותרת 2" },
   h3: { label: "כותרת 3" },
+  normalText: { label: "טקסט רגיל" },
   bullet: { label: "תבליטים" },
   ordered: { label: "רשימה ממוספרת" },
   font: { label: "גופן" },
@@ -392,6 +394,15 @@ export default function BubbleToolbar({ editor }: Props) {
   const apply = (cb: (chain: any) => any) => applyAcrossRanges(editor, cb);
   const applyInlineHeading = (level: keyof typeof INLINE_HEADING_SIZES) =>
     apply((chain) => chain.setFontSize(INLINE_HEADING_SIZES[level]).setBold());
+  const applyNormalText = () =>
+    apply((chain) =>
+      chain
+        .clearNodes()
+        .unsetAllMarks()
+        .unsetFontFamily()
+        .setFontSize(null)
+        .setTextAlign("right"),
+    );
 
   // Keep the ProseMirror selection alive while interacting with toolbar buttons.
   // Without this, mousedown moves focus into a button, BubbleMenu unmounts, and
@@ -465,6 +476,7 @@ export default function BubbleToolbar({ editor }: Props) {
       case "h1": return <ToolBtn key={id} mode={mode} icon={Heading1} label="H1" active={editor.isActive("textStyle", { fontSize: INLINE_HEADING_SIZES[1] })} onClick={() => applyInlineHeading(1)} />;
       case "h2": return <ToolBtn key={id} mode={mode} icon={Heading2} label="H2" active={editor.isActive("textStyle", { fontSize: INLINE_HEADING_SIZES[2] })} onClick={() => applyInlineHeading(2)} />;
       case "h3": return <ToolBtn key={id} mode={mode} icon={Heading3} label="H3" active={editor.isActive("textStyle", { fontSize: INLINE_HEADING_SIZES[3] })} onClick={() => applyInlineHeading(3)} />;
+      case "normalText": return <ToolBtn key={id} mode={mode} icon={Pilcrow} label="רגיל" active={editor.isActive("paragraph")} onClick={applyNormalText} title="הפוך לפסקת טקסט רגילה ויישר לימין" />;
       case "bullet": return <ToolBtn key={id} mode={mode} icon={List} label="תבליט" active={editor.isActive("bulletList")} onClick={() => apply((c) => c.toggleBulletList())} />;
       case "ordered": return <ToolBtn key={id} mode={mode} icon={ListOrdered} label="ממוספר" active={editor.isActive("orderedList")} onClick={() => apply((c) => c.toggleOrderedList())} />;
       case "font":
