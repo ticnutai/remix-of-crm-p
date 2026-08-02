@@ -1032,7 +1032,7 @@ export default function Contacts() {
                     filteredSenders.map((sender) => (
                       <div key={sender.email} className="space-y-0">
                         <div
-                          className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${sender.linkedClientId ? "bg-green-50/50 border-green-200" : "hover:bg-muted/50 border-transparent"}`}
+                          className={`contacts-row flex items-center gap-3 p-3 rounded-lg border transition-colors ${sender.linkedClientId ? "bg-green-50/50 border-green-200" : "hover:bg-muted/50 border-transparent"}`}
                         >
                           {!sender.linkedClientId && (
                             <Checkbox
@@ -1040,7 +1040,7 @@ export default function Contacts() {
                               onCheckedChange={() => toggleSender(sender.email)}
                             />
                           )}
-                          <div className="flex-1 min-w-0">
+                          <div className="contacts-row-main flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-sm truncate">
                                 {sender.name}
@@ -1075,7 +1075,7 @@ export default function Contacts() {
                               {sender.linkedClientName}
                             </Badge>
                           ) : (
-                            <div className="flex gap-1">
+                            <div className="contacts-row-actions flex gap-1">
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -1154,7 +1154,7 @@ export default function Contacts() {
                                     }}
                                   >
                                     <Mail className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-500" />
-                                    <div className="flex-1 min-w-0">
+                                    <div className="contacts-row-main flex-1 min-w-0">
                                       <div className="flex items-center justify-between gap-2">
                                         <span
                                           className={`truncate font-medium ${
@@ -1309,7 +1309,7 @@ export default function Contacts() {
                       return (
                         <div
                           key={contact.resourceName}
-                          className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${isAlreadyClient ? "bg-green-50/50 border-green-200" : "hover:bg-muted/50 border-transparent"}`}
+                          className={`contacts-row flex items-center gap-3 p-3 rounded-lg border transition-colors ${isAlreadyClient ? "bg-green-50/50 border-green-200" : "hover:bg-muted/50 border-transparent"}`}
                         >
                           {!isAlreadyClient && (
                             <Checkbox
@@ -1334,11 +1334,11 @@ export default function Contacts() {
                               </span>
                             </div>
                           )}
-                          <div className="flex-1 min-w-0">
+                          <div className="contacts-row-main flex-1 min-w-0">
                             <div className="font-medium text-sm truncate">
                               {contact.name}
                             </div>
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <div className="contacts-meta flex items-center gap-3 text-xs text-muted-foreground">
                               {contact.email && (
                                 <span className="flex items-center gap-1 truncate">
                                   <Mail className="h-3 w-3" />
@@ -1425,14 +1425,14 @@ export default function Contacts() {
                       return (
                         <div key={client.id} className="space-y-0">
                           <div
-                            className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${senderData ? "bg-blue-50/50 border-blue-200" : "hover:bg-muted/50 border-transparent"}`}
+                            className={`contacts-row flex items-center gap-3 p-3 rounded-lg border transition-colors ${senderData ? "bg-blue-50/50 border-blue-200" : "hover:bg-muted/50 border-transparent"}`}
                           >
                             <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
                               <span className="text-xs font-medium text-indigo-700">
                                 {client.name?.charAt(0) || "?"}
                               </span>
                             </div>
-                            <div className="flex-1 min-w-0">
+                            <div className="contacts-row-main flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium text-sm truncate">
                                   {client.name}
@@ -1446,7 +1446,7 @@ export default function Contacts() {
                                   </Badge>
                                 )}
                               </div>
-                              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <div className="contacts-meta flex items-center gap-3 text-xs text-muted-foreground">
                                 {client.email && (
                                   <span className="flex items-center gap-1 truncate">
                                     <Mail className="h-3 w-3" />
@@ -1541,7 +1541,7 @@ export default function Contacts() {
                                             : "text-blue-500"
                                         }`}
                                       />
-                                      <div className="flex-1 min-w-0">
+                                      <div className="contacts-row-main flex-1 min-w-0">
                                         <div className="flex items-center justify-between gap-2">
                                           <span
                                             className={`truncate font-medium ${
@@ -1637,7 +1637,7 @@ export default function Contacts() {
                             checked={selectedMatches.has(key)}
                             onCheckedChange={() => toggleMatch(key)}
                           />
-                          <div className="flex-1 min-w-0">
+                          <div className="contacts-row-main flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">
                               {match.sender.name}
                             </div>
@@ -1713,7 +1713,7 @@ export default function Contacts() {
                     .map((client) => (
                       <div
                         key={client.id}
-                        className="flex items-center gap-3 p-3 rounded-lg border hover:bg-purple-50/50 cursor-pointer transition-colors"
+                        className="contacts-row flex items-center gap-3 p-3 rounded-lg border hover:bg-purple-50/50 cursor-pointer transition-colors"
                         onClick={() =>
                           handleLinkSenderToClient(linkDialogSender, client.id)
                         }
@@ -1723,7 +1723,7 @@ export default function Contacts() {
                             {client.name?.charAt(0) || "?"}
                           </span>
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div className="contacts-row-main flex-1 min-w-0">
                           <div className="font-medium text-sm truncate">
                             {client.name}
                           </div>
