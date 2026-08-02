@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { BriefcaseBusiness, MessageCircle, MessageSquareText, Plus, Save, Send, Settings2, UserRound } from "lucide-react";
+import { BookUser, BriefcaseBusiness, MessageCircle, MessageSquareText, Plus, Save, Search, Send, Settings2, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,6 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -48,6 +50,15 @@ interface ConsultantContact {
   name: string;
   profession: string;
   phone: string | null;
+}
+
+interface DirectoryPhone {
+  id: string;
+  source: "client" | "contact";
+  name: string;
+  context: string;
+  phone: string;
+  normalizedPhone: string;
 }
 
 interface TaskClientMessageButtonProps {
@@ -92,6 +103,10 @@ export function TaskClientMessageButton({
   const [newClientPhone, setNewClientPhone] = useState("");
   const [newClientPhoneLabel, setNewClientPhoneLabel] = useState("");
   const [savingClientPhone, setSavingClientPhone] = useState(false);
+  const [directoryPhones, setDirectoryPhones] = useState<DirectoryPhone[]>([]);
+  const [directoryOpen, setDirectoryOpen] = useState(false);
+  const [directorySearch, setDirectorySearch] = useState("");
+  const [selectedDirectoryLabel, setSelectedDirectoryLabel] = useState("");
 
   const phones = useMemo(() => {
     if (!client) return [];
@@ -162,7 +177,7 @@ export function TaskClientMessageButton({
     let cancelled = false;
     setLoading(true);
     void (async () => {
-      const [clientResult, settingsResult, consultantsResult] = await Promise.all([
+      const [clientResult, settingsResult, consultantsResult, clientsDirectoryResult, contactsDirectoryResult] = await Promise.all([
         supabase
           .from("clients")
           .select("id,name,phone,phone_secondary,whatsapp,additional_phones,custom_data")
@@ -178,6 +193,16 @@ export function TaskClientMessageButton({
           .select("id,name,profession,phone")
           .not("phone", "is", null)
           .order("name"),
+        supabase
+          .from("clients")
+          .select("id,name,phone,phone_secondary,whatsapp,additional_phones")
+          .order("name")
+          .limit(1000),
+        supabase
+          .from("client_contacts")
+          .select("id,name,position,phone,mobile,client_id")
+          .order("name")
+          .limit(1000),
       ]);
       if (cancelled) return;
       if (clientResult.error || !clientResult.data) {
@@ -195,9 +220,54 @@ export function TaskClientMessageButton({
         : DEFAULT_SETTINGS;
       setClient(loadedClient);
       setConsultants((consultantsResult.data || []) as ConsultantContact[]);
+      const directoryItems: DirectoryPhone[] = [];
+      for (const directoryClient of clientsDirectoryResult.data || []) {
+        const rawPhones = [
+          directoryClient.phone,
+          directoryClient.whatsapp,
+          directoryClient.phone_secondary,
+          ...(Array.isArray(directoryClient.additional_phones) ? directoryClient.additional_phones : []),
+        ];
+        const seen = new Set<string>();
+        for (const rawPhone of rawPhones) {
+          for (const normalizedPhone of extractTaskMessagePhones(typeof rawPhone === "string" ? rawPhone : "")) {
+            if (seen.has(normalizedPhone)) continue;
+            seen.add(normalizedPhone);
+            directoryItems.push({
+              id: `${directoryClient.id}-${normalizedPhone}`,
+              source: "client",
+              name: directoryClient.name || "לקוח ללא שם",
+              context: "לקוח",
+              phone: typeof rawPhone === "string" ? rawPhone : normalizedPhone,
+              normalizedPhone,
+            });
+          }
+        }
+      }
+      for (const contact of contactsDirectoryResult.data || []) {
+        const seen = new Set<string>();
+        for (const rawPhone of [contact.mobile, contact.phone]) {
+          for (const normalizedPhone of extractTaskMessagePhones(rawPhone || "")) {
+            if (seen.has(normalizedPhone)) continue;
+            seen.add(normalizedPhone);
+            directoryItems.push({
+              id: `${contact.id}-${normalizedPhone}`,
+              source: "contact",
+              name: contact.name || "איש קשר ללא שם",
+              context: contact.position?.trim() || "איש קשר",
+              phone: rawPhone || normalizedPhone,
+              normalizedPhone,
+            });
+          }
+        }
+      }
+      setDirectoryPhones(directoryItems);
       setRecipientType("client");
       setSelectedConsultantId("");
       setShowAddClientPhone(false);
+      setDirectoryOpen(false);
+      setDirectorySearch("");
+      setSelectedDirectoryLabel("");
       setSettings(loadedSettings);
       setChannel(loadedSettings.default_channel);
       setMessage(buildMessage(loadedSettings, loadedClient));
@@ -227,6 +297,24 @@ export function TaskClientMessageButton({
     setSelectedConsultantId(consultantId);
     const consultant = consultants.find((item) => item.id === consultantId);
     setPhoneNumber(extractTaskMessagePhones(consultant?.phone || "")[0] || "");
+  };
+
+  const filteredDirectoryPhones = useMemo(() => {
+    const query = directorySearch.trim().toLocaleLowerCase("he");
+    if (!query) return directoryPhones;
+    return directoryPhones.filter((entry) =>
+      entry.name.toLocaleLowerCase("he").includes(query) ||
+      entry.context.toLocaleLowerCase("he").includes(query) ||
+      entry.phone.includes(query) ||
+      entry.normalizedPhone.includes(query.replace(/\D/g, "")),
+    );
+  }, [directoryPhones, directorySearch]);
+
+  const selectDirectoryPhone = (entry: DirectoryPhone) => {
+    setPhoneNumber(entry.normalizedPhone);
+    setSelectedDirectoryLabel(`${entry.name} · ${entry.context}`);
+    setDirectoryOpen(false);
+    setDirectorySearch("");
   };
 
   const saveClientPhone = async () => {
@@ -476,7 +564,10 @@ export function TaskClientMessageButton({
                       )}
                       onClick={() => {
                         setRecipientType(value);
-                        if (value === "manual") setPhoneNumber("");
+                        if (value === "manual") {
+                          setPhoneNumber("");
+                          setSelectedDirectoryLabel("");
+                        }
                         if (value === "client") setPhoneNumber(phones[0]?.value || "");
                         if (value === "consultant") selectConsultant(selectedConsultantId);
                       }}
@@ -539,13 +630,67 @@ export function TaskClientMessageButton({
                       ))}
                     </select>
                   ) : (
-                    <Input
-                      id="task-message-phone"
-                      dir="ltr"
-                      value={phoneNumber}
-                      onChange={(event) => setPhoneNumber(event.target.value)}
-                      placeholder="0501234567 או +972501234567"
-                    />
+                    <div className="space-y-1.5">
+                      <div className="flex gap-2">
+                        <Input
+                          id="task-message-phone"
+                          dir="ltr"
+                          value={phoneNumber}
+                          onChange={(event) => {
+                            setPhoneNumber(event.target.value);
+                            setSelectedDirectoryLabel("");
+                          }}
+                          placeholder="0501234567 או +972501234567"
+                        />
+                        <Popover open={directoryOpen} onOpenChange={setDirectoryOpen}>
+                          <PopoverTrigger asChild>
+                            <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" title="בחר מלקוחות או מאנשי קשר" aria-label="בחר מלקוחות או מאנשי קשר">
+                              <BookUser className="h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent dir="rtl" align="end" keepInsideDialog className="w-[340px] p-0">
+                            <div className="border-b p-3">
+                              <div className="relative">
+                                <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                <Input
+                                  autoFocus
+                                  className="pr-9"
+                                  value={directorySearch}
+                                  onChange={(event) => setDirectorySearch(event.target.value)}
+                                  placeholder="חפש לקוח, איש קשר או מספר..."
+                                />
+                              </div>
+                            </div>
+                            <ScrollArea className="h-72">
+                              {filteredDirectoryPhones.length === 0 ? (
+                                <div className="p-6 text-center text-sm text-slate-500">לא נמצאו מספרים תואמים</div>
+                              ) : (
+                                <div className="space-y-1 p-2">
+                                  {filteredDirectoryPhones.map((entry) => (
+                                    <button
+                                      key={entry.id}
+                                      type="button"
+                                      className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-right transition hover:bg-[#fef9ee]"
+                                      onClick={() => selectDirectoryPhone(entry)}
+                                    >
+                                      <span className="min-w-0">
+                                        <span className="block truncate text-sm font-semibold text-[#1e3a5f]">{entry.name}</span>
+                                        <span className="block truncate text-[11px] text-slate-500">{entry.source === "client" ? "לקוח" : entry.context}</span>
+                                      </span>
+                                      <span dir="ltr" className="shrink-0 text-xs font-medium text-slate-600">{entry.phone}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </ScrollArea>
+                            <div className="border-t px-3 py-2 text-[11px] text-slate-500">
+                              {directoryPhones.length} מספרים מלקוחות ומאנשי קשר
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      {selectedDirectoryLabel && <p className="text-[11px] font-medium text-emerald-700">נבחר: {selectedDirectoryLabel}</p>}
+                    </div>
                   )}
                 </div>
               </div>
