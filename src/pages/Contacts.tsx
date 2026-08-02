@@ -916,22 +916,35 @@ export default function Contacts() {
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mx-6 mt-4 grid grid-cols-4 h-10">
-                <TabsTrigger value="senders" className="text-xs">
-                  <Mail className="h-3.5 w-3.5 ml-1" />
+              <TabsList className="mx-3 md:mx-6 mt-3 md:mt-4 grid grid-cols-2 md:grid-cols-4 h-auto md:h-10 gap-1 p-1">
+                <TabsTrigger
+                  value="senders"
+                  className="text-[11px] md:text-xs h-9 md:h-auto"
+                >
+                  <Mail className="h-3.5 w-3.5 ml-1 shrink-0" />
                   שולחי מייל
                 </TabsTrigger>
-                <TabsTrigger value="google" className="text-xs">
-                  <Globe className="h-3.5 w-3.5 ml-1" />
+                <TabsTrigger
+                  value="google"
+                  className="text-[11px] md:text-xs h-9 md:h-auto"
+                >
+                  <Globe className="h-3.5 w-3.5 ml-1 shrink-0" />
                   Google
                 </TabsTrigger>
-                <TabsTrigger value="clients" className="text-xs">
-                  <UserCheck className="h-3.5 w-3.5 ml-1" />
+                <TabsTrigger
+                  value="clients"
+                  className="text-[11px] md:text-xs h-9 md:h-auto"
+                >
+                  <UserCheck className="h-3.5 w-3.5 ml-1 shrink-0" />
                   לקוחות
                 </TabsTrigger>
-                <TabsTrigger value="smart" className="text-xs">
-                  <Sparkles className="h-3.5 w-3.5 ml-1" />
-                  התאמה חכמה
+                <TabsTrigger
+                  value="smart"
+                  className="text-[11px] md:text-xs h-9 md:h-auto"
+                >
+                  <Sparkles className="h-3.5 w-3.5 ml-1 shrink-0" />
+                  <span className="hidden md:inline">התאמה חכמה</span>
+                  <span className="md:hidden">התאמות</span>
                   {smartMatches.length > 0 && (
                     <span className="mr-1 bg-purple-500 text-white text-[10px] rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
                       {smartMatches.length}
@@ -939,6 +952,7 @@ export default function Contacts() {
                   )}
                 </TabsTrigger>
               </TabsList>
+
 
               {/* ─── Tab: Email Senders ─────────────────────────── */}
               <TabsContent value="senders" className="mt-0">
