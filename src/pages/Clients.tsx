@@ -455,7 +455,13 @@ let clientConsultantsFetch: Promise<
 const FILTER_DATA_PAGE_SIZE = 1000;
 
 async function fetchAllFilterRows(
-  table: "client_stages" | "client_stage_tasks" | "client_payment_stages",
+  table:
+    | "client_stages"
+    | "client_stage_tasks"
+    | "client_payment_stages"
+    | "tasks"
+    | "reminders"
+    | "meetings",
   columns: string,
 ) {
   const rows: any[] = [];
@@ -973,6 +979,9 @@ export default function Clients() {
   const [clientTaskViewOverrides, setClientTaskViewOverrides] = useState<
     Record<string, ClientTaskViewContent>
   >({});
+  const [showCompletedByClient, setShowCompletedByClient] = useState<
+    Record<string, boolean>
+  >({});
   const [clientCardQuickCreate, setClientCardQuickCreate] =
     useState<ClientCardQuickCreate | null>(null);
   const [stageTaskTitle, setStageTaskTitle] = useState("");
@@ -1135,9 +1144,19 @@ export default function Clients() {
       ),
     [clientTasks, matchesGlobalUserFilter],
   );
-  const clientsWithTasks = useMemo(
-    () => new Set(scopedClientTasks.map((task) => task.client_id)),
+  const scopedOpenClientTasks = useMemo(
+    () =>
+      scopedClientTasks.filter(
+        (task) =>
+          !["done", "completed", "cancelled", "canceled"].includes(
+            (task.status || "").toLowerCase(),
+          ),
+      ),
     [scopedClientTasks],
+  );
+  const clientsWithTasks = useMemo(
+    () => new Set(scopedOpenClientTasks.map((task) => task.client_id)),
+    [scopedOpenClientTasks],
   );
   const [clientReminders, setClientReminders] = useState<
     ClientReminderActivity[]
@@ -2394,30 +2413,18 @@ export default function Clients() {
               (supabase as any)
                 .from("client_process_categories")
                 .select("client_id, stage_template_id"),
-              supabase
-                .from("reminders")
-                .select(
-                  "id, entity_id, client_id, title, remind_at, created_at, is_dismissed",
-                )
-                .eq("entity_type", "client")
-                .eq("is_dismissed", false),
-              supabase
-                .from("tasks")
-                .select(
-                  "id, client_id, created_by, assigned_to, title, due_date, status, completed_at, created_at, updated_at",
-                )
-                .not("client_id", "is", null)
-                .or(
-                  "status.is.null,status.not.in.(done,completed,cancelled,canceled)",
-                ),
-              supabase
-                .from("meetings")
-                .select(
-                  "id, client_id, title, start_time, end_time, status, updated_at",
-                )
-                .not("client_id", "is", null)
-                .or("status.is.null,status.not.in.(completed,cancelled,canceled)")
-                .gte("start_time", new Date().toISOString()),
+              fetchAllFilterRows(
+                "reminders",
+                "id, entity_id, entity_type, client_id, title, remind_at, created_at, is_dismissed",
+              ),
+              fetchAllFilterRows(
+                "tasks",
+                "id, client_id, created_by, assigned_to, title, due_date, status, completed_at, created_at, updated_at",
+              ),
+              fetchAllFilterRows(
+                "meetings",
+                "id, client_id, title, start_time, end_time, status, created_at, updated_at",
+              ),
               supabase
                 .from("tasks")
                 .select("client_id, updated_at")
@@ -2549,15 +2556,30 @@ export default function Clients() {
               []) as ClientProcessCategoryAssignment[],
             reminderClientIds:
               remindersRes.data
-                ?.map((row) => row.client_id || row.entity_id)
+                ?.filter(
+                  (row: any) =>
+                    row.entity_type === "client" && !row.is_dismissed,
+                )
+                .map((row: any) => row.client_id || row.entity_id)
                 .filter(Boolean) || [],
             meetingClientIds:
-              meetingsRes.data?.map((row) => row.client_id).filter(Boolean) || [],
+              meetingsRes.data
+                ?.filter((row: any) => {
+                  const status = (row.status || "").toLowerCase();
+                  return (
+                    !["completed", "cancelled", "canceled"].includes(status) &&
+                    new Date(row.start_time).getTime() >= Date.now()
+                  );
+                })
+                .map((row: any) => row.client_id)
+                .filter(Boolean) || [],
             tasks: (tasksRes.data || []) as ClientTaskActivity[],
-            reminders: (remindersRes.data || []).map((row: any) => ({
-              ...row,
-              client_id: row.client_id || row.entity_id,
-            })) as ClientReminderActivity[],
+            reminders: (remindersRes.data || [])
+              .filter((row: any) => row.entity_type === "client")
+              .map((row: any) => ({
+                ...row,
+                client_id: row.client_id || row.entity_id,
+              })) as ClientReminderActivity[],
             meetings: (meetingsRes.data || []) as ClientMeetingActivity[],
             latestActivityByClient: latestActivityMap,
             latestActivityByType: latestActivityTypeMap,
@@ -3455,6 +3477,7 @@ export default function Clients() {
     const [showActions, setShowActions] = useState(false);
     const effectiveTaskViewContent =
       clientTaskViewOverrides[client.id] || taskViewContent;
+    const showCompletedItems = Boolean(showCompletedByClient[client.id]);
     const renderTaskViewSwitcher = () => {
       const options: Array<{
         value: ClientTaskViewContent;
@@ -3509,6 +3532,32 @@ export default function Clients() {
           {effectiveTaskViewContent !== "payments" && (
             <>
               <span className="mx-0.5 h-4 w-px bg-[#d4a843]/35" aria-hidden="true" />
+              <button
+                type="button"
+                title={
+                  showCompletedItems
+                    ? "הסתר משימות, תזכורות ופגישות שבוצעו"
+                    : "הצג גם משימות, תזכורות ופגישות שבוצעו"
+                }
+                aria-label={`${
+                  showCompletedItems ? "הסתר" : "הצג"
+                } פריטים שבוצעו — ${client.name}`}
+                aria-pressed={showCompletedItems}
+                onClick={() =>
+                  setShowCompletedByClient((current) => ({
+                    ...current,
+                    [client.id]: !current[client.id],
+                  }))
+                }
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-lg border transition",
+                  showCompletedItems
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm"
+                    : "border-[#d4a843]/55 bg-white/80 text-slate-500 hover:border-emerald-500 hover:text-emerald-700",
+                )}
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+              </button>
               <button
                 type="button"
                 title={`הוסף ${
@@ -3860,51 +3909,74 @@ export default function Clients() {
       }
 
       if (effectiveTaskViewContent !== "process") {
+        const now = Date.now();
         const activityConfig = {
           tasks: {
-            label: "משימות פתוחות",
-            empty: "אין משימות פתוחות",
+            label: showCompletedItems ? "משימות" : "משימות פתוחות",
+            empty: showCompletedItems ? "אין משימות" : "אין משימות פתוחות",
             icon: CheckSquare,
-            items: (tasksByClient.get(client.id) || []).map((item) => ({
-              id: item.id,
-              title: item.title,
-              date: item.due_date,
-              entityType: "task" as const,
-              completed: item.status === "completed",
-              createdAt: item.created_at,
-              completedAt: item.completed_at,
-              updatedAt: item.updated_at,
-            })),
+            items: (tasksByClient.get(client.id) || [])
+              .filter((item) => {
+                const status = (item.status || "").toLowerCase();
+                const completed = ["done", "completed"].includes(status);
+                return (
+                  !["cancelled", "canceled"].includes(status) &&
+                  (showCompletedItems || !completed)
+                );
+              })
+              .map((item) => ({
+                id: item.id,
+                title: item.title,
+                date: item.due_date,
+                entityType: "task" as const,
+                completed: ["done", "completed"].includes(
+                  (item.status || "").toLowerCase(),
+                ),
+                createdAt: item.created_at,
+                completedAt: item.completed_at,
+                updatedAt: item.updated_at,
+              })),
           },
           reminders: {
-            label: "תזכורות פעילות",
-            empty: "אין תזכורות פעילות",
+            label: showCompletedItems ? "תזכורות" : "תזכורות פעילות",
+            empty: showCompletedItems ? "אין תזכורות" : "אין תזכורות פעילות",
             icon: Bell,
-            items: (remindersByClient.get(client.id) || []).map((item) => ({
-              id: item.id,
-              title: item.title,
-              date: item.remind_at,
-              entityType: "reminder" as const,
-              completed: Boolean(item.is_dismissed),
-              createdAt: null,
-              completedAt: null,
-              updatedAt: null,
-            })),
+            items: (remindersByClient.get(client.id) || [])
+              .filter((item) => showCompletedItems || !item.is_dismissed)
+              .map((item) => ({
+                id: item.id,
+                title: item.title,
+                date: item.remind_at,
+                entityType: "reminder" as const,
+                completed: Boolean(item.is_dismissed),
+                createdAt: null,
+                completedAt: null,
+                updatedAt: null,
+              })),
           },
           meetings: {
-            label: "פגישות קרובות",
-            empty: "אין פגישות קרובות",
+            label: showCompletedItems ? "פגישות" : "פגישות קרובות",
+            empty: showCompletedItems ? "אין פגישות" : "אין פגישות קרובות",
             icon: Calendar,
-            items: (meetingsByClient.get(client.id) || []).map((item) => ({
-              id: item.id,
-              title: item.title,
-              date: item.start_time,
-              entityType: "meeting" as const,
-              completed: item.status === "completed",
-              createdAt: null,
-              completedAt: null,
-              updatedAt: item.updated_at,
-            })),
+            items: (meetingsByClient.get(client.id) || [])
+              .filter((item) => {
+                const status = (item.status || "").toLowerCase();
+                const completed = status === "completed";
+                if (["cancelled", "canceled"].includes(status)) return false;
+                return completed
+                  ? showCompletedItems
+                  : new Date(item.start_time).getTime() >= now;
+              })
+              .map((item) => ({
+                id: item.id,
+                title: item.title,
+                date: item.start_time,
+                entityType: "meeting" as const,
+                completed: item.status === "completed",
+                createdAt: null,
+                completedAt: null,
+                updatedAt: item.updated_at,
+              })),
           },
         }[effectiveTaskViewContent];
         const ActivityIcon = activityConfig.icon;
@@ -3981,7 +4053,12 @@ export default function Clients() {
                 visibleItems.map((item) => (
                   <div
                     key={item.id}
-                    className="flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-right transition hover:border-[#d4a843] hover:bg-[#fef9ee]"
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-xl border p-2.5 text-right transition hover:border-[#d4a843] hover:bg-[#fef9ee]",
+                      item.completed
+                        ? "border-emerald-100 bg-emerald-50/55"
+                        : "border-slate-100 bg-slate-50/70",
+                    )}
                   >
                     <button
                       type="button"
@@ -3992,7 +4069,14 @@ export default function Clients() {
                         <ActivityIcon className="h-3.5 w-3.5" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-xs font-semibold text-[#1e3a5f]">
+                        <span
+                          className={cn(
+                            "block truncate text-xs font-semibold",
+                            item.completed
+                              ? "text-emerald-700 line-through"
+                              : "text-[#1e3a5f]",
+                          )}
+                        >
                           {item.title}
                         </span>
                         <span className="mt-0.5 block text-[10px] text-slate-500">
@@ -4064,7 +4148,9 @@ export default function Clients() {
           tasks: clientTasks.filter(
             (task) =>
               task.stage_id === stage.stage_id &&
-              (task.task_type === "check" || !task.completed),
+              (task.task_type === "check" ||
+                showCompletedItems ||
+                !task.completed),
           ),
         }))
         .filter((group) => group.tasks.length > 0)
@@ -4093,7 +4179,8 @@ export default function Clients() {
                 {renderPersonalOrderHandle()}
               </h3>
               <p className="mt-0.5 text-[11px] text-white/65">
-                {allVisibleTasks.length} משימות פתוחות
+                {allVisibleTasks.length}{" "}
+                {showCompletedItems ? "משימות" : "משימות פתוחות"}
               </p>
             </div>
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#d4a843]/60 bg-white/10 text-[#d4a843]">
@@ -4123,7 +4210,7 @@ export default function Clients() {
           >
             {displayedTasks.length === 0 ? (
               <div className="flex h-full min-h-32 items-center justify-center text-sm text-slate-400">
-                אין משימות פתוחות
+                {showCompletedItems ? "אין משימות" : "אין משימות פתוחות"}
               </div>
             ) : (
               stageGroups.map(({ stage, tasks: stageTasks }) => {
@@ -4141,7 +4228,12 @@ export default function Clients() {
                     {tasksToRender.map((task) => (
                       <div
                         key={task.id}
-                        className="group/task flex w-full items-center gap-1 rounded-xl border border-slate-100 bg-slate-50/60 pr-2.5 text-right transition hover:border-[#d4a843] hover:bg-[#fef9ee]"
+                        className={cn(
+                          "group/task flex w-full items-center gap-1 rounded-xl border pr-2.5 text-right transition hover:border-[#d4a843] hover:bg-[#fef9ee]",
+                          task.completed && task.task_type !== "check"
+                            ? "border-emerald-100 bg-emerald-50/55"
+                            : "border-slate-100 bg-slate-50/60",
+                        )}
                       >
                         <button
                           type="button"
@@ -4152,7 +4244,10 @@ export default function Clients() {
                                   task.id,
                                   !task.check_marked,
                                 )
-                              : handleToggleStageTask(task.id, true))
+                              : handleToggleStageTask(
+                                  task.id,
+                                  !task.completed,
+                                ))
                           }
                         >
                           <span
@@ -4162,7 +4257,9 @@ export default function Clients() {
                                 ? task.check_marked
                                   ? "rounded-full border-red-500 bg-red-500"
                                   : "rounded-full border-emerald-500 bg-white"
-                                : "rounded border-slate-300 bg-white",
+                                : task.completed
+                                  ? "rounded border-emerald-500 bg-emerald-500"
+                                  : "rounded border-slate-300 bg-white",
                             )}
                           />
                           <span
@@ -4172,7 +4269,9 @@ export default function Clients() {
                                 ? task.check_marked
                                   ? "text-red-600"
                                   : "text-emerald-600"
-                                : "text-[#1e3a5f]",
+                                : task.completed
+                                  ? "text-emerald-700 line-through"
+                                  : "text-[#1e3a5f]",
                             )}
                           >
                             {task.title}

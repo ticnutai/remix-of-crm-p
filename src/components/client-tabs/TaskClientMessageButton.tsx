@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { BookUser, BriefcaseBusiness, MessageCircle, MessageSquareText, Plus, Save, Search, Send, Settings2, UserRound } from "lucide-react";
+import { BookUser, BriefcaseBusiness, Check, Copy, MessageCircle, MessageSquareText, Plus, Save, Search, Send, Settings2, Star, Trash2, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,6 +22,9 @@ import {
   extractTaskMessagePhones,
   fillTaskMessageTemplate,
   normalizeTaskMessagePhone,
+  normalizeTaskMessageTemplates,
+  resolveDefaultTaskMessageTemplate,
+  type TaskMessageTemplate,
 } from "@/lib/taskMessage";
 
 type MessageChannel = "whatsapp" | "sms";
@@ -43,6 +46,8 @@ interface MessageSettings {
   message_template: string;
   default_channel: MessageChannel;
   preview_before_send: boolean;
+  message_templates: TaskMessageTemplate[];
+  default_template_id: string;
 }
 
 interface ConsultantContact {
@@ -69,13 +74,22 @@ interface TaskClientMessageButtonProps {
   className?: string;
 }
 
-const DEFAULT_SETTINGS: MessageSettings = {
-  scope: "default",
-  office_name: "משרד האדריכלים",
+const DEFAULT_TEMPLATE: TaskMessageTemplate = {
+  id: "default",
+  name: "תבנית מרכזית",
   message_template:
     "שלום וברכה {client_name},\n{office_name} מבקש להשלים או לשלוח את הפריט הבא:\n{task_title}\nבמסגרת השלב: {stage_name}\nנשמח לעדכון לאחר הטיפול. תודה.",
   default_channel: "whatsapp",
+};
+
+const DEFAULT_SETTINGS: MessageSettings = {
+  scope: "default",
+  office_name: "משרד האדריכלים",
+  message_template: DEFAULT_TEMPLATE.message_template,
+  default_channel: "whatsapp",
   preview_before_send: true,
+  message_templates: [DEFAULT_TEMPLATE],
+  default_template_id: DEFAULT_TEMPLATE.id,
 };
 
 export function TaskClientMessageButton({
@@ -93,6 +107,8 @@ export function TaskClientMessageButton({
   const [showSettings, setShowSettings] = useState(false);
   const [client, setClient] = useState<ClientContact | null>(null);
   const [settings, setSettings] = useState<MessageSettings>(DEFAULT_SETTINGS);
+  const [selectedTemplateId, setSelectedTemplateId] = useState(DEFAULT_TEMPLATE.id);
+  const [editingTemplateId, setEditingTemplateId] = useState(DEFAULT_TEMPLATE.id);
   const [channel, setChannel] = useState<MessageChannel>("whatsapp");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [message, setMessage] = useState("");
@@ -162,8 +178,8 @@ export function TaskClientMessageButton({
   }, [client]);
 
   const buildMessage = useCallback(
-    (nextSettings: MessageSettings, nextClient: ClientContact) =>
-      fillTaskMessageTemplate(nextSettings.message_template, {
+    (nextSettings: MessageSettings, nextClient: ClientContact, template?: TaskMessageTemplate) =>
+      fillTaskMessageTemplate(template?.message_template || nextSettings.message_template, {
         client_name: nextClient.name || "לקוח/ה",
         office_name: nextSettings.office_name || "המשרד",
         task_title: taskTitle,
@@ -185,7 +201,7 @@ export function TaskClientMessageButton({
           .single(),
         (supabase as any)
           .from("client_task_message_settings")
-          .select("scope,office_name,message_template,default_channel,preview_before_send")
+          .select("scope,office_name,message_template,default_channel,preview_before_send,message_templates,default_template_id")
           .eq("scope", "default")
           .maybeSingle(),
         supabase
@@ -215,9 +231,22 @@ export function TaskClientMessageButton({
         return;
       }
       const loadedClient = clientResult.data as ClientContact;
-      const loadedSettings = settingsResult.data
+      const rawSettings = settingsResult.data
         ? ({ ...DEFAULT_SETTINGS, ...settingsResult.data } as MessageSettings)
         : DEFAULT_SETTINGS;
+      const loadedTemplates = normalizeTaskMessageTemplates(rawSettings.message_templates, {
+        ...DEFAULT_TEMPLATE,
+        message_template: rawSettings.message_template || DEFAULT_TEMPLATE.message_template,
+        default_channel: rawSettings.default_channel || DEFAULT_TEMPLATE.default_channel,
+      });
+      const loadedDefault = resolveDefaultTaskMessageTemplate(loadedTemplates, rawSettings.default_template_id);
+      const loadedSettings: MessageSettings = {
+        ...rawSettings,
+        message_templates: loadedTemplates,
+        default_template_id: loadedDefault.id,
+        message_template: loadedDefault.message_template,
+        default_channel: loadedDefault.default_channel,
+      };
       setClient(loadedClient);
       setConsultants((consultantsResult.data || []) as ConsultantContact[]);
       const directoryItems: DirectoryPhone[] = [];
@@ -269,8 +298,10 @@ export function TaskClientMessageButton({
       setDirectorySearch("");
       setSelectedDirectoryLabel("");
       setSettings(loadedSettings);
-      setChannel(loadedSettings.default_channel);
-      setMessage(buildMessage(loadedSettings, loadedClient));
+      setSelectedTemplateId(loadedDefault.id);
+      setEditingTemplateId(loadedDefault.id);
+      setChannel(loadedDefault.default_channel);
+      setMessage(buildMessage(loadedSettings, loadedClient, loadedDefault));
       const preferred = loadedSettings.default_channel === "whatsapp"
         ? loadedClient.whatsapp || loadedClient.phone
         : loadedClient.phone || loadedClient.phone_secondary;
@@ -367,16 +398,29 @@ export function TaskClientMessageButton({
   };
 
   const saveSettings = async () => {
-    if (!settings.message_template.trim()) {
+    const cleanTemplates = settings.message_templates.map((template) => ({
+      ...template,
+      name: template.name.trim(),
+      message_template: template.message_template.trim(),
+    }));
+    if (cleanTemplates.some((template) => !template.name || !template.message_template)) {
       toast({ title: "תבנית ההודעה לא יכולה להיות ריקה", variant: "destructive" });
       return;
     }
+    const defaultTemplate = resolveDefaultTaskMessageTemplate(cleanTemplates, settings.default_template_id);
+    const nextSettings = {
+      ...settings,
+      message_templates: cleanTemplates,
+      default_template_id: defaultTemplate.id,
+      message_template: defaultTemplate.message_template,
+      default_channel: defaultTemplate.default_channel,
+    };
     setSavingSettings(true);
     const { error } = await (supabase as any)
       .from("client_task_message_settings")
       .upsert(
         {
-          ...settings,
+          ...nextSettings,
           scope: "default",
           updated_by: user?.id || null,
           updated_at: new Date().toISOString(),
@@ -392,10 +436,58 @@ export function TaskClientMessageButton({
       });
       return;
     }
-    if (client) setMessage(buildMessage(settings, client));
-    setChannel(settings.default_channel);
-    setShowSettings(false);
-    toast({ title: "תבנית ההודעות נשמרה לכל כפתורי המשימות" });
+    setSettings(nextSettings);
+    setSelectedTemplateId(defaultTemplate.id);
+    if (client) setMessage(buildMessage(nextSettings, client, defaultTemplate));
+    setChannel(defaultTemplate.default_channel);
+    toast({ title: "ספריית התבניות וברירת המחדל נשמרו" });
+  };
+
+  const updateEditingTemplate = (patch: Partial<TaskMessageTemplate>) => {
+    setSettings((current) => ({
+      ...current,
+      message_templates: current.message_templates.map((template) =>
+        template.id === editingTemplateId ? { ...template, ...patch } : template,
+      ),
+    }));
+  };
+
+  const addTemplate = () => {
+    const id = crypto.randomUUID();
+    const template: TaskMessageTemplate = {
+      ...DEFAULT_TEMPLATE,
+      id,
+      name: `תבנית חדשה ${settings.message_templates.length + 1}`,
+    };
+    setSettings((current) => ({ ...current, message_templates: [...current.message_templates, template] }));
+    setEditingTemplateId(id);
+  };
+
+  const duplicateTemplate = () => {
+    const source = settings.message_templates.find((template) => template.id === editingTemplateId);
+    if (!source) return;
+    const duplicate = { ...source, id: crypto.randomUUID(), name: `${source.name} - עותק` };
+    setSettings((current) => ({ ...current, message_templates: [...current.message_templates, duplicate] }));
+    setEditingTemplateId(duplicate.id);
+  };
+
+  const removeTemplate = () => {
+    if (settings.message_templates.length <= 1) {
+      toast({ title: "חייבת להישאר לפחות תבנית אחת", variant: "destructive" });
+      return;
+    }
+    const remaining = settings.message_templates.filter((template) => template.id !== editingTemplateId);
+    const nextDefaultId = settings.default_template_id === editingTemplateId ? remaining[0].id : settings.default_template_id;
+    setSettings((current) => ({ ...current, message_templates: remaining, default_template_id: nextDefaultId }));
+    setEditingTemplateId(remaining[0].id);
+  };
+
+  const chooseTemplateForMessage = (templateId: string) => {
+    const template = settings.message_templates.find((item) => item.id === templateId);
+    if (!template || !client) return;
+    setSelectedTemplateId(template.id);
+    setChannel(template.default_channel);
+    setMessage(buildMessage(settings, client, template));
   };
 
   const openInApp = async () => {
@@ -455,6 +547,10 @@ export function TaskClientMessageButton({
     }
   };
 
+  const editingTemplate =
+    settings.message_templates.find((template) => template.id === editingTemplateId) ||
+    settings.message_templates[0];
+
   return (
     <>
       <Button
@@ -501,6 +597,100 @@ export function TaskClientMessageButton({
 
           {showSettings ? (
             <div className="space-y-4 rounded-xl border border-[#d4a843]/50 bg-[#fef9ee] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-bold text-[#1e3a5f]">ספריית תבניות</h3>
+                  <p className="text-xs text-slate-500">צור כמה תבניות ובחר איזו תיפתח אוטומטית.</p>
+                </div>
+                <Button type="button" size="sm" variant="outline" className="gap-1.5" onClick={addTemplate}>
+                  <Plus className="h-3.5 w-3.5" /> תבנית חדשה
+                </Button>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {settings.message_templates.map((template) => {
+                  const isDefault = settings.default_template_id === template.id;
+                  const isEditing = editingTemplateId === template.id;
+                  return (
+                    <button
+                      key={template.id}
+                      type="button"
+                      className={cn(
+                        "flex min-w-0 items-center justify-between gap-2 rounded-lg border bg-white px-3 py-2 text-right transition",
+                        isEditing ? "border-[#d4a843] shadow-sm" : "hover:border-[#d4a843]/70",
+                      )}
+                      onClick={() => setEditingTemplateId(template.id)}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-[#1e3a5f]">{template.name}</span>
+                        <span className="block text-[11px] text-slate-500">{template.default_channel === "whatsapp" ? "WhatsApp" : "SMS"}</span>
+                      </span>
+                      {isDefault && (
+                        <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#f8e9b7] px-2 py-1 text-[10px] font-bold text-[#765b13]">
+                          <Star className="h-3 w-3 fill-current" /> ברירת מחדל
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {editingTemplate && (
+                <div className="space-y-4 rounded-xl border bg-white/70 p-3">
+                  <div className="flex flex-wrap items-end gap-2">
+                    <div className="min-w-[220px] flex-1 space-y-1.5">
+                      <Label htmlFor="task-message-template-name">שם התבנית</Label>
+                      <Input
+                        id="task-message-template-name"
+                        value={editingTemplate.name}
+                        onChange={(event) => updateEditingTemplate({ name: event.target.value })}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={settings.default_template_id === editingTemplate.id ? "secondary" : "outline"}
+                      className="gap-1.5"
+                      onClick={() => setSettings((current) => ({ ...current, default_template_id: editingTemplate.id }))}
+                    >
+                      {settings.default_template_id === editingTemplate.id ? <Check className="h-3.5 w-3.5" /> : <Star className="h-3.5 w-3.5" />}
+                      {settings.default_template_id === editingTemplate.id ? "נבחרה כברירת מחדל" : "קבע כברירת מחדל"}
+                    </Button>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="task-message-template">תוכן התבנית</Label>
+                    <Textarea
+                      id="task-message-template"
+                      rows={7}
+                      value={editingTemplate.message_template}
+                      onChange={(event) => updateEditingTemplate({ message_template: event.target.value })}
+                    />
+                    <div className="flex flex-wrap gap-1.5 text-[11px] text-slate-600">
+                      {["{client_name}", "{office_name}", "{task_title}", "{stage_name}"].map((placeholder) => (
+                        <code key={placeholder} className="rounded bg-white px-1.5 py-0.5" dir="ltr">{placeholder}</code>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="task-message-default-channel">ערוץ של התבנית</Label>
+                    <select
+                      id="task-message-default-channel"
+                      className="h-10 w-full rounded-md border bg-white px-3"
+                      value={editingTemplate.default_channel}
+                      onChange={(event) => updateEditingTemplate({ default_channel: event.target.value as MessageChannel })}
+                    >
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="sms">SMS</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" size="sm" variant="outline" className="gap-1.5" onClick={duplicateTemplate}>
+                      <Copy className="h-3.5 w-3.5" /> שכפל
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" className="gap-1.5 text-red-600 hover:text-red-700" onClick={removeTemplate}>
+                      <Trash2 className="h-3.5 w-3.5" /> מחק
+                    </Button>
+                  </div>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="task-message-office">שם המשרד</Label>
                 <Input
@@ -509,42 +699,31 @@ export function TaskClientMessageButton({
                   onChange={(event) => setSettings((current) => ({ ...current, office_name: event.target.value }))}
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="task-message-template">תבנית לכל כפתורי המשימות</Label>
-                <Textarea
-                  id="task-message-template"
-                  rows={7}
-                  value={settings.message_template}
-                  onChange={(event) => setSettings((current) => ({ ...current, message_template: event.target.value }))}
-                />
-                <div className="flex flex-wrap gap-1.5 text-[11px] text-slate-600">
-                  {["{client_name}", "{office_name}", "{task_title}", "{stage_name}"].map((placeholder) => (
-                    <code key={placeholder} className="rounded bg-white px-1.5 py-0.5" dir="ltr">{placeholder}</code>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="task-message-default-channel">ערוץ ברירת מחדל</Label>
-                <select
-                  id="task-message-default-channel"
-                  className="h-10 w-full rounded-md border bg-white px-3"
-                  value={settings.default_channel}
-                  onChange={(event) => setSettings((current) => ({
-                    ...current,
-                    default_channel: event.target.value as MessageChannel,
-                  }))}
-                >
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="sms">SMS</option>
-                </select>
-              </div>
               <Button type="button" className="gap-2" disabled={savingSettings} onClick={() => void saveSettings()}>
                 <Save className="h-4 w-4" />
-                {savingSettings ? "שומר..." : "שמור כתבנית מרכזית"}
+                {savingSettings ? "שומר..." : "שמור את ספריית התבניות"}
               </Button>
             </div>
           ) : (
             <div className={cn("space-y-4", loading && "pointer-events-none opacity-60")}>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="task-message-template-choice">תבנית הודעה</Label>
+                  <span className="text-[11px] text-slate-500">אפשר להחליף בלי לשנות את ברירת המחדל</span>
+                </div>
+                <select
+                  id="task-message-template-choice"
+                  className="h-10 w-full rounded-md border bg-background px-3 font-medium text-[#1e3a5f]"
+                  value={selectedTemplateId}
+                  onChange={(event) => chooseTemplateForMessage(event.target.value)}
+                >
+                  {settings.message_templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}{settings.default_template_id === template.id ? " (ברירת מחדל)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="space-y-2">
                 <Label>שליחה אל</Label>
                 <div className="grid grid-cols-3 gap-2">

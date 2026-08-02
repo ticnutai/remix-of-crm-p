@@ -3,6 +3,8 @@ import {
   extractTaskMessagePhones,
   fillTaskMessageTemplate,
   normalizeTaskMessagePhone,
+  normalizeTaskMessageTemplates,
+  resolveDefaultTaskMessageTemplate,
 } from "@/lib/taskMessage";
 
 describe("TaskClientMessageButton utilities", () => {
@@ -36,5 +38,24 @@ describe("TaskClientMessageButton utilities", () => {
         },
       ),
     ).toBe("שלום ישראל, המשרד: צילום תעודה / התקשרות לקוח / צילום תעודה");
+  });
+
+  it("normalizes saved templates and resolves the configured default", () => {
+    const fallback = {
+      id: "fallback",
+      name: "ברירת מחדל",
+      message_template: "שלום {client_name}",
+      default_channel: "whatsapp" as const,
+    };
+    const templates = normalizeTaskMessageTemplates([
+      { id: "first", name: "ראשונה", message_template: "A", default_channel: "sms" },
+      { id: "second", name: "שנייה", message_template: "B", default_channel: "whatsapp" },
+      { id: "broken", name: "", message_template: "" },
+    ], fallback);
+
+    expect(templates).toHaveLength(2);
+    expect(resolveDefaultTaskMessageTemplate(templates, "second").name).toBe("שנייה");
+    expect(resolveDefaultTaskMessageTemplate(templates, "missing").id).toBe("first");
+    expect(normalizeTaskMessageTemplates(null, fallback)).toEqual([fallback]);
   });
 });

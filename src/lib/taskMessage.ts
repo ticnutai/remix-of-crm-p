@@ -30,3 +30,40 @@ export const fillTaskMessageTemplate = (
       message.replace(new RegExp(`\\{${key}\\}`, "g"), value),
     template,
   );
+
+export type TaskMessageChannel = "whatsapp" | "sms";
+
+export interface TaskMessageTemplate {
+  id: string;
+  name: string;
+  message_template: string;
+  default_channel: TaskMessageChannel;
+}
+
+export const normalizeTaskMessageTemplates = (
+  value: unknown,
+  fallback: TaskMessageTemplate,
+) => {
+  const templates = Array.isArray(value)
+    ? value.flatMap((candidate) => {
+        if (!candidate || typeof candidate !== "object") return [];
+        const item = candidate as Record<string, unknown>;
+        const id = typeof item.id === "string" ? item.id.trim() : "";
+        const name = typeof item.name === "string" ? item.name.trim() : "";
+        const messageTemplate =
+          typeof item.message_template === "string"
+            ? item.message_template.trim()
+            : "";
+        const channel = item.default_channel === "sms" ? "sms" : "whatsapp";
+        if (!id || !name || !messageTemplate) return [];
+        return [{ id, name, message_template: messageTemplate, default_channel: channel } as TaskMessageTemplate];
+      })
+    : [];
+
+  return templates.length > 0 ? templates : [fallback];
+};
+
+export const resolveDefaultTaskMessageTemplate = (
+  templates: TaskMessageTemplate[],
+  defaultTemplateId: string | null | undefined,
+) => templates.find((template) => template.id === defaultTemplateId) || templates[0];

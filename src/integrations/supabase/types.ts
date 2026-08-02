@@ -3169,7 +3169,9 @@ export type Database = {
         Row: {
           created_at: string
           default_channel: string
+          default_template_id: string | null
           message_template: string
+          message_templates: Json
           office_name: string
           preview_before_send: boolean
           scope: string
@@ -3179,7 +3181,9 @@ export type Database = {
         Insert: {
           created_at?: string
           default_channel?: string
+          default_template_id?: string | null
           message_template?: string
+          message_templates?: Json
           office_name?: string
           preview_before_send?: boolean
           scope?: string
@@ -3189,7 +3193,9 @@ export type Database = {
         Update: {
           created_at?: string
           default_channel?: string
+          default_template_id?: string | null
           message_template?: string
+          message_templates?: Json
           office_name?: string
           preview_before_send?: boolean
           scope?: string
