@@ -36,6 +36,17 @@ function normalizeTemplate(t: any): QuoteTemplate {
   } as QuoteTemplate;
 }
 
+function withoutTemplateClientFields(details: any) {
+  return {
+    ...(details && typeof details === "object" ? details : {}),
+    clientId: "",
+    clientName: "",
+    gush: "",
+    helka: "",
+    migrash: "",
+  };
+}
+
 export default function QuoteTemplateEditorPage() {
   const { id, savedQuoteId, contractId } = useParams<{
     id?: string;
@@ -284,7 +295,13 @@ export default function QuoteTemplateEditorPage() {
           navigate("/quote-templates", { replace: true });
           return;
         }
-        if (!cancelled) setTemplate(normalizeTemplate(data));
+        if (!cancelled) {
+          const normalized = normalizeTemplate(data);
+          setTemplate({
+            ...normalized,
+            project_details: withoutTemplateClientFields(normalized.project_details),
+          });
+        }
       } catch (err: any) {
         toast({
           title: "שגיאה בטעינת התבנית",
@@ -324,7 +341,7 @@ export default function QuoteTemplateEditorPage() {
       html_content: t.html_content || null,
       text_boxes: t.text_boxes || [],
       upgrades: t.upgrades || [],
-      project_details: t.project_details || {},
+      project_details: withoutTemplateClientFields(t.project_details),
       base_price: t.base_price || 0,
       pricing_tiers: t.pricing_tiers || [],
       folder_id: t.folder_id || null,
@@ -364,6 +381,42 @@ export default function QuoteTemplateEditorPage() {
     }
   };
 
+  const handleSaveAsNewTemplate = async (t: Partial<QuoteTemplate>) => {
+    const payload: any = {
+      name: t.name,
+      description: t.description,
+      category: t.category,
+      items: t.items || [],
+      stages: t.stages || [],
+      stages_title: t.stagesTitle || null,
+      payment_schedule: t.payment_schedule || [],
+      timeline: t.timeline || [],
+      terms: t.terms,
+      notes: t.notes,
+      important_notes: t.important_notes || [],
+      validity_days: t.validity_days || 30,
+      design_settings: t.design_settings || DEFAULT_DESIGN_SETTINGS,
+      show_vat: t.show_vat ?? true,
+      vat_rate: t.vat_rate ?? 18,
+      is_active: t.is_active ?? true,
+      html_content: t.html_content || null,
+      text_boxes: t.text_boxes || [],
+      upgrades: t.upgrades || [],
+      project_details: withoutTemplateClientFields(t.project_details),
+      base_price: t.base_price || 0,
+      pricing_tiers: t.pricing_tiers || [],
+      folder_id: t.folder_id || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await (supabase as any)
+      .from("quote_templates")
+      .insert([payload]);
+    if (error) throw error;
+    queryClient.invalidateQueries({ queryKey: ["quote-templates-advanced"] });
+  };
+
   return (
     <AppLayout title="עריכת תבנית הצעת מחיר">
       {loading || !template ? (
@@ -378,6 +431,8 @@ export default function QuoteTemplateEditorPage() {
           template={template}
           savedQuoteId={activeSavedQuoteId || undefined}
           onSave={handleSave}
+          templateEditorMode={!savedQuoteId && !contractId}
+          onSaveAsNewTemplate={handleSaveAsNewTemplate}
         />
       )}
     </AppLayout>

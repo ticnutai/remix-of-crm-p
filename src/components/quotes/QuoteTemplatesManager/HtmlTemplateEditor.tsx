@@ -185,6 +185,7 @@ import {
 } from "@/components/ui/popover";
 import { useClients } from "@/hooks/useClients";
 import { useClientCustomFields } from "@/hooks/useClientCustomFields";
+import type { CustomFieldDefinition } from "@/hooks/useClientCustomFields";
 import CreateFieldDialog from "./flow-engine/editor/CreateFieldDialog";
 import { useCloudPreferences } from "@/hooks/useCloudPreferences";
 import {
@@ -232,6 +233,10 @@ interface HtmlTemplateEditorProps {
   asPage?: boolean;
   /** If provided, this editor is editing a saved_quote. Changes save button behavior. */
   savedQuoteId?: string;
+  /** The full-page editor is editing a reusable template, not a client quote. */
+  templateEditorMode?: boolean;
+  /** Create a separate reusable template while keeping the source template intact. */
+  onSaveAsNewTemplate?: (template: Partial<QuoteTemplate>) => Promise<void>;
 }
 
 interface PaymentStep {
@@ -1287,13 +1292,50 @@ function ProjectDetailsEditor({
   );
 
   // שדות מותאמים אישית — מגיעים מ-client_custom_field_definitions
-  const { definitions: customDefinitions } = useClientCustomFields();
+  const {
+    definitions: customDefinitions,
+    fetchDefinitions: refreshCustomDefinitions,
+    updateField: updateCustomField,
+    deleteField: deleteCustomField,
+  } = useClientCustomFields();
   const [createFieldOpen, setCreateFieldOpen] = useState(false);
+  const [manageFieldsOpen, setManageFieldsOpen] = useState(false);
+  const [editingCustomField, setEditingCustomField] =
+    useState<CustomFieldDefinition | null>(null);
+  const [editCustomLabel, setEditCustomLabel] = useState("");
+  const [deleteCustomFieldCandidate, setDeleteCustomFieldCandidate] =
+    useState<CustomFieldDefinition | null>(null);
   const updateCustomValue = (fieldKey: string, value: string) => {
     onUpdate({
       ...details,
       customData: { ...(details.customData || {}), [fieldKey]: value },
     } as any);
+  };
+  const startEditingCustomField = (field: CustomFieldDefinition) => {
+    setEditingCustomField(field);
+    setEditCustomLabel(field.label);
+  };
+  const saveCustomFieldLabel = async () => {
+    if (!editingCustomField || !editCustomLabel.trim()) return;
+    const saved = await updateCustomField(editingCustomField.id, {
+      label: editCustomLabel.trim(),
+    });
+    if (saved) {
+      setEditingCustomField(null);
+      setManageFieldsOpen(true);
+    }
+  };
+  const confirmDeleteCustomField = async () => {
+    if (!deleteCustomFieldCandidate) return;
+    const field = deleteCustomFieldCandidate;
+    const deleted = await deleteCustomField(field.id);
+    if (deleted) {
+      const nextCustomData = { ...(details.customData || {}) };
+      delete nextCustomData[field.field_key];
+      onUpdate({ ...details, customData: nextCustomData } as any);
+      setDeleteCustomFieldCandidate(null);
+      setManageFieldsOpen(true);
+    }
   };
 
   const fields = [
@@ -1445,16 +1487,30 @@ function ProjectDetailsEditor({
       <div className="mt-5 pt-4 border-t">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-700">שדות מותאמים אישית</h3>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-7 gap-1 text-xs"
-            onClick={() => setCreateFieldOpen(true)}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            שדה חדש
-          </Button>
+          <div className="flex items-center gap-2">
+            {customDefinitions.length > 0 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 gap-1 text-xs"
+                onClick={() => setManageFieldsOpen(true)}
+              >
+                <Settings className="h-3.5 w-3.5" />
+                ניהול שדות
+              </Button>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1 text-xs"
+              onClick={() => setCreateFieldOpen(true)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              שדה חדש
+            </Button>
+          </div>
         </div>
         {customDefinitions.length === 0 ? (
           <p className="text-xs text-muted-foreground">
@@ -1528,7 +1584,129 @@ function ProjectDetailsEditor({
             })}
           </div>
         )}
-        <CreateFieldDialog open={createFieldOpen} onOpenChange={setCreateFieldOpen} />
+        <CreateFieldDialog
+          open={createFieldOpen}
+          onOpenChange={setCreateFieldOpen}
+          onCreated={() => void refreshCustomDefinitions()}
+        />
+
+        <Dialog open={manageFieldsOpen} onOpenChange={setManageFieldsOpen}>
+          <DialogContent dir="rtl" className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>ניהול שדות מותאמים אישית</DialogTitle>
+            </DialogHeader>
+            <p className="text-xs text-muted-foreground">
+              השדות משותפים לכל תיקי הלקוחות והצעות המחיר שלך. מחיקה מסתירה את
+              השדה בכל המערכת, אך הערכים הקיימים נשמרים במסד לצורך שחזור.
+            </p>
+            <div className="max-h-[55vh] space-y-2 overflow-y-auto py-2">
+              {customDefinitions.map((field) => (
+                <div
+                  key={field.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border bg-white p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{field.label}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {field.field_type === "select" ? "בחירה מרשימה" : field.field_type}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      aria-label={`ערוך ${field.label}`}
+                      onClick={() => startEditingCustomField(field)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700"
+                      aria-label={`מחק ${field.label}`}
+                      onClick={() => setDeleteCustomFieldCandidate(field)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={Boolean(editingCustomField)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingCustomField(null);
+              setManageFieldsOpen(true);
+            }
+          }}
+        >
+          <DialogContent dir="rtl" className="max-w-sm">
+            <DialogHeader><DialogTitle>עריכת שם השדה</DialogTitle></DialogHeader>
+            <Input
+              value={editCustomLabel}
+              onChange={(event) => setEditCustomLabel(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void saveCustomFieldLabel();
+              }}
+              autoFocus
+              dir="rtl"
+            />
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditingCustomField(null);
+                  setManageFieldsOpen(true);
+                }}
+              >
+                ביטול
+              </Button>
+              <Button onClick={() => void saveCustomFieldLabel()} disabled={!editCustomLabel.trim()}>
+                שמור
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={Boolean(deleteCustomFieldCandidate)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeleteCustomFieldCandidate(null);
+              setManageFieldsOpen(true);
+            }
+          }}
+        >
+          <DialogContent dir="rtl" className="max-w-md">
+            <DialogHeader><DialogTitle>מחיקת שדה מכל המערכת</DialogTitle></DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              למחוק את השדה „{deleteCustomFieldCandidate?.label}”? השדה ייעלם מכל
+              תיקי הלקוחות והצעות המחיר. הערכים הישנים לא יימחקו מהמסד.
+            </p>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDeleteCustomFieldCandidate(null);
+                  setManageFieldsOpen(true);
+                }}
+              >
+                ביטול
+              </Button>
+              <Button variant="destructive" onClick={() => void confirmDeleteCustomField()}>
+                מחק שדה
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
 
@@ -4944,6 +5122,8 @@ export function HtmlTemplateEditor({
   onSave,
   asPage = false,
   savedQuoteId,
+  templateEditorMode = false,
+  onSaveAsNewTemplate,
 }: HtmlTemplateEditorProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -5386,6 +5566,22 @@ export function HtmlTemplateEditor({
   });
   const [projectDetails, setProjectDetails] = useState<ProjectDetails>(() => {
     const saved = (template as any).project_details;
+    if (templateEditorMode) {
+      return {
+        clientId: "",
+        clientName: "",
+        gush: "",
+        helka: "",
+        migrash: "",
+        taba: "",
+        address: "",
+        projectType: saved?.projectType || "",
+        phone: "",
+        email: "",
+        stageTemplateId: saved?.stageTemplateId || "",
+        stageTemplateName: saved?.stageTemplateName || "",
+      };
+    }
     if (saved && typeof saved === 'object' && (saved.clientName || saved.clientId || saved.email || saved.phone || saved.gush || saved.helka || saved.address || saved.projectType || saved.stageTemplateId)) {
       return {
         clientId: saved.clientId || "",
@@ -5482,9 +5678,19 @@ export function HtmlTemplateEditor({
       textBoxes,
       upgrades,
       pricingTiers,
-      projectDetails,
+      projectDetails: templateEditorMode
+        ? {
+            ...projectDetails,
+            clientId: "",
+            clientName: "",
+            gush: "",
+            helka: "",
+            migrash: "",
+          }
+        : projectDetails,
       selectedTier,
       activeTab,
+      templateEditorMode,
     }),
     [
       editedTemplate,
@@ -5641,7 +5847,7 @@ export function HtmlTemplateEditor({
     }
 
     // 2. Debounced cloud write to the template row itself (if persisted)
-    if (!template.id || savedQuoteId) return;
+    if (!template.id || savedQuoteId || templateEditorMode) return;
     if (designSaveTimer.current) window.clearTimeout(designSaveTimer.current);
     designSaveTimer.current = window.setTimeout(async () => {
       designSaveTimer.current = null;
@@ -5664,7 +5870,7 @@ export function HtmlTemplateEditor({
         designSaveTimer.current = null;
       }
     };
-  }, [designSettings, open, template.id, designLsKey, savedQuoteId]);
+  }, [designSettings, open, template.id, designLsKey, savedQuoteId, templateEditorMode]);
 
 
   // שחזור אוטומטי בפתיחה - LS מיידי, ענן אם חדש יותר
@@ -5689,7 +5895,20 @@ export function HtmlTemplateEditor({
         if (Array.isArray(data.textBoxes)) setTextBoxes(data.textBoxes);
         if (Array.isArray(data.upgrades)) setUpgrades(data.upgrades);
         if (Array.isArray(data.pricingTiers)) setPricingTiers(data.pricingTiers);
-        if (data.projectDetails) setProjectDetails(data.projectDetails);
+        if (data.projectDetails) {
+          setProjectDetails(
+            templateEditorMode
+              ? {
+                  ...data.projectDetails,
+                  clientId: "",
+                  clientName: "",
+                  gush: "",
+                  helka: "",
+                  migrash: "",
+                }
+              : data.projectDetails,
+          );
+        }
         if (typeof data.selectedTier === "string") setSelectedTier(data.selectedTier);
         toast({
           title: source === "cloud" ? "טיוטה שוחזרה מהענן" : "טיוטה שוחזרה",
@@ -6088,7 +6307,7 @@ export function HtmlTemplateEditor({
         while (true) {
           const { data, error } = await supabase
             .from("clients")
-            .select("id, name, email, phone, gush, helka, migrash, taba, address")
+            .select("id, name, email, phone, gush, helka, migrash, taba, address, source, notes, custom_data")
             .order("name")
             .range(from, from + pageSize - 1);
 
@@ -6129,6 +6348,10 @@ export function HtmlTemplateEditor({
         address: c.address || null,
         source: c.source || null,
         notes: c.notes || null,
+        custom_data:
+          c.custom_data && typeof c.custom_data === "object"
+            ? c.custom_data
+            : {},
       }));
     return [];
   }, [extendedClients, clients]);
@@ -6272,11 +6495,15 @@ export function HtmlTemplateEditor({
         email: pd.email || "",
         stageTemplateId: pd.stageTemplateId || "",
         stageTemplateName: pd.stageTemplateName || "",
+        customData:
+          pd.customData && typeof pd.customData === "object"
+            ? pd.customData
+            : {},
       });
     }
   }, [template, setPaymentSteps]);
 
-  const handleSave = useCallback(async (updateTemplate = true) => {
+  const handleSave = useCallback(async (updateTemplate = true, saveAsNewTemplate = false) => {
     setIsSaving(true);
     try {
       let resolvedProjectDetails: any = { ...projectDetails };
@@ -6327,6 +6554,11 @@ export function HtmlTemplateEditor({
                 source: "הצעת מחיר",
                 status: "active",
                 notes: quoteLeadNote,
+                custom_data:
+                  resolvedProjectDetails.customData &&
+                  typeof resolvedProjectDetails.customData === "object"
+                    ? resolvedProjectDetails.customData
+                    : {},
               })
               .select("id, name")
               .single();
@@ -6358,6 +6590,46 @@ export function HtmlTemplateEditor({
         }
       } catch (linkErr) {
         console.warn("Could not auto-link client on save:", linkErr);
+      }
+
+      // A custom value edited in the quote belongs to the linked client too.
+      // Merge with the latest JSON from the database so unrelated keys are not
+      // overwritten by a stale editor snapshot.
+      try {
+        if (
+          resolvedProjectDetails.clientId &&
+          resolvedProjectDetails.customData &&
+          typeof resolvedProjectDetails.customData === "object"
+        ) {
+          const { data: currentClient, error: clientReadError } = await (
+            supabase as any
+          )
+            .from("clients")
+            .select("custom_data")
+            .eq("id", resolvedProjectDetails.clientId)
+            .maybeSingle();
+          if (clientReadError) throw clientReadError;
+
+          const mergedCustomData = {
+            ...((currentClient?.custom_data &&
+            typeof currentClient.custom_data === "object")
+              ? currentClient.custom_data
+              : {}),
+            ...resolvedProjectDetails.customData,
+          };
+          const { error: clientUpdateError } = await (supabase as any)
+            .from("clients")
+            .update({ custom_data: mergedCustomData })
+            .eq("id", resolvedProjectDetails.clientId);
+          if (clientUpdateError) throw clientUpdateError;
+        }
+      } catch (customDataError) {
+        console.warn("Could not sync custom fields to client:", customDataError);
+        toast({
+          title: "ההצעה נשמרה, אך שדות הלקוח לא סונכרנו",
+          description: "אפשר לנסות לשמור שוב או לעדכן את השדות מתיק הלקוח.",
+          variant: "destructive",
+        });
       }
 
       const paymentSchedulePayload = toPaymentSchedule(paymentSteps);
@@ -6394,11 +6666,15 @@ export function HtmlTemplateEditor({
 
       // 1. Save template (without personal data so it stays reusable) — skip when only saving the quote
       if (updateTemplate) {
-        await onSave(templatePayload as any);
+        if (saveAsNewTemplate && onSaveAsNewTemplate) {
+          await onSaveAsNewTemplate(templatePayload as any);
+        } else {
+          await onSave(templatePayload as any);
+        }
       }
 
       // 2. Also save to saved_quotes table
-      try {
+      if (!templateEditorMode) try {
         const {
           data: { user },
         } = await supabase.auth.getUser();
@@ -6538,7 +6814,16 @@ export function HtmlTemplateEditor({
         if (savedQuoteId) throw sqErr;
       }
 
-      toast({ title: "נשמר בהצלחה ☁️", description: "ההצעה נשמרה בהצעות השמורות והתבנית אופסה לשימוש חוזר" });
+      toast(
+        templateEditorMode
+          ? {
+              title: saveAsNewTemplate ? "נוצרה תבנית חדשה" : "התבנית עודכנה",
+              description: saveAsNewTemplate
+                ? "התבנית המקורית נשארה ללא שינוי"
+                : "השינויים נשמרו בתבנית שממנה פתחת את העורך",
+            }
+          : { title: "נשמר בהצלחה ☁️", description: "ההצעה נשמרה בהצעות השמורות והתבנית אופסה לשימוש חוזר" },
+      );
       // ניקוי טיוטת autosave אחרי שמירה מפורשת מוצלחת
       try { await clearDraft(); } catch { /* no-op */ }
       // איפוס פרטים אישיים בעורך — התבנית חוזרת לריקה לשימוש הבא
@@ -6580,6 +6865,8 @@ export function HtmlTemplateEditor({
     savedQuoteId,
     selectedTier,
     onSave,
+    onSaveAsNewTemplate,
+    templateEditorMode,
     toast,
   ]);
 
@@ -6617,10 +6904,7 @@ export function HtmlTemplateEditor({
         text_boxes: textBoxes,
         upgrades,
         pricing_tiers: pricingTiers,
-        project_details: {
-          projectType: projectDetails.projectType,
-          stageTemplateId: projectDetails.stageTemplateId,
-        } as any,
+        project_details: { ...projectDetails } as any,
       });
       await clearDraft();
       toast({ title: "הטיוטה נשמרה", description: "אפשר להמשיך אותה מרשימת הטיוטות" });
@@ -6642,8 +6926,7 @@ export function HtmlTemplateEditor({
     onSave,
     paymentSteps,
     pricingTiers,
-    projectDetails.projectType,
-    projectDetails.stageTemplateId,
+    projectDetails,
     template.id,
     textBoxes,
     toast,
@@ -9063,6 +9346,34 @@ ${tbAt('footer')}
 
       const result = data as AtomicQuoteClientResult;
       if (!result?.client_id) throw new Error("INVALID_ATOMIC_CREATION_RESULT");
+
+      // The atomic RPC predates custom client fields. Keep those values in sync
+      // for both newly-created and already-linked clients without overwriting
+      // custom values that are not present in the quote editor.
+      if (
+        projectDetails.customData &&
+        Object.keys(projectDetails.customData).length > 0
+      ) {
+        const { data: currentClient, error: currentClientError } = await (
+          supabase as any
+        )
+          .from("clients")
+          .select("custom_data")
+          .eq("id", result.client_id)
+          .maybeSingle();
+        if (currentClientError) throw currentClientError;
+
+        const { error: customDataError } = await (supabase as any)
+          .from("clients")
+          .update({
+            custom_data: {
+              ...(currentClient?.custom_data || {}),
+              ...projectDetails.customData,
+            },
+          })
+          .eq("id", result.client_id);
+        if (customDataError) throw customDataError;
+      }
 
       let createdFolderName: string | null = null;
       let folderCreationWarning: string | null = null;
@@ -15703,6 +16014,32 @@ ${tbAt('footer')}
                     שמור + עדכן תבנית
                   </Button>
                 </>
+              ) : templateEditorMode ? (
+                <>
+                  <Button
+                    className="bg-[#DAA520] hover:bg-[#B8860B] text-white"
+                    size="sm"
+                    onClick={() => handleSave(true, true)}
+                    disabled={isSaving}
+                    title="צור עותק חדש והשאר את התבנית המקורית ללא שינוי"
+                  >
+                    <Copy className="h-4 w-4 ml-1" />
+                    {isSaving ? "שומר..." : "שמור כתבנית חדשה"}
+                  </Button>
+                  {editedTemplate.id ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSave(true, false)}
+                      disabled={isSaving}
+                      className="border-[#DAA520] text-[#B8860B] hover:bg-[#DAA520]/10"
+                      title="עדכן את התבנית שממנה נפתח העורך"
+                    >
+                      <RotateCw className="h-4 w-4 ml-1" />
+                      {isSaving ? "מעדכן..." : "עדכן תבנית"}
+                    </Button>
+                  ) : null}
+                </>
               ) : (
                 <Button
                   className="bg-[#DAA520] hover:bg-[#B8860B] text-white"
@@ -15710,11 +16047,7 @@ ${tbAt('footer')}
                   onClick={() => handleSave()}
                   disabled={isSaving}
                 >
-                  {isSaving ? (
-                    <span className="animate-spin">⏳</span>
-                  ) : (
-                    <Save className="h-4 w-4 ml-1" />
-                  )}
+                  {isSaving ? <span className="animate-spin">⏳</span> : <Save className="h-4 w-4 ml-1" />}
                   {isSaving ? "שומר..." : "שמור כתבנית"}
                 </Button>
               )}

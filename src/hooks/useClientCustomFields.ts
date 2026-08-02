@@ -5,6 +5,13 @@ import { toast } from "@/hooks/use-toast";
 // Use 'any' table reference since this table isn't in generated types yet
 const customFieldsTable = () =>
   supabase.from("client_custom_field_definitions" as any);
+const CUSTOM_FIELDS_CHANGED_EVENT = "tenarch:client-custom-fields-changed";
+
+const notifyCustomFieldsChanged = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(CUSTOM_FIELDS_CHANGED_EVENT));
+  }
+};
 export interface CustomFieldDefinition {
   id: string;
   user_id: string;
@@ -105,6 +112,15 @@ export function useClientCustomFields(options: { enabled?: boolean } = {}) {
     fetchDefinitions();
   }, [fetchDefinitions]);
 
+  // Keep every screen that uses this hook in sync. Several dialogs mount their
+  // own hook instance, so updating local state alone leaves the parent stale.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const refresh = () => void fetchDefinitions();
+    window.addEventListener(CUSTOM_FIELDS_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(CUSTOM_FIELDS_CHANGED_EVENT, refresh);
+  }, [fetchDefinitions]);
+
   // Add a new field definition
   const addField = useCallback(
     async (
@@ -183,6 +199,7 @@ export function useClientCustomFields(options: { enabled?: boolean } = {}) {
         };
 
         setDefinitions((prev) => [...prev, newDef]);
+        notifyCustomFieldsChanged();
         toast({ title: "שדה נוסף בהצלחה" });
         return newDef;
       } catch (err) {
@@ -215,15 +232,23 @@ export function useClientCustomFields(options: { enabled?: boolean } = {}) {
       >,
     ): Promise<boolean> => {
       try {
+        let userId = user?.id;
+        if (!userId) {
+          const { data: sessionData } = await supabase.auth.getSession();
+          userId = sessionData?.session?.user?.id;
+        }
+        if (!userId) throw new Error("No authenticated user");
         const { error } = await customFieldsTable()
           .update({ ...updates, updated_at: new Date().toISOString() })
-          .eq("id", fieldId);
+          .eq("id", fieldId)
+          .eq("user_id", userId);
 
         if (error) throw error;
 
         setDefinitions((prev) =>
           prev.map((d) => (d.id === fieldId ? { ...d, ...updates } : d)),
         );
+        notifyCustomFieldsChanged();
         return true;
       } catch (err) {
         console.error("Error updating custom field:", err);
@@ -235,17 +260,27 @@ export function useClientCustomFields(options: { enabled?: boolean } = {}) {
         return false;
       }
     },
-    [],
+    [user?.id],
   );
 
   // Delete a field definition
   const deleteField = useCallback(async (fieldId: string): Promise<boolean> => {
     try {
-      const { error } = await customFieldsTable().delete().eq("id", fieldId);
+      let userId = user?.id;
+      if (!userId) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        userId = sessionData?.session?.user?.id;
+      }
+      if (!userId) throw new Error("No authenticated user");
+      const { error } = await customFieldsTable()
+        .delete()
+        .eq("id", fieldId)
+        .eq("user_id", userId);
 
       if (error) throw error;
 
       setDefinitions((prev) => prev.filter((d) => d.id !== fieldId));
+      notifyCustomFieldsChanged();
       toast({ title: "שדה נמחק" });
       return true;
     } catch (err) {
@@ -257,7 +292,7 @@ export function useClientCustomFields(options: { enabled?: boolean } = {}) {
       });
       return false;
     }
-  }, []);
+  }, [user?.id]);
 
   // Parse custom_data from a client record into CustomFieldValues
   const parseCustomData = useCallback(
