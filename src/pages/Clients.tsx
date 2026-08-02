@@ -982,6 +982,8 @@ export default function Clients() {
   const [showCompletedByClient, setShowCompletedByClient] = useState<
     Record<string, boolean>
   >({});
+  const [showCompletedForAllClients, setShowCompletedForAllClients] =
+    useState(false);
   const [clientCardQuickCreate, setClientCardQuickCreate] =
     useState<ClientCardQuickCreate | null>(null);
   const [stageTaskTitle, setStageTaskTitle] = useState("");
@@ -3477,7 +3479,8 @@ export default function Clients() {
     const [showActions, setShowActions] = useState(false);
     const effectiveTaskViewContent =
       clientTaskViewOverrides[client.id] || taskViewContent;
-    const showCompletedItems = Boolean(showCompletedByClient[client.id]);
+    const showCompletedItems =
+      showCompletedByClient[client.id] ?? showCompletedForAllClients;
     const renderTaskViewSwitcher = () => {
       const options: Array<{
         value: ClientTaskViewContent;
@@ -3546,7 +3549,7 @@ export default function Clients() {
                 onClick={() =>
                   setShowCompletedByClient((current) => ({
                     ...current,
-                    [client.id]: !current[client.id],
+                    [client.id]: !showCompletedItems,
                   }))
                 }
                 className={cn(
@@ -6313,6 +6316,33 @@ export default function Clients() {
                 >
                   <ClipboardList className="h-4 w-4" />
                   תצוגת משימות
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCompletedForAllClients((current) => !current);
+                    setShowCompletedByClient({});
+                  }}
+                  className={cn(
+                    "mr-1 flex h-7 w-7 items-center justify-center rounded-full border transition hover:scale-105",
+                    showCompletedForAllClients
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm"
+                      : "border-current/25 bg-white/10 text-current hover:border-emerald-500 hover:bg-white/25 hover:text-emerald-600",
+                  )}
+                  aria-pressed={showCompletedForAllClients}
+                  title={
+                    showCompletedForAllClients
+                      ? "הסתר פריטים שבוצעו אצל כל הלקוחות"
+                      : "הצג פריטים שבוצעו אצל כל הלקוחות"
+                  }
+                  aria-label={
+                    showCompletedForAllClients
+                      ? "הסתר פריטים שבוצעו אצל כל הלקוחות"
+                      : "הצג פריטים שבוצעו אצל כל הלקוחות"
+                  }
+                >
+                  <CheckCheck className="h-3.5 w-3.5" />
                 </button>
 
                 <Popover>
