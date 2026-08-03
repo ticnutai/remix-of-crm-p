@@ -592,6 +592,8 @@ export default function Clients() {
   const [clients, setClients] = useState<Client[]>(() => clientsCache ?? []);
   const [isLoading, setIsLoading] = useState(() => clientsCache === null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [smartSearch, setSmartSearch] = useState<SmartSearchValues>({});
+
 
   // Persistent view settings from cloud
   const {
