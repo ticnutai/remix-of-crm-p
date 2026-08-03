@@ -82,6 +82,12 @@ import type { Task, TaskInsert } from "@/hooks/useTasksOptimized";
 import type { MeetingInsert } from "@/hooks/useMeetingsOptimized";
 import { ViewPresetsMenu, type ViewPresetState } from "@/components/clients/ViewPresetsMenu";
 import {
+  SmartSearchPopover,
+  SMART_SEARCH_FIELDS,
+  type SmartSearchValues,
+} from "@/components/clients/SmartSearchPopover";
+
+import {
   usePageCustomizer,
   PageCustomizerPanel,
   type PageSection,
