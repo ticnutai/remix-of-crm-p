@@ -1,10 +1,10 @@
-import { useMemo } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { SlidersHorizontal, X } from "lucide-react";
+import { FloatingDialog } from "@/components/ui/FloatingDialog";
 
 /** Smart search fields — key must match the clients table column name. */
 export const SMART_SEARCH_FIELDS = [
@@ -29,6 +29,7 @@ interface SmartSearchPopoverProps {
 }
 
 export function SmartSearchPopover({ values, onChange }: SmartSearchPopoverProps) {
+  const [open, setOpen] = useState(false);
   const activeCount = useMemo(
     () => Object.values(values).filter((v) => (v || "").trim() !== "").length,
     [values],
@@ -38,45 +39,58 @@ export function SmartSearchPopover({ values, onChange }: SmartSearchPopoverProps
     onChange({ ...values, [key]: value });
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="relative h-[30px] w-[30px] shrink-0 border-[1.5px] border-amber-500 p-0 text-amber-600 hover:bg-amber-500/10"
-          title="חיפוש חכם לפי גוש, חלקה, מגרש, תב&quot;ע ועוד"
-          aria-label="חיפוש חכם"
-        >
-          <SlidersHorizontal className="h-[15px] w-[15px]" />
-          {activeCount > 0 && (
-            <Badge
-              variant="secondary"
-              className="absolute -left-1.5 -top-1.5 h-4 min-w-4 justify-center px-1 text-[10px]"
-            >
-              {activeCount}
-            </Badge>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="rtl w-[320px] bg-popover p-3" dir="rtl">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm font-semibold text-foreground">חיפוש חכם</span>
-          {activeCount > 0 && (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="relative h-[30px] w-[30px] shrink-0 border-[1.5px] border-amber-500 p-0 text-amber-600 hover:bg-amber-500/10"
+        title="חיפוש חכם לפי גוש, חלקה, מגרש, תב&quot;ע ועוד"
+        aria-label="חיפוש חכם"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <SlidersHorizontal className="h-[15px] w-[15px]" />
+        {activeCount > 0 && (
+          <Badge
+            variant="secondary"
+            className="absolute -left-1.5 -top-1.5 h-4 min-w-4 justify-center px-1 text-[10px]"
+          >
+            {activeCount}
+          </Badge>
+        )}
+      </Button>
+
+      <FloatingDialog
+        open={open}
+        onOpenChange={setOpen}
+        storageKey="clients-smart-search"
+        title="חיפוש חכם"
+        description="חיפוש לפי פרטי הלקוח והשדות המותאמים"
+        icon={<SlidersHorizontal className="h-4 w-4 text-amber-600" />}
+        defaultWidth={360}
+        defaultHeight={500}
+        minWidth={300}
+        minHeight={320}
+        cloudSync={false}
+        zIndex={10060}
+        contentClassName="bg-popover"
+        footer={
+          activeCount > 0 ? (
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+              className="h-8 gap-1.5 text-xs"
               onClick={() => onChange({})}
             >
-              <X className="h-3 w-3" />
-              נקה
+              <X className="h-3.5 w-3.5" />
+              נקה את כל השדות
             </Button>
-          )}
-        </div>
-
-        <div className="grid max-h-[320px] grid-cols-2 gap-2 overflow-y-auto pl-1">
+          ) : null
+        }
+      >
+        <div className="grid grid-cols-2 gap-3">
           {SMART_SEARCH_FIELDS.map((field) => (
             <div key={field.key} className="space-y-1">
               <Label className="text-[11px] text-muted-foreground">
@@ -92,11 +106,11 @@ export function SmartSearchPopover({ values, onChange }: SmartSearchPopoverProps
           ))}
         </div>
 
-        <p className="mt-3 border-t pt-2 text-[11px] leading-relaxed text-muted-foreground">
+        <p className="mt-4 border-t pt-3 text-[11px] leading-relaxed text-muted-foreground">
           טיפ: אפשר לחפש גם ישירות בשורת החיפוש בתחביר{" "}
           <span className="font-mono">גוש:6543 חלקה:12</span>
         </p>
-      </PopoverContent>
-    </Popover>
+      </FloatingDialog>
+    </>
   );
 }

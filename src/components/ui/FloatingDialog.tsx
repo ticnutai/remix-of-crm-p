@@ -44,6 +44,8 @@ export interface FloatingDialogProps {
   cloudSync?: boolean;
   /** RTL direction. Default "rtl". */
   dir?: "rtl" | "ltr";
+  /** Stacking level for panels that must float above page toolbars. */
+  zIndex?: number;
 }
 
 interface PersistedRect {
@@ -92,6 +94,7 @@ export function FloatingDialog({
   contentClassName,
   cloudSync = true,
   dir = "rtl",
+  zIndex = 60,
 }: FloatingDialogProps) {
   const { user } = useAuth();
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -369,9 +372,9 @@ export function FloatingDialog({
       height: size.h,
       maxHeight: maxH,
       maxWidth: `calc(100vw - 16px)`,
-      zIndex: 60,
+      zIndex,
     };
-  }, [pos, size.w, size.h]);
+  }, [pos, size.w, size.h, zIndex]);
 
   if (!open) return null;
 
