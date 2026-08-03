@@ -6638,6 +6638,12 @@ export default function Clients() {
                   />
                 </div>
 
+                <SmartSearchPopover
+                  values={smartSearch}
+                  onChange={setSmartSearch}
+                />
+
+
                 {searchQuery.trim() !== "" && selectedSearchClient && (
                   <Badge
                     variant="outline"
