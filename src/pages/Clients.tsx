@@ -1463,17 +1463,61 @@ export default function Clients() {
   const filteredClients = useMemo(() => {
     let result = [...clients];
 
-    // Search filter
-    if (searchQuery.trim() !== "") {
-      result = result.filter((client) => {
-        const searchableText =
-          [client.name, client.email, client.phone, client.company]
-            .filter(Boolean)
-            .join(" ");
+    // Search filter — free text + inline "field:value" syntax (גוש:6543 חלקה:12)
+    const inlineFieldFilters: Array<{ key: string; value: string }> = [];
+    let freeTextQuery = searchQuery;
 
-        return matchesQueryTokens(searchableText, searchQuery);
+    if (searchQuery.trim() !== "") {
+      freeTextQuery = searchQuery
+        .split(/\s+/)
+        .filter((token) => {
+          const match = token.match(/^([^:：]+)[:：](.+)$/);
+          if (!match) return true;
+          const rawKey = match[1].trim().toLowerCase();
+          const field = SMART_SEARCH_FIELDS.find((f) =>
+            f.aliases.some((alias) => alias.toLowerCase() === rawKey),
+          );
+          if (!field) return true;
+          inlineFieldFilters.push({ key: field.key, value: match[2] });
+          return false;
+        })
+        .join(" ");
+    }
+
+    if (freeTextQuery.trim() !== "") {
+      result = result.filter((client) => {
+        const record = client as unknown as Record<string, unknown>;
+        const searchableText = [
+          client.name,
+          client.email,
+          client.phone,
+          client.company,
+          ...SMART_SEARCH_FIELDS.map((field) => record[field.key]),
+        ]
+          .filter((value) => value !== null && value !== undefined && value !== "")
+          .join(" ");
+
+        return matchesQueryTokens(searchableText, freeTextQuery);
       });
     }
+
+    // Smart (per-field) filters — from the popover and from inline syntax
+    const fieldFilters = [
+      ...Object.entries(smartSearch)
+        .filter(([, value]) => (value || "").trim() !== "")
+        .map(([key, value]) => ({ key, value: value as string })),
+      ...inlineFieldFilters,
+    ];
+
+    if (fieldFilters.length > 0) {
+      result = result.filter((client) => {
+        const record = client as unknown as Record<string, unknown>;
+        return fieldFilters.every(({ key, value }) =>
+          matchesQueryTokens(String(record[key] ?? ""), value),
+        );
+      });
+    }
+
 
     // Template-level selection is an independent client classification.
     // Stage/task selections still inspect the real workflow. Within one
