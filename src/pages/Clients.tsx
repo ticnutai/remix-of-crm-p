@@ -1790,6 +1790,8 @@ export default function Clients() {
   }, [
     clients,
     searchQuery,
+    smartSearch,
+
     filters,
     clientStageTasks,
     workflowStateByClient,
