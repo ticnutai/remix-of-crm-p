@@ -55,9 +55,10 @@ export function syncStructuredSections(
       element.replaceWith(currentDocument.importNode(fresh, true));
     });
 
-    freshByKey.forEach((element, key) => {
-      if (!currentByKey.has(key)) currentRoot.appendChild(currentDocument.importNode(element, true));
-    });
+    // A missing calculated block is intentional: the user removed only its
+    // visual representation from the document. Keep the underlying template
+    // data intact, but do not silently re-insert the block on the next sync.
+    // New documents still receive every block through `generated` above.
 
     return currentRoot.innerHTML;
   } catch {

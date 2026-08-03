@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { syncStructuredSections } from "./syncStructuredSections";
+import { templateToEditableHtml } from "./editor/templateToHtml";
 
 const template = (price: number) => ({
   id: "t",
@@ -24,7 +25,11 @@ const template = (price: number) => ({
 
 describe("syncStructuredSections", () => {
   it("preserves edited prose and refreshes protected prices and payments", () => {
-    const initial = syncStructuredSections("<h2>טקסט שערכתי</h2>", template(10_000));
+    const generated = templateToEditableHtml(template(10_000), {
+      keepFieldsAsPlaceholders: true,
+      lockComputedSections: true,
+    });
+    const initial = `<h2>טקסט שערכתי</h2>${generated}`;
     const updated = syncStructuredSections(initial, template(20_000));
 
     expect(updated).toContain("טקסט שערכתי");
@@ -32,5 +37,18 @@ describe("syncStructuredSections", () => {
     expect(updated).not.toContain("<td>₪10,000</td>");
     expect(updated).toContain('data-flow-protected="1"');
     expect(updated).toContain('data-payments-block="1"');
+  });
+
+  it("does not restore a calculated block removed only from the document", () => {
+    const generated = templateToEditableHtml(template(10_000), {
+      keepFieldsAsPlaceholders: true,
+      lockComputedSections: true,
+    });
+    const withoutPayments = generated.replace(/<div[^>]*data-payments-block[\s\S]*?<\/div>/, "");
+
+    const updated = syncStructuredSections(withoutPayments, template(20_000));
+
+    expect(updated).not.toContain('data-payments-block="1"');
+    expect(template(20_000).payment_schedule).toHaveLength(1);
   });
 });

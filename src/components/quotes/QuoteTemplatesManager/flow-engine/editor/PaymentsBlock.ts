@@ -9,6 +9,7 @@ export const PaymentsBlock = Node.create({
   group: "block",
   content: "block+",
   defining: true,
+  selectable: true,
   draggable: true,
   isolating: true,
 

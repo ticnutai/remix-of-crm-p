@@ -7,6 +7,8 @@ export const ComputedBlock = Node.create({
   content: "block+",
   defining: true,
   isolating: true,
+  selectable: true,
+  draggable: true,
 
   addAttributes() {
     return {

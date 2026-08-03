@@ -1,6 +1,7 @@
 // FlowEditor — TipTap rich text editor, RTL, עם autosave ושדות דינמיים
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
+import { NodeSelection } from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
 import { Color } from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
@@ -389,7 +390,7 @@ export default function FlowEditor({
       Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" } }),
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
-      Table.configure({ resizable: false }),
+      Table.configure({ resizable: true, lastColumnResizable: true }),
       TableRow,
       TableHeader,
       TableCell,
@@ -408,6 +409,42 @@ export default function FlowEditor({
         class:
           "flow-editor-content min-h-[60vh] max-w-none focus:outline-none",
         "data-paged": pagedMode ? "true" : "false",
+      },
+      handleDOMEvents: {
+        mousedown(view, event) {
+          const target = event.target as HTMLElement | null;
+          const protectedElement = target?.closest<HTMLElement>('[data-flow-protected="1"]');
+          if (!protectedElement) return false;
+
+          // Pagination wraps document nodes in extra DOM containers, so the
+          // protected element is not necessarily a direct child of the
+          // ProseMirror root. posAtDOM(element, 0) points just inside the node;
+          // the node itself starts one document position earlier.
+          const insidePos = view.posAtDOM(protectedElement, 0);
+          const nodePos = Math.max(0, insidePos - 1);
+          const node = view.state.doc.nodeAt(nodePos);
+          if (node?.type.name !== "computedBlock" && node?.type.name !== "paymentsBlock") {
+            return false;
+          }
+
+          event.preventDefault();
+          view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, nodePos)));
+          view.focus();
+          return true;
+        },
+      },
+      handleClickOn(view, _pos, node, nodePos) {
+        // Computed sections are non-editable node views. ProseMirror normally
+        // places a text cursor next to them, which leaves toolbar actions with
+        // no reliable target. Select the whole protected node explicitly so
+        // detach/remove actions always operate on the section the user clicked.
+        if (node.type.name !== "computedBlock" && node.type.name !== "paymentsBlock") {
+          return false;
+        }
+
+        view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, nodePos)));
+        view.focus();
+        return true;
       },
       handleKeyDown(view, event) {
         const mod = event.ctrlKey || event.metaKey;
@@ -819,14 +856,14 @@ export default function FlowEditor({
         }
         .flow-editor-content [data-flow-protected="1"] {
           position: relative;
-          cursor: default;
+          cursor: pointer;
           border: 1px dashed hsl(var(--primary) / 0.35);
           border-radius: 8px;
           padding: 0.65rem;
           background: hsl(var(--muted) / 0.22);
         }
         .flow-editor-content [data-flow-protected="1"]::after {
-          content: "מחושב אוטומטית · לעריכה בטאבים הייעודיים";
+          content: "מסונכרן אוטומטית · לחץ ואז פתח טבלה ↔ טקסט לעריכה או מחיקה";
           position: absolute;
           top: 4px;
           left: 6px;
@@ -836,6 +873,11 @@ export default function FlowEditor({
           padding: 2px 7px;
           font: 10px/1.4 Heebo, Arial, sans-serif;
           pointer-events: none;
+        }
+        .flow-editor-content [data-flow-protected="1"].ProseMirror-selectednode {
+          border-color: hsl(var(--primary));
+          box-shadow: 0 0 0 2px hsl(var(--primary) / 0.18);
+          background: hsl(var(--primary) / 0.06);
         }
         .flow-editor-content [data-flow-protected="1"] table {
           display: table !important;
@@ -1084,6 +1126,10 @@ export default function FlowEditor({
         .flow-editor-content img, .flow-editor-content svg, .flow-editor-content video, .flow-editor-content iframe { max-width: 100% !important; height: auto; display: block; margin-inline: auto; box-sizing: border-box; }
         .flow-editor-content figure { max-width: 100%; margin-inline: auto; }
         .flow-editor-content table { table-layout: fixed; max-width: 100%; }
+        .flow-editor-content .tableWrapper { overflow-x: auto; padding: 2px 0 8px; }
+        .flow-editor-content .column-resize-handle { background: hsl(var(--primary)); bottom: -2px; pointer-events: none; position: absolute; right: -2px; top: 0; width: 4px; }
+        .flow-editor-content .resize-cursor { cursor: col-resize; }
+        .flow-editor-content td, .flow-editor-content th { position: relative; vertical-align: top; }
         .flow-editor-content .flow-page-strip-frame { max-width: 100%; }
         .flow-editor-content.rm-with-pagination .rm-pagination-gap {
           height: var(--flow-editor-page-gap, 57px) !important;

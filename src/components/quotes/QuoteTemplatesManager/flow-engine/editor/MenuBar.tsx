@@ -33,6 +33,13 @@ import {
   PlusSquare,
   Square,
   AlertCircle,
+  Rows3,
+  Columns3,
+  Combine,
+  SplitSquareHorizontal,
+  ArrowRightLeft,
+  Trash2,
+  Unlock,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -48,6 +55,12 @@ import { cn } from "@/lib/utils";
 import { groupDynamicFields, type DynamicFieldDefinition } from "./dynamicFields";
 import { applyAcrossRanges } from "./MultiSelection";
 import SmartColorPicker from "./SmartColorPicker";
+import { convertCurrentTableToText, convertSelectionToTable } from "./tableConversions";
+import {
+  deleteProtectedBlock,
+  detachProtectedBlock,
+  findProtectedBlock,
+} from "./protectedBlockActions";
 
 interface Props {
   editor: Editor | null;
@@ -234,6 +247,7 @@ function ToolGroup({ children }: { children: React.ReactNode }) {
 export default function MenuBar({ editor, fields, onCreateField, toolbarActions }: Props) {
   const [tab, setTab] = useState<TabKey>("text");
   const [fieldsOpen, setFieldsOpen] = useState(false);
+  const [tableColumns, setTableColumns] = useState(1);
   if (!editor) return null;
 
   const apply = (cb: (chain: any) => any) => applyAcrossRanges(editor, cb);
@@ -247,6 +261,7 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
         .setTextAlign("right"),
     );
   const groups = groupDynamicFields(fields);
+  const protectedBlock = findProtectedBlock(editor);
 
   const renderText = () => (
     <>
@@ -557,6 +572,97 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
         >
           <TableIcon className="h-3.5 w-3.5" />
         </ToolButton>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-xs hover:bg-muted",
+                editor.isActive("table") && "bg-primary text-primary-foreground hover:bg-primary/90",
+              )}
+              title="המרה ועריכת טבלה"
+            >
+              <ArrowRightLeft className="h-3.5 w-3.5" />
+              טבלה ↔ טקסט
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-80 space-y-3 p-3" dir="rtl">
+            {protectedBlock ? (
+              <>
+                <div>
+                  <div className="font-medium">טבלה מסונכרנת</div>
+                  <div className="text-xs text-muted-foreground">
+                    הטבלה מחוברת לנתוני ההצעה ולכן נעולה. אפשר לנתק אותה ולהמשיך לערוך כטבלה רגילה, או להסיר רק את הייצוג שלה מהמסמך.
+                  </div>
+                </div>
+                <Button type="button" variant="secondary" size="sm" className="w-full" onClick={() => detachProtectedBlock(editor)}>
+                  <Unlock className="ml-1 h-4 w-4" />נתק מהסנכרון וערוך
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    if (window.confirm("להסיר את המקטע מהמסמך? נתוני המחירים והתשלומים יישארו שמורים במערכת.")) deleteProtectedBlock(editor);
+                  }}
+                >
+                  <Trash2 className="ml-1 h-4 w-4" />הסר מהמסמך בלבד
+                </Button>
+                <div className="text-[11px] text-muted-foreground">
+                  הסרה אינה מוחקת מחירים או תשלומים. הנתונים נשארים זמינים בטאב התוכן ובשדות החכמים. לאחר ניתוק, הטבלה הופכת לתוכן רגיל ולא תתעדכן אוטומטית.
+                </div>
+              </>
+            ) : editor.isActive("table") ? (
+              <>
+                <div>
+                  <div className="font-medium">עריכת הטבלה</div>
+                  <div className="text-xs text-muted-foreground">הסמן נשאר בתוך הטבלה בזמן השינויים.</div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => (editor.chain().focus() as any).addRowAfter().run()}><Rows3 className="ml-1 h-4 w-4" />הוסף שורה</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => (editor.chain().focus() as any).addColumnAfter().run()}><Columns3 className="ml-1 h-4 w-4" />הוסף עמודה</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => (editor.chain().focus() as any).deleteRow().run()}>מחק שורה</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => (editor.chain().focus() as any).deleteColumn().run()}>מחק עמודה</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => (editor.chain().focus() as any).mergeCells().run()}><Combine className="ml-1 h-4 w-4" />מזג תאים</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => (editor.chain().focus() as any).splitCell().run()}><SplitSquareHorizontal className="ml-1 h-4 w-4" />פצל תא</Button>
+                </div>
+                <Button type="button" variant="secondary" size="sm" className="w-full" onClick={() => convertCurrentTableToText(editor)}>
+                  <Type className="ml-1 h-4 w-4" />המר טבלה לטקסט רגיל
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    if (window.confirm("למחוק את הטבלה?")) (editor.chain().focus() as any).deleteTable().run();
+                  }}
+                >
+                  <Trash2 className="ml-1 h-4 w-4" />מחק טבלה
+                </Button>
+                <div className="text-[11px] text-muted-foreground">כל שורת טבלה תהפוך לפסקה; צבעים, הדגשות, גופן וקישורים בתוך הטקסט נשמרים.</div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <div className="font-medium">המר טקסט מסומן לטבלה</div>
+                  <div className="text-xs text-muted-foreground">כל פסקה מסומנת הופכת לתא, תוך שמירת עיצוב הטקסט.</div>
+                </div>
+                <label className="flex items-center justify-between gap-3 text-sm">
+                  מספר עמודות
+                  <select className="h-8 rounded-md border bg-background px-2" value={tableColumns} onChange={(event) => setTableColumns(Number(event.target.value))}>
+                    {[1, 2, 3, 4, 5, 6].map((value) => <option key={value} value={value}>{value}</option>)}
+                  </select>
+                </label>
+                <Button type="button" size="sm" className="w-full" disabled={editor.state.selection.empty} onClick={() => convertSelectionToTable(editor, tableColumns)}>
+                  <TableIcon className="ml-1 h-4 w-4" />המר את הבחירה לטבלה
+                </Button>
+              </>
+            )}
+          </PopoverContent>
+        </Popover>
 
         <Popover>
           <PopoverTrigger asChild>

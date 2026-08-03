@@ -91,10 +91,8 @@ export function syncPaymentsSection(
 
     if (!fresh) return root.innerHTML;
 
-    // 3) הוספה ראשונית בסוף — בפעם הבאה כבר יהיה גוש נגרר במיקום שהמשתמש בחר
-    const wrap = dom.createElement("div");
-    wrap.innerHTML = fresh;
-    Array.from(wrap.childNodes).forEach((n) => root.appendChild(n));
+    // אם אין גוש במסמך, המשתמש הסיר רק את הייצוג החזותי שלו.
+    // נתוני התשלומים נשארים בתבנית, אך אין להחזיר את הגוש אוטומטית בסנכרון.
     return root.innerHTML;
   } catch {
     return html;

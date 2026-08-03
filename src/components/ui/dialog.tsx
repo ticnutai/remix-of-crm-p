@@ -57,6 +57,10 @@ function useDialogDrag(enabled: boolean) {
     startY: number;
     originX: number;
     originY: number;
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
   } | null>(null);
   const frameRef = React.useRef<number | null>(null);
 
@@ -73,36 +77,30 @@ function useDialogDrag(enabled: boolean) {
     frameRef.current = window.requestAnimationFrame(applyTransform);
   }, [applyTransform]);
 
-  const clamp = React.useCallback((x: number, y: number) => {
-    const node = nodeRef.current;
-    if (!node) return { x, y };
-    const rect = node.getBoundingClientRect();
-    // Keep at least a small part of the dialog reachable on screen.
-    const margin = 40;
-    const centerX = window.innerWidth / 2;
-    const centerY = window.innerHeight / 2;
-    const minX = -centerX + margin - rect.width / 2 + rect.width * 0.25;
-    const maxX = centerX - margin + rect.width / 2 - rect.width * 0.25;
-    const minY = -centerY + margin;
-    const maxY = centerY - margin;
-    return {
-      x: Math.min(Math.max(x, minX), maxX),
-      y: Math.min(Math.max(y, minY), maxY),
-    };
-  }, []);
-
   const onPointerDown = React.useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (!enabled || event.button !== 0) return;
       const node = nodeRef.current;
       if (!node) return;
 
+      // Measure once at drag start. Reading getBoundingClientRect on every
+      // pointer move creates a feedback loop because the rect already includes
+      // the transform we just applied; that was the source of the visible jumps.
+      const rect = node.getBoundingClientRect();
+      const margin = 20;
+      const originX = offsetRef.current.x;
+      const originY = offsetRef.current.y;
+
       dragRef.current = {
         pointerId: event.pointerId,
         startX: event.clientX,
         startY: event.clientY,
-        originX: offsetRef.current.x,
-        originY: offsetRef.current.y,
+        originX,
+        originY,
+        minX: originX + margin - rect.left,
+        maxX: originX + window.innerWidth - margin - rect.right,
+        minY: originY + margin - rect.top,
+        maxY: originY + window.innerHeight - margin - rect.bottom,
       };
       event.currentTarget.setPointerCapture(event.pointerId);
       node.style.transition = "none";
@@ -117,13 +115,15 @@ function useDialogDrag(enabled: boolean) {
     (event: React.PointerEvent<HTMLDivElement>) => {
       const drag = dragRef.current;
       if (!drag || drag.pointerId !== event.pointerId) return;
-      offsetRef.current = clamp(
-        drag.originX + (event.clientX - drag.startX),
-        drag.originY + (event.clientY - drag.startY),
-      );
+      const x = drag.originX + (event.clientX - drag.startX);
+      const y = drag.originY + (event.clientY - drag.startY);
+      offsetRef.current = {
+        x: Math.min(Math.max(x, drag.minX), drag.maxX),
+        y: Math.min(Math.max(y, drag.minY), drag.maxY),
+      };
       schedule();
     },
-    [clamp, schedule],
+    [schedule],
   );
 
   const endDrag = React.useCallback(() => {
@@ -208,7 +208,7 @@ const DialogContent = React.forwardRef<
             data-dialog-drag-handle="true"
             role="presentation"
             title="גרור להזזת החלון (לחיצה כפולה - מרכוז)"
-            className="group absolute inset-x-10 top-0 z-20 flex h-7 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
+            className="group absolute left-1/2 top-0 z-20 flex h-5 w-20 -translate-x-1/2 cursor-grab touch-none items-center justify-center rounded-b-md active:cursor-grabbing"
           >
             <div className="h-1 w-12 rounded-full bg-border transition-colors group-hover:bg-primary/50" />
           </div>

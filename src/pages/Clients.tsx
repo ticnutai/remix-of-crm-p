@@ -81,6 +81,7 @@ import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
 import type { Task, TaskInsert } from "@/hooks/useTasksOptimized";
 import type { MeetingInsert } from "@/hooks/useMeetingsOptimized";
 import { ViewPresetsMenu, type ViewPresetState } from "@/components/clients/ViewPresetsMenu";
+import { BulkClientFieldsDialog } from "@/components/clients/BulkClientFieldsDialog";
 import {
   SmartSearchPopover,
   SMART_SEARCH_FIELDS,
@@ -140,6 +141,7 @@ import {
   CircleDollarSign,
   GripVertical,
   Plus,
+  ListPlus,
 } from "lucide-react";
 import {
   moveRecentClientBefore,
@@ -867,6 +869,7 @@ export default function Clients() {
 
   // Add client dialog state
   const [isAddClientDialogOpen, setIsAddClientDialogOpen] = useState(false);
+  const [isBulkFieldsOpen, setIsBulkFieldsOpen] = useState(false);
   const [showFeaturesHelp, setShowFeaturesHelp] = useState(false);
   const [newClientForm, setNewClientForm] = useState({
     name: "",
@@ -897,7 +900,7 @@ export default function Clients() {
     deleteField: deleteCustomField,
     updateField: updateCustomField,
     buildCustomData,
-  } = useClientCustomFields({ enabled: isAddClientDialogOpen });
+  } = useClientCustomFields({ enabled: isAddClientDialogOpen || isBulkFieldsOpen });
 
   // Built-in field visibility config
   const { isVisible, isConditionallyVisible } = useClientFieldConfig();
@@ -5823,6 +5826,17 @@ export default function Clients() {
                       </button>
                       )}
 
+                      <button
+                        onClick={() => setIsBulkFieldsOpen(true)}
+                        style={iconBtnBase}
+                        onMouseEnter={(e) => handleEnter(e, false)}
+                        onMouseLeave={(e) => handleLeave(e, false)}
+                        title="מילוי מהיר של שדות לקוחות"
+                        aria-label="מילוי מהיר של שדות לקוחות"
+                      >
+                        <ListPlus style={{ width: "16px", height: "16px" }} />
+                      </button>
+
                       {pcEnabled("view-presets") && (
                       <ViewPresetsMenu
                         current={{
@@ -5845,7 +5859,7 @@ export default function Clients() {
                     </div>
 
                     <div
-                      className="overflow-hidden invisible opacity-0 max-w-0 pointer-events-none transition-all duration-200 group-hover:visible group-hover:opacity-100 group-hover:max-w-[520px] group-hover:pointer-events-auto"
+                      className="opacity-70 transition-opacity duration-150 hover:opacity-100"
                       style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "nowrap" }}
                     >
                         <button
@@ -7483,6 +7497,12 @@ export default function Clients() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BulkClientFieldsDialog
+        open={isBulkFieldsOpen}
+        onOpenChange={setIsBulkFieldsOpen}
+        onUpdated={() => void fetchClients()}
+      />
 
       {/* Bulk Classify Dialog */}
       {isBulkClassifyOpen && (
