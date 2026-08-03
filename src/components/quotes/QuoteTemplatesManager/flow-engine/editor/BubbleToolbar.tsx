@@ -39,11 +39,46 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { applyAcrossRanges, getExtraRanges, clearExtraRanges } from "./MultiSelection";
+import {
+  applyAcrossRanges,
+  getAllSelectionRanges,
+  getExtraRanges,
+  clearExtraRanges,
+  type ExtraRange,
+} from "./MultiSelection";
 import SmartColorPicker from "./SmartColorPicker";
 
 interface Props {
   editor: Editor | null;
+}
+
+type AdjacentListType = "bulletList" | "orderedList" | null;
+
+/**
+ * Imported Word documents sometimes split one visual list into two lists when a
+ * heading sits between them. Converting that heading to a plain paragraph must
+ * restore it to the surrounding list as well; otherwise it remains a top-level
+ * paragraph and appears farther to the right than the neighbouring text.
+ */
+export function getAdjacentListType(editor: Editor, range: ExtraRange): AdjacentListType {
+  const { doc } = editor.state;
+  const $from = doc.resolve(Math.max(0, Math.min(range.from, doc.content.size)));
+  const $to = doc.resolve(Math.max(0, Math.min(range.to, doc.content.size)));
+
+  // Only re-wrap a selection that belongs to one direct child of the document.
+  // Text that is already inside a list must keep its existing list untouched.
+  if ($from.depth !== 1 || $to.depth !== 1 || $from.index(0) !== $to.index(0)) return null;
+
+  const index = $from.index(0);
+  const before = index > 0 ? doc.child(index - 1).type.name : null;
+  const after = index + 1 < doc.childCount ? doc.child(index + 1).type.name : null;
+  const isList = (name: string | null): name is Exclude<AdjacentListType, null> =>
+    name === "bulletList" || name === "orderedList";
+
+  if (isList(before) && isList(after)) return before === after ? before : null;
+  if (isList(before)) return before;
+  if (isList(after)) return after;
+  return null;
 }
 
 /* ============================================================
@@ -394,15 +429,28 @@ export default function BubbleToolbar({ editor }: Props) {
   const apply = (cb: (chain: any) => any) => applyAcrossRanges(editor, cb);
   const applyInlineHeading = (level: keyof typeof INLINE_HEADING_SIZES) =>
     apply((chain) => chain.setFontSize(INLINE_HEADING_SIZES[level]).setBold());
-  const applyNormalText = () =>
-    apply((chain) =>
-      chain
+  const applyNormalText = () => {
+    const ranges = getAllSelectionRanges(editor);
+    const adjacentListTypes = ranges.map((range) => getAdjacentListType(editor, range));
+    const sharedListType = adjacentListTypes.length > 0 && adjacentListTypes.every((type) => type === adjacentListTypes[0])
+      ? adjacentListTypes[0]
+      : null;
+
+    apply((chain) => {
+      let next = chain
         .clearNodes()
         .unsetAllMarks()
         .unsetFontFamily()
         .setFontSize(null)
-        .setTextAlign("right"),
-    );
+        .setTextAlign("right");
+
+      // Preserve the indentation of surrounding list paragraphs. This also
+      // repairs headings that interrupted a list during Word import.
+      if (sharedListType === "bulletList") next = next.toggleBulletList();
+      if (sharedListType === "orderedList") next = next.toggleOrderedList();
+      return next;
+    });
+  };
 
   // Keep the ProseMirror selection alive while interacting with toolbar buttons.
   // Without this, mousedown moves focus into a button, BubbleMenu unmounts, and

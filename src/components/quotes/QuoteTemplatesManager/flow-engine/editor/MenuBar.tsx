@@ -674,7 +674,7 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
         <div className="flex flex-col gap-1.5 px-2 py-1.5">
           <div className="no-scrollbar flex min-h-8 items-center gap-1 overflow-x-auto overflow-y-hidden">
             {toolbarActions && (
-              <div className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-border/70 bg-muted/20 px-1 py-0.5">
+              <div className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-border/60 bg-background/90 p-1 shadow-sm">
                 {toolbarActions}
               </div>
             )}

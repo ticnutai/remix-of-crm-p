@@ -838,9 +838,23 @@ export default function FlowEditor({
           pointer-events: none;
         }
         .flow-editor-content [data-flow-protected="1"] table {
+          display: table !important;
           width: 100%;
+          min-width: 100% !important;
           max-width: 100%;
           table-layout: fixed;
+        }
+        /*
+         * The pagination extension flattens editor tables with display: contents
+         * so its legacy page shell can be split across pages. Computed blocks use
+         * real data tables, though, and flattening those collapses their columns to
+         * the text width while the protected frame still occupies the full page.
+         * Restore table layout only inside computed/protected blocks.
+         */
+        .flow-editor-content [data-flow-protected="1"] .tableWrapper {
+          width: 100% !important;
+          max-width: 100% !important;
+          overflow-x: visible !important;
         }
         .flow-editor-content p { orphans: 3; widows: 3; }
         .flow-editor-content h1,

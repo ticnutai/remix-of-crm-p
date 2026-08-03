@@ -774,6 +774,7 @@ export default function FlowWorkspaceTab({
         "שינוי המצב יטען מחדש את התוכן מהתבנית ויאבד את העריכה הנוכחית. להמשיך?",
       )
     ) {
+      toast.info("שינוי מצב העיצוב בוטל");
       return;
     }
     setPreserveStyles(value);
@@ -801,6 +802,11 @@ export default function FlowWorkspaceTab({
         return next;
       });
     }
+    toast.success(
+      value
+        ? "עיצוב המקור של התבנית נשמר"
+        : "הוחל עיצוב אחיד לפי ערכת העיצוב",
+    );
   };
 
   // ===== שמירה בענן: שתי אופציות —
@@ -1313,21 +1319,15 @@ export default function FlowWorkspaceTab({
 
   const toolbarActions = (
     <>
-      <div className="flex shrink-0 items-center gap-1 pl-1">
-        <Sparkles className="h-3.5 w-3.5 text-primary" />
-        <span className="text-xs font-medium">{structuredMode ? "מסמך A4 חי" : "Flow"}</span>
+      <div className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50/70 px-2.5 text-emerald-800">
+        <Sparkles className="h-3.5 w-3.5" />
+        <span className="text-xs font-semibold">{structuredMode ? "מסמך A4 חי" : "Flow"}</span>
+        {structuredMode && (
+          <span className="hidden border-r border-emerald-200 pr-1.5 text-[10px] font-medium xl:inline">
+            מסונכרן · נשמר אוטומטית
+          </span>
+        )}
       </div>
-
-      {structuredMode && (
-        <>
-          <Badge variant="outline" className="h-6 shrink-0 text-[10px] text-emerald-700">
-            מקור הנתונים: תוכן, תשלומים ועיצוב
-          </Badge>
-          <Badge variant="secondary" className="h-6 shrink-0 text-[10px]">
-            שמירה אוטומטית
-          </Badge>
-        </>
-      )}
 
       {workspaceActions}
 
@@ -1353,6 +1353,8 @@ export default function FlowWorkspaceTab({
           </TabsTrigger>}
         </TabsList>
       )}
+
+      <span className="h-5 w-px shrink-0 bg-border" aria-hidden="true" />
 
       <TooltipProvider delayDuration={250}>
         <Tooltip>
@@ -1457,23 +1459,36 @@ export default function FlowWorkspaceTab({
 
       {/* ===== Per-feature popovers: each icon+label opens its own panel ===== */}
 
-      {/* עיצוב — toggle preserve styles */}
-      <div className="flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-background px-2 h-8">
-        <Palette className="h-3.5 w-3.5 text-muted-foreground" />
-        <Label
-          htmlFor="preserve-styles"
-          className="cursor-pointer text-xs font-medium"
-          title="שמירת עיצוב מקורי מהתבנית"
-        >
-          עיצוב
-        </Label>
-        <Switch
-          id="preserve-styles"
-          checked={preserveStyles}
-          onCheckedChange={handleTogglePreserve}
-          className="scale-75"
-        />
-      </div>
+      {/* מצב עיצוב — שמירת עיצוב המקור או החלת עיצוב אחיד */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant={preserveStyles ? "secondary" : "outline"}
+            size="sm"
+            aria-pressed={preserveStyles}
+            onClick={() => handleTogglePreserve(!preserveStyles)}
+            className={`h-8 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs ${
+              preserveStyles
+                ? "border border-primary/25 bg-primary/10 text-primary hover:bg-primary/15"
+                : ""
+            }`}
+          >
+            <Palette className="h-3.5 w-3.5" />
+            {preserveStyles ? "עיצוב מקור" : "עיצוב אחיד"}
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                preserveStyles ? "bg-primary" : "bg-muted-foreground/45"
+              }`}
+            />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-[280px] text-right" dir="rtl">
+          {preserveStyles
+            ? "פעיל: נשמר העיצוב הייחודי שיובא עם כל פריט. לחץ כדי לעבור לעיצוב אחיד."
+            : "פעיל: כל המסמך משתמש בערכת העיצוב האחידה. לחץ כדי לשמור את עיצוב המקור של הפריטים."}
+        </TooltipContent>
+      </Tooltip>
 
       {/* ערכות */}
       <Popover
@@ -1514,6 +1529,8 @@ export default function FlowWorkspaceTab({
           />
         </PopoverContent>
       </Popover>
+
+      <span className="h-5 w-px shrink-0 bg-border" aria-hidden="true" />
 
       {/* תשלומים */}
       <Popover>
