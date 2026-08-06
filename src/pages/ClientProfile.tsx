@@ -85,6 +85,12 @@ import { ClientPaymentsTab } from "@/components/clients/ClientPaymentsTab";
 import { CreateClientLoginDialog } from "@/components/clients/CreateClientLoginDialog";
 import { ClientPortalAccessShareDialog } from "@/components/clients/ClientPortalAccessShareDialog";
 import PaymentStagesManager from "@/components/clients/PaymentStagesManager";
+import {
+  ClientNotesDialog,
+  parseClientNotes,
+  serializeClientNotes,
+  type ClientNote,
+} from "@/components/clients/ClientNotesDialog";
 import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
