@@ -85,6 +85,12 @@ import { ClientPaymentsTab } from "@/components/clients/ClientPaymentsTab";
 import { CreateClientLoginDialog } from "@/components/clients/CreateClientLoginDialog";
 import { ClientPortalAccessShareDialog } from "@/components/clients/ClientPortalAccessShareDialog";
 import PaymentStagesManager from "@/components/clients/PaymentStagesManager";
+import {
+  ClientNotesDialog,
+  parseClientNotes,
+  serializeClientNotes,
+  type ClientNote,
+} from "@/components/clients/ClientNotesDialog";
 import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
@@ -968,8 +974,7 @@ export default function ClientProfile() {
     include_vat: false,
     notes: "",
   });
-  const [editingNotes, setEditingNotes] = useState(false);
-  const [notesText, setNotesText] = useState("");
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
 
   const normalizeDateInput = useCallback((value?: string | null) => {
     if (!value) return "";
@@ -2789,75 +2794,64 @@ export default function ClientProfile() {
               </Card>
 
               {/* Notes */}
-              <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
-                <CardHeader className="text-right border-b border-border/50 bg-muted/30 flex flex-row items-center justify-between">
-                  <CardTitle className="text-lg">הערות</CardTitle>
-                  <div className="flex items-center gap-1">
-                    {editingNotes ? (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                          onClick={async () => {
-                            try {
-                              await updateClient({ notes: notesText || null });
-                              setEditingNotes(false);
-                              toast({ title: "הערות נשמרו" });
-                            } catch (err) {
-                              toast({ title: "שגיאה", description: "לא ניתן לשמור", variant: "destructive" });
-                            }
-                          }}
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
-                          onClick={() => {
-                            setEditingNotes(false);
-                            setNotesText(client.notes || "");
-                          }}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </>
-                    ) : (
+              {(() => {
+                const clientNotes = parseClientNotes(client.notes);
+                return (
+                  <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
+                    <CardHeader className="text-right border-b border-border/50 bg-muted/30 flex flex-row items-center justify-between">
+                      <CardTitle className="text-lg">הערות ({clientNotes.length})</CardTitle>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7 w-7 p-0 text-[#d8ac27] hover:text-[#b8922a] hover:bg-[#d8ac27]/10"
-                        onClick={() => {
-                          setNotesText(client.notes || "");
-                          setEditingNotes(true);
-                        }}
+                        className="h-7 w-7 p-0 text-border-gold hover:bg-border-gold/10"
+                        title="הוסף הערה"
+                        onClick={() => setNotesDialogOpen(true)}
                       >
-                        {client.notes ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                        <Plus className="h-4 w-4" />
                       </Button>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="p-4">
-                  <ScrollArea className="h-[136px]">
-                    {editingNotes ? (
-                      <Textarea
-                        value={notesText}
-                        onChange={(e) => setNotesText(e.target.value)}
-                        placeholder="הוסף הערות..."
-                        className="text-right min-h-[120px] resize-none border-[#d8ac27]/30 focus:border-[#d8ac27]"
-                        autoFocus
-                      />
-                    ) : client.notes ? (
-                      <p className="whitespace-pre-wrap text-right text-sm">
-                        {client.notes}
-                      </p>
-                    ) : (
-                      <p className="text-muted-foreground text-center text-sm py-2">אין הערות - לחץ על + להוספה</p>
-                    )}
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+                    </CardHeader>
+                    <CardContent className="p-4">
+                      <ScrollArea className="h-[136px]">
+                        {clientNotes.length === 0 ? (
+                          <p className="text-muted-foreground text-center text-sm py-2">
+                            אין הערות - לחץ על + להוספה
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            {clientNotes.slice(0, 6).map((note) => (
+                              <button
+                                key={note.id}
+                                onClick={() => setNotesDialogOpen(true)}
+                                className="w-full rounded-md border border-border/50 bg-muted/20 p-2 text-right hover:bg-muted/40 transition-colors"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <Badge variant="outline" className="text-[10px]">
+                                    {note.category}
+                                  </Badge>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {new Date(note.created_at).getTime() > 0
+                                      ? `${new Date(note.created_at).toLocaleDateString("he-IL")} ${new Date(note.created_at).getHours()}:${new Date(note.created_at).getMinutes()}`
+                                      : ""}
+                                  </span>
+                                </div>
+                                <p className="mt-1 line-clamp-2 text-xs whitespace-pre-wrap">{note.text}</p>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </CardContent>
+                    <ClientNotesDialog
+                      open={notesDialogOpen}
+                      onOpenChange={setNotesDialogOpen}
+                      notes={clientNotes}
+                      onSave={async (next: ClientNote[]) => {
+                        await updateClient({ notes: serializeClientNotes(next) });
+                      }}
+                    />
+                  </Card>
+                );
+              })()}
 
               {/* Files quick access */}
               {user && clientId && (

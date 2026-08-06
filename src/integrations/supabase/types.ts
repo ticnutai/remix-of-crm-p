@@ -2624,6 +2624,8 @@ export type Database = {
           auto_timer_days: number | null
           background_color: string | null
           check_marked: boolean
+          check_state_index: number
+          check_states: Json
           client_id: string
           completed: boolean
           completed_at: string | null
@@ -2651,6 +2653,8 @@ export type Database = {
           auto_timer_days?: number | null
           background_color?: string | null
           check_marked?: boolean
+          check_state_index?: number
+          check_states?: Json
           client_id: string
           completed?: boolean
           completed_at?: string | null
@@ -2678,6 +2682,8 @@ export type Database = {
           auto_timer_days?: number | null
           background_color?: string | null
           check_marked?: boolean
+          check_state_index?: number
+          check_states?: Json
           client_id?: string
           completed?: boolean
           completed_at?: string | null
@@ -8641,6 +8647,7 @@ export type Database = {
         Row: {
           auto_timer_days: number | null
           background_color: string | null
+          check_states: Json
           completed: boolean | null
           completed_at: string | null
           created_at: string
@@ -8658,6 +8665,7 @@ export type Database = {
         Insert: {
           auto_timer_days?: number | null
           background_color?: string | null
+          check_states?: Json
           completed?: boolean | null
           completed_at?: string | null
           created_at?: string
@@ -8675,6 +8683,7 @@ export type Database = {
         Update: {
           auto_timer_days?: number | null
           background_color?: string | null
+          check_states?: Json
           completed?: boolean | null
           completed_at?: string | null
           created_at?: string
