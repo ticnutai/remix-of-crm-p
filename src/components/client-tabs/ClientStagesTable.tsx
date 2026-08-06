@@ -1,5 +1,6 @@
 // ClientStagesTable - Table view for client stages and tasks
 import React, { useMemo, useState } from 'react';
+import { getCheckTaskState } from '@/lib/checkTaskStates';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -427,11 +428,15 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                         onClick={() => handleToggleTask(task)}
                       >
                         {task.task_type === 'check' ? (
-                          task.check_marked ? (
-                            <span className="h-5 w-5 rounded-full bg-red-600" />
-                          ) : (
-                            <Circle className="h-5 w-5 text-emerald-600" />
-                          )
+                          <span
+                            className="h-5 w-5 rounded-full border-2"
+                            style={{
+                              borderColor: getCheckTaskState(task).state.color,
+                              backgroundColor: getCheckTaskState(task).state.filled
+                                ? getCheckTaskState(task).state.color
+                                : 'transparent',
+                            }}
+                          />
                         ) : task.completed ? (
                           <CheckCircle2 className="h-5 w-5 text-green-600" />
                         ) : (

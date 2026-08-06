@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { syncClientStagesFromTemplate } from "@/lib/clientStageTemplateSync";
+import { CheckTaskState, getCheckTaskState } from "@/lib/checkTaskStates";
 
 export interface ClientStageTask {
   id: string;
@@ -10,6 +11,8 @@ export interface ClientStageTask {
   title: string;
   task_type?: "task" | "timer_tab" | "check";
   check_marked?: boolean;
+  check_states?: CheckTaskState[] | null;
+  check_state_index?: number | null;
   auto_timer_days?: number | null;
   completed: boolean;
   completed_at: string | null;
@@ -93,6 +96,7 @@ type AddTaskOptions = {
   linkedContactId?: string | null;
   taskType?: "task" | "timer_tab" | "check";
   autoTimerDays?: number | null;
+  checkStates?: CheckTaskState[];
 };
 
 type ToggleTaskOptions = {
@@ -230,6 +234,11 @@ export function useClientStages(clientId: string) {
       }
       if (taskType === "timer_tab") {
         fullInsert.auto_timer_days = options?.autoTimerDays ?? null;
+      }
+      if (taskType === "check" && options?.checkStates) {
+        fullInsert.check_states = options.checkStates;
+        fullInsert.check_state_index = 0;
+        fullInsert.check_marked = false;
       }
 
       let { data, error } = await supabase
@@ -388,15 +397,17 @@ export function useClientStages(clientId: string) {
     try {
       const task = tasks.find((item) => item.id === taskId);
       if (!task || task.task_type !== "check") return false;
-      const checkMarked = !Boolean(task.check_marked);
+      const { states, index } = getCheckTaskState(task);
+      const nextIndex = (index + 1) % states.length;
+      const checkMarked = nextIndex > 0;
       const { error } = await supabase
         .from("client_stage_tasks")
-        .update({ check_marked: checkMarked } as any)
+        .update({ check_marked: checkMarked, check_state_index: nextIndex } as any)
         .eq("id", taskId);
       if (error) throw error;
       setTasks((current) =>
         current.map((item) =>
-          item.id === taskId ? { ...item, check_marked: checkMarked } : item,
+          item.id === taskId ? { ...item, check_marked: checkMarked, check_state_index: nextIndex } : item,
         ),
       );
       return true;

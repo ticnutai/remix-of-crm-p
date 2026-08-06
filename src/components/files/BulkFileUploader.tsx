@@ -63,12 +63,14 @@ interface BulkFileUploaderProps {
   clientId: string;
   userId: string;
   onComplete?: () => void;
+  onFileComplete?: (file: UploadFileItem) => void | Promise<void>;
 }
 
 export function BulkFileUploader({
   clientId,
   userId,
   onComplete,
+  onFileComplete,
 }: BulkFileUploaderProps) {
   const folderInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -94,6 +96,7 @@ export function BulkFileUploader({
     onComplete: () => {
       onComplete?.();
     },
+    onFileComplete,
   });
 
   // --- File / Folder selection handlers ---

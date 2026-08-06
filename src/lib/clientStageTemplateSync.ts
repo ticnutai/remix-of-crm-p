@@ -251,6 +251,9 @@ export async function syncClientStagesFromTemplate({
       sort_order: nextTaskSortOrder,
       task_type: taskType,
       auto_timer_days: isTimerTab ? templateTask.auto_timer_days || null : null,
+      check_states: taskType === "check" ? templateTask.check_states || undefined : undefined,
+      check_state_index: taskType === "check" ? 0 : undefined,
+      check_marked: taskType === "check" ? false : undefined,
       source_template_id: templateId,
       source_template_task_id: templateTask.id,
     });

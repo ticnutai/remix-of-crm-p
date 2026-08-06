@@ -777,15 +777,15 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
   return (
     <TooltipProvider delayDuration={250}>
       <div className="border-b bg-background" dir="rtl">
-        <div className="flex flex-col gap-1.5 px-2 py-1.5">
-          <div className="no-scrollbar flex min-h-8 items-center gap-1 overflow-x-auto overflow-y-hidden">
-            {toolbarActions && (
-              <div className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-border/60 bg-background/90 p-1 shadow-sm">
-                {toolbarActions}
-              </div>
-            )}
+        <div className="flex flex-col gap-2 px-2 py-2">
+          {toolbarActions && (
+            <div className="flex min-h-10 w-full flex-wrap items-center justify-start gap-1.5 rounded-xl border border-border/60 bg-background/90 p-1 shadow-sm">
+              {toolbarActions}
+            </div>
+          )}
 
-            <div className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-muted/50 p-0.5">
+          <div className="grid min-h-10 w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded-xl border border-border/50 bg-muted/20 px-1.5 py-1">
+            <div className="flex shrink-0 items-center gap-1 rounded-lg bg-background/75 p-0.5 shadow-sm">
               {TABS.map((t) => {
                 const Icon = t.icon;
                 const active = tab === t.key;
@@ -795,7 +795,7 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
                     type="button"
                     onClick={() => setTab(t.key)}
                     className={cn(
-                      "inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-medium transition-colors",
+                      "inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-xs font-medium transition-colors",
                       active
                         ? "bg-background text-foreground shadow-sm"
                         : "text-muted-foreground hover:bg-background/70 hover:text-foreground",
@@ -807,13 +807,13 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
                 );
               })}
             </div>
-          </div>
 
-          <div className="no-scrollbar flex min-h-9 items-center gap-1.5 overflow-x-auto overflow-y-hidden">
-            {tab === "text" && renderText()}
-            {tab === "paragraph" && renderParagraph()}
-            {tab === "insert" && renderInsert()}
-            {tab === "fields" && renderFields()}
+            <div className="flex min-w-0 flex-wrap items-center justify-start gap-1.5">
+              {tab === "text" && renderText()}
+              {tab === "paragraph" && renderParagraph()}
+              {tab === "insert" && renderInsert()}
+              {tab === "fields" && renderFields()}
+            </div>
           </div>
         </div>
       </div>

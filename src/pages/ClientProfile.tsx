@@ -26,7 +26,7 @@ import {
 } from "@/components/shared/ClientGroupingToggle";
 import { sortItems, groupItems } from "@/utils/sortAndDedup";
 import { useProfileNames } from "@/hooks/useProfileNames";
-import { BulkFileUploader } from "@/components/files/BulkFileUploader";
+import { ClientFilesManager } from "@/components/files/ClientFilesManager";
 import { isValidPhone, formatPhoneDisplay } from "@/utils/phoneValidation";
 import {
   Card,
@@ -2858,6 +2858,18 @@ export default function ClientProfile() {
                   </ScrollArea>
                 </CardContent>
               </Card>
+
+              {/* Files quick access */}
+              {user && clientId && (
+                <ClientFilesManager
+                  variant="trigger"
+                  clientId={clientId}
+                  clientName={client.name || "לקוח"}
+                  userId={user.id}
+                  files={files}
+                  onRefresh={() => refresh()}
+                />
+              )}
             </div>
           </TabsContent>
 
@@ -3090,68 +3102,17 @@ export default function ClientProfile() {
               <CardHeader className="text-right border-b border-border/50 bg-muted/30">
                 <CardTitle className="text-lg">קבצים</CardTitle>
               </CardHeader>
-              <CardContent className="p-4 space-y-4">
-                {/* Bulk Uploader */}
+              <CardContent className="p-4">
                 {user && clientId && (
-                  <BulkFileUploader
+                  <ClientFilesManager
+                    variant="content"
                     clientId={clientId}
+                    clientName={client.name || "לקוח"}
                     userId={user.id}
-                    onComplete={() => refresh()}
+                    files={files}
+                    onRefresh={() => refresh()}
                   />
                 )}
-
-                {/* Existing files list */}
-                <div className="border-t border-border/30 pt-4">
-                  <h4 className="text-sm font-medium text-muted-foreground mb-3 text-right">
-                    קבצים שהועלו ({files.length})
-                  </h4>
-                  <ScrollArea className="h-72">
-                    <div className="divide-y divide-border/30">
-                      {files.map((file) => (
-                        <div
-                          key={file.id}
-                          className="p-3 flex items-center justify-between hover:bg-muted/30 transition-colors"
-                        >
-                          <Button variant="ghost" size="sm" asChild>
-                            <a
-                              href={file.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
-                          </Button>
-                          <div className="flex items-center gap-3">
-                            <div className="text-right">
-                              <p className="font-medium text-sm">
-                                {file.file_name}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {file.file_size
-                                  ? `${(file.file_size / 1024).toFixed(1)} KB`
-                                  : ""}{" "}
-                                •{" "}
-                                {format(
-                                  new Date(file.created_at),
-                                  "dd/MM/yyyy",
-                                  {
-                                    locale: he,
-                                  },
-                                )}
-                              </p>
-                            </div>
-                            <FileText className="h-6 w-6 text-[hsl(45,70%,55%)]" />
-                          </div>
-                        </div>
-                      ))}
-                      {files.length === 0 && (
-                        <p className="text-muted-foreground text-center py-6 text-sm">
-                          אין קבצים
-                        </p>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>

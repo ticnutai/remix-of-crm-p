@@ -56,7 +56,7 @@ interface UseChunkedUploadOptions {
   /** Use chunked upload above this threshold (default 10MB) */
   chunkThreshold?: number;
   onComplete?: (session: UploadSession) => void;
-  onFileComplete?: (file: UploadFileItem) => void;
+  onFileComplete?: (file: UploadFileItem) => void | Promise<void>;
 }
 
 const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
@@ -308,7 +308,7 @@ export function useChunkedUpload(options: UseChunkedUploadOptions) {
           ? `תיקייה: ${item.relativePath.split("/").slice(0, -1).join("/")}`
           : undefined,
       });
-      if (error) console.error("DB insert error:", error);
+      if (error) throw error;
     },
     [clientId, userId],
   );
@@ -409,6 +409,20 @@ export function useChunkedUpload(options: UseChunkedUploadOptions) {
         activeCount--;
 
         if (result.success) {
+          try {
+            // A cloud upload is complete only after its metadata was persisted.
+            await insertFileRecord(item, result.publicUrl!);
+          } catch (error: any) {
+            if (result.storagePath) {
+              await supabase.storage.from("client-files").remove([result.storagePath]).catch(() => {});
+            }
+            updateFileState(item.id, {
+              status: "failed",
+              error: error?.message || "שמירת פרטי הקובץ נכשלה",
+            });
+            continue;
+          }
+
           updateFileState(item.id, {
             status: "completed",
             progress: 100,
@@ -417,21 +431,24 @@ export function useChunkedUpload(options: UseChunkedUploadOptions) {
             storagePath: result.storagePath,
           });
 
-          // Insert DB record
-          await insertFileRecord(item, result.publicUrl!);
-
           completedIds.push(item.id);
           await saveSession({
             sessionId: sid,
             completedFiles: completedIds,
           }).catch(() => {});
 
-          onFileComplete?.({
-            ...item,
-            status: "completed",
-            progress: 100,
-            publicUrl: result.publicUrl,
-          });
+          try {
+            await onFileComplete?.({
+              ...item,
+              status: "completed",
+              progress: 100,
+              publicUrl: result.publicUrl,
+              storagePath: result.storagePath,
+            });
+          } catch (callbackError) {
+            // Optional local backup failures must not invalidate a valid cloud upload.
+            console.warn("Post-upload callback failed:", callbackError);
+          }
         } else if (result.error === "paused") {
           updateFileState(item.id, { status: "paused", progress: 0 });
         } else {

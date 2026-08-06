@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useSyncedSetting } from "@/hooks/useSyncedSetting";
+import { CheckTaskState, DEFAULT_CHECK_TASK_STATES, getCheckTaskState } from "@/lib/checkTaskStates";
 import {
   DndContext,
   closestCenter,
@@ -687,6 +688,7 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
   };
   const isTimerTab = isTimerTabTask(task);
   const isCheck = task.task_type === "check";
+  const checkVisual = isCheck ? getCheckTaskState(task) : null;
   const isTimerTabActive =
     isTimerTab && Boolean(task.started_at && task.target_working_days);
   const canStartTimerTab =
@@ -756,12 +758,11 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
           >
             {isCheck ? (
               <span
-                className={cn(
-                  "block h-5 w-5 rounded-full border-2 transition-colors",
-                  task.check_marked
-                    ? "border-red-600 bg-red-600"
-                    : "border-emerald-500 bg-transparent",
-                )}
+                className="block h-5 w-5 rounded-full border-2 transition-colors"
+                style={{
+                  borderColor: checkVisual!.state.color,
+                  backgroundColor: checkVisual!.state.filled ? checkVisual!.state.color : "transparent",
+                }}
               />
             ) : task.completed ? (
               <CheckCircle2
@@ -831,15 +832,11 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
                   "text-sm text-right break-words text-[#1a2c5f] dark:text-slate-200",
                   task.completed &&
                     "line-through text-emerald-600 dark:text-emerald-400",
-                  isCheck &&
-                    (task.check_marked
-                      ? "text-red-600 dark:text-red-400"
-                      : "text-emerald-600 dark:text-emerald-400"),
                   task.is_bold && "font-bold",
                   isTimerTab && "flex items-center justify-end gap-1.5",
                 )}
                 style={{
-                  color: isCheck ? undefined : task.text_color || undefined,
+                  color: isCheck ? checkVisual!.state.color : task.text_color || undefined,
                 }}
               >
                 {isTimerTab && <Timer className="h-3.5 w-3.5 shrink-0 text-sky-600" />}
@@ -2606,7 +2603,7 @@ export function ClientStagesBoard({
     try { return localStorage.getItem(`stages-hide-completed-${clientId}`) === '1'; } catch { return false; }
   });
   useEffect(() => {
-    try { localStorage.setItem(`stages-hide-completed-${clientId}`, hideCompletedTasks ? '1' : '0'); } catch {}
+    try { localStorage.setItem(`stages-hide-completed-${clientId}`, hideCompletedTasks ? '1' : '0'); } catch { /* localStorage may be unavailable */ }
   }, [hideCompletedTasks, clientId]);
   const filterTasks = useCallback(
     <T extends { completed?: boolean }>(tasks: T[] | undefined | null): T[] =>
@@ -2619,7 +2616,7 @@ export function ClientStagesBoard({
     try { return localStorage.getItem(`stages-summary-frame-${clientId}`) === '1'; } catch { return false; }
   });
   useEffect(() => {
-    try { localStorage.setItem(`stages-summary-frame-${clientId}`, showSummaryFrame ? '1' : '0'); } catch {}
+    try { localStorage.setItem(`stages-summary-frame-${clientId}`, showSummaryFrame ? '1' : '0'); } catch { /* localStorage may be unavailable */ }
   }, [showSummaryFrame, clientId]);
 
   // Columns count for grid layout (persisted to LS + cloud)
@@ -2775,6 +2772,7 @@ export function ClientStagesBoard({
     title: string;
     taskType: "task" | "timer_tab" | "check";
     autoTimerDays: string;
+    checkStates: CheckTaskState[];
     linkedClientId?: string | null;
     linkedContactId?: string | null;
     linkedLabel?: string;
@@ -3013,7 +3011,7 @@ export function ClientStagesBoard({
     const themeToDelete = stageBoardThemes.find((theme) => theme.id === themeId);
     if (!themeToDelete) return;
 
-    if (!confirm(`למחוק את ערכת הנושא \"${themeToDelete.name}\"?`)) {
+    if (!confirm(`למחוק את ערכת הנושא "${themeToDelete.name}"?`)) {
       return;
     }
 
@@ -3076,6 +3074,7 @@ export function ClientStagesBoard({
         taskType: addTaskDialog.taskType,
         autoTimerDays:
           addTaskDialog.taskType === "timer_tab" ? autoTimerDays : null,
+        checkStates: addTaskDialog.taskType === "check" ? addTaskDialog.checkStates : undefined,
       },
     );
     setAddTaskDialog(null);
@@ -4616,6 +4615,7 @@ export function ClientStagesBoard({
                           title: "",
                           taskType: "task",
                           autoTimerDays: "",
+                          checkStates: DEFAULT_CHECK_TASK_STATES.map((state) => ({ ...state })),
                         })
                       }
                     >
@@ -5256,6 +5256,7 @@ export function ClientStagesBoard({
                           title: "",
                           taskType: "task",
                           autoTimerDays: "",
+                          checkStates: DEFAULT_CHECK_TASK_STATES.map((state) => ({ ...state })),
                         });
                       }}
                     >
@@ -5375,6 +5376,77 @@ export function ClientStagesBoard({
               className="text-right"
               autoFocus
             />
+
+            {addTaskDialog?.taskType === "check" && (
+              <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 dark:border-emerald-900 dark:bg-emerald-950/10">
+                <div className="flex items-center justify-between gap-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      setAddTaskDialog((prev) => prev ? {
+                        ...prev,
+                        checkStates: [
+                          ...prev.checkStates,
+                          { color: "#f59e0b", filled: true, label: `מצב ${prev.checkStates.length + 1}` },
+                        ],
+                      } : null)
+                    }
+                  >
+                    <Plus className="ml-1 h-4 w-4" /> הוסף מצב צבע
+                  </Button>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold">מצבי הבדיקה לפי סדר לחיצה</p>
+                    <p className="text-xs text-muted-foreground">כל לחיצה עוברת לצבע הבא; הצבע חל על הטקסט והעיגול יחד.</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {addTaskDialog.checkStates.map((state, index) => (
+                    <div key={index} className="flex items-center gap-2 rounded-lg border bg-background/90 p-2">
+                      <span className="w-14 text-xs font-medium">מצב {index + 1}</span>
+                      <input
+                        type="color"
+                        value={state.color}
+                        aria-label={`צבע מצב ${index + 1}`}
+                        className="h-8 w-10 cursor-pointer rounded border bg-transparent p-0.5"
+                        onChange={(event) => setAddTaskDialog((prev) => prev ? {
+                          ...prev,
+                          checkStates: prev.checkStates.map((item, itemIndex) => itemIndex === index ? { ...item, color: event.target.value } : item),
+                        } : null)}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={state.filled ? "default" : "outline"}
+                        className="h-8"
+                        onClick={() => setAddTaskDialog((prev) => prev ? {
+                          ...prev,
+                          checkStates: prev.checkStates.map((item, itemIndex) => itemIndex === index ? { ...item, filled: !item.filled } : item),
+                        } : null)}
+                      >
+                        {state.filled ? "עיגול מלא" : "עיגול ריק"}
+                      </Button>
+                      <div className="mr-auto flex items-center gap-2" style={{ color: state.color }}>
+                        <span className="text-xs font-semibold">תצוגה</span>
+                        <span className="h-5 w-5 rounded-full border-2" style={{ borderColor: state.color, backgroundColor: state.filled ? state.color : "transparent" }} />
+                        {addTaskDialog.checkStates.length > 2 && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-red-600"
+                            onClick={() => setAddTaskDialog((prev) => prev ? { ...prev, checkStates: prev.checkStates.filter((_, itemIndex) => itemIndex !== index) } : null)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {addTaskDialog?.taskType === "timer_tab" && (
               <div className="space-y-2 rounded-lg border border-sky-200 bg-sky-50/60 p-3 dark:border-sky-900 dark:bg-sky-950/10">

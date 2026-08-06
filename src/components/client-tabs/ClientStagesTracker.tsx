@@ -28,6 +28,7 @@ import { TaskTimerBadge } from './StageTimerDisplay';
 import { TaskClientMessageButton } from './TaskClientMessageButton';
 import { ActivityFollowUpActions } from '@/components/shared/ActivityFollowUpActions';
 import { TaskElapsedDaysBadge } from '@/components/shared/TaskElapsedDaysBadge';
+import { getCheckTaskState } from '@/lib/checkTaskStates';
 import { buildStageTaskElapsedStartMap } from '@/lib/stageTaskElapsed';
 
 interface ClientStagesTrackerProps {
@@ -304,14 +305,17 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                       )}
                     >
                       <Checkbox
-                        checked={task.task_type === 'check' ? Boolean(task.check_marked) : task.completed}
+                        checked={task.task_type === 'check' ? getCheckTaskState(task).state.filled : task.completed}
                         onCheckedChange={() => handleToggleTask(task)}
                         className={cn(
                           "shrink-0",
-                          task.task_type === 'check' && (task.check_marked
-                            ? "border-red-600 data-[state=checked]:bg-red-600"
-                            : "border-emerald-500"),
                         )}
+                        style={task.task_type === 'check' ? {
+                          borderColor: getCheckTaskState(task).state.color,
+                          backgroundColor: getCheckTaskState(task).state.filled
+                            ? getCheckTaskState(task).state.color
+                            : 'transparent',
+                        } : undefined}
                       />
                       
                       {editingTask?.taskId === task.id ? (
@@ -362,10 +366,9 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                             <span className={cn(
                               "flex items-center justify-end gap-1.5 text-sm",
                               task.completed && task.task_type !== 'check' && "line-through text-gray-500",
-                              task.task_type === 'check' && (task.check_marked ? "text-red-600" : "text-emerald-600")
                             )}>
                               {isTimerTabTask(task) && <Timer className="h-3.5 w-3.5 text-sky-600 shrink-0" />}
-                              <span>{task.title}</span>
+                              <span style={task.task_type === 'check' ? { color: getCheckTaskState(task).state.color } : undefined}>{task.title}</span>
                             </span>
                             {isTimerTabTask(task) && task.auto_timer_days && !task.started_at && (
                               <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">

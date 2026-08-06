@@ -75,6 +75,7 @@ import { TaskPaymentBadge } from "@/components/client-tabs/TaskPaymentBadge";
 import { ActivityFollowUpActions } from "@/components/shared/ActivityFollowUpActions";
 import { TaskElapsedDaysBadge } from "@/components/shared/TaskElapsedDaysBadge";
 import { buildStageTaskElapsedStartMap } from "@/lib/stageTaskElapsed";
+import { getCheckTaskState } from "@/lib/checkTaskStates";
 import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
@@ -301,6 +302,8 @@ interface ClientStageTaskInfo {
   completed: boolean;
   task_type?: string | null;
   check_marked?: boolean | null;
+  check_states?: unknown;
+  check_state_index?: number | null;
   payment_amount?: number | null;
   payment_percentage?: number | null;
   payment_quote_id?: string | null;
@@ -2087,17 +2090,24 @@ export default function Clients() {
   );
 
   const handleToggleStageCheck = useCallback(
-    async (taskId: string, marked: boolean) => {
+    async (taskId: string) => {
       const previousTasks = clientStageTasks;
+      const task = clientStageTasks.find((item) => item.id === taskId);
+      if (!task) return;
+      const current = getCheckTaskState(task);
+      const nextIndex = (current.index + 1) % current.states.length;
+      const marked = nextIndex > 0;
       setClientStageTasks((current) =>
         current.map((task) =>
-          task.id === taskId ? { ...task, check_marked: marked } : task,
+          task.id === taskId
+            ? { ...task, check_marked: marked, check_state_index: nextIndex }
+            : task,
         ),
       );
 
       const { error } = await supabase
         .from("client_stage_tasks")
-        .update({ check_marked: marked } as any)
+        .update({ check_marked: marked, check_state_index: nextIndex } as any)
         .eq("id", taskId);
 
       if (error) {
@@ -2456,7 +2466,7 @@ export default function Clients() {
               ),
               fetchAllFilterRows(
                 "client_stage_tasks",
-                "id, client_id, stage_id, title, completed, task_type, check_marked, completed_at, due_date, created_at, updated_at, payment_amount, payment_percentage, payment_quote_id, payment_step_id",
+                "id, client_id, stage_id, title, completed, task_type, check_marked, check_states, check_state_index, completed_at, due_date, created_at, updated_at, payment_amount, payment_percentage, payment_quote_id, payment_step_id",
               ),
               fetchAllFilterRows(
                 "client_payment_stages",
@@ -4285,7 +4295,10 @@ export default function Clients() {
                         {stageTasks.length}
                       </span>
                     </div>
-                    {tasksToRender.map((task) => (
+                    {tasksToRender.map((task) => {
+                      const checkVisual =
+                        task.task_type === "check" ? getCheckTaskState(task) : null;
+                      return (
                       <div
                         key={task.id}
                         className={cn(
@@ -4300,10 +4313,7 @@ export default function Clients() {
                           className="flex min-w-0 flex-1 items-start gap-2 py-2.5 text-right"
                           onClick={() =>
                             void (task.task_type === "check"
-                              ? handleToggleStageCheck(
-                                  task.id,
-                                  !task.check_marked,
-                                )
+                              ? handleToggleStageCheck(task.id)
                               : handleToggleStageTask(
                                   task.id,
                                   !task.completed,
@@ -4314,25 +4324,34 @@ export default function Clients() {
                             className={cn(
                               "mt-0.5 h-4 w-4 shrink-0 border-2 transition-colors",
                               task.task_type === "check"
-                                ? task.check_marked
-                                  ? "rounded-full border-red-500 bg-red-500"
-                                  : "rounded-full border-emerald-500 bg-white"
+                                ? "rounded-full"
                                 : task.completed
                                   ? "rounded border-emerald-500 bg-emerald-500"
                                   : "rounded border-slate-300 bg-white",
                             )}
+                            style={
+                              checkVisual
+                                ? {
+                                    borderColor: checkVisual.state.color,
+                                    backgroundColor: checkVisual.state.filled
+                                      ? checkVisual.state.color
+                                      : "white",
+                                  }
+                                : undefined
+                            }
                           />
                           <span
                             className={cn(
                               "text-xs leading-5",
                               task.task_type === "check"
-                                ? task.check_marked
-                                  ? "text-red-600"
-                                  : "text-emerald-600"
+                                ? undefined
                                 : task.completed
                                   ? "text-emerald-700 line-through"
                                   : "text-[#1e3a5f]",
                             )}
+                            style={
+                              checkVisual ? { color: checkVisual.state.color } : undefined
+                            }
                           >
                             {task.title}
                           </span>
@@ -4380,7 +4399,8 @@ export default function Clients() {
                           className="opacity-70 transition-opacity group-hover/task:opacity-100"
                         />
                       </div>
-                    ))}
+                      );
+                    })}
                   </section>
                 );
               })

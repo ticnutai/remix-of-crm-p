@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { countLinkedClientsByTemplate } from "@/lib/client-template-lineage";
+import { DEFAULT_CHECK_TASK_STATES } from "@/lib/checkTaskStates";
 
 // Helper to access tables not yet in generated types
 // Remove after running migration and regenerating types
@@ -18,6 +19,7 @@ export interface TemplateTask {
   sort_order: number;
   task_type?: "task" | "timer_tab" | "check" | null;
   auto_timer_days?: number | null;
+  check_states?: unknown;
   // Content fields (saved when includeTaskContent is true)
   completed?: boolean;
   completed_at?: string | null;
@@ -74,6 +76,7 @@ export interface ClientStage {
     sort_order: number;
     task_type?: "task" | "timer_tab" | "check" | null;
     auto_timer_days?: number | null;
+    check_states?: unknown;
     completed_at?: string | null;
     background_color?: string | null;
     text_color?: string | null;
@@ -215,6 +218,7 @@ export function useStageTemplates() {
               sort_order: task.sort_order ?? index,
               task_type: normalizeTemplateTaskType(task.task_type),
               auto_timer_days: isTimerTab ? task.auto_timer_days || null : null,
+              check_states: task.task_type === "check" ? task.check_states || DEFAULT_CHECK_TASK_STATES : DEFAULT_CHECK_TASK_STATES,
             };
           });
 
@@ -373,6 +377,7 @@ export function useStageTemplates() {
                 sort_order: task.sort_order ?? index,
                 task_type: normalizeTemplateTaskType(task.task_type),
                 auto_timer_days: isTimerTab ? task.auto_timer_days || null : null,
+                check_states: task.task_type === "check" ? task.check_states || DEFAULT_CHECK_TASK_STATES : DEFAULT_CHECK_TASK_STATES,
               };
 
               if (includeTaskContent) {
@@ -455,11 +460,11 @@ export function useStageTemplates() {
       folderId?: string | null,
       selectedStageIds?: string[],
     ) => {
+      const createdStages: string[] = [];
       try {
         const template = templates.find((t) => t.id === templateId);
         if (!template) throw new Error("Template not found");
 
-        const createdStages: string[] = [];
         const includesContent = template.includes_task_content;
 
         // Filter stages if specific ones are selected
@@ -506,6 +511,11 @@ export function useStageTemplates() {
                   completed: false,
                   task_type: normalizeTemplateTaskType(task.task_type),
                   auto_timer_days: isTimerTab ? task.auto_timer_days || null : null,
+                  check_states: task.task_type === "check" ? task.check_states || DEFAULT_CHECK_TASK_STATES : DEFAULT_CHECK_TASK_STATES,
+                  check_state_index: 0,
+                  // The database column is NOT NULL for every task type. Regular
+                  // tasks simply keep the default unmarked value.
+                  check_marked: false,
                   source_template_id: templateId,
                   source_template_task_id: task.id,
                 };
@@ -556,8 +566,24 @@ export function useStageTemplates() {
         return createdStages;
       } catch (error) {
         console.error("Error applying template:", error);
+        // Applying a template spans multiple inserts. Roll back the stages from
+        // this attempt so a failed task insert cannot leave a partial template
+        // behind or create duplicates on the next retry.
+        if (createdStages.length > 0) {
+          const { error: rollbackError } = await supabase
+            .from("client_stages")
+            .delete()
+            .eq("client_id", clientId)
+            .in("stage_id", createdStages);
+
+          if (rollbackError) {
+            console.error("Error rolling back partially applied template:", rollbackError);
+          }
+        }
         toast({
           title: "שגיאה בהחלת התבנית",
+          description:
+            error instanceof Error ? error.message : "לא ניתן להחיל את התבנית",
           variant: "destructive",
         });
         return null;
