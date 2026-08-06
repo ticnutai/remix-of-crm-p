@@ -218,7 +218,7 @@ export function BulkClientFieldsDialog({
         for (const client of assignedClients) {
           const customData = { ...(client.custom_data || {}) } as Record<string, unknown>;
           delete customData[field.custom.field_key];
-          const { error } = await supabase.from("clients").update({ custom_data: customData }).eq("id", client.id);
+          const { error } = await supabase.from("clients").update({ custom_data: customData as any }).eq("id", client.id);
           if (error) throw error;
         }
       } else if (field.column) {
