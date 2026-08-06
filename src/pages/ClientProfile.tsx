@@ -976,6 +976,7 @@ export default function ClientProfile() {
   });
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesText, setNotesText] = useState("");
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
 
   const normalizeDateInput = useCallback((value?: string | null) => {
     if (!value) return "";
