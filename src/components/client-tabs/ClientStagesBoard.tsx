@@ -603,6 +603,8 @@ const createStageThemeDraft = (base?: StageBoardTheme): StageBoardTheme => {
 };
 
 // Sortable Task Item Component
+type TaskCompletionVisualMode = "classic" | "status";
+
 interface SortableTaskProps {
   task: ClientStageTask;
   stage: ClientStage;
@@ -642,6 +644,8 @@ interface SortableTaskProps {
   ) => void;
   stopTaskTimer?: (taskId: string) => void;
   cycleTaskTimerStyle?: (taskId: string) => void;
+  completionVisualMode: TaskCompletionVisualMode;
+  completionVisualMode: TaskCompletionVisualMode;
 }
 
 const isTimerTabTask = (task: ClientStageTask) =>
@@ -667,6 +671,7 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
   startTaskTimer,
   stopTaskTimer,
   cycleTaskTimerStyle,
+  completionVisualMode,
 }: SortableTaskProps) {
   const [editingDate, setEditingDate] = useState(false);
   const [customStartDate, setCustomStartDate] = useState("");
@@ -689,6 +694,7 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
   const isTimerTab = isTimerTabTask(task);
   const isCheck = task.task_type === "check";
   const checkVisual = isCheck ? getCheckTaskState(task) : null;
+  const usesStatusCompletionVisual = completionVisualMode === "status" && !isCheck;
   const isTimerTabActive =
     isTimerTab && Boolean(task.started_at && task.target_working_days);
   const canStartTimerTab =
@@ -709,6 +715,8 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
         <div
           ref={setNodeRef}
           style={style}
+          data-task-completion-view={completionVisualMode}
+          data-task-completion-state={task.completed ? "completed" : "open"}
           className={cn(
             "flex items-start gap-2 p-2 rounded-md transition-all group cursor-context-menu",
             task.completed && !task.background_color
@@ -763,6 +771,16 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
                   borderColor: checkVisual!.state.color,
                   backgroundColor: checkVisual!.state.filled ? checkVisual!.state.color : "transparent",
                 }}
+              />
+            ) : usesStatusCompletionVisual ? (
+              <span
+                data-task-status-circle
+                className={cn(
+                  "block h-5 w-5 rounded-full border-2 transition-colors",
+                  task.completed
+                    ? "border-emerald-500 bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.12)]"
+                    : "border-red-500 bg-transparent hover:bg-red-50 dark:hover:bg-red-950/20",
+                )}
               />
             ) : task.completed ? (
               <CheckCircle2
@@ -829,14 +847,25 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
             >
               <p
                 className={cn(
-                  "text-sm text-right break-words text-[#1a2c5f] dark:text-slate-200",
-                  task.completed &&
+                  "text-sm text-right break-words",
+                  isCheck
+                    ? "text-[#1a2c5f] dark:text-slate-200"
+                    : usesStatusCompletionVisual
+                      ? task.completed
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-red-600 dark:text-red-400"
+                      : "text-[#1a2c5f] dark:text-slate-200",
+                  !isCheck && !usesStatusCompletionVisual && task.completed &&
                     "line-through text-emerald-600 dark:text-emerald-400",
                   task.is_bold && "font-bold",
                   isTimerTab && "flex items-center justify-end gap-1.5",
                 )}
                 style={{
-                  color: isCheck ? checkVisual!.state.color : task.text_color || undefined,
+                  color: isCheck
+                    ? checkVisual!.state.color
+                    : usesStatusCompletionVisual
+                      ? undefined
+                      : task.text_color || undefined,
                 }}
               >
                 {isTimerTab && <Timer className="h-3.5 w-3.5 shrink-0 text-sky-600" />}
@@ -1648,6 +1677,7 @@ function SortableExpandedTaskItem({
   handleDeleteTask,
   startTaskTimer,
   cycleTaskTimerStyle,
+  completionVisualMode,
 }: SortableExpandedTaskProps) {
   const {
     attributes,
@@ -1665,6 +1695,8 @@ function SortableExpandedTaskItem({
     opacity: isDragging ? 0.5 : 1,
   };
   const isTimerTab = isTimerTabTask(task);
+  const isCheck = task.task_type === "check";
+  const usesStatusCompletionVisual = completionVisualMode === "status" && !isCheck;
   const isTimerTabActive =
     isTimerTab && Boolean(task.started_at && task.target_working_days);
   const canStartTimerTab =
@@ -1673,6 +1705,8 @@ function SortableExpandedTaskItem({
     <div
       ref={setNodeRef}
       style={style}
+      data-task-completion-view={completionVisualMode}
+      data-task-completion-state={task.completed ? "completed" : "open"}
       className={cn(
         "flex items-center gap-3 p-4 rounded-lg transition-all group",
         task.completed
@@ -1716,7 +1750,9 @@ function SortableExpandedTaskItem({
         onClick={() => handleToggleTask(task)}
         className="shrink-0 focus:outline-none"
       >
-        {task.completed ? (
+        {usesStatusCompletionVisual ? (
+          <span className={cn("block h-5 w-5 rounded-full transition-colors", task.completed ? "bg-emerald-500" : "border-2 border-red-500 bg-transparent")} />
+        ) : task.completed ? (
           <CheckCircle2
             className="h-5 w-5 text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.7)] animate-pulse"
             style={{
@@ -1746,7 +1782,8 @@ function SortableExpandedTaskItem({
         <p
           className={cn(
             "text-base text-right text-[#1a2c5f] dark:text-slate-200 font-medium",
-            task.completed &&
+            usesStatusCompletionVisual && (task.completed ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"),
+            !usesStatusCompletionVisual && task.completed &&
               "line-through text-emerald-600 dark:text-emerald-400",
             isTimerTab && "flex items-center justify-end gap-2",
           )}
@@ -2599,6 +2636,12 @@ export function ClientStagesBoard({
 
   // Show all stages by default
   const [showAllStages, setShowAllStages] = useState(true);
+  const [taskCompletionVisualMode, setTaskCompletionVisualMode] = useState<TaskCompletionVisualMode>(() => {
+    try { return localStorage.getItem("stages-task-completion-visual-mode-v1") === "classic" ? "classic" : "status"; } catch { return "status"; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("stages-task-completion-visual-mode-v1", taskCompletionVisualMode); } catch { /* localStorage may be unavailable */ }
+  }, [taskCompletionVisualMode]);
   const [hideCompletedTasks, setHideCompletedTasks] = useState(() => {
     try { return localStorage.getItem(`stages-hide-completed-${clientId}`) === '1'; } catch { return false; }
   });
@@ -2607,8 +2650,8 @@ export function ClientStagesBoard({
   }, [hideCompletedTasks, clientId]);
   const filterTasks = useCallback(
     <T extends { completed?: boolean }>(tasks: T[] | undefined | null): T[] =>
-      hideCompletedTasks ? (tasks || []).filter((t) => !t.completed) : (tasks || []),
-    [hideCompletedTasks]
+      taskCompletionVisualMode === "classic" && hideCompletedTasks ? (tasks || []).filter((t) => !t.completed) : (tasks || []),
+    [hideCompletedTasks, taskCompletionVisualMode]
   );
 
   // Summary frame: shows incomplete tasks from stages that have been started (at least 1 task done)
@@ -3692,11 +3735,31 @@ export function ClientStagesBoard({
           )}
         </Button>
 
+        <Button
+          variant="outline"
+          size="icon"
+          className={cn("h-9 w-9 shrink-0 rounded-full", taskCompletionVisualMode === "status" && "border-emerald-500 bg-emerald-50")}
+          onClick={() => setTaskCompletionVisualMode((previous) => {
+            const next = previous === "status" ? "classic" : "status";
+            if (next === "status") setHideCompletedTasks(false);
+            return next;
+          })}
+          title={taskCompletionVisualMode === "status" ? "תצוגת צבעים: עבור לתצוגה קלאסית" : "תצוגה קלאסית: עבור לתצוגת צבעים"}
+          aria-label="החלף תצוגת השלמת משימות"
+          aria-pressed={taskCompletionVisualMode === "status"}
+          data-task-completion-toggle
+        >
+          <span className="flex gap-0.5" aria-hidden="true"><span className="h-2.5 w-2.5 rounded-full border-2 border-red-500" /><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /></span>
+        </Button>
+
         {/* Toggle hide completed tasks */}
         <Button
           variant={hideCompletedTasks ? "default" : "outline"}
           size="sm"
-          onClick={() => setHideCompletedTasks((v) => !v)}
+          onClick={() => {
+            if (taskCompletionVisualMode === "status") setTaskCompletionVisualMode("classic");
+            setHideCompletedTasks((v) => !v);
+          }}
           className="gap-2"
           title={hideCompletedTasks ? "הצג הושלמו" : "הסתר הושלמו"}
           style={
@@ -4591,6 +4654,7 @@ export function ClientStagesBoard({
                             startTaskTimer={startTaskTimer}
                             stopTaskTimer={stopTaskTimer}
                             cycleTaskTimerStyle={cycleTaskTimerStyle}
+                            completionVisualMode={taskCompletionVisualMode}
                           />
                         ))}
                       </div>
@@ -4598,7 +4662,7 @@ export function ClientStagesBoard({
                   </DndContext>
                 ) : (
                   <div className="text-center text-sm text-gray-500 py-8">
-                    {hideCompletedTasks && (stage.tasks?.length || 0) > 0 ? "כל המשימות הושלמו" : "אין משימות"}
+                    {taskCompletionVisualMode === "classic" && hideCompletedTasks && (stage.tasks?.length || 0) > 0 ? "כל המשימות הושלמו" : "אין משימות"}
                   </div>
                 ); })()}
 
@@ -5050,6 +5114,7 @@ export function ClientStagesBoard({
                                     handleDeleteTask={handleDeleteTask}
                                     startTaskTimer={startTaskTimer}
                                     cycleTaskTimerStyle={cycleTaskTimerStyle}
+                                    completionVisualMode={taskCompletionVisualMode}
                                   />
                                 </div>
                               </div>
@@ -5109,6 +5174,8 @@ export function ClientStagesBoard({
                               {filterTasks(expandedStageData.tasks).map((task, index) => (
                                 <tr
                                   key={task.id}
+                                  data-task-completion-view={taskCompletionVisualMode}
+                                  data-task-completion-state={task.completed ? "completed" : "open"}
                                   className={cn(
                                     "border-t transition-colors",
                                     task.completed
@@ -5134,7 +5201,16 @@ export function ClientStagesBoard({
                                       onClick={() => handleToggleTask(task)}
                                       className="focus:outline-none"
                                     >
-                                      {task.completed ? (
+                                      {task.task_type !== "check" && taskCompletionVisualMode === "status" ? (
+                                        <span
+                                          className={cn(
+                                            "block h-5 w-5 rounded-full transition-colors",
+                                            task.completed
+                                              ? "bg-emerald-500"
+                                              : "border-2 border-red-500 bg-transparent",
+                                          )}
+                                        />
+                                      ) : task.completed ? (
                                         <CheckCircle2
                                           className="h-5 w-5 text-emerald-500"
                                           style={{
@@ -5150,9 +5226,15 @@ export function ClientStagesBoard({
                                   <td className="p-3">
                                     <p
                                       className={cn(
-                                        "text-[#1a2c5f] dark:text-slate-200 font-medium",
-                                        task.completed &&
-                                          "line-through text-emerald-600 dark:text-emerald-400",
+                                        "font-medium",
+                                        task.task_type !== "check" && taskCompletionVisualMode === "status"
+                                          ? task.completed
+                                            ? "text-emerald-600 dark:text-emerald-400"
+                                            : "text-red-600 dark:text-red-400"
+                                          : cn(
+                                              "text-[#1a2c5f] dark:text-slate-200",
+                                              task.completed && "line-through text-emerald-600 dark:text-emerald-400",
+                                            ),
                                       )}
                                     >
                                       <TaskTitleWithConsultants
