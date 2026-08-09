@@ -138,6 +138,7 @@ interface QuickAddMeetingProps {
     endTime?: string;
     location?: string;
     meetingType?: string;
+    attendees?: string[];
   };
 }
 
@@ -239,6 +240,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
         setEndTime(initialData.endTime || "10:00");
         setLocation(initialData.location || "");
         setClientIds(initialData.clientId ? [initialData.clientId] : []);
+        setAttendees(initialData.attendees || []);
       }
     }, [open, initialData]);
 

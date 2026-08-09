@@ -107,6 +107,7 @@ interface QuickAddTaskProps {
     clientId?: string;
     dueDate?: Date;
     priority?: string;
+    assignedTo?: string | null;
   };
 }
 
@@ -188,8 +189,9 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
         setDueDate(initialData.dueDate);
         setDueDateText(initialData.dueDate ? format(initialData.dueDate, "dd/MM/yyyy") : "");
         setClientIds(initialData.clientId ? [initialData.clientId] : []);
+        setAssignedTo(initialData.assignedTo ?? user?.id ?? null);
       }
-    }, [open, initialData]);
+    }, [open, initialData, user?.id]);
 
     const resetForm = () => {
       setTitle("");
@@ -200,6 +202,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
       setDueDateText("");
       setDateError(null);
       setClientIds([]);
+      setAssignedTo(user?.id ?? null);
       setIsPrivate(false);
       setReminderConfig(null);
     };

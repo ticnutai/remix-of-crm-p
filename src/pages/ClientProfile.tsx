@@ -507,11 +507,16 @@ export default function ClientProfile() {
   const [groupTasksByClient] = useClientGrouping("tasks");
   const [groupMeetingsByClient] = useClientGrouping("meetings");
   const [groupRemindersByClient] = useClientGrouping("reminders");
-  const resolveUser = useProfileNames([
-    ...tasks.map((t: any) => t.created_by),
-    ...meetings.map((m: any) => m.created_by),
-    ...reminders.map((r: any) => r.created_by || r.user_id),
-  ]);
+  const resolveUser = useProfileNames(
+    [
+      ...tasks.flatMap((task: any) => [task.created_by, task.assigned_to]),
+      ...meetings.flatMap((meeting: any) => [
+        meeting.created_by,
+        ...((meeting.attendees as string[] | null) || []),
+      ]),
+      ...reminders.flatMap((reminder: any) => [reminder.created_by, reminder.user_id]),
+    ].filter(Boolean) as string[],
+  );
 
   const userFilter = useUserFilter();
 
@@ -2454,6 +2459,7 @@ export default function ClientProfile() {
                                   priority: (task as any).priority || "medium",
                                   dueDate: task.due_date ? new Date(task.due_date) : undefined,
                                   clientId: clientId,
+                                  assignedTo: task.assigned_to || null,
                                 });
                                 setIsAddTaskDialogOpen(true);
                               }}
@@ -2546,6 +2552,7 @@ export default function ClientProfile() {
                                     endTime: endDt ? format(endDt, "HH:mm") : format(startDt, "HH:mm"),
                                     location: meeting.location || "",
                                     clientId: clientId,
+                                    attendees: (meeting.attendees as string[] | null) || [],
                                   });
                                   setIsAddMeetingDialogOpen(true);
                                 }}
@@ -2922,6 +2929,7 @@ export default function ClientProfile() {
                                   priority: (task as any).priority || "medium",
                                   dueDate: task.due_date ? new Date(task.due_date) : undefined,
                                   clientId: clientId,
+                                  assignedTo: task.assigned_to || null,
                                 });
                                 setIsAddTaskDialogOpen(true);
                               }}
@@ -2954,7 +2962,7 @@ export default function ClientProfile() {
                             <p className="font-medium">{task.title}</p>
                             <p className="text-sm text-muted-foreground">
                               {task.project_name && `${task.project_name} • `}
-                              {task.assigned_to_name || "לא משויך"}
+                              {resolveUser(task.assigned_to) || task.assigned_to_name || "לא משויך"}
                             </p>
                           </div>
                         </div>
@@ -3032,6 +3040,7 @@ export default function ClientProfile() {
                                     : format(startDt, "HH:mm"),
                                   location: meeting.location || "",
                                   clientId: clientId,
+                                  attendees: (meeting.attendees as string[] | null) || [],
                                 });
                                 setIsAddMeetingDialogOpen(true);
                               }}
@@ -4140,6 +4149,7 @@ export default function ClientProfile() {
                   description: taskData.description || null,
                   priority: taskData.priority || 'medium',
                   due_date: taskData.due_date || null,
+                  assigned_to: taskData.assigned_to || null,
                 })
                 .eq("id", editingTaskId);
               if (error) {
@@ -4158,6 +4168,7 @@ export default function ClientProfile() {
                   due_date: taskData.due_date || null,
                   client_id: clientId,
                   created_by: user.id,
+                  assigned_to: taskData.assigned_to || null,
                 })
                 .select();
               if (error) {
@@ -4194,6 +4205,7 @@ export default function ClientProfile() {
                 start_time: meetingData.start_time,
                 end_time: meetingData.end_time,
                 location: meetingData.location || null,
+                attendees: meetingData.attendees || [],
               }).eq("id", editingMeetingObj.id);
               if (error) {
                 toast({ title: "שגיאה בעדכון הפגישה", description: error.message, variant: "destructive" });
@@ -4211,6 +4223,7 @@ export default function ClientProfile() {
                 client_id: clientId,
                 created_by: user.id,
                 status: 'scheduled',
+                attendees: meetingData.attendees || [],
               });
               if (error) {
                 toast({ title: "שגיאה ביצירת הפגישה", description: error.message, variant: "destructive" });
