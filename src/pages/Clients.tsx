@@ -601,7 +601,9 @@ export default function Clients() {
   } = useGoogleSheets();
 
   const [clients, setClients] = useState<Client[]>(() => clientsCache ?? []);
-  const [isLoading, setIsLoading] = useState(() => clientsCache === null);
+  const [isLoading, setIsLoading] = useState(
+    () => clientsCache === null || clientsCache.length === 0,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [smartSearch, setSmartSearch] = useState<SmartSearchValues>({});
 
@@ -2893,7 +2895,7 @@ export default function Clients() {
 
   const fetchClients = useCallback(async () => {
     // Only show the loading bar when we have nothing cached to display yet.
-    if (clientsCache === null) {
+    if (clientsCache === null || clientsCache.length === 0) {
       setIsLoading(true);
     }
     try {
@@ -2923,6 +2925,11 @@ export default function Clients() {
 
   // Data fetching on mount
   useEffect(() => {
+    // Supabase RLS depends on the restored auth session. Running this query
+    // before auth finishes can briefly return an empty list and render the
+    // misleading "no clients" state before the authenticated request wins.
+    if (authLoading || !user?.id) return;
+
     void fetchClients();
 
     // Filters, counters and tags are useful immediately after the gallery is
@@ -2941,7 +2948,7 @@ export default function Clients() {
 
     const timeoutId = setTimeout(loadSecondaryData, 0);
     return () => clearTimeout(timeoutId);
-  }, [fetchClients, fetchFilterData, fetchCategoriesAndTags]);
+  }, [authLoading, user?.id, fetchClients, fetchFilterData, fetchCategoriesAndTags]);
 
   // Keep the compact process controls aligned with edits made in a client
   // profile (including another tab). Refetch on focus and after realtime
@@ -6855,7 +6862,7 @@ export default function Clients() {
                 }}
               >
                 {filteredClients.length === 0 ? (
-                  isLoading ? null : (
+                  authLoading || isLoading ? null : (
                     <div style={{ textAlign: "center", padding: "64px 0" }}>
                       <Users
                         style={{
