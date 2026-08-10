@@ -474,7 +474,8 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
               <PopoverContent
                 align="start"
                 sideOffset={4}
-                className="p-0 z-[10060] w-[var(--radix-popover-trigger-width)] min-w-[240px] max-w-[calc(100vw-1.5rem)]"
+                collisionPadding={12}
+                className="p-0 z-[10060] w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-1.5rem)] overflow-hidden"
               >
                 <Command className="rtl" shouldFilter={false}>
                   <CommandInput
@@ -483,7 +484,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                     onValueChange={setClientSearch}
                     className="text-right"
                   />
-                  <CommandList className="max-h-[min(50vh,320px)] overflow-y-auto overflow-x-hidden overscroll-contain">
+                  <CommandList className="max-h-[min(45dvh,300px)] overflow-y-auto overflow-x-hidden overscroll-contain">
                     <CommandEmpty>לא נמצאו לקוחות</CommandEmpty>
                     <CommandGroup>
                       <CommandItem

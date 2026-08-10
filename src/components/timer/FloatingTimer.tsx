@@ -821,9 +821,14 @@ function FloatingTimerContent() {
         align="start"
         sideOffset={16}
         className="p-0 rounded-3xl overflow-visible shadow-[0_0_60px_rgba(180,140,50,0.3),0_25px_60px_-15px_rgba(0,0,0,0.5)] relative"
+        collisionPadding={12}
+        avoidCollisions
         style={{
-          width: popoverSize.width,
-          minHeight: popoverSize.height,
+          width: `min(${popoverSize.width}px, calc(100vw - 24px))`,
+          maxWidth: "calc(100vw - 24px)",
+          minHeight: `min(${popoverSize.height}px, calc(100dvh - 120px))`,
+          maxHeight: "calc(100dvh - 100px)",
+          overflowX: "hidden",
           backgroundColor: timerTheme.backgroundColor,
           borderWidth: `${timerTheme.borderWidth || 3}px`,
           borderStyle: "solid",
@@ -1256,7 +1261,7 @@ function FloatingTimerContent() {
         <div
           className="overflow-y-auto overflow-x-hidden scrollbar-hide rounded-b-3xl"
           style={{
-            height: popoverSize.height - 200,
+            height: `min(${popoverSize.height - 200}px, calc(100dvh - 300px))`,
             maxWidth: "100%",
           }}
           dir="rtl"
