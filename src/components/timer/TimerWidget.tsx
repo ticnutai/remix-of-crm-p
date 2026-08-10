@@ -427,49 +427,84 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
       <div className="flex flex-col gap-3">
         {/* Client Selection - Always Visible */}
         {!timerState.isRunning && (
-          <div className="flex items-center gap-2">
-            <Select
-              value={selectedClient || "__none__"}
-              onValueChange={handleClientSelect}
-              disabled={timerState.isRunning}
-            >
-              <SelectTrigger
-                className={cn(
-                  "flex-1 h-9 text-xs rounded-xl shadow-sm",
-                  !selectedClient
-                    ? "border-[hsl(45,80%,50%)]/50 ring-1 ring-[hsl(45,80%,50%)]/30"
-                    : "",
-                )}
-                style={{
-                  ...getInputBgStyle(),
-                  ...getInputTextStyle(),
-                }}
+          <div className="flex items-center gap-2 min-w-0">
+            <Popover open={clientPickerOpen} onOpenChange={setClientPickerOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  disabled={timerState.isRunning}
+                  className={cn(
+                    "flex-1 min-w-0 h-9 px-3 flex items-center gap-2 text-xs rounded-xl shadow-sm border",
+                    !selectedClient
+                      ? "border-[hsl(45,80%,50%)]/50 ring-1 ring-[hsl(45,80%,50%)]/30"
+                      : "border-primary/30",
+                  )}
+                  style={{ ...getInputBgStyle(), ...getInputTextStyle() }}
+                >
+                  <User className="h-3.5 w-3.5 shrink-0" style={getIconStyle()} />
+                  <span className="flex-1 min-w-0 truncate text-right">
+                    {selectedClientName || "בחר לקוח *"}
+                  </span>
+                  <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                sideOffset={4}
+                className="p-0 z-[10060] w-[var(--radix-popover-trigger-width)] min-w-[240px] max-w-[calc(100vw-1.5rem)]"
               >
-                <User className="h-3.5 w-3.5 ml-1" style={getIconStyle()} />
-                <SelectValue placeholder="בחר לקוח *" />
-              </SelectTrigger>
-              <SelectContent
-                className="z-[9999]"
-                style={{
-                  ...getInputBgStyle(),
-                  ...getInputTextStyle(),
-                }}
-              >
-                <SelectItem value="__none__" style={getInputTextStyle()}>
-                  בחר לקוח
-                </SelectItem>
-                {clients.map((client) => (
-                  <SelectItem
-                    key={client.id}
-                    value={client.id}
-                    style={getInputTextStyle()}
-                  >
-                    {client.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <Command className="rtl" shouldFilter={false}>
+                  <CommandInput
+                    placeholder="חפש לקוח..."
+                    value={clientSearch}
+                    onValueChange={setClientSearch}
+                    className="text-right"
+                  />
+                  <CommandList className="max-h-[min(50vh,320px)] overflow-y-auto overflow-x-hidden overscroll-contain">
+                    <CommandEmpty>לא נמצאו לקוחות</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="__none__"
+                        onSelect={() => {
+                          setClientPickerOpen(false);
+                          setClientSearch("");
+                          handleClientSelect("__none__");
+                        }}
+                        className="cursor-pointer"
+                      >
+                        בחר לקוח
+                      </CommandItem>
+                      {filteredClients.map((client) => (
+                        <CommandItem
+                          key={client.id}
+                          value={client.id}
+                          onSelect={() => {
+                            setClientPickerOpen(false);
+                            setClientSearch("");
+                            handleClientSelect(client.id);
+                          }}
+                          className="cursor-pointer flex items-center gap-2"
+                        >
+                          <Check
+                            className={cn(
+                              "h-3.5 w-3.5 shrink-0",
+                              selectedClient === client.id
+                                ? "opacity-100"
+                                : "opacity-0",
+                            )}
+                          />
+                          <span className="flex-1 min-w-0 break-words text-right">
+                            {client.name}
+                          </span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
+
         )}
 
         {/* Timer Display + Control Buttons - Only shown if showTimerDisplay is true */}
