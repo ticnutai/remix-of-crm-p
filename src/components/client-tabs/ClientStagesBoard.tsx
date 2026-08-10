@@ -1661,7 +1661,9 @@ interface SortableExpandedTaskProps {
     startDate?: string,
   ) => void;
   cycleTaskTimerStyle?: (taskId: string) => void;
+  completionVisualMode: TaskCompletionVisualMode;
 }
+
 function SortableExpandedTaskItem({
   task,
   stageId,
