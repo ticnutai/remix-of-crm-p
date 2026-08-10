@@ -52,6 +52,7 @@ import {
   Settings,
   Plus,
   Trash2,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -126,6 +127,8 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
   const [showSavePanel, setShowSavePanel] = useState(false);
   const [isCollapsed, setIsCollapsed] = useSyncedSetting<boolean>({ key: "timer-widget-collapsed", defaultValue: false });
   const [recentClients, setRecentClients] = useState<Client[]>(() => {
@@ -299,6 +302,12 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
       }
     }
   }, [selectedProject, projects]);
+
+  const filteredClients = React.useMemo(() => {
+    const q = clientSearch.trim().toLowerCase();
+    if (!q) return clients;
+    return clients.filter((c) => c.name?.toLowerCase().includes(q));
+  }, [clients, clientSearch]);
 
   // Get selected client name
   const selectedClientName = clients.find((c) => c.id === selectedClient)?.name;
