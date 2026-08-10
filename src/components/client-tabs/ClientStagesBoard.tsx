@@ -645,7 +645,6 @@ interface SortableTaskProps {
   stopTaskTimer?: (taskId: string) => void;
   cycleTaskTimerStyle?: (taskId: string) => void;
   completionVisualMode: TaskCompletionVisualMode;
-  completionVisualMode: TaskCompletionVisualMode;
 }
 
 const isTimerTabTask = (task: ClientStageTask) =>
@@ -1662,7 +1661,9 @@ interface SortableExpandedTaskProps {
     startDate?: string,
   ) => void;
   cycleTaskTimerStyle?: (taskId: string) => void;
+  completionVisualMode: TaskCompletionVisualMode;
 }
+
 function SortableExpandedTaskItem({
   task,
   stageId,

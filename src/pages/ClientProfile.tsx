@@ -4205,7 +4205,7 @@ export default function ClientProfile() {
                 start_time: meetingData.start_time,
                 end_time: meetingData.end_time,
                 location: meetingData.location || null,
-                attendees: meetingData.attendees || [],
+                attendees: (meetingData as any).attendees || [],
               }).eq("id", editingMeetingObj.id);
               if (error) {
                 toast({ title: "שגיאה בעדכון הפגישה", description: error.message, variant: "destructive" });
@@ -4223,7 +4223,7 @@ export default function ClientProfile() {
                 client_id: clientId,
                 created_by: user.id,
                 status: 'scheduled',
-                attendees: meetingData.attendees || [],
+                attendees: (meetingData as any).attendees || [],
               });
               if (error) {
                 toast({ title: "שגיאה ביצירת הפגישה", description: error.message, variant: "destructive" });
