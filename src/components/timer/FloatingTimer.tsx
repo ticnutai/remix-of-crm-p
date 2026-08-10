@@ -1261,7 +1261,7 @@ function FloatingTimerContent() {
         <div
           className="overflow-y-auto overflow-x-hidden scrollbar-hide rounded-b-3xl"
           style={{
-            height: popoverSize.height - 200,
+            height: `min(${popoverSize.height - 200}px, calc(100dvh - 300px))`,
             maxWidth: "100%",
           }}
           dir="rtl"
