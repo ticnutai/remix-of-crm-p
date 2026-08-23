@@ -268,13 +268,41 @@ const TasksAndMeetings = () => {
     !user || m.created_by === user.id || (((m as any).attendees as string[] | undefined) || []).includes(user.id);
   const ownsReminder = (r: Reminder) => !user || r.user_id === user.id;
 
+  // Global free-text search across every relevant field (tasks / meetings / reminders)
+  const searchTerms = searchQuery
+    .toLowerCase()
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  const matchesSearchFields = (...fields: (string | null | undefined)[]) => {
+    if (searchTerms.length === 0) return true;
+    const haystack = fields
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return searchTerms.every((term) => haystack.includes(term));
+  };
+
+  const clientNameById = (id?: string | null) =>
+    id ? clients.find((c) => c.id === id)?.name ?? null : null;
+  const projectNameById = (id?: string | null) =>
+    id ? projects.find((p) => p.id === id)?.name ?? null : null;
+
   // Filter tasks
   const filteredTasks = tasks.filter((task) => {
     if (!isAdmin && !ownsTask(task)) return false;
     if (isAdmin && !userFilter.matches(task, "tasks")) return false;
-    const matchesSearch =
-      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      task.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = matchesSearchFields(
+      task.title,
+      task.description,
+      task.status,
+      task.priority,
+      task.due_date,
+      (task.tags || []).join(" "),
+      task.client?.name ?? clientNameById(task.client_id),
+      task.project?.name ?? projectNameById(task.project_id),
+    );
     const matchesStatus =
       statusFilter === "all" ||
       (statusFilter === "overdue"
@@ -291,9 +319,15 @@ const TasksAndMeetings = () => {
   const filteredMeetings = meetings.filter((meeting) => {
     if (!isAdmin && !ownsMeeting(meeting)) return false;
     if (isAdmin && !userFilter.matches(meeting, "meetings")) return false;
-    return (
-      meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      meeting.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesSearchFields(
+      meeting.title,
+      meeting.description,
+      meeting.location,
+      meeting.meeting_type,
+      meeting.status,
+      meeting.start_time,
+      meeting.client?.name ?? clientNameById(meeting.client_id),
+      meeting.project?.name ?? projectNameById(meeting.project_id),
     );
   });
 
@@ -301,7 +335,15 @@ const TasksAndMeetings = () => {
   const scopedReminders = reminders.filter((r) => {
     if (!isAdmin && !ownsReminder(r)) return false;
     if (isAdmin && !userFilter.matches(r, "reminders")) return false;
-    return true;
+    return matchesSearchFields(
+      r.title,
+      r.message,
+      r.reminder_type,
+      r.remind_at,
+      r.recipient_email,
+      r.recipient_phone,
+      r.client?.name ?? clientNameById(r.client_id),
+    );
   });
 
   // Sort tasks
