@@ -1,6 +1,6 @@
 // Optimized Tasks Hook with React Query - tenarch CRM Pro
 // Features: Optimistic updates, caching, prefetching, background sync
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
