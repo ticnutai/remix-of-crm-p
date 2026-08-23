@@ -115,9 +115,28 @@ export function useTasksOptimized() {
     queryKey: TASKS_QUERY_KEY,
     queryFn: createOfflineQueryFn<Task>("tasks", fetchTasks),
     enabled: !!user,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 15 * 1000, // short – realtime keeps the cache fresh
     gcTime: 10 * 60 * 1000, // 10 minutes cache
+    refetchOnWindowFocus: true,
   });
+
+  // ── Realtime: any change by ANY user refreshes the list immediately ──
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("tasks-realtime-shared")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, queryClient]);
 
   // Create mutation with optimistic update
   const createMutation = useMutation({
