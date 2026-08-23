@@ -525,14 +525,15 @@ export function useReminderEngine() {
     if (!user?.id || !isOwnerRef.current) return;
 
     const channel = supabase
-      .channel(`reminders-realtime-${user.id}`)
+      .channel("reminders-realtime-shared")
       .on(
         "postgres_changes",
         {
+          // No user filter: managers/admins must see reminders created by others
+          // instantly too (RLS still limits what the refetch returns).
           event: "*",
           schema: "public",
           table: "reminders",
-          filter: `user_id=eq.${user.id}`,
         },
         () => {
           fetchReminders();
