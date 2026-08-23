@@ -133,9 +133,28 @@ export function useMeetingsOptimized() {
     queryKey: [...MEETINGS_KEY, user?.id],
     queryFn: () => fetchMeetings(),
     enabled: !!user,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 15 * 1000, // short – realtime keeps the cache fresh
     gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
+
+  // ── Realtime: any change by ANY user refreshes the list immediately ──
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("meetings-realtime-shared")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "meetings" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: MEETINGS_KEY });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, queryClient]);
 
   // Create mutation with optimistic update
   const createMutation = useMutation({
