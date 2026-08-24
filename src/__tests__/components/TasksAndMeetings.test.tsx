@@ -45,6 +45,10 @@ vi.mock("@/components/tasks-meetings/EventPreviewDialog", () => ({
   EventPreviewDialog: () => null,
 }));
 
+vi.mock("@/components/shared/ActivityFollowUpActions", () => ({
+  ActivityFollowUpActions: () => null,
+}));
+
 vi.mock("@/hooks/useReminders", () => ({
   useReminders: () => ({
     reminders: [],
@@ -68,9 +72,12 @@ vi.mock("@/hooks/useTasksOptimized", () => ({
         description: "תיאור",
         status: "pending",
         priority: "high",
-        due_date: "2026-12-01",
+        due_date: "2026-12-01T14:30:00",
+        created_by: "u1",
+        assigned_to: "u2",
         user_id: "u1",
         client_id: null,
+        is_private: true,
         completed: false,
         created_at: "2026-01-01",
       },
@@ -81,6 +88,8 @@ vi.mock("@/hooks/useTasksOptimized", () => ({
         status: "completed",
         priority: "low",
         due_date: "2026-11-01",
+        created_by: "u1",
+        assigned_to: null,
         user_id: "u1",
         client_id: null,
         completed: true,
@@ -216,7 +225,7 @@ vi.mock("@/components/layout/sidebar-tasks/QuickAddTask", () => ({
     return props.open ? (
       <div data-testid="task-dialog">
         <span data-testid="task-dialog-mode">
-          {props.editingTask ? `edit:${props.editingTask.title}` : "new"}
+          {props.isEditing ? `edit:${props.initialData?.title}` : "new"}
         </span>
         <button
           data-testid="close-task-dialog"
@@ -376,6 +385,22 @@ describe("TasksAndMeetings – Button Tests", () => {
     await waitFor(() => {
       expect(screen.getByTestId("task-dialog")).toBeDefined();
     });
+    expect(screen.getByTestId("task-dialog-mode").textContent).toBe(
+      "edit:משימה 1",
+    );
+    expect(capturedTaskProps.isEditing).toBe(true);
+    expect(capturedTaskProps.initialData).toMatchObject({
+      title: "משימה 1",
+      description: "תיאור",
+      priority: "high",
+      assignedTo: "u2",
+      status: "pending",
+      isPrivate: true,
+      dueTime: "14:30",
+    });
+    expect(capturedTaskProps.initialData.dueDate).toEqual(
+      new Date("2026-12-01T14:30:00"),
+    );
   });
 
   // ── Delete Task ──

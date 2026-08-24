@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout";
@@ -856,6 +856,28 @@ const TasksAndMeetings = () => {
     return { id: meetingId };
   };
 
+  const taskInitialData = useMemo(
+    () =>
+      editingTask
+        ? {
+            title: editingTask.title,
+            description: editingTask.description || "",
+            clientId: editingTask.client_id || undefined,
+            dueDate: editingTask.due_date
+              ? new Date(editingTask.due_date)
+              : undefined,
+            dueTime: editingTask.due_date
+              ? format(new Date(editingTask.due_date), "HH:mm")
+              : "",
+            priority: editingTask.priority,
+            assignedTo: editingTask.assigned_to,
+            status: editingTask.status,
+            isPrivate: editingTask.is_private ?? false,
+          }
+        : undefined,
+    [editingTask],
+  );
+
   if (!authLoading && !user) return null;
 
   return (
@@ -908,6 +930,8 @@ const TasksAndMeetings = () => {
               }}
               onSubmit={handleCreateTask}
               clients={clients}
+              isEditing={Boolean(editingTask)}
+              initialData={taskInitialData}
             />
             <QuickAddMeeting
               open={meetingDialogOpen}
