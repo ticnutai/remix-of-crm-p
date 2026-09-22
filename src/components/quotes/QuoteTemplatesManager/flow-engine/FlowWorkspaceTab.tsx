@@ -630,8 +630,25 @@ export default function FlowWorkspaceTab({
     editorContentEl,
   });
 
-  // אם החליפו תבנית — טען טיוטה שמורה או תוכן בסיס
+  // אם החליפו תבנית — טען טיוטה שמורה או תוכן בסיס.
+  // כל שמירה אוטומטית מעדכנת את designSettings ולכן גם את template/baseHtml;
+  // בלי השמירה הזו האפקט היה טוען מחדש את הטיוטה תוך כדי הקלדה, ה-editor
+  // היה מבצע setContent והסמן/הגלילה קפצו לסוף המסמך.
+  const loadKey = `${template.id}|${structuredMode ? "structured" : "flow"}`;
+  const loadedKeyRef = useRef<string | null>(null);
   useEffect(() => {
+    const keyChanged = loadedKeyRef.current !== loadKey;
+    loadedKeyRef.current = loadKey;
+    if (!keyChanged) {
+      let hasDraft = false;
+      try {
+        hasDraft = !!localStorage.getItem(
+          structuredMode ? structuredStorageKey(template.id) : storageKey(template.id),
+        );
+      } catch { /* ignore */ }
+      // הטיוטה כבר חיה בעורך; מקטעים מחושבים מסונכרנים באפקטים הייעודיים למטה.
+      if (hasDraft) return;
+    }
     if (structuredMode) {
       try {
         const saved = localStorage.getItem(structuredStorageKey(template.id));
@@ -651,7 +668,7 @@ export default function FlowWorkspaceTab({
     } catch {
       setHtml(baseHtml);
     }
-  }, [template.id, baseHtml, structuredMode, preserveStyles, projectDetails, paymentsLayout, template]);
+  }, [loadKey, template.id, baseHtml, structuredMode, preserveStyles, projectDetails, paymentsLayout, template]);
 
   const structuredSig = useMemo(
     () => structuredSectionsSignature(template) + `|${paymentsLayout}`,

@@ -38,7 +38,6 @@ import { MultiSelection, addExtraRange, clearExtraRanges, getExtraRanges } from 
 import { PaymentsBlock } from "./PaymentsBlock";
 import { FlowFrame } from "./FlowFrameNode";
 import { ComputedBlock } from "./ComputedBlock";
-import { injectEditorFlowIds } from "./usePagedGuides";
 import { resolveFlowStripSettings } from "../stripSettings";
 
 import type { DesignPresetConfig } from "../presets/types";
@@ -282,6 +281,8 @@ export default function FlowEditor({
   hideMenuBar,
 }: Props) {
   const debounceRef = useRef<number | null>(null);
+  // ה-HTML האחרון שהעורך עצמו שלח ל-onChange — כשהוא חוזר כ-initialHtml אין לטעון אותו מחדש.
+  const lastEmittedRef = useRef<string | null>(null);
   const dragRef = useRef<{
     position: "header" | "footer";
     startY: number;
@@ -470,7 +471,9 @@ export default function FlowEditor({
     onUpdate({ editor }) {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
       debounceRef.current = window.setTimeout(() => {
-        onChange(editor.getHTML());
+        const next = editor.getHTML();
+        lastEmittedRef.current = next;
+        onChange(next);
       }, 500);
     },
   });
@@ -510,28 +513,41 @@ export default function FlowEditor({
   // עדכון תוכן כשטוענים מסמך חדש (החלפת תבנית)
   useEffect(() => {
     if (!editor) return;
-    const current = editor.getHTML();
-    if (initialHtml && initialHtml !== current) {
-      editor.commands.setContent(initialHtml, { emitUpdate: false } as any);
+    if (!initialHtml) return;
+    // הדהוד של השמירה שלנו — העורך כבר מכיל את התוכן הזה (או תוכן חדש יותר שהוקלד בינתיים).
+    if (initialHtml === lastEmittedRef.current) return;
+    if (initialHtml === editor.getHTML()) return;
+
+    // עדכון חיצוני אמיתי (החלפת תבנית / סנכרון מקטעים מחושבים):
+    // שומרים מיקום סמן וגלילה כדי שהמסמך לא יקפוץ לתחתית.
+    const scroller = (editor.view.dom as HTMLElement).closest<HTMLElement>(".flow-editor-scroll");
+    const scrollTop = scroller?.scrollTop ?? 0;
+    const windowScrollY = window.scrollY;
+    const { from, to } = editor.state.selection;
+    const hadFocus = editor.isFocused;
+
+    editor.commands.setContent(initialHtml, { emitUpdate: false } as any);
+
+    if (hadFocus) {
+      const max = editor.state.doc.content.size;
+      try {
+        editor.commands.setTextSelection({ from: Math.min(from, max), to: Math.min(to, max) });
+      } catch {
+        /* position no longer valid */
+      }
     }
+    const restoreScroll = () => {
+      if (scroller) scroller.scrollTop = scrollTop;
+      if (window.scrollY !== windowScrollY) window.scrollTo({ top: windowScrollY });
+    };
+    restoreScroll();
+    window.requestAnimationFrame(restoreScroll);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialHtml, editor]);
 
-  // הזרקת data-flow-fid רק לבלוקי תוכן אמיתיים — חייב להיות זהה לספירה של Paged.js.
-  // בעבר נספרו גם div/li/tr/מעטפות pagination ולכן הקו הוצלב מול אלמנט לא נכון.
-  useEffect(() => {
-    if (!editor) return;
-    const dom = editor.view.dom as HTMLElement;
-    const injectFids = () => injectEditorFlowIds(dom);
-    injectFids();
-    const observer = new MutationObserver(() => {
-      // דחייה קצרה כדי לא להיכנס לולאה עם ProseMirror
-      window.requestAnimationFrame(injectFids);
-    });
-    observer.observe(dom, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, [editor]);
-
+  // אין להזריק data-flow-fid לעורך באופן קבוע: ProseMirror מצייר מחדש כל בלוק שקיבל
+  // attribute זר, מה שהפעיל את ה-MutationObserver שוב — לולאה אינסופית (~10K שינויי DOM
+  // בשנייה) שגרמה לסמן איטי וקופץ. usePagedGuides מזריק את המזהים בעצמו רגע לפני המדידה.
 
   // עדכון resolver של שדות דינמיים + צריבת snapshot לתוך attrs של כל node
   // כך שערכים שנפתרו יישרדו רענון/החלפת טאב גם בלי resolver פעיל.
@@ -710,7 +726,7 @@ export default function FlowEditor({
           toolbarActions={toolbarActions}
         />
       )}
-      <BubbleToolbar editor={editor} />
+      <BubbleToolbar editor={editor} fields={dynamicFields} onCreateField={() => setCreateFieldOpen(true)} />
       <CreateFieldDialog
         open={createFieldOpen}
         onOpenChange={setCreateFieldOpen}

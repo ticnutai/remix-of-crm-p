@@ -32,6 +32,8 @@ import {
   ChevronDown,
   RotateCcw,
   Paintbrush,
+  Tag,
+  Plus,
   X,
 } from "lucide-react";
 import {
@@ -47,9 +49,13 @@ import {
   type ExtraRange,
 } from "./MultiSelection";
 import SmartColorPicker from "./SmartColorPicker";
+import { groupDynamicFields, type DynamicFieldDefinition } from "./dynamicFields";
 
 interface Props {
   editor: Editor | null;
+  /** שדות דינמיים להוספה מהסרגל הצף (אותם שדות כמו בכפתור "שדה" בסרגל העליון). */
+  fields?: DynamicFieldDefinition[];
+  onCreateField?: () => void;
 }
 
 type AdjacentListType = "bulletList" | "orderedList" | null;
@@ -95,6 +101,7 @@ interface BubbleCfg {
 }
 
 const DEFAULT_ORDER = [
+  "field","sep0",
   "bold","italic","underline","sep1",
   "h1","h2","h3","normalText","sep2",
   "bullet","ordered","sep3",
@@ -119,8 +126,9 @@ function loadCfg(): BubbleCfg {
     const order = Array.isArray(parsed.order) ? parsed.order : DEFAULT_CFG.order;
     // ודא שכל ה-IDs הידועים קיימים (למצב שנוספו חדשים)
     const merged = [...order];
-    DEFAULT_ORDER.forEach((id) => {
-      if (!merged.includes(id)) merged.push(id);
+    DEFAULT_ORDER.forEach((id, index) => {
+      // כפתור חדש נכנס במיקום ברירת המחדל שלו גם בהגדרות שמורות ישנות
+      if (!merged.includes(id)) merged.splice(Math.min(index, merged.length), 0, id);
     });
     return {
       order: merged.filter((id) => DEFAULT_ORDER.includes(id)),
@@ -224,6 +232,7 @@ function ToolBtn({
    מטא-דאטה של הכפתורים (לתפריט ההגדרות)
    ============================================================ */
 const TOOL_META: Record<string, { label: string; isSeparator?: boolean }> = {
+  field: { label: "שדה דינמי" },
   bold: { label: "בולד" },
   italic: { label: "נטוי" },
   underline: { label: "קו תחתון" },
@@ -247,6 +256,7 @@ const TOOL_META: Record<string, { label: string; isSeparator?: boolean }> = {
   formatPainter: { label: "התאם טקסט" },
   clear: { label: "נקה עיצוב" },
   copy: { label: "העתק" },
+  sep0: { label: "מפריד 0", isSeparator: true },
   sep1: { label: "מפריד 1", isSeparator: true },
   sep2: { label: "מפריד 2", isSeparator: true },
   sep3: { label: "מפריד 3", isSeparator: true },
@@ -308,8 +318,10 @@ function getRenderedTextFormat(editor: Editor, position: number) {
 /* ============================================================
    הרכיב הראשי
    ============================================================ */
-export default function BubbleToolbar({ editor }: Props) {
+export default function BubbleToolbar({ editor, fields, onCreateField }: Props) {
   const [copied, setCopied] = useState(false);
+  const [fieldsOpen, setFieldsOpen] = useState(false);
+  const [fieldQuery, setFieldQuery] = useState("");
   const [formatPainterActive, setFormatPainterActive] = useState(false);
   const [, force] = useState(0);
   const extrasCountRef = useRef(0);
@@ -625,6 +637,56 @@ export default function BubbleToolbar({ editor }: Props) {
             </PopoverContent>
           </Popover>
         );
+      case "field": {
+        if (!fields?.length && !onCreateField) return null;
+        const q = fieldQuery.trim().toLowerCase();
+        const filtered = (fields || []).filter(
+          (f) => !q || f.label.toLowerCase().includes(q) || f.key.toLowerCase().includes(q),
+        );
+        return (
+          <Popover key={id} open={fieldsOpen} onOpenChange={(open) => { setFieldsOpen(open); if (!open) setFieldQuery(""); }}>
+            <PopoverTrigger asChild>
+              <button type="button" onMouseDown={preserveEditorSelection} title="הוסף שדה דינמי" className={`inline-flex flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1 min-w-[40px] ${mode==="icon-label"?"h-[46px]":"h-[36px]"} text-foreground hover:bg-muted transition-none`}>
+                <Tag className="h-[19px] w-[19px]" strokeWidth={2.2} />
+                {mode === "icon-label" && <span className="text-[10px] leading-none">שדה</span>}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-60 p-1" align="center" dir="rtl" onOpenAutoFocus={(e) => e.preventDefault()} onMouseDownCapture={preserveEditorSelection}>
+              <input
+                value={fieldQuery}
+                onChange={(e) => setFieldQuery(e.target.value)}
+                placeholder="חיפוש שדה..."
+                className="mb-1 h-8 w-full rounded border border-border bg-background px-2 text-sm outline-none focus:border-primary"
+              />
+              {onCreateField && (
+                <button type="button" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-right text-sm font-medium text-primary hover:bg-muted"
+                  onClick={() => { setFieldsOpen(false); onCreateField(); }}>
+                  <Plus className="h-3.5 w-3.5" /> צור שדה חדש...
+                </button>
+              )}
+              <div className="max-h-72 overflow-auto">
+                {Object.entries(groupDynamicFields(filtered)).map(([group, fs]) => (
+                  <div key={group}>
+                    <div className="mt-1 border-t border-border px-2 pb-0.5 pt-1.5 text-[11px] text-muted-foreground">{group}</div>
+                    {fs.map((f) => (
+                      <button key={f.key} type="button" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-right text-sm hover:bg-muted"
+                        onClick={() => {
+                          setFieldsOpen(false);
+                          setFieldQuery("");
+                          (editor.chain().focus() as any).insertDynamicField(f.key, f.label).run();
+                        }}>
+                        <span>{f.label}</span>
+                        <span className="mr-auto text-[10px] text-muted-foreground" dir="ltr">{f.key}</span>
+                      </button>
+                    ))}
+                  </div>
+                ))}
+                {filtered.length === 0 && <div className="px-2 py-2 text-xs text-muted-foreground">לא נמצאו שדות</div>}
+              </div>
+            </PopoverContent>
+          </Popover>
+        );
+      }
       case "alignRight": return <ToolBtn key={id} mode={mode} icon={AlignRight} label="ימין" active={editor.isActive({ textAlign: "right" })} onClick={() => apply((c) => c.setTextAlign("right"))} />;
       case "alignCenter": return <ToolBtn key={id} mode={mode} icon={AlignCenter} label="מרכז" active={editor.isActive({ textAlign: "center" })} onClick={() => apply((c) => c.setTextAlign("center"))} />;
       case "alignLeft": return <ToolBtn key={id} mode={mode} icon={AlignLeft} label="שמאל" active={editor.isActive({ textAlign: "left" })} onClick={() => apply((c) => c.setTextAlign("left"))} />;
