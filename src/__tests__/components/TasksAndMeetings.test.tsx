@@ -139,6 +139,11 @@ vi.mock("@/components/reminders/AddReminderDialog", () => ({
 
 // Mock sub-views with correct prop names matching the real component
 vi.mock("@/components/tasks-meetings", () => ({
+  CompletedDisplayToggle: ({ mode, onChange }: any) => (
+    <button data-testid="completed-display-toggle" onClick={() => onChange(mode === "hide" ? "strike" : "hide")}>
+      {mode}
+    </button>
+  ),
   TasksViewToggle: ({ view, onViewChange }: any) => (
     <div data-testid="view-toggle">
       <button data-testid="view-list" onClick={() => onViewChange("list")}>
@@ -288,6 +293,15 @@ vi.mock("@/components/DedupToggleButton", () => ({
 }));
 
 import TasksAndMeetings from "@/pages/TasksAndMeetings";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+// The page (via its hooks) uses react-query — tests need a provider.
+const renderPage = () =>
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <TasksAndMeetings />
+    </QueryClientProvider>,
+  );
 
 describe("TasksAndMeetings – Button Tests", () => {
   const user = userEvent.setup();
@@ -305,13 +319,13 @@ describe("TasksAndMeetings – Button Tests", () => {
   });
 
   it("renders the page", () => {
-    render(<TasksAndMeetings />);
+    renderPage();
     expect(screen.getByTestId("app-layout")).toBeDefined();
   });
 
   // ── New Task ──
   it('"משימה חדשה" opens task dialog in NEW mode', async () => {
-    render(<TasksAndMeetings />);
+    renderPage();
     // There are two buttons with "משימה חדשה" text – get the main button (not inside dialog)
     const btns = screen.getAllByText("משימה חדשה");
     const mainBtn = btns.find(
@@ -326,7 +340,7 @@ describe("TasksAndMeetings – Button Tests", () => {
 
   // ── New Meeting ──
   it('"פגישה חדשה" opens meeting dialog in NEW mode', async () => {
-    render(<TasksAndMeetings />);
+    renderPage();
     const btns = screen.getAllByText("פגישה חדשה");
     const mainBtn = btns.find(
       (b) =>
@@ -340,7 +354,7 @@ describe("TasksAndMeetings – Button Tests", () => {
 
   // ── Tab Switching ──
   it("Switching to meetings tab shows meetings list", async () => {
-    render(<TasksAndMeetings />);
+    renderPage();
     const meetingsTab = screen.getByRole("tab", { name: /פגישות/ });
     await user.click(meetingsTab);
     await waitFor(() => {
@@ -349,7 +363,7 @@ describe("TasksAndMeetings – Button Tests", () => {
   });
 
   it("Switching back to tasks tab shows tasks list", async () => {
-    render(<TasksAndMeetings />);
+    renderPage();
     await user.click(screen.getByRole("tab", { name: /פגישות/ }));
     await user.click(screen.getByRole("tab", { name: /משימות/ }));
     await waitFor(() => {
@@ -359,7 +373,7 @@ describe("TasksAndMeetings – Button Tests", () => {
 
   // ── View Toggle ──
   it("View toggle kanban button works", async () => {
-    render(<TasksAndMeetings />);
+    renderPage();
     await openTasksTab();
     await user.click(screen.getByTestId("view-kanban"));
     // After clicking, kanban view should render
@@ -370,7 +384,7 @@ describe("TasksAndMeetings – Button Tests", () => {
 
   // ── Edit Task ──
   it("Edit task button opens the task dialog", async () => {
-    render(<TasksAndMeetings />);
+    renderPage();
     await openTasksTab();
     await user.click(screen.getByTestId("edit-task-t1"));
     await waitFor(() => {
@@ -380,7 +394,7 @@ describe("TasksAndMeetings – Button Tests", () => {
 
   // ── Delete Task ──
   it("Delete task (with confirm) calls deleteTask", async () => {
-    render(<TasksAndMeetings />);
+    renderPage();
     await openTasksTab();
     await user.click(screen.getByTestId("delete-task-t1"));
     const dialog = await screen.findByRole("alertdialog");
@@ -389,7 +403,7 @@ describe("TasksAndMeetings – Button Tests", () => {
   });
 
   it("Delete task cancelled does NOT call deleteTask", async () => {
-    render(<TasksAndMeetings />);
+    renderPage();
     await openTasksTab();
     await user.click(screen.getByTestId("delete-task-t1"));
     const dialog = await screen.findByRole("alertdialog");
@@ -399,7 +413,7 @@ describe("TasksAndMeetings – Button Tests", () => {
 
   // ── Toggle Complete ──
   it("Toggle complete calls updateTask with new status", async () => {
-    render(<TasksAndMeetings />);
+    renderPage();
     await openTasksTab();
     await user.click(screen.getByTestId("toggle-task-t1"));
     expect(mockUpdateTask).toHaveBeenCalledWith("t1", { status: "completed" });
@@ -407,7 +421,7 @@ describe("TasksAndMeetings – Button Tests", () => {
 
   // ── Edit Meeting ──
   it("Edit meeting opens the meeting dialog", async () => {
-    render(<TasksAndMeetings />);
+    renderPage();
     // Switch to meetings tab first
     await user.click(screen.getByRole("tab", { name: /פגישות/ }));
     await waitFor(() => screen.getByTestId("meetings-list-view"));
@@ -419,7 +433,7 @@ describe("TasksAndMeetings – Button Tests", () => {
 
   // ── Delete Meeting ──
   it("Delete meeting (with confirm) calls deleteMeeting", async () => {
-    render(<TasksAndMeetings />);
+    renderPage();
     await user.click(screen.getByRole("tab", { name: /פגישות/ }));
     await waitFor(() => screen.getByTestId("meetings-list-view"));
     await user.click(screen.getByTestId("delete-meeting-m1"));
@@ -430,7 +444,7 @@ describe("TasksAndMeetings – Button Tests", () => {
 
   // ── Close Dialogs ──
   it("Closing task dialog hides it", async () => {
-    render(<TasksAndMeetings />);
+    renderPage();
     const btns = screen.getAllByText("משימה חדשה");
     await user.click(btns.find((b) => b.tagName === "BUTTON")!);
     expect(screen.getByTestId("task-dialog")).toBeDefined();

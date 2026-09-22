@@ -23,8 +23,23 @@ let activeResolver: FieldResolver | null = null;
 export function setFieldResolver(fn: FieldResolver | null) {
   activeResolver = fn;
 }
+export function getFieldResolver(): FieldResolver | null {
+  return activeResolver;
+}
+
 export function hasFieldResolver(): boolean {
   return activeResolver !== null;
+}
+
+/**
+ * resolver לכל עורך בנפרד (editor.storage.dynamicField.resolver). resolver גלובלי יחיד
+ * נמחק כשעורך אחר (למשל תצוגת A4) נסגר אחרי שהעורך החדש כבר הגדיר אותו.
+ */
+export function resolveFieldFor(storageResolver: FieldResolver | null | undefined, key: string): string {
+  const resolver = storageResolver ?? activeResolver;
+  if (!resolver) return "";
+  const v = resolver(key);
+  return v == null ? "" : String(v);
 }
 
 export function resolveField(key: string): string {
@@ -43,6 +58,10 @@ export const DynamicField = Node.create<DynamicFieldOptions>({
 
   addOptions() {
     return { HTMLAttributes: {} };
+  },
+
+  addStorage() {
+    return { resolver: null as FieldResolver | null };
   },
 
   addAttributes() {
@@ -79,14 +98,16 @@ export const DynamicField = Node.create<DynamicFieldOptions>({
   renderHTML({ HTMLAttributes }) {
     const key = String(HTMLAttributes.key || HTMLAttributes["data-field"] || "");
     const label = String(HTMLAttributes.label || HTMLAttributes["data-label"] || key);
-    const live = resolveField(key);
+    const storageResolver = (this as any).storage?.resolver as FieldResolver | null | undefined;
+    const live = resolveFieldFor(storageResolver, key);
     const snapshot =
       HTMLAttributes.resolvedValue != null
         ? String(HTMLAttributes.resolvedValue)
         : (HTMLAttributes["data-resolved-value"] as string | undefined) || "";
     // כשיש resolver פעיל (עורך עם פרטי פרויקט) — הערך החי הוא האמת. snapshot משמש רק
     // כשאין resolver, אחרת ערך של לקוח קודם היה נשאר אחרי ניקוי/החלפת לקוח.
-    const value = hasFieldResolver() ? live : live !== "" ? live : snapshot;
+    const resolverActive = Boolean(storageResolver) || hasFieldResolver();
+    const value = resolverActive ? live : live !== "" ? live : snapshot;
     const hasValue = value !== "";
     if (hasValue) {
       // נפתר → טקסט רגיל לחלוטין, ללא רקע/מסגרת/צ'יפ

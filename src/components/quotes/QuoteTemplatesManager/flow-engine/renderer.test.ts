@@ -66,8 +66,9 @@ describe("renderFlowToHtml", () => {
     expect(html).toContain("max-width: 100% !important");
     expect(html).toContain("table-layout: fixed");
     expect(html).toContain("overflow-wrap: anywhere");
-    expect(html).toContain(".flow-list li {");
-    expect(html).toContain("page-break-inside: avoid");
+    // WYSIWYG: ההדפסה שוברת שורות כמו העורך — בלי "שמור יחד" על פריטי רשימה
+    expect(html).toContain(".flow-doc li { orphans: 1; widows: 1; }");
+    expect(html).not.toMatch(/\.flow-list li \{\s*break-inside: avoid/);
     expect(html).toContain("align-items: flex-end !important");
     expect(html).toContain('<col style="width:46.000%" />');
     expect(html).toContain('<col style="width:15.000%" />');

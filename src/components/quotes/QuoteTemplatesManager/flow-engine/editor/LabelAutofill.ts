@@ -5,13 +5,16 @@ import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey, type EditorState } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { findAutofillMatches, OBJECT_CHAR } from "../labelAutofill";
-import { resolveField } from "./DynamicField";
+import { resolveFieldFor } from "./DynamicField";
+import type { Editor } from "@tiptap/core";
 
 export const labelAutofillKey = new PluginKey<DecorationSet>("labelAutofill");
 
-function buildDecorations(state: EditorState): DecorationSet {
+function buildDecorations(state: EditorState, editor: Editor): DecorationSet {
   const decorations: Decoration[] = [];
-  const lookup = (key: string) => resolveField(key);
+  const lookup = (key: string) => resolveFieldFor((editor.storage as any).dynamicField?.resolver, key);
+  // לא מסתירים ____ שהסמן נמצא בהם או צמוד אליהם — אחרת ההקלדה נכנסת לטקסט מוסתר ונעלמת
+  const { from: selFrom, to: selTo } = state.selection;
 
   state.doc.descendants((node, pos) => {
     if (!node.isTextblock) return true;
@@ -35,10 +38,12 @@ function buildDecorations(state: EditorState): DecorationSet {
 
     findAutofillMatches(flat, lookup).forEach((match) => {
       if (match.hideTo > match.hideFrom) {
+        const hideFrom = toPos(match.hideFrom);
+        const hideTo = toPos(match.hideTo - 1) + 1;
+        const cursorInside = selTo >= hideFrom - 1 && selFrom <= hideTo + 1;
+        if (cursorInside) return;
         decorations.push(
-          Decoration.inline(toPos(match.hideFrom), toPos(match.hideTo - 1) + 1, {
-            class: "flow-autofill-hidden",
-          }),
+          Decoration.inline(hideFrom, hideTo, { class: "flow-autofill-hidden" }),
         );
       }
       decorations.push(
@@ -66,19 +71,21 @@ export const LabelAutofill = Extension.create({
   name: "labelAutofill",
 
   addProseMirrorPlugins() {
+    const editor = this.editor;
     return [
       new Plugin<DecorationSet>({
         key: labelAutofillKey,
         state: {
-          init: (_, state) => buildDecorations(state),
+          init: (_, state) => buildDecorations(state, editor),
           apply(tr, old, _oldState, newState) {
             // מחשבים מחדש רק כשהטקסט השתנה או כשפרטי הלקוח/רשימת השדות התעדכנו
             if (
               tr.docChanged ||
+              tr.selectionSet ||
               tr.getMeta("dynamicFieldResolverChanged") ||
               tr.getMeta(labelAutofillKey)
             ) {
-              return buildDecorations(newState);
+              return buildDecorations(newState, editor);
             }
             return old;
           },

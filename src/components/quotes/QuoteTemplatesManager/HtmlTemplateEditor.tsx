@@ -5767,6 +5767,8 @@ export function HtmlTemplateEditor({
   const [isConvertingFile, setIsConvertingFile] = useState(false);
 
   // === Autosave (טיוטה אוטומטית: localStorage מיידי + ענן כל 2 שניות) ===
+  // true עד שהשחזור (מקומי + בדיקת ענן) הסתיים — בזמן הזה אין לשמור טיוטה
+  const [draftRestoring, setDraftRestoring] = useState(true);
   const draftKey = savedQuoteId
     ? `saved-quote::${savedQuoteId}`
     : template.id || `new::${template.name || "draft"}`;
@@ -5810,6 +5812,7 @@ export function HtmlTemplateEditor({
     // A saved quote is already the source of truth. Restoring a template-level
     // draft on top of it can mix content from another document.
     enabled: open && !savedQuoteId,
+    paused: draftRestoring,
   });
 
   // Existing saved quotes previously kept payment edits only in React state.
@@ -5900,7 +5903,7 @@ export function HtmlTemplateEditor({
       return;
     }
     if (!open) return;
-    flushSave();
+    flushSave({ onlyIfPending: true });
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // === Auto-persist designSettings: localStorage immediate + DB debounced ===
@@ -5971,11 +5974,15 @@ export function HtmlTemplateEditor({
   useEffect(() => {
     if (!open) {
       restoredRef.current = false;
+      setDraftRestoring(true);
       return;
     }
     if (savedQuoteId) return;
     if (restoredRef.current) return;
     restoredRef.current = true;
+    setDraftRestoring(true);
+    // השחזור עצמו משנה state — ממתינים שהשינויים ירונדרו לפני שמתחילים לשמור שוב
+    const finishRestore = () => window.setTimeout(() => setDraftRestoring(false), 0);
 
     const applyDraft = (data: any, source: "local" | "cloud") => {
       if (!data || typeof data !== "object") return;
@@ -6005,12 +6012,16 @@ export function HtmlTemplateEditor({
     // Cloud restore — רק אם הטיוטה בענן חדשה יותר מהמקומית. בעבר הענן (שנכתב
     // בהשהיה) דרס תמיד את המקומית, ולכן שוחזרה גרסה ישנה וחסרה.
     (async () => {
-      const cloud = await loadCloudDraftEntry();
-      if (!cloud) return;
-      const localTime = local?.savedAt ? Date.parse(local.savedAt) : 0;
-      const cloudTime = cloud.savedAt ? Date.parse(cloud.savedAt) : 0;
-      if (!local || (cloudTime > localTime && JSON.stringify(cloud.data) !== JSON.stringify(local.data))) {
-        applyDraft(cloud.data, "cloud");
+      try {
+        const cloud = await loadCloudDraftEntry();
+        if (!cloud) return;
+        const localTime = local?.savedAt ? Date.parse(local.savedAt) : 0;
+        const cloudTime = cloud.savedAt ? Date.parse(cloud.savedAt) : 0;
+        if (!local || (cloudTime > localTime && JSON.stringify(cloud.data) !== JSON.stringify(local.data))) {
+          applyDraft(cloud.data, "cloud");
+        }
+      } finally {
+        finishRestore();
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6971,7 +6982,7 @@ export function HtmlTemplateEditor({
   const handleSaveDraftAndClose = useCallback(async () => {
     if (template.id) {
       // שומרים מיד את הטיוטה (מקומי + ענן) — כל המידע יחכה בפתיחה הבאה
-      try { await flushSave(); } catch { /* no-op */ }
+      try { await flushSave({ onlyIfPending: true }); } catch { /* no-op */ }
       onClose();
       return;
     }
@@ -16102,6 +16113,15 @@ ${tbAt('footer')}
                   <span className="flex items-center gap-1 text-destructive">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-destructive" />
                     שגיאה בשמירה אוטומטית
+                  </span>
+                )}
+                {visibleAutosaveStatus === "conflict" && (
+                  <span
+                    className="flex items-center gap-1 text-amber-700"
+                    title="בחלון או מכשיר אחר נשמרה טיוטה חדשה יותר. רענן את הדף כדי לקבל אותה, או לחץ 'שמור כטיוטה' כדי לדרוס אותה בגרסה שמולך."
+                  >
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    הטיוטה עודכנה בחלון אחר — רענן את הדף
                   </span>
                 )}
               </div>

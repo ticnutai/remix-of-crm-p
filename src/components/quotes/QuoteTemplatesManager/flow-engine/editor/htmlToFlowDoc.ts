@@ -37,6 +37,15 @@ function parseInlines(node: Node): FlowInline[] {
       return;
     }
 
+    // פריט רשימה בעורך עטוף ב-<p> (<li><p>…</p></li>). בעבר ה-<p> נשמר כ-HTML גולמי,
+    // ולכן שדות ומילוי לפי כותרת בתוך רשימות לא התמלאו בתצוגה/PDF. פותחים אותו.
+    if ((tag === "p" || tag === "div") && node.nodeType === Node.ELEMENT_NODE &&
+        (node as HTMLElement).tagName.toLowerCase() === "li") {
+      if (out.length) out.push({ type: "raw", html: "<br />" });
+      out.push(...parseInlines(el));
+      return;
+    }
+
     if (SIMPLE_WRAPPERS.has(tag)) {
       const childInlines = parseInlines(el);
       if (tag === "strong" || tag === "b") {
@@ -45,6 +54,12 @@ function parseInlines(node: Node): FlowInline[] {
         childInlines.forEach((n) => n.type === "text" && (n.italic = true));
       }
       out.push(...childInlines);
+      return;
+    }
+
+    // <span> ריק (בלי מאפיינים) הוא רק עטיפה — פותחים אותו, כדי ששדה שבתוכו יזוהה כשדה
+    if (tag === "span" && el.attributes.length === 0) {
+      out.push(...parseInlines(el));
       return;
     }
 

@@ -27,7 +27,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import DynamicField, { setFieldResolver } from "./DynamicField";
+import DynamicField, { getFieldResolver, setFieldResolver } from "./DynamicField";
 import { projectToMergeData, type ProjectTokenData } from "../projectTokens";
 import MenuBar from "./MenuBar";
 import BubbleToolbar from "./BubbleToolbar";
@@ -39,6 +39,8 @@ import { PaymentsBlock } from "./PaymentsBlock";
 import { FlowFrame } from "./FlowFrameNode";
 import { ComputedBlock } from "./ComputedBlock";
 import { LabelAutofill, labelAutofillKey } from "./LabelAutofill";
+import { PlainUnderscores } from "./PlainUnderscores";
+import { docTypographyCss, resolveDocTypography } from "../docTypography";
 import { resolveFlowStripSettings } from "../stripSettings";
 
 import type { DesignPresetConfig } from "../presets/types";
@@ -64,6 +66,11 @@ interface Props {
   toolbarActions?: React.ReactNode;
   /** הסתר את שורת התפריט העליונה — לשימוש בתצוגת השוואה. */
   hideMenuBar?: boolean;
+  /**
+   * תצוגה בלבד — אותו מנוע ואותה פריסה כמו העורך (לתצוגת A4 ולהדפסה), בלי עריכה,
+   * בלי סרגלים ובלי סימוני עריכה.
+   */
+  readOnly?: boolean;
   /** מדריכי-עמוד מדויקים ע"י Paged.js (מקור אמת יחיד). */
   pagedGuides?: {
     enabled: boolean;
@@ -85,8 +92,10 @@ const MM_TO_PX = 96 / 25.4;
 const DEFAULT_PAGE_GAP_PX = 18;
 const DEFAULT_MARGIN_MM = { top: 32, right: 18, bottom: 28, left: 18 };
 
+// דיוק של 0.01px (לא עיגול לפיקסל שלם) — כדי שרוחב שורה וגובה עמוד בעורך יהיו
+// זהים ל-mm של העימוד בהדפסה; עיגול שינה את רוחב השורה ושבר שורות במקומות אחרים.
 function mmToPx(mm: number) {
-  return Math.round(mm * MM_TO_PX);
+  return Math.round(mm * MM_TO_PX * 100) / 100;
 }
 
 function resolvePageMetrics(pageSetup?: FlowPageSetup) {
@@ -280,6 +289,7 @@ export default function FlowEditor({
   toolbarActions,
   pagedGuides,
   hideMenuBar,
+  readOnly = false,
 }: Props) {
   const debounceRef = useRef<number | null>(null);
   // ה-HTML האחרון שהעורך עצמו שלח ל-onChange — כשהוא חוזר כ-initialHtml אין לטעון אותו מחדש.
@@ -290,6 +300,15 @@ export default function FlowEditor({
     startHeight: number;
   } | null>(null);
   const pagedMode = Boolean(pageSetup && pageSetup.size !== "none");
+  // אותה טיפוגרפיה כמו ב-renderer: הגדרות התבנית + הגדרות העיצוב + preset
+  const docTypography = useMemo(
+    () =>
+      resolveDocTypography({
+        designSettings: { ...(templateDesignSettings || {}), ...(designSettings || {}) },
+        preset,
+      }),
+    [templateDesignSettings, designSettings, preset],
+  );
   const stripSettings = getStripSettings(templateDesignSettings, designSettings);
   const pageNumberSettings = normalizePageNumberSettings(pageSetup?.pageNumber);
   const showHeaderStrip = pagedMode && stripSettings.showHeader && Boolean(stripSettings.headerUrl);
@@ -376,6 +395,7 @@ export default function FlowEditor({
   };
 
   const editor = useEditor({
+    editable: !readOnly,
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
@@ -402,6 +422,7 @@ export default function FlowEditor({
       ComputedBlock,
       FlowFrame,
       LabelAutofill,
+      PlainUnderscores,
       Placeholder.configure({ placeholder: "התחל לכתוב..." }),
       PaginationPlus.configure(paginationOptions),
     ],
@@ -562,10 +583,14 @@ export default function FlowEditor({
   useEffect(() => {
     if (!editor) return;
     const mergeData = projectToMergeData(projectDetails);
-    setFieldResolver((key) => {
+    const resolver = (key: string) => {
       const v = mergeData[key];
       return v === undefined || v === "" ? null : v;
-    });
+    };
+    // resolver של העורך הזה (לא מושפע מעורכים אחרים שנסגרים) + גלובלי לתאימות לאחור
+    const storage = (editor.storage as any).dynamicField;
+    if (storage) storage.resolver = resolver;
+    setFieldResolver(resolver);
     try {
       const { state } = editor;
       const tr = state.tr;
@@ -591,7 +616,9 @@ export default function FlowEditor({
       /* ignore */
     }
     return () => {
-      setFieldResolver(null);
+      if (storage && storage.resolver === resolver) storage.resolver = null;
+      // מנקים את הגלובלי רק אם הוא עדיין שלנו — אחרת היינו מוחקים את של העורך החדש
+      if (getFieldResolver() === resolver) setFieldResolver(null);
     };
   }, [editor, projectDetails]);
 
@@ -724,7 +751,7 @@ export default function FlowEditor({
   return (
     <div className="flex h-full flex-col bg-background">
 
-      {!hideMenuBar && (
+      {!hideMenuBar && !readOnly && (
         <MenuBar
           editor={editor}
           fields={dynamicFields}
@@ -732,7 +759,9 @@ export default function FlowEditor({
           toolbarActions={toolbarActions}
         />
       )}
-      <BubbleToolbar editor={editor} fields={dynamicFields} onCreateField={() => setCreateFieldOpen(true)} />
+      {!readOnly && (
+        <BubbleToolbar editor={editor} fields={dynamicFields} onCreateField={() => setCreateFieldOpen(true)} />
+      )}
       <CreateFieldDialog
         open={createFieldOpen}
         onOpenChange={setCreateFieldOpen}
@@ -743,7 +772,7 @@ export default function FlowEditor({
         }}
       />
       <div
-        className={`flow-editor-scroll flex-1 overflow-auto ${
+        className={`flow-editor-scroll flex-1 overflow-auto ${readOnly ? "flow-editor-readonly " : ""}${
           pagedMode ? "bg-slate-200/70" : "bg-muted/30"
         }`}
         style={{
@@ -792,7 +821,7 @@ export default function FlowEditor({
             </div>
           )}
           <ContextMenu>
-            <ContextMenuTrigger asChild>
+            <ContextMenuTrigger asChild disabled={readOnly}>
               <div className="flow-editor-context-trigger" onContextMenu={setContextMenuCursor}>
                 <EditorContent editor={editor} />
               </div>
@@ -843,24 +872,36 @@ export default function FlowEditor({
         /* מילוי לפי כותרת: הערך מוצג כטקסט רגיל עם קו תחתון עדין בעורך בלבד */
         .flow-editor-content .flow-autofill-value { text-decoration: underline dotted rgba(184, 134, 11, 0.7); text-underline-offset: 3px; cursor: default; }
         .flow-editor-content .flow-autofill-hidden { display: none; }
+        /* תצוגה בלבד (תצוגת A4 / הדפסה): בלי סימוני עריכה — נראה כמו הדף המודפס */
+        .flow-editor-readonly .flow-autofill-value { text-decoration: none; }
+        .flow-editor-readonly [data-flow-protected="1"],
+        .flow-editor-readonly .payments-block { outline: none !important; background: transparent !important; cursor: default; }
+        .flow-editor-readonly [data-flow-protected="1"]::after,
+        .flow-editor-readonly .payments-block::before { display: none !important; content: none !important; }
+        .flow-editor-readonly .flow-editor-strip-handle { display: none !important; }
+        .flow-editor-readonly .ProseMirror { caret-color: transparent; }
         @media print { .flow-editor-content .flow-autofill-value { text-decoration: none; } }
-        .flow-editor-content { padding: 1.5rem; font-family: ${preset?.fonts.body || "Heebo, Arial, sans-serif"}; font-size: ${preset?.fonts.size || "11pt"}; line-height: ${preset?.spacing.lineHeight || "1.55"}; color: ${preset?.colors.text || "hsl(var(--foreground))"}; }
+        .flow-editor-content { padding: 1.5rem; }
         /* צבע inline הוא מקור האמת. WebKit עשוי להשאיר text-fill שקוף אחרי גרדיאנט
            ולגרום לצבע שנשמר במסמך להיראות רגיל/שקוף רק בתוך מצב העריכה. */
         .flow-editor-content span[style*="color"]:not([data-gradient]) {
           -webkit-text-fill-color: currentColor;
         }
         /* גוש לוח תשלומים — נגרר ביחידה אחת */
+        /* הסימון הוא outline (לא תופס מקום) — padding/margin/border כאן הגדילו את הגוש
+           לעומת ההדפסה והזיזו את שבירת העמודים */
         .flow-editor-content .payments-block {
           position: relative;
-          padding: 0.5rem 0.75rem 0.5rem 2rem;
-          margin: 0.75rem 0;
-          border: 1px dashed transparent;
+          padding: 0 !important;
+          margin: 0 !important;
+          border: 0 !important;
+          outline: 1px dashed transparent;
+          outline-offset: 4px;
           border-radius: 6px;
-          transition: border-color 0.15s, background-color 0.15s;
+          transition: outline-color 0.15s, background-color 0.15s;
         }
         .flow-editor-content .payments-block:hover {
-          border-color: hsl(var(--border));
+          outline-color: hsl(var(--border));
           background: hsl(var(--muted) / 0.4);
         }
         .flow-editor-content .payments-block::before {
@@ -877,15 +918,17 @@ export default function FlowEditor({
         }
         .flow-editor-content .payments-block:hover::before { opacity: 1; }
         .flow-editor-content .payments-block.ProseMirror-selectednode {
-          border-color: hsl(var(--primary));
+          outline-color: hsl(var(--primary));
           background: hsl(var(--primary) / 0.05);
         }
         .flow-editor-content [data-flow-protected="1"] {
           position: relative;
           cursor: pointer;
-          border: 1px dashed hsl(var(--primary) / 0.35);
+          border: 0 !important;
+          outline: 1px dashed hsl(var(--primary) / 0.35);
+          outline-offset: 4px;
           border-radius: 8px;
-          padding: 0.65rem;
+          padding: 0 !important;
           background: hsl(var(--muted) / 0.22);
         }
         .flow-editor-content [data-flow-protected="1"]::after {
@@ -901,7 +944,7 @@ export default function FlowEditor({
           pointer-events: none;
         }
         .flow-editor-content [data-flow-protected="1"].ProseMirror-selectednode {
-          border-color: hsl(var(--primary));
+          outline-color: hsl(var(--primary));
           box-shadow: 0 0 0 2px hsl(var(--primary) / 0.18);
           background: hsl(var(--primary) / 0.06);
         }
@@ -942,8 +985,9 @@ export default function FlowEditor({
           padding-top: 0 !important;
           padding-bottom: 0 !important;
           background: #ffffff;
-          border: 1px solid rgba(22, 44, 88, 0.18) !important;
-          box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+          /* מסגרת כצל מחוץ לדף — border היה אוכל 2px מרוחב הטקסט לעומת ההדפסה */
+          border: 0 !important;
+          box-shadow: 0 0 0 1px rgba(22, 44, 88, 0.18), 0 10px 30px rgba(15, 23, 42, 0.18);
           overflow: visible;
         }
         .flow-editor-content.rm-with-pagination[data-paged="false"],
@@ -1125,12 +1169,8 @@ export default function FlowEditor({
         .flow-editor-strip-handle-top {
           top: -9px;
         }
-        .flow-editor-content h1 { font-size: ${preset?.headings.h1.size || "1.6rem"}; font-weight: ${preset?.headings.h1.weight || "700"}; margin: 1rem 0 0.5rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; padding-bottom: .3rem; font-family: ${preset?.fonts.heading || "inherit"}; }
-        .flow-editor-content h2 { font-size: ${preset?.headings.h2.size || "1.3rem"}; font-weight: ${preset?.headings.h2.weight || "700"}; margin: .9rem 0 .4rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; font-family: ${preset?.fonts.heading || "inherit"}; }
-        .flow-editor-content h3 { font-size: 1.1rem; font-weight: 600; margin: .7rem 0 .3rem; color: ${preset?.colors.heading || "hsl(var(--primary))"}; }
-        .flow-editor-content p { margin: 0 0 ${preset?.spacing.paragraphGap || ".5rem"}; }
-        .flow-editor-content ul, .flow-editor-content ol { padding-inline-start: 1.5rem; margin: 0 0 .7rem; }
-        .flow-editor-content li { margin-bottom: .2rem; }
+        /* גופן, גדלים, שוליים ורשימות ממוספרות — אותו מקור כמו התצוגה/PDF (docTypography.ts) */
+        ${docTypographyCss(".flow-editor-content", docTypography, true)}
         .flow-editor-content table { border-collapse: collapse; width: 100%; margin: .5rem 0; }
         .flow-editor-content th, .flow-editor-content td { border: 1px solid ${preset?.table?.borderColor || "hsl(var(--border))"}; padding: ${preset?.table?.padding || ".35rem .55rem"}; text-align: right; font-size: ${preset?.table?.fontSize || "inherit"}; }
         .flow-editor-content th { background: ${preset?.table?.headerBg || preset?.colors.heading || "hsl(var(--primary))"}; color: ${preset?.table?.headerText || "#fff"}; }

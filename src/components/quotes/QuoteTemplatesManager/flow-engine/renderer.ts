@@ -8,6 +8,7 @@
 
 import type { FlowBlock, FlowDocument, FlowInline } from "./types";
 import { applyAutofillToInlines } from "./labelAutofill";
+import { docTypographyCss, resolveDocTypography } from "./docTypography";
 import type { DesignPresetConfig } from "./presets/types";
 import { buildPresetExtraCss } from "./presets/presetExtras";
 import { clampFlowNumber, FLOW_STRIP_LIMITS } from "./stripSettings";
@@ -68,7 +69,8 @@ function renderInline(node: FlowInline): string {
     return `<span class="fld">{{${esc(node.key)}}}</span>`;
   }
   if (node.type === "raw") {
-    return node.html;
+    // HTML גולמי (עיצוב מורחב) עלול להכיל שדות דינמיים — ממלאים גם אותם
+    return resolveRawFields(node.html);
   }
   let html = esc(node.text);
   if (node.bold) html = `<strong>${html}</strong>`;
@@ -188,11 +190,13 @@ function resolveRawFields(html: string): string {
   // מחליף <span data-field="key">…</span> בערך שנפתר (או משאיר כפי שהיה)
   return html.replace(
     /<span\b[^>]*\bdata-field=("|')([^"']+)\1[^>]*>([\s\S]*?)<\/span>/gi,
-    (match, _q, key, inner) => {
+    (match, _q, key) => {
       const resolved = resolveFieldKey(key);
-      if (resolved !== undefined) return esc(resolved);
-      // Fallback — משאיר את הטקסט שהיה בתוך ה-span (למשל {{key}} או שם השדה)
-      return inner || `{{${esc(key)}}}`;
+      if (resolved !== undefined) return esc(resolved).replace(/\n/g, "<br />");
+      // אין ערך ללקוח הנוכחי → placeholder. לא מציגים את הטקסט שבתוך ה-span:
+      // הוא עלול להיות ערך שנצרב מלקוח קודם.
+      const label = /data-label=("|')([^"']*)\1/.exec(match)?.[2];
+      return `<span class="fld">{{${esc(label || key)}}}</span>`;
     },
   );
 }
@@ -317,6 +321,14 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
       );
   const stripBgColor = branding.stripBgColor || "#ffffff";
   const baseFontSizePx = clampFlowNumber(branding.baseFontSizePx, 16, 10, 28);
+  const typography = resolveDocTypography({
+    designSettings: {
+      fontFamily: branding.fontFamily,
+      fontSize: baseFontSizePx,
+      secondaryColor: branding.primaryColor,
+    },
+    preset,
+  });
 
   const sectionsHtml = sections
     .map((sec) => {
@@ -525,23 +537,14 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
     overflow-wrap: anywhere;
   }
 
-  .flow-h { color: ${branding.primaryColor}; margin: 4mm 0 2mm; break-after: avoid; }
-  .flow-h1 { font-size: 20pt; padding-bottom: 2mm; }
-  .flow-h2 { font-size: 14pt; }
-  .flow-h3 { font-size: 12pt; }
-
+  /* גופן, גדלים, שוליים ורשימות — מקור אמת משותף עם העורך (docTypography.ts) */
+  ${docTypographyCss(".flow-doc", typography)}
+  /* WYSIWYG: העורך שובר שורות בין עמודים בדיוק בנקודה שבה נגמר העמוד, בלי כללי
+     "שמור יחד". כללים כאלה בהדפסה הזיזו פסקאות/פריטי רשימה שלמים לעמוד הבא והשאירו
+     רווחים שלא נראו בעורך — לכן ההדפסה שוברת כמו העורך. */
   .flow-p,
-  .flow-doc p { margin: 0 0 2mm; orphans: 3; widows: 3; direction: rtl; text-align: right; }
-  .flow-list { margin: 0 0 3mm; padding-inline-start: 6mm; direction: rtl; text-align: right; }
-  .flow-list li {
-    margin-bottom: 1mm;
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-  .flow-list li > p {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
+  .flow-doc p { orphans: 1; widows: 1; direction: rtl; text-align: right; }
+  .flow-doc li { orphans: 1; widows: 1; }
 
   .flow-table {
     width: 100% !important; max-width: 100% !important; min-width: 0 !important;
@@ -597,11 +600,7 @@ function _renderFlowToHtmlInner(doc: FlowDocument, preset?: DesignPresetConfig):
   ${frameDesignCss(branding.frameDesign)}
   ${preset ? `
   /* ===== Design Preset override ===== */
-  body { font-family: ${preset.fonts.body}; font-size: ${preset.fonts.size}; line-height: ${preset.spacing.lineHeight}; color: ${preset.colors.text}; }
-  .flow-h { color: ${preset.colors.heading}; font-family: ${preset.fonts.heading}; }
-  .flow-h1 { font-size: ${preset.headings.h1.size}; font-weight: ${preset.headings.h1.weight}; }
-  .flow-h2 { font-size: ${preset.headings.h2.size}; font-weight: ${preset.headings.h2.weight}; }
-  .flow-p { margin: 0 0 ${preset.spacing.paragraphGap}; }
+  /* גופן/כותרות/מרווחי פסקה של ה-preset נכללים כבר ב-docTypographyCss */
   .flow-table th, .flow-table td { border-color: ${preset.table?.borderColor || "#ddd"}; padding: ${preset.table?.padding || "2mm 3mm"}; font-size: ${preset.table?.fontSize || "10pt"}; }
   .flow-table th { background: ${preset.table?.headerBg || preset.colors.heading}; color: ${preset.table?.headerText || "#fff"}; }
   ${preset.table?.rowAltBg ? `.flow-table tbody tr:nth-child(even) td { background: ${preset.table.rowAltBg}; }` : ""}

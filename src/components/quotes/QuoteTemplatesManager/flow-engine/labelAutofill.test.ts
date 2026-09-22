@@ -48,7 +48,15 @@ describe("label autofill", () => {
   it("prefers the longer label and accepts Hebrew gershayim", () => {
     expect(fill('התב"ע החלה:')).toBe('התב"ע החלה: גז/ 525 27 א');
     expect(fill("משפחת ____")).toBe("משפחת כהן");
-    expect(fill("תב״ע")).toBe("תב״ע גז/ 525 27 א");
+    expect(fill("תב״ע: ____")).toBe("תב״ע: גז/ 525 27 א");
+  });
+
+  it("does not fill generic words inside a sentence", () => {
+    expect(fill('הצעת מחיר לביצוע שינוי תב"ע בסמכות מקומית')).toBe('הצעת מחיר לביצוע שינוי תב"ע בסמכות מקומית');
+    expect(fill('הכנת תב"ע הכוללת תקנון')).toBe('הכנת תב"ע הכוללת תקנון');
+    expect(fill('תב"ע:')).toBe('תב"ע: גז/ 525 27 א');
+    expect(fill("משפחה: ____")).toBe("משפחה: כהן");
+    expect(fill("למשפחה ולחברים משפחה נעימה")).toBe("למשפחה ולחברים משפחה נעימה");
   });
 
   it("leaves labels without a value untouched", () => {

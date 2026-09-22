@@ -9,6 +9,11 @@ export interface AutofillEntry {
   label: string;
   /** מפתח ה-merge data שממנו נלקח הערך */
   key: string;
+  /**
+   * מילה כללית שמופיעה גם במשפטים רגילים (למשל "שינוי תב"ע") — ממלאים רק כשהיא
+   * כתובה ככותרת: עם נקודתיים אחריה או עם ____.
+   */
+  requireMarker?: boolean;
 }
 
 export interface AutofillMatch {
@@ -31,16 +36,16 @@ export const BUILTIN_AUTOFILL_ENTRIES: AutofillEntry[] = [
   { label: "חלקה", key: "parcel.lot" },
   { label: "מגרש", key: "parcel.plot" },
   { label: 'התב"ע החלה', key: "parcel.taba" },
-  { label: 'תב"ע', key: "parcel.taba" },
+  { label: 'תב"ע', key: "parcel.taba", requireMarker: true },
   { label: "משפחת", key: "customer.family" },
-  { label: "משפחה", key: "customer.family" },
+  { label: "משפחה", key: "customer.family", requireMarker: true },
   { label: "שם הלקוח", key: "customer.name" },
   { label: "שם לקוח", key: "customer.name" },
   { label: "כתובת/ישוב", key: "customer.address" },
-  { label: "כתובת", key: "customer.address" },
-  { label: "ישוב", key: "customer.address" },
-  { label: "יישוב", key: "customer.address" },
-  { label: "טלפון", key: "customer.phone" },
+  { label: "כתובת", key: "customer.address", requireMarker: true },
+  { label: "ישוב", key: "customer.address", requireMarker: true },
+  { label: "יישוב", key: "customer.address", requireMarker: true },
+  { label: "טלפון", key: "customer.phone", requireMarker: true },
   { label: "שטח התכנית", key: "plan.area" },
   { label: "תכנית בסמכות", key: "plan.authority" },
   { label: "סוג הפרויקט", key: "project.type" },
@@ -67,16 +72,16 @@ const WORD_CHAR = /[\p{L}\p{N}]/u;
 
 let cachedSig = "";
 let cachedRe: RegExp | null = null;
-let cachedByLabel = new Map<string, string>();
+let cachedByLabel = new Map<string, AutofillEntry>();
 
 function compile(entries: AutofillEntry[]) {
-  const sig = entries.map((e) => `${e.label}\u0000${e.key}`).join("\u0001");
+  const sig = entries.map((e) => `${e.label}\u0000${e.key}\u0000${e.requireMarker ? 1 : 0}`).join("\u0001");
   if (sig === cachedSig && cachedRe) return;
   cachedSig = sig;
   cachedByLabel = new Map();
   entries.forEach((e) => {
     const k = normQuotes(e.label.trim());
-    if (!cachedByLabel.has(k)) cachedByLabel.set(k, e.key);
+    if (!cachedByLabel.has(k)) cachedByLabel.set(k, e);
   });
   const alternation = [...cachedByLabel.keys()]
     .sort((a, b) => b.length - a.length)
@@ -106,14 +111,16 @@ export function findAutofillMatches(
     if (start > 0 && WORD_CHAR.test(text[start - 1])) continue;
     if (end < text.length && WORD_CHAR.test(text[end])) continue;
 
-    const key = cachedByLabel.get(normQuotes(m[0]));
-    const value = key ? (lookup(key) || "").trim() : "";
+    const entry = cachedByLabel.get(normQuotes(m[0]));
+    const value = entry ? (lookup(entry.key) || "").trim() : "";
     if (!value) continue;
 
     const tail = /^([ \t\u00A0]*:?[ \t\u00A0]*)(_{2,})?/.exec(text.slice(end));
     const sep = tail?.[1] || "";
     const underscores = tail?.[2] || "";
     const hasColon = sep.includes(":");
+    // מילה כללית בתוך משפט (לא כותרת) — לא ממלאים
+    if (entry?.requireMarker && !hasColon && !underscores) continue;
 
     if (underscores) {
       const from = end + sep.length;

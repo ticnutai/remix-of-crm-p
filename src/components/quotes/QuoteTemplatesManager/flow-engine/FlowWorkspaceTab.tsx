@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { WORDING_PRESETS, type WordingPreset } from "./wordingPresets";
+import EditorPreviewTab from "./EditorPreviewTab";
 import { Cloud, Columns2, Eye, FileText, GripHorizontal, Hash, ImagePlus, Layers, Loader2, Palette, Pencil, Receipt, RotateCcw, Rows3, SlidersHorizontal, Sparkles, SplitSquareHorizontal, Trash2, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -224,7 +225,8 @@ export default function FlowWorkspaceTab({
   const quoteBasePrice = Number((template as any).base_price) || 0;
   const quoteVatRate = (template as any).vat_rate ?? null;
   const quoteShowVat = (template as any).show_vat !== false;
-  const quoteValidityDays = (template as any).validity_days ?? null;
+  // כמו בתצוגת העורך: אם לא הוגדר תוקף — 30 יום
+  const quoteValidityDays = Number((template as any).validity_days) || 30;
   const projectDetails = useMemo(
     () => ({
       ...(projectDetailsProp || {}),
@@ -1724,16 +1726,31 @@ export default function FlowWorkspaceTab({
             </div>
           </TooltipProvider>
           <div className="min-h-0 flex-1 overflow-hidden">
-            <FlowPreviewTab
-              template={template}
-              editedHtml={html}
-              preset={presetCfg}
-              projectDetails={projectDetails}
-              designSettings={designSettings}
-              pageSetup={pageSetup}
-              onPrintReady={onPrintReady}
-              onPdfBlobReady={onPdfBlobReady}
-            />
+            {structuredMode ? (
+              // מסמך A4 חי: תצוגה והדפסה מאותו מנוע כמו העורך — אין פערי פריסה
+              <EditorPreviewTab
+                html={html}
+                title={template.name}
+                preset={presetCfg}
+                pageSetup={pageSetup}
+                templateDesignSettings={template.design_settings}
+                designSettings={designSettings}
+                projectDetails={projectDetails}
+                onPrintReady={onPrintReady}
+                onPdfBlobReady={onPdfBlobReady}
+              />
+            ) : (
+              <FlowPreviewTab
+                template={template}
+                editedHtml={html}
+                preset={presetCfg}
+                projectDetails={projectDetails}
+                designSettings={designSettings}
+                pageSetup={pageSetup}
+                onPrintReady={onPrintReady}
+                onPdfBlobReady={onPdfBlobReady}
+              />
+            )}
           </div>
         </div>
       </TabsContent>

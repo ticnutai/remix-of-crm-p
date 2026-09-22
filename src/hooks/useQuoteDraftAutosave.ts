@@ -30,7 +30,8 @@ function trimSnapshotForLocalStorage(snapshot: any): any {
   return { ...snapshot, designSettings: trimmedDs };
 }
 
-export type AutosaveStatus = "idle" | "saving" | "saved" | "error";
+/** conflict = חלון/מכשיר אחר שמר טיוטה חדשה יותר מאז שהחלון הזה נטען — לא דורסים אותה. */
+export type AutosaveStatus = "idle" | "saving" | "saved" | "error" | "conflict";
 
 export interface DraftEntry {
   data: any;
@@ -47,6 +48,13 @@ interface UseQuoteDraftAutosaveOptions {
   enabled?: boolean;
   /** Debounce ms before writing to cloud. Default 2000. */
   debounceMs?: number;
+  /**
+   * While a draft is being restored (local + cloud check), snapshot changes come from the
+   * restore itself, not from the user. They are recorded as the baseline but NOT written —
+   * otherwise a freshly loaded / stale window re-saves its state with a new timestamp and
+   * overrides newer work saved from another window or device.
+   */
+  paused?: boolean;
 }
 
 interface UseQuoteDraftAutosaveResult {
@@ -62,8 +70,12 @@ interface UseQuoteDraftAutosaveResult {
   loadCloudDraftEntry: () => Promise<DraftEntry | null>;
   /** Wipe draft from LS + cloud. Call after a successful explicit save. */
   clearDraft: () => Promise<void>;
-  /** Cancel pending debounce and write immediately to LS + cloud. Call on tab switch. */
-  flushSave: () => Promise<void>;
+  /**
+   * Write immediately to LS + cloud. With `onlyIfPending`, writes only when there is an
+   * unsaved user change (used on tab switch / close); without it, always writes
+   * (explicit "save as draft").
+   */
+  flushSave: (opts?: { onlyIfPending?: boolean }) => Promise<void>;
 }
 
 /**
@@ -76,6 +88,7 @@ export function useQuoteDraftAutosave({
   snapshot,
   enabled = true,
   debounceMs = 2000,
+  paused = false,
 }: UseQuoteDraftAutosaveOptions): UseQuoteDraftAutosaveResult {
   const { user } = useAuth();
   const [status, setStatus] = useState<AutosaveStatus>("idle");
@@ -88,6 +101,11 @@ export function useQuoteDraftAutosave({
 
   const lsKey = LS_PREFIX + key;
   const settingKey = SETTING_PREFIX + key;
+
+  // savedAt של העותק בענן שהחלון הזה מכיר (נטען או נכתב על ידו). כתיבה אוטומטית
+  // מתבצעת רק אם בענן אין עותק חדש יותר — אחרת חלון ישן היה דורס עבודה חדשה.
+  const cloudBaseRef = useRef<string | null>(null);
+  const conflictRef = useRef(false);
 
   const loadLocalDraftEntry = useCallback((): DraftEntry | null => {
     try {
@@ -107,16 +125,24 @@ export function useQuoteDraftAutosave({
   );
 
   const loadCloudDraftEntry = useCallback(async (): Promise<DraftEntry | null> => {
-    if (!user?.id) return null;
+    // השחזור רץ מיד בפתיחה — לפעמים לפני ש-useAuth סיים לטעון את המשתמש. בעבר זה
+    // דילג בשקט על הענן ושחזר עותק מקומי ישן, שנשמר אחר כך כ"חדש" ודרס את הענן.
+    let userId = user?.id;
+    if (!userId) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      userId = sessionData.session?.user?.id;
+    }
+    if (!userId) return null;
     try {
       const { data } = await supabase
         .from("user_settings")
         .select("setting_value")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("setting_key", settingKey)
         .maybeSingle();
       const v: any = (data as any)?.setting_value;
       if (!v?.data) return null;
+      cloudBaseRef.current = v.savedAt ?? null;
       return { data: v.data, savedAt: v.savedAt ?? null };
     } catch {
       return null;
@@ -128,11 +154,55 @@ export function useQuoteDraftAutosave({
     [loadCloudDraftEntry],
   );
 
+  /** כתיבה לענן. force=false בודק קודם שאין בענן עותק חדש יותר מחלון אחר. */
+  const writeCloud = useCallback(
+    async (data: any, force = false): Promise<"saved" | "conflict" | "skipped"> => {
+      let userId = user?.id;
+      if (!userId) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        userId = sessionData.session?.user?.id;
+      }
+      if (!userId) return "skipped";
+      if (!force) {
+        const { data: row } = await supabase
+          .from("user_settings")
+          .select("setting_value")
+          .eq("user_id", userId)
+          .eq("setting_key", settingKey)
+          .maybeSingle();
+        const remoteSavedAt: string | null = (row as any)?.setting_value?.savedAt ?? null;
+        const base = cloudBaseRef.current;
+        if (remoteSavedAt && (!base || Date.parse(remoteSavedAt) > Date.parse(base))) {
+          conflictRef.current = true;
+          // העותק המקומי של החלון הזה כבר לא עדכני — שהפתיחה הבאה תיקח את הענן
+          try { localStorage.removeItem(lsKey); } catch { /* no-op */ }
+          return "conflict";
+        }
+      }
+      const savedAt = new Date().toISOString();
+      await supabase.from("user_settings").upsert(
+        {
+          user_id: userId,
+          setting_key: settingKey,
+          setting_value: { data, savedAt } as any,
+          updated_at: savedAt,
+        },
+        { onConflict: "user_id,setting_key" },
+      );
+      cloudBaseRef.current = savedAt;
+      conflictRef.current = false;
+      return "saved";
+    },
+    [lsKey, settingKey, user?.id],
+  );
+
   // true while a cloud write is scheduled but not yet sent — flushed on close/unmount
   // so leaving the editor within the debounce window never loses the latest edits.
   const pendingCloudRef = useRef(false);
 
   const clearDraft = useCallback(async () => {
+    cloudBaseRef.current = null;
+    conflictRef.current = false;
     try {
       localStorage.removeItem(lsKey);
     } catch {
@@ -171,6 +241,14 @@ export function useQuoteDraftAutosave({
 
     if (json === lastJsonRef.current) return;
     lastJsonRef.current = json;
+    // שחזור בתהליך — זה לא שינוי של המשתמש; רק מעדכנים את קו הבסיס
+    if (paused) return;
+
+    // בקונפליקט עם חלון אחר לא שומרים אוטומטית (גם לא מקומית) עד רענון או שמירה מפורשת
+    if (conflictRef.current) {
+      setStatus("conflict");
+      return;
+    }
 
     // 1. Instant LS write — strip heavy base64 blobs before storing locally
     // (logos, strip layers) to avoid QuotaExceededError; cloud write keeps full data.
@@ -194,25 +272,12 @@ export function useQuoteDraftAutosave({
     timerRef.current = window.setTimeout(async () => {
       timerRef.current = null;
       pendingCloudRef.current = false;
-      if (!user?.id) {
-        // No user → LS only.
-        setStatus("saved");
-        setLastSavedAt(new Date());
-        return;
-      }
       try {
-        await supabase.from("user_settings").upsert(
-          {
-            user_id: user.id,
-            setting_key: settingKey,
-            setting_value: {
-              data: snapshot,
-              savedAt: new Date().toISOString(),
-            } as any,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "user_id,setting_key" },
-        );
+        const result = await writeCloud(snapshot);
+        if (result === "conflict") {
+          setStatus("conflict");
+          return;
+        }
         setStatus("saved");
         setLastSavedAt(new Date());
       } catch {
@@ -226,10 +291,11 @@ export function useQuoteDraftAutosave({
         timerRef.current = null;
       }
     };
-  }, [snapshot, enabled, lsKey, settingKey, user?.id, debounceMs]);
+  }, [snapshot, enabled, paused, lsKey, settingKey, user?.id, debounceMs, writeCloud]);
 
-  const flushSave = useCallback(async () => {
+  const flushSave = useCallback(async (opts?: { onlyIfPending?: boolean }) => {
     if (!enabled) return;
+    if (opts?.onlyIfPending && !pendingCloudRef.current) return;
 
     // Cancel any pending debounce so we don't double-write
     if (timerRef.current) {
@@ -240,6 +306,10 @@ export function useQuoteDraftAutosave({
 
     const currentSnapshot = snapshotRef.current;
 
+    // שמירה אוטומטית (מעבר טאב/סגירה) לא דורסת חלון אחר; "שמור כטיוטה" מפורש כן
+    const force = !opts?.onlyIfPending;
+    if (conflictRef.current && !force) return;
+
     // Write LS immediately (trimmed to avoid quota errors)
     try {
       const lsPayload = JSON.stringify(currentSnapshot).length <= 150_000
@@ -249,42 +319,26 @@ export function useQuoteDraftAutosave({
     } catch { /* quota */ }
 
     // Write cloud immediately
-    if (!user?.id) return;
     setStatus("saving");
     try {
-      await supabase.from("user_settings").upsert(
-        {
-          user_id: user.id,
-          setting_key: settingKey,
-          setting_value: {
-            data: currentSnapshot,
-            savedAt: new Date().toISOString(),
-          } as any,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,setting_key" },
-      );
+      const result = await writeCloud(currentSnapshot, force);
+      if (result === "conflict") {
+        setStatus("conflict");
+        return;
+      }
       setStatus("saved");
       setLastSavedAt(new Date());
     } catch {
       setStatus("error");
     }
-  }, [enabled, lsKey, settingKey, user?.id]);
+  }, [enabled, lsKey, writeCloud]);
 
   // Closing the editor (enabled → false) or unmounting used to cancel the pending
   // debounced cloud write, leaving an older cloud copy behind. Send it now instead.
   const writeCloudNow = useCallback((data: any) => {
-    if (!user?.id) return;
-    void supabase.from("user_settings").upsert(
-      {
-        user_id: user.id,
-        setting_key: settingKey,
-        setting_value: { data, savedAt: new Date().toISOString() } as any,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id,setting_key" },
-    );
-  }, [settingKey, user?.id]);
+    if (conflictRef.current) return;
+    void writeCloud(data).catch(() => undefined);
+  }, [writeCloud]);
   const writeCloudNowRef = useRef(writeCloudNow);
   useEffect(() => { writeCloudNowRef.current = writeCloudNow; }, [writeCloudNow]);
 
