@@ -15,8 +15,42 @@ export interface ProjectTokenData {
   projectType?: string;
   phone?: string;
   email?: string;
+  /** שטח התכנית */
+  planArea?: string;
+  /** תכנית בסמכות (למשל: מקומית) */
+  planAuthority?: string;
+  /** ת.ז. של הלקוח הראשי */
+  idNumber?: string;
+  /** מזמינים נוספים (למשל בעל ואשה) — כל אחד עם שם ות.ז. */
+  additionalClients?: Array<{ name?: string; idNumber?: string }>;
   /** ערכים של שדות מותאמים אישית (client_custom_field_definitions) */
   customData?: Record<string, string | number | null | undefined>;
+  /** נתוני ההצעה עצמה (מחיר, תוקף, תאריך) — מוזרקים ע"י סביבת העורך */
+  quote?: {
+    date?: string;
+    validityDays?: number | null;
+    basePrice?: number | null;
+    vatRate?: number | null;
+    showVat?: boolean;
+  };
+}
+
+const formatShekel = (n: number) =>
+  `${Math.round(n).toLocaleString("he-IL")} ₪`;
+
+/** כל המזמינים (ראשי + נוספים), שורה לכל אחד: "שם: X   ת.ז. Y". */
+export function partiesLines(pd: ProjectTokenData): string {
+  const parties = [
+    { name: pd.clientName, idNumber: pd.idNumber },
+    ...(Array.isArray(pd.additionalClients) ? pd.additionalClients : []),
+  ].filter((p) => (p?.name || "").trim() || (p?.idNumber || "").trim());
+  return parties
+    .map((p) => {
+      const name = (p.name || "").trim();
+      const id = (p.idNumber || "").trim();
+      return id ? `שם: ${name}   ת.ז. ${id}` : `שם: ${name}`;
+    })
+    .join("\n");
 }
 
 const QUOTE_NORM_RE = /[״“”"]/g;
@@ -97,7 +131,20 @@ export function projectToMergeData(pd?: ProjectTokenData): Record<string, string
     "parcel.taba": pd.taba || "",
     "parcel.moshav": pd.moshav || "",
     "project.type": pd.projectType || "",
+    "customer.idNumber": pd.idNumber || "",
+    "plan.area": pd.planArea || "",
+    "plan.authority": pd.planAuthority || "",
+    "customer.family": pd.family || "",
+    "parties.all": partiesLines(pd),
+    "quote.date": pd.quote?.date || new Date().toLocaleDateString("he-IL"),
   };
+  const q = pd.quote;
+  if (q?.validityDays) out["quote.validity"] = `${q.validityDays} יום`;
+  if (q?.basePrice && q.basePrice > 0) {
+    out["price.base"] = formatShekel(q.basePrice);
+    const vat = q.showVat === false ? 0 : Number(q.vatRate ?? 18);
+    out["quote.total"] = formatShekel(q.basePrice * (1 + vat / 100));
+  }
   // שדות מותאמים אישית — נמופים ל-custom.<field_key>
   if (pd.customData && typeof pd.customData === "object") {
     for (const [k, v] of Object.entries(pd.customData)) {

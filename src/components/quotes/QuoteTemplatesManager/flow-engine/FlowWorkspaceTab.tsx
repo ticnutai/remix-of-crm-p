@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { WORDING_PRESETS, type WordingPreset } from "./wordingPresets";
 import { Cloud, Columns2, Eye, FileText, GripHorizontal, Hash, ImagePlus, Layers, Loader2, Palette, Pencil, Receipt, RotateCcw, Rows3, SlidersHorizontal, Sparkles, SplitSquareHorizontal, Trash2, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -207,7 +208,7 @@ function loadPageSetup(templateId?: string, designSettings?: any): FlowPageSetup
 
 export default function FlowWorkspaceTab({
   template,
-  projectDetails,
+  projectDetails: projectDetailsProp,
   designSettings,
   onDesignSettingsChange,
   workspaceActions,
@@ -218,6 +219,24 @@ export default function FlowWorkspaceTab({
   onPrintReady,
   onPdfBlobReady,
 }: Props) {
+  // פרטי הפרויקט + נתוני ההצעה (מחיר/מע"מ/תוקף) — כדי ששדות כמו "שכר טרחה" ו"תוקף"
+  // במסמך יתמלאו אוטומטית ויתעדכנו כשמשנים את המחיר בטאבים.
+  const quoteBasePrice = Number((template as any).base_price) || 0;
+  const quoteVatRate = (template as any).vat_rate ?? null;
+  const quoteShowVat = (template as any).show_vat !== false;
+  const quoteValidityDays = (template as any).validity_days ?? null;
+  const projectDetails = useMemo(
+    () => ({
+      ...(projectDetailsProp || {}),
+      quote: {
+        basePrice: quoteBasePrice,
+        vatRate: quoteVatRate,
+        showVat: quoteShowVat,
+        validityDays: quoteValidityDays,
+      },
+    }),
+    [projectDetailsProp, quoteBasePrice, quoteVatRate, quoteShowVat, quoteValidityDays],
+  );
   const designSettingsRef = useRef(designSettings);
   designSettingsRef.current = designSettings;
   // toggle: שמירת עיצוב מקורי מהתבנית (off = הזרימה הקיימת, on = שכבה 1)
@@ -763,6 +782,17 @@ export default function FlowWorkspaceTab({
         })
       : baseHtml;
     setHtml(resetHtml);
+  };
+
+  const handleLoadWordingPreset = (preset: WordingPreset) => {
+    if (!window.confirm(`לטעון את הנוסח "${preset.label}"? התוכן הנוכחי של המסמך יוחלף.`)) return;
+    // ממלא את לוח התשלומים המחושב מהטאבים ושומר כמו כל עריכה (טיוטה + הגדרות התבנית)
+    const next = syncStructuredSections(preset.html, template, {
+      preserveItemStyling: preserveStyles,
+      projectDetails,
+      paymentsLayout,
+    });
+    handleChange(next);
   };
 
   const setPaymentsLayout = (value: PaymentsLayout) => {
@@ -1473,6 +1503,35 @@ export default function FlowWorkspaceTab({
         </TooltipTrigger>
         <TooltipContent>אפס לתוכן התבנית המקורי</TooltipContent>
       </Tooltip>
+
+      {structuredMode && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 gap-1 text-xs" title="טען נוסח מוכן למסמך">
+              <FileText className="h-3.5 w-3.5" />
+              נוסחים
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-64 p-1" dir="rtl">
+            <div className="px-2 py-1.5 text-[11px] text-muted-foreground">
+              טעינת נוסח מוכן — השדות הצהובים מתמלאים אוטומטית מפרטי הלקוח
+            </div>
+            {WORDING_PRESETS.map((preset) => (
+              <Button
+                key={preset.id}
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2 text-xs"
+                onClick={() => handleLoadWordingPreset(preset)}
+              >
+                <FileText className="h-3.5 w-3.5" />
+                {preset.label}
+              </Button>
+            ))}
+          </PopoverContent>
+        </Popover>
+      )}
 
       {/* ===== Per-feature popovers: each icon+label opens its own panel ===== */}
 

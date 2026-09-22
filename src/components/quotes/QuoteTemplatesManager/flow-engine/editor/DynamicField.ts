@@ -23,6 +23,10 @@ let activeResolver: FieldResolver | null = null;
 export function setFieldResolver(fn: FieldResolver | null) {
   activeResolver = fn;
 }
+export function hasFieldResolver(): boolean {
+  return activeResolver !== null;
+}
+
 export function resolveField(key: string): string {
   if (!activeResolver) return "";
   const v = activeResolver(key);
@@ -74,13 +78,15 @@ export const DynamicField = Node.create<DynamicFieldOptions>({
 
   renderHTML({ HTMLAttributes }) {
     const key = String(HTMLAttributes.key || HTMLAttributes["data-field"] || "");
-    const label = String(HTMLAttributes.label || key);
+    const label = String(HTMLAttributes.label || HTMLAttributes["data-label"] || key);
     const live = resolveField(key);
     const snapshot =
       HTMLAttributes.resolvedValue != null
         ? String(HTMLAttributes.resolvedValue)
         : (HTMLAttributes["data-resolved-value"] as string | undefined) || "";
-    const value = live !== "" ? live : snapshot;
+    // כשיש resolver פעיל (עורך עם פרטי פרויקט) — הערך החי הוא האמת. snapshot משמש רק
+    // כשאין resolver, אחרת ערך של לקוח קודם היה נשאר אחרי ניקוי/החלפת לקוח.
+    const value = hasFieldResolver() ? live : live !== "" ? live : snapshot;
     const hasValue = value !== "";
     if (hasValue) {
       // נפתר → טקסט רגיל לחלוטין, ללא רקע/מסגרת/צ'יפ
@@ -94,6 +100,7 @@ export const DynamicField = Node.create<DynamicFieldOptions>({
             "data-resolved-value": value,
             title: `${label}: ${value}`,
             class: "flow-field-resolved",
+            ...(value.includes("\n") ? { style: "white-space: pre-line" } : {}),
           },
           this.options.HTMLAttributes,
         ),

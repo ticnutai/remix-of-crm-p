@@ -7,6 +7,7 @@
 // בלי clip-path, בלי safe masks, בלי overlays.
 
 import type { FlowBlock, FlowDocument, FlowInline } from "./types";
+import { applyAutofillToInlines } from "./labelAutofill";
 import type { DesignPresetConfig } from "./presets/types";
 import { buildPresetExtraCss } from "./presets/presetExtras";
 import { clampFlowNumber, FLOW_STRIP_LIMITS } from "./stripSettings";
@@ -62,7 +63,7 @@ function renderInline(node: FlowInline): string {
   if (node.type === "field") {
     const resolved = resolveFieldKey(node.key);
     if (resolved !== undefined) {
-      return esc(resolved);
+      return esc(resolved).replace(/\n/g, "<br />");
     }
     return `<span class="fld">{{${esc(node.key)}}}</span>`;
   }
@@ -77,7 +78,9 @@ function renderInline(node: FlowInline): string {
 }
 
 function renderInlines(nodes: FlowInline[]): string {
-  return nodes.map(renderInline).join("");
+  // מילוי לפי כותרת — כמו בעורך: ליד כל מילה שתואמת לכותרת שדה מוצג הערך של הלקוח
+  const filled = CURRENT_MERGE ? applyAutofillToInlines(nodes, resolveFieldKey) : nodes;
+  return filled.map(renderInline).join("");
 }
 
 function sectionTitleCss(config?: SectionTitleConfig) {

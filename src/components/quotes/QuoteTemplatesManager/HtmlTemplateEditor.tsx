@@ -65,6 +65,7 @@ import {
 import {
   X,
   Save,
+  Eraser,
   Download,
   FileCode,
   Mail,
@@ -574,6 +575,12 @@ interface ProjectDetails {
   stageTemplateName?: string;
   /** ערכים של שדות מותאמים אישית (custom_data של לקוח) */
   customData?: Record<string, string>;
+  /** ת.ז. של הלקוח הראשי */
+  idNumber?: string;
+  planArea?: string;
+  planAuthority?: string;
+  /** מזמינים נוספים (למשל בעל ואשה) */
+  additionalClients?: Array<{ name: string; idNumber: string }>;
 }
 
 /**
@@ -1271,6 +1278,7 @@ function ProjectDetailsEditor({
         ...details,
         clientId: client.id,
         clientName: client.name || "",
+        idNumber: client.id_number || "",
         gush: client.gush || "",
         helka: client.helka || "",
         migrash: client.migrash || "",
@@ -1340,20 +1348,56 @@ function ProjectDetailsEditor({
 
   const fields = [
     { key: "clientName", label: "שם הלקוח", icon: User },
+    { key: "idNumber", label: "ת.ז. לקוח", icon: User },
+    { key: "family", label: "משפחה", icon: User },
     { key: "gush", label: "גוש", icon: MapPin },
     { key: "helka", label: "חלקה", icon: MapPin },
     { key: "migrash", label: "מגרש", icon: MapPin },
     { key: "taba", label: 'תב"ע', icon: FileText },
     { key: "address", label: "כתובת/ישוב", icon: MapPin },
     { key: "projectType", label: "סוג הפרויקט", icon: FileText },
+    { key: "planArea", label: "שטח התכנית", icon: MapPin },
+    { key: "planAuthority", label: "תכנית בסמכות", icon: FileText },
   ];
   return (
     <div className="bg-white rounded-xl border p-6 shadow-sm">
-      <div className="flex items-center mb-4">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold flex items-center gap-2">
           <User className="h-6 w-6 text-[#B8860B]" />
           פרטי הפרויקט והלקוח
         </h2>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 gap-1 text-muted-foreground hover:text-destructive"
+          title="נקה את פרטי הלקוח הנוכחי (התבנית עצמה לא משתנה)"
+          onClick={() => {
+            if (!window.confirm("לנקות את כל פרטי הלקוח בהצעה הזו? התבנית השמורה לא תשתנה.")) return;
+            onUpdate({
+              ...details,
+              clientId: "",
+              clientName: "",
+              phone: "",
+              email: "",
+              address: "",
+              gush: "",
+              helka: "",
+              migrash: "",
+              taba: "",
+              moshav: "",
+              family: "",
+              idNumber: "",
+              additionalClients: [],
+              planArea: "",
+              planAuthority: "",
+              customData: {},
+            });
+          }}
+        >
+          <Eraser className="h-4 w-4" />
+          נקה פרטי לקוח
+        </Button>
       </div>
       <div className="grid grid-cols-2 gap-4">
         {fields.map((field) => {
@@ -1481,6 +1525,62 @@ function ProjectDetailsEditor({
             />
           );
         })}
+      </div>
+
+      {/* מזמינים נוספים — למשל בעל ואשה. כל אחד מופיע במסמך בשורה "שם: ... ת.ז. ..." */}
+      <div className="mt-4 space-y-2">
+        {(details.additionalClients || []).map((party, index) => {
+          const updateParty = (patch: Partial<{ name: string; idNumber: string }>) => {
+            const next = [...(details.additionalClients || [])];
+            next[index] = { ...next[index], ...patch };
+            onUpdate({ ...details, additionalClients: next });
+          };
+          return (
+            <div key={index} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+              <div className="space-y-1">
+                <Label className="text-sm text-gray-600 flex items-center gap-1">
+                  <User className="h-3 w-3" />
+                  שם לקוח {index + 2}
+                </Label>
+                <Input value={party.name || ""} dir="rtl" placeholder="הזן שם..." onChange={(e) => updateParty({ name: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm text-gray-600">ת.ז. לקוח {index + 2}</Label>
+                <Input value={party.idNumber || ""} dir="rtl" placeholder="הזן ת.ז...." onChange={(e) => updateParty({ idNumber: e.target.value })} />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 text-muted-foreground hover:text-destructive"
+                title="הסר לקוח"
+                onClick={() =>
+                  onUpdate({
+                    ...details,
+                    additionalClients: (details.additionalClients || []).filter((_, i) => i !== index),
+                  })
+                }
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          );
+        })}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1 border-dashed"
+          onClick={() =>
+            onUpdate({
+              ...details,
+              additionalClients: [...(details.additionalClients || []), { name: "", idNumber: "" }],
+            })
+          }
+        >
+          <Plus className="h-4 w-4" />
+          הוסף לקוח נוסף (שם + ת.ז.)
+        </Button>
       </div>
 
       {/* שדות מותאמים אישית — מקור אמת אחד בכל המערכת */}
@@ -5678,16 +5778,9 @@ export function HtmlTemplateEditor({
       textBoxes,
       upgrades,
       pricingTiers,
-      projectDetails: templateEditorMode
-        ? {
-            ...projectDetails,
-            clientId: "",
-            clientName: "",
-            gush: "",
-            helka: "",
-            migrash: "",
-          }
-        : projectDetails,
+      // פרטי הלקוח נשמרים בטיוטה גם במצב עריכת תבנית — כדי שיציאה בלי שמירה
+      // לא תמחק אותם. שמירה כתבנית מסננת אותם בנפרד (cleanProjectDetails).
+      projectDetails,
       selectedTier,
       activeTab,
       templateEditorMode,
@@ -5707,8 +5800,8 @@ export function HtmlTemplateEditor({
   const {
     status: autosaveStatus,
     lastSavedAt: autosaveLastSavedAt,
-    loadLocalDraft,
-    loadCloudDraft,
+    loadLocalDraftEntry,
+    loadCloudDraftEntry,
     clearDraft,
     flushSave,
   } = useQuoteDraftAutosave({
@@ -5895,20 +5988,7 @@ export function HtmlTemplateEditor({
         if (Array.isArray(data.textBoxes)) setTextBoxes(data.textBoxes);
         if (Array.isArray(data.upgrades)) setUpgrades(data.upgrades);
         if (Array.isArray(data.pricingTiers)) setPricingTiers(data.pricingTiers);
-        if (data.projectDetails) {
-          setProjectDetails(
-            templateEditorMode
-              ? {
-                  ...data.projectDetails,
-                  clientId: "",
-                  clientName: "",
-                  gush: "",
-                  helka: "",
-                  migrash: "",
-                }
-              : data.projectDetails,
-          );
-        }
+        if (data.projectDetails) setProjectDetails(data.projectDetails);
         if (typeof data.selectedTier === "string") setSelectedTier(data.selectedTier);
         toast({
           title: source === "cloud" ? "טיוטה שוחזרה מהענן" : "טיוטה שוחזרה",
@@ -5919,14 +5999,18 @@ export function HtmlTemplateEditor({
       }
     };
 
-    const local = loadLocalDraft();
-    if (local) applyDraft(local, "local");
+    const local = loadLocalDraftEntry();
+    if (local) applyDraft(local.data, "local");
 
-    // Cloud restore - אם יש בענן ושונה ממה ששוחזר מקומי
+    // Cloud restore — רק אם הטיוטה בענן חדשה יותר מהמקומית. בעבר הענן (שנכתב
+    // בהשהיה) דרס תמיד את המקומית, ולכן שוחזרה גרסה ישנה וחסרה.
     (async () => {
-      const cloud = await loadCloudDraft();
-      if (cloud && JSON.stringify(cloud) !== JSON.stringify(local)) {
-        applyDraft(cloud, "cloud");
+      const cloud = await loadCloudDraftEntry();
+      if (!cloud) return;
+      const localTime = local?.savedAt ? Date.parse(local.savedAt) : 0;
+      const cloudTime = cloud.savedAt ? Date.parse(cloud.savedAt) : 0;
+      if (!local || (cloudTime > localTime && JSON.stringify(cloud.data) !== JSON.stringify(local.data))) {
+        applyDraft(cloud.data, "cloud");
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6307,7 +6391,7 @@ export function HtmlTemplateEditor({
         while (true) {
           const { data, error } = await supabase
             .from("clients")
-            .select("id, name, email, phone, gush, helka, migrash, taba, address, source, notes, custom_data")
+            .select("id, name, email, phone, gush, helka, migrash, taba, address, source, notes, custom_data, id_number")
             .order("name")
             .range(from, from + pageSize - 1);
 
@@ -6840,6 +6924,11 @@ export function HtmlTemplateEditor({
         migrash: "",
         taba: "",
         projectName: "",
+        idNumber: "",
+        family: "",
+        additionalClients: [],
+        planArea: "",
+        planAuthority: "",
       }));
     } catch (err: any) {
       console.error("Save error:", err);
@@ -6870,8 +6959,19 @@ export function HtmlTemplateEditor({
     toast,
   ]);
 
+  const handleSaveAsDraft = useCallback(async () => {
+    try {
+      await flushSave();
+      toast({ title: "הטיוטה נשמרה", description: "כל הפרטים יחכו לך בפתיחה הבאה של העורך" });
+    } catch (error: any) {
+      toast({ title: "שמירת הטיוטה נכשלה", description: error?.message || "נסה שוב", variant: "destructive" });
+    }
+  }, [flushSave, toast]);
+
   const handleSaveDraftAndClose = useCallback(async () => {
     if (template.id) {
+      // שומרים מיד את הטיוטה (מקומי + ענן) — כל המידע יחכה בפתיחה הבאה
+      try { await flushSave(); } catch { /* no-op */ }
       onClose();
       return;
     }
@@ -6922,6 +7022,7 @@ export function HtmlTemplateEditor({
     clearDraft,
     designSettings,
     editedTemplate,
+    flushSave,
     onClose,
     onSave,
     paymentSteps,
@@ -15896,6 +15997,18 @@ ${tbAt('footer')}
               <Button variant="outline" size="sm" onClick={handleSaveDraftAndClose} disabled={isSaving}>
                 סגור
               </Button>
+              {!savedQuoteId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSaveAsDraft}
+                  disabled={isSaving}
+                  title="שמור את כל מה שמולך כטיוטה — ממשיכים מאותה נקודה בפתיחה הבאה"
+                >
+                  <Save className="h-4 w-4 ml-1" />
+                  שמור כטיוטה
+                </Button>
+              )}
 
               {/* Export dropdown */}
               <Popover>

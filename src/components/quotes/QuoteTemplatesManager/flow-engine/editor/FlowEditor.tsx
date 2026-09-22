@@ -38,6 +38,7 @@ import { MultiSelection, addExtraRange, clearExtraRanges, getExtraRanges } from 
 import { PaymentsBlock } from "./PaymentsBlock";
 import { FlowFrame } from "./FlowFrameNode";
 import { ComputedBlock } from "./ComputedBlock";
+import { LabelAutofill, labelAutofillKey } from "./LabelAutofill";
 import { resolveFlowStripSettings } from "../stripSettings";
 
 import type { DesignPresetConfig } from "../presets/types";
@@ -400,6 +401,7 @@ export default function FlowEditor({
       PaymentsBlock,
       ComputedBlock,
       FlowFrame,
+      LabelAutofill,
       Placeholder.configure({ placeholder: "התחל לכתוב..." }),
       PaginationPlus.configure(paginationOptions),
     ],
@@ -549,6 +551,12 @@ export default function FlowEditor({
   // attribute זר, מה שהפעיל את ה-MutationObserver שוב — לולאה אינסופית (~10K שינויי DOM
   // בשנייה) שגרמה לסמן איטי וקופץ. usePagedGuides מזריק את המזהים בעצמו רגע לפני המדידה.
 
+  // שדות מותאמים אישית נטענים באיחור — מרעננים את המילוי לפי כותרת כשהרשימה מגיעה
+  useEffect(() => {
+    if (!editor) return;
+    editor.view.dispatch(editor.state.tr.setMeta(labelAutofillKey, true));
+  }, [editor, dynamicFields]);
+
   // עדכון resolver של שדות דינמיים + צריבת snapshot לתוך attrs של כל node
   // כך שערכים שנפתרו יישרדו רענון/החלפת טאב גם בלי resolver פעיל.
   useEffect(() => {
@@ -566,10 +574,8 @@ export default function FlowEditor({
         if (node.type.name !== "dynamicField") return;
         const key = String(node.attrs.key || "");
         const live = mergeData[key];
-        const next =
-          live === undefined || live === ""
-            ? node.attrs.resolvedValue ?? null
-            : String(live);
+        // ערך ריק אצל הלקוח הנוכחי מנקה את ה-snapshot — כדי שלא יוצג ערך של לקוח קודם.
+        const next = live === undefined || live === "" ? null : String(live);
         if (next !== (node.attrs.resolvedValue ?? null)) {
           tr.setNodeMarkup(pos, undefined, { ...node.attrs, resolvedValue: next });
           changed = true;
@@ -834,6 +840,10 @@ export default function FlowEditor({
         </div>
       </div>
       <style>{`
+        /* מילוי לפי כותרת: הערך מוצג כטקסט רגיל עם קו תחתון עדין בעורך בלבד */
+        .flow-editor-content .flow-autofill-value { text-decoration: underline dotted rgba(184, 134, 11, 0.7); text-underline-offset: 3px; cursor: default; }
+        .flow-editor-content .flow-autofill-hidden { display: none; }
+        @media print { .flow-editor-content .flow-autofill-value { text-decoration: none; } }
         .flow-editor-content { padding: 1.5rem; font-family: ${preset?.fonts.body || "Heebo, Arial, sans-serif"}; font-size: ${preset?.fonts.size || "11pt"}; line-height: ${preset?.spacing.lineHeight || "1.55"}; color: ${preset?.colors.text || "hsl(var(--foreground))"}; }
         /* צבע inline הוא מקור האמת. WebKit עשוי להשאיר text-fill שקוף אחרי גרדיאנט
            ולגרום לצבע שנשמר במסמך להיראות רגיל/שקוף רק בתוך מצב העריכה. */

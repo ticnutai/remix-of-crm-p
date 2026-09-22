@@ -24,6 +24,15 @@ const FIELD_LABELS: Record<string, string> = {
   "parcel.moshav": "מושב",
   "parcel.taba": 'תב"ע',
   "project.type": "סוג פרויקט",
+  "customer.idNumber": "ת.ז. לקוח",
+  "plan.area": "שטח התכנית",
+  "plan.authority": "תכנית בסמכות",
+  "customer.family": "משפחה",
+  "parties.all": "כל המזמינים",
+  "quote.date": "תאריך הצעה",
+  "quote.validity": "תוקף",
+  "price.base": "שכר טרחה",
+  "quote.total": 'סה"כ כולל מע״מ',
 };
 
 function fieldSpan(key: string): string {

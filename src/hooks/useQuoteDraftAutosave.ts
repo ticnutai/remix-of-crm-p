@@ -32,6 +32,12 @@ function trimSnapshotForLocalStorage(snapshot: any): any {
 
 export type AutosaveStatus = "idle" | "saving" | "saved" | "error";
 
+export interface DraftEntry {
+  data: any;
+  /** ISO time the draft was written; null for legacy entries without a timestamp. */
+  savedAt: string | null;
+}
+
 interface UseQuoteDraftAutosaveOptions {
   /** Stable key per draft (template id, quote id, or "new"). */
   key: string;
@@ -50,6 +56,10 @@ interface UseQuoteDraftAutosaveResult {
   loadLocalDraft: () => any | null;
   /** Async read draft from cloud (user_settings). */
   loadCloudDraft: () => Promise<any | null>;
+  /** Read the local draft together with its save time. */
+  loadLocalDraftEntry: () => DraftEntry | null;
+  /** Read the cloud draft together with its save time. */
+  loadCloudDraftEntry: () => Promise<DraftEntry | null>;
   /** Wipe draft from LS + cloud. Call after a successful explicit save. */
   clearDraft: () => Promise<void>;
   /** Cancel pending debounce and write immediately to LS + cloud. Call on tab switch. */
@@ -79,18 +89,24 @@ export function useQuoteDraftAutosave({
   const lsKey = LS_PREFIX + key;
   const settingKey = SETTING_PREFIX + key;
 
-  const loadLocalDraft = useCallback((): any | null => {
+  const loadLocalDraftEntry = useCallback((): DraftEntry | null => {
     try {
       const raw = localStorage.getItem(lsKey);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      return parsed?.data ?? null;
+      if (!parsed?.data) return null;
+      return { data: parsed.data, savedAt: parsed.savedAt ?? null };
     } catch {
       return null;
     }
   }, [lsKey]);
 
-  const loadCloudDraft = useCallback(async (): Promise<any | null> => {
+  const loadLocalDraft = useCallback(
+    (): any | null => loadLocalDraftEntry()?.data ?? null,
+    [loadLocalDraftEntry],
+  );
+
+  const loadCloudDraftEntry = useCallback(async (): Promise<DraftEntry | null> => {
     if (!user?.id) return null;
     try {
       const { data } = await supabase
@@ -100,11 +116,21 @@ export function useQuoteDraftAutosave({
         .eq("setting_key", settingKey)
         .maybeSingle();
       const v: any = (data as any)?.setting_value;
-      return v?.data ?? null;
+      if (!v?.data) return null;
+      return { data: v.data, savedAt: v.savedAt ?? null };
     } catch {
       return null;
     }
   }, [settingKey, user?.id]);
+
+  const loadCloudDraft = useCallback(
+    async (): Promise<any | null> => (await loadCloudDraftEntry())?.data ?? null,
+    [loadCloudDraftEntry],
+  );
+
+  // true while a cloud write is scheduled but not yet sent — flushed on close/unmount
+  // so leaving the editor within the debounce window never loses the latest edits.
+  const pendingCloudRef = useRef(false);
 
   const clearDraft = useCallback(async () => {
     try {
@@ -163,9 +189,11 @@ export function useQuoteDraftAutosave({
 
     // 2. Debounced cloud write
     setStatus("saving");
+    pendingCloudRef.current = true;
     if (timerRef.current) window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(async () => {
       timerRef.current = null;
+      pendingCloudRef.current = false;
       if (!user?.id) {
         // No user → LS only.
         setStatus("saved");
@@ -208,6 +236,7 @@ export function useQuoteDraftAutosave({
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+    pendingCloudRef.current = false;
 
     const currentSnapshot = snapshotRef.current;
 
@@ -242,7 +271,51 @@ export function useQuoteDraftAutosave({
     }
   }, [enabled, lsKey, settingKey, user?.id]);
 
-  return { status, lastSavedAt, loadLocalDraft, loadCloudDraft, clearDraft, flushSave };
+  // Closing the editor (enabled → false) or unmounting used to cancel the pending
+  // debounced cloud write, leaving an older cloud copy behind. Send it now instead.
+  const writeCloudNow = useCallback((data: any) => {
+    if (!user?.id) return;
+    void supabase.from("user_settings").upsert(
+      {
+        user_id: user.id,
+        setting_key: settingKey,
+        setting_value: { data, savedAt: new Date().toISOString() } as any,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,setting_key" },
+    );
+  }, [settingKey, user?.id]);
+  const writeCloudNowRef = useRef(writeCloudNow);
+  useEffect(() => { writeCloudNowRef.current = writeCloudNow; }, [writeCloudNow]);
+
+  useEffect(() => {
+    if (enabled) return;
+    // Next open starts a fresh session: its first snapshot is the pre-restore state.
+    firstRunRef.current = true;
+    lastJsonRef.current = "";
+    if (pendingCloudRef.current) {
+      pendingCloudRef.current = false;
+      writeCloudNowRef.current(snapshotRef.current);
+    }
+  }, [enabled]);
+
+  useEffect(() => () => {
+    if (pendingCloudRef.current) {
+      pendingCloudRef.current = false;
+      writeCloudNowRef.current(snapshotRef.current);
+    }
+  }, []);
+
+  return {
+    status,
+    lastSavedAt,
+    loadLocalDraft,
+    loadCloudDraft,
+    loadLocalDraftEntry,
+    loadCloudDraftEntry,
+    clearDraft,
+    flushSave,
+  };
 }
 
 export default useQuoteDraftAutosave;

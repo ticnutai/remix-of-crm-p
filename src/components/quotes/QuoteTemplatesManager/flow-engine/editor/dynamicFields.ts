@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { setCustomAutofillEntries } from "../labelAutofill";
 import { useClientCustomFields } from "@/hooks/useClientCustomFields";
 
 export interface DynamicFieldDefinition {
@@ -14,13 +15,20 @@ export const FLOW_DYNAMIC_FIELDS: DynamicFieldDefinition[] = [
   { key: "customer.address", label: "כתובת לקוח", group: "לקוח" },
   { key: "customer.phone", label: "טלפון", group: "לקוח" },
   { key: "customer.email", label: 'דוא"ל', group: "לקוח" },
+  { key: "customer.idNumber", label: "ת.ז. לקוח", group: "לקוח" },
+  { key: "customer.family", label: "משפחה", group: "לקוח" },
+  { key: "parties.all", label: "כל המזמינים (שם + ת.ז.)", group: "לקוח" },
   { key: "parcel.block", label: "גוש", group: "נכס" },
   { key: "parcel.lot", label: "חלקה", group: "נכס" },
   { key: "parcel.plot", label: "מגרש", group: "נכס" },
+  { key: "parcel.taba", label: 'תב"ע', group: "נכס" },
+  { key: "plan.area", label: "שטח התכנית", group: "נכס" },
+  { key: "plan.authority", label: "תכנית בסמכות", group: "נכס" },
   { key: "quote.number", label: "מספר הצעה", group: "הצעה" },
   { key: "quote.date", label: "תאריך הצעה", group: "הצעה" },
   { key: "quote.validity", label: "תוקף", group: "הצעה" },
-  { key: "quote.total", label: 'סה"כ', group: "הצעה" },
+  { key: "price.base", label: "שכר טרחה (לפני מע״מ)", group: "הצעה" },
+  { key: "quote.total", label: 'סה"כ כולל מע״מ', group: "הצעה" },
 ];
 
 export function groupDynamicFields(fields = FLOW_DYNAMIC_FIELDS) {
@@ -51,6 +59,11 @@ export function useDynamicFields() {
   );
 
   const fields = useMemo(() => [...FLOW_DYNAMIC_FIELDS, ...customFields], [customFields]);
+
+  // כותרת של שדה מותאם אישית ממולאת אוטומטית בכל מקום בחוזה (labelAutofill)
+  useEffect(() => {
+    setCustomAutofillEntries(customFields.map((f) => ({ label: f.label, key: f.key })));
+  }, [customFields]);
   const groups = useMemo(() => groupDynamicFields(fields), [fields]);
 
   return { fields, groups, customFields, isLoading };
