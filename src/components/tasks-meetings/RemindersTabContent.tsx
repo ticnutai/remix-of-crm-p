@@ -113,11 +113,14 @@ const priorityConfig = {
 type RemindersTabContentProps = {
   groupByClient?: boolean;
   clients?: Array<{ id: string; name: string }>;
+  /** תזכורות שהושלמו לא מוצגות בכלל (במקום קו עליהן) */
+  hideCompleted?: boolean;
 };
 
 export function RemindersTabContent({
   groupByClient = false,
   clients = [],
+  hideCompleted = false,
 }: RemindersTabContentProps) {
   const {
     reminders,
@@ -150,6 +153,7 @@ export function RemindersTabContent({
   const filteredReminders = reminders.filter(
     (r) => {
       if (effectiveScope === "mine" && user && r.user_id !== user.id) return false;
+      if (hideCompleted && (r.is_dismissed || r.is_sent)) return false;
       return !searchQuery ||
         r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.message?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -240,7 +244,7 @@ export function RemindersTabContent({
       <TableCell>
         <div className="flex items-center gap-2">
           <div>
-            <p className="font-medium">{reminder.title}</p>
+            <p className={`font-medium ${reminder.is_dismissed || reminder.is_sent ? "line-through text-muted-foreground" : ""}`}>{reminder.title}</p>
             {reminder.message && (
               <p className="text-sm text-muted-foreground truncate max-w-[200px]">
                 {reminder.message}

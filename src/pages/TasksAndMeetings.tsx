@@ -61,6 +61,8 @@ import {
   MeetingsListView,
   RemindersTabContent,
   ViewType,
+  CompletedDisplayToggle,
+  type CompletedDisplayMode,
 } from "@/components/tasks-meetings";
 import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
@@ -165,6 +167,15 @@ const TasksAndMeetings = () => {
   const [groupRemindersByClient] = useClientGrouping("reminders");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useSyncedSetting<string>({ key: "tasks-status-filter", defaultValue: "all" });
+  // תצוגת פריטים שהושלמו — לכל טאב בנפרד: קו עליהם או מוסתרים לגמרי
+  const [completedDisplay, setCompletedDisplay] = useSyncedSetting<Record<string, CompletedDisplayMode>>({
+    key: "tasks-completed-display",
+    defaultValue: { all: "strike", tasks: "strike", meetings: "strike", reminders: "strike" },
+  });
+  const completedModeFor = (tab: string): CompletedDisplayMode =>
+    completedDisplay?.[tab] === "hide" ? "hide" : "strike";
+  const setCompletedModeFor = (tab: string, mode: CompletedDisplayMode) =>
+    setCompletedDisplay({ ...(completedDisplay || {}), [tab]: mode });
   const [priorityFilter, setPriorityFilter] = useSyncedSetting<string>({ key: "tasks-priority-filter", defaultValue: "all" });
   const [sortBy, setSortBy] = useSyncedSetting<SortField>({ key: "tasks-sort-by", defaultValue: "event_date" });
   const [sortOrder, setSortOrder] = useSyncedSetting<SortOrder>({ key: "tasks-sort-order", defaultValue: "desc" });
@@ -384,8 +395,27 @@ const TasksAndMeetings = () => {
     },
   );
 
-  const taskClientGroups = groupItemsByClient(sortedTasks, clients);
-  const meetingClientGroups = groupItemsByClient(sortedMeetings, clients);
+  // "הסתר הושלמו" — אלא אם המשתמש סינן במפורש לסטטוס "הושלם"
+  const isTaskDone = (task: { status?: string | null }) => task.status === "completed";
+  const isMeetingDone = (meeting: { status?: string | null }) => meeting.status === "completed";
+  // תזכורת שנשלחה נחשבת גם היא כ"בוצעה"
+  const isReminderDone = (reminder: { is_dismissed?: boolean | null; is_sent?: boolean | null }) =>
+    !!reminder.is_dismissed || !!reminder.is_sent;
+  const tabTasks =
+    completedModeFor("tasks") === "hide" && statusFilter !== "completed"
+      ? sortedTasks.filter((task) => !isTaskDone(task))
+      : sortedTasks;
+  const tabMeetings =
+    completedModeFor("meetings") === "hide"
+      ? sortedMeetings.filter((meeting) => !isMeetingDone(meeting))
+      : sortedMeetings;
+  const hideDoneInAll = completedModeFor("all") === "hide";
+  const allTabTasks = hideDoneInAll ? sortedTasks.filter((task) => !isTaskDone(task)) : sortedTasks;
+  const allTabMeetings = hideDoneInAll ? sortedMeetings.filter((meeting) => !isMeetingDone(meeting)) : sortedMeetings;
+  const allTabReminders = hideDoneInAll ? scopedReminders.filter((reminder) => !isReminderDone(reminder)) : scopedReminders;
+
+  const taskClientGroups = groupItemsByClient(tabTasks, clients);
+  const meetingClientGroups = groupItemsByClient(tabMeetings, clients);
 
   const [selectionMode, setSelectionMode] = useState<Record<ColumnKey, boolean>>({
     tasks: false,
@@ -460,7 +490,7 @@ const TasksAndMeetings = () => {
   const resolveUserName = useProfileNames(allCreatorIds);
 
   const sortedTasksForAllColumn = {
-    tasks: [...sortedTasks].sort((a, b) => {
+    tasks: [...allTabTasks].sort((a, b) => {
       const config = columnSortConfig.tasks;
       const direction = config.order === "asc" ? 1 : -1;
 
@@ -494,7 +524,7 @@ const TasksAndMeetings = () => {
       const timeB = b.due_date ? new Date(b.due_date).getTime() : Number.MAX_SAFE_INTEGER;
       return (timeA - timeB) * direction;
     }),
-    meetings: [...sortedMeetings].sort((a, b) => {
+    meetings: [...allTabMeetings].sort((a, b) => {
       const config = columnSortConfig.meetings;
       const direction = config.order === "asc" ? 1 : -1;
 
@@ -521,7 +551,7 @@ const TasksAndMeetings = () => {
       const timeB = new Date(b.start_time).getTime();
       return (timeA - timeB) * direction;
     }),
-    reminders: [...scopedReminders].sort((a, b) => {
+    reminders: [...allTabReminders].sort((a, b) => {
       const config = columnSortConfig.reminders;
       const direction = config.order === "asc" ? 1 : -1;
 
@@ -969,6 +999,10 @@ const TasksAndMeetings = () => {
               </TabsTrigger>
             </TabsList>
 
+            <CompletedDisplayToggle
+              mode={completedModeFor(activeTab)}
+              onChange={(mode) => setCompletedModeFor(activeTab, mode)}
+            />
             {activeTab === "all" && (
               <ClientGroupingToggle entity="all" />
             )}
@@ -1876,7 +1910,7 @@ const TasksAndMeetings = () => {
                           }}
                           title="לחץ לסימון כטופל"
                         >
-                          <p className={`text-xs font-medium truncate ${reminder.is_dismissed ? "line-through text-muted-foreground" : ""}`}>
+                          <p className={`text-xs font-medium truncate ${isReminderDone(reminder) ? "line-through text-muted-foreground" : ""}`}>
                             {reminder.title}
                           </p>
                           {hoveredReminderId === reminder.id && reminder.created_at && (() => {
@@ -2002,7 +2036,7 @@ const TasksAndMeetings = () => {
                   <>
                 {taskView === "list" && (
                   <TasksListView
-                    tasks={sortedTasks}
+                    tasks={tabTasks}
                     onEdit={handleEditTask}
                     onDelete={handleDeleteTask}
                     onToggleComplete={handleToggleComplete}
@@ -2010,7 +2044,7 @@ const TasksAndMeetings = () => {
                 )}
                 {taskView === "grid" && (
                   <TasksGridView
-                    tasks={sortedTasks}
+                    tasks={tabTasks}
                     onEdit={handleEditTask}
                     onDelete={handleDeleteTask}
                     onToggleComplete={handleToggleComplete}
@@ -2018,7 +2052,7 @@ const TasksAndMeetings = () => {
                 )}
                 {taskView === "kanban" && (
                   <TasksKanbanView
-                    tasks={sortedTasks}
+                    tasks={tabTasks}
                     onEdit={handleEditTask}
                     onDelete={handleDeleteTask}
                     onStatusChange={handleStatusChange}
@@ -2026,7 +2060,7 @@ const TasksAndMeetings = () => {
                 )}
                 {taskView === "calendar" && (
                   <TasksCalendarView
-                    tasks={sortedTasks}
+                    tasks={tabTasks}
                     meetings={sortedMeetings}
                     onTaskClick={handleEditTask}
                     onMeetingClick={handleEditMeeting}
@@ -2034,7 +2068,7 @@ const TasksAndMeetings = () => {
                 )}
                 {taskView === "timeline" && (
                   <TasksTimelineView
-                    tasks={sortedTasks}
+                    tasks={tabTasks}
                     meetings={sortedMeetings}
                     onTaskEdit={handleEditTask}
                     onTaskDelete={handleDeleteTask}
@@ -2082,7 +2116,7 @@ const TasksAndMeetings = () => {
                 </div>
               ) : (
                 <MeetingsListView
-                  meetings={sortedMeetings}
+                  meetings={tabMeetings}
                   onEdit={handleEditMeeting}
                   onDelete={handleDeleteMeeting}
                   sortOrder={sortOrder}
@@ -2096,6 +2130,7 @@ const TasksAndMeetings = () => {
             <RemindersTabContent
               groupByClient={groupRemindersByClient}
               clients={clients}
+              hideCompleted={completedModeFor("reminders") === "hide"}
             />
           </TabsContent>
         </Tabs>

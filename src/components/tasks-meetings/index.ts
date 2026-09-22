@@ -8,3 +8,5 @@ export { TasksStatsHeader } from './TasksStatsHeader';
 export { MeetingsListView } from './MeetingsListView';
 export { RemindersTabContent } from './RemindersTabContent';
 export { EventPreviewDialog } from './EventPreviewDialog';
+export { CompletedDisplayToggle, type CompletedDisplayMode } from './CompletedDisplayToggle';
+export { useCompletedDisplay, isItemDone, DONE_TEXT_CLASS } from './completedDisplay';
