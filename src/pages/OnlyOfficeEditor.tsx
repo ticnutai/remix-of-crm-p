@@ -540,11 +540,19 @@ export default function OnlyOfficeEditor() {
                   <AlertDescription className="leading-7">
                     {editorError}
                     <br />
-                    ודא ש־Document Server רץ וש־Supabase secret בשם
+                    השרת המקומי רץ בתוך WSL (Ubuntu) ונכבה כשה-WSL כבה. להפעלה: פתח את
                     {" "}
-                    <code>ONLYOFFICE_DOCUMENT_SERVER_URL</code>
+                    <code>wsl -d Ubuntu</code>
                     {" "}
-                    מוגדר.
+                    (או הפעל מחדש את המחשב — הוא עולה אוטומטית) ולחץ "נסה שוב".
+                    {selectedDocument && (
+                      <div className="mt-3">
+                        <Button size="sm" variant="outline" onClick={() => openDocument(selectedDocument)}>
+                          <RefreshCw className="h-4 w-4 ml-2" />
+                          נסה שוב
+                        </Button>
+                      </div>
+                    )}
                   </AlertDescription>
                 </Alert>
               </div>
