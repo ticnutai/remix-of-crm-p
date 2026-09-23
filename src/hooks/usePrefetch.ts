@@ -18,7 +18,7 @@ const routePreloaders: Record<string, () => Promise<any>> = {
   "/inspection-forms": () => import("@/pages/InspectionForms"),
   "/dashboard": () => import("@/pages/Dashboard"),
   "/tasks-meetings": () => import("@/pages/TasksAndMeetings"),
-  "/reminders": () => import("@/pages/Reminders"),
+  "/reminders": () => import("@/pages/TasksAndMeetings"), // /reminders מוביל לדף המשימות
 };
 
 // Cache to track what's already been prefetched

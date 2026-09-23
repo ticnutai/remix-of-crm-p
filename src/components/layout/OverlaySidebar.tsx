@@ -26,7 +26,6 @@ import {
 import { useCustomTables } from "@/hooks/useCustomTables";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
-import { SidebarTasksMeetings } from "./sidebar-tasks";
 import {
   SidebarSettingsDialog,
   SidebarTheme,
