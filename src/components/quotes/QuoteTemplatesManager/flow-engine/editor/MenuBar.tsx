@@ -1,6 +1,7 @@
 // MenuBar — סרגל כלים מאורגן בטאבים לפי נושאים
 // טאבים: טקסט · פסקה · הוספה · שדות ופעולות
 import React, { useState } from "react";
+import { selectionIsHeadingsOnly, isHeadingNumberingActive } from "./HeadingNumbering";
 import type { Editor } from "@tiptap/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -525,9 +526,14 @@ export default function MenuBar({ editor, fields, onCreateField, toolbarActions 
           <List className="h-3.5 w-3.5" />
         </ToolButton>
         <ToolButton
-          active={editor.isActive("orderedList")}
-          onClick={() => apply((c) => c.toggleOrderedList())}
-          title="רשימה ממוספרת"
+          active={editor.isActive("orderedList") || isHeadingNumberingActive(editor)}
+          onClick={() =>
+            // על כותרות: מספור כותרות (הכותרת נשארת כותרת); על טקסט: רשימה ממוספרת
+            selectionIsHeadingsOnly(editor)
+              ? (editor.chain().focus() as any).toggleHeadingNumbering().run()
+              : apply((c) => c.toggleOrderedList())
+          }
+          title="רשימה ממוספרת / מספור כותרות"
         >
           <ListOrdered className="h-3.5 w-3.5" />
         </ToolButton>

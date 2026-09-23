@@ -1,5 +1,6 @@
 // BubbleToolbar — סרגל צף מעל בחירת טקסט. ללא אנימציה, עם הגדרות משתמש (סדר/הסתרה/שורות/תצוגה).
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { selectionIsHeadingsOnly, isHeadingNumberingActive } from "./HeadingNumbering";
 import { createPortal } from "react-dom";
 import { BubbleMenu } from "@tiptap/react/menus";
 import type { Editor } from "@tiptap/react";
@@ -538,7 +539,7 @@ export default function BubbleToolbar({ editor, fields, onCreateField }: Props) 
       case "h3": return <ToolBtn key={id} mode={mode} icon={Heading3} label="H3" active={editor.isActive("textStyle", { fontSize: INLINE_HEADING_SIZES[3] })} onClick={() => applyInlineHeading(3)} />;
       case "normalText": return <ToolBtn key={id} mode={mode} icon={Pilcrow} label="רגיל" active={editor.isActive("paragraph")} onClick={applyNormalText} title="הפוך לפסקת טקסט רגילה ויישר לימין" />;
       case "bullet": return <ToolBtn key={id} mode={mode} icon={List} label="תבליט" active={editor.isActive("bulletList")} onClick={() => apply((c) => c.toggleBulletList())} />;
-      case "ordered": return <ToolBtn key={id} mode={mode} icon={ListOrdered} label="ממוספר" active={editor.isActive("orderedList")} onClick={() => apply((c) => c.toggleOrderedList())} />;
+      case "ordered": return <ToolBtn key={id} mode={mode} icon={ListOrdered} label="ממוספר" title="רשימה ממוספרת / מספור כותרות" active={editor.isActive("orderedList") || isHeadingNumberingActive(editor)} onClick={() => (selectionIsHeadingsOnly(editor) ? (editor.chain().focus() as any).toggleHeadingNumbering().run() : apply((c) => c.toggleOrderedList()))} />;
       case "font":
         return (
           <Popover key={id}>

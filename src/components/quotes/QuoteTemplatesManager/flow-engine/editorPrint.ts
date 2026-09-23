@@ -62,6 +62,18 @@ function materializeListMarkers(root: HTMLElement) {
   });
 }
 
+/** מספור כותרות (CSS counters) הופך לטקסט אמיתי בעותק להדפסה. */
+function materializeHeadingNumbers(root: HTMLElement) {
+  let n = 0;
+  root.querySelectorAll<HTMLElement>('h1[data-numbered="true"], h2[data-numbered="true"], h3[data-numbered="true"]').forEach((heading) => {
+    n += 1;
+    const number = document.createElement("span");
+    number.className = "flow-print-heading-number";
+    number.textContent = `${n}. `;
+    heading.insertBefore(number, heading.firstChild);
+  });
+}
+
 /** מסיר מהעותק לצילום כל סימון של עריכה (סמן, בחירה, מסגרות, תוויות). */
 function cleanCloneForPrint(clonedRoot: HTMLElement): HTMLStyleElement {
   clonedRoot.classList.add("flow-editor-printing");
@@ -87,9 +99,13 @@ function cleanCloneForPrint(clonedRoot: HTMLElement): HTMLStyleElement {
     .flow-editor-printing.ProseMirror ol, .flow-editor-printing.ProseMirror ul,
     .flow-editor-printing.ProseMirror ol ol, .flow-editor-printing.ProseMirror ul ul { list-style: none !important; }
     .flow-editor-printing.ProseMirror li::marker { content: "" !important; }
+    .flow-editor-printing.ProseMirror h1[data-numbered="true"]::before,
+    .flow-editor-printing.ProseMirror h2[data-numbered="true"]::before,
+    .flow-editor-printing.ProseMirror h3[data-numbered="true"]::before { content: none !important; }
     .flow-editor-printing .flow-print-marker { display: inline-block; width: 6mm; margin-inline-start: -6mm; padding-inline-end: 1.2mm; box-sizing: border-box; text-align: left; font-weight: 600; white-space: nowrap; }
   `;
   materializeListMarkers(clonedRoot);
+  materializeHeadingNumbers(clonedRoot);
   doc.head.appendChild(style);
   return style;
 }

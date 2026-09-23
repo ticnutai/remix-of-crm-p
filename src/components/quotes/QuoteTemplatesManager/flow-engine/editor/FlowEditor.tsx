@@ -40,6 +40,7 @@ import { FlowFrame } from "./FlowFrameNode";
 import { ComputedBlock } from "./ComputedBlock";
 import { LabelAutofill, labelAutofillKey } from "./LabelAutofill";
 import { PlainUnderscores } from "./PlainUnderscores";
+import { HeadingNumbering } from "./HeadingNumbering";
 import { docTypographyCss, resolveDocTypography } from "../docTypography";
 import { resolveFlowStripSettings } from "../stripSettings";
 
@@ -423,6 +424,7 @@ export default function FlowEditor({
       FlowFrame,
       LabelAutofill,
       PlainUnderscores,
+      HeadingNumbering,
       Placeholder.configure({ placeholder: "התחל לכתוב..." }),
       PaginationPlus.configure(paginationOptions),
     ],
