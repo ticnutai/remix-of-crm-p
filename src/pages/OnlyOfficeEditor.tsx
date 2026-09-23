@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   Download,
@@ -147,6 +148,7 @@ export default function OnlyOfficeEditor() {
   const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
   const [isCreatingSample, setIsCreatingSample] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const loadDocuments = useCallback(async () => {
     setIsLoadingList(true);
@@ -324,6 +326,8 @@ export default function OnlyOfficeEditor() {
     setConvertingId(document.id);
     try {
       const { id, name } = await convertOnlyOfficeDocumentToQuoteTemplate(document);
+      // רשימת התבניות שמורה במטמון — בלי רענון התבנית החדשה לא תופיע עד שיפוג
+      await queryClient.invalidateQueries({ queryKey: ["quote-templates-advanced"] });
       toast({
         title: "התבנית נוצרה",
         description: `"${name}" נוספה לתבניות הצעות המחיר`,

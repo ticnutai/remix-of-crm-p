@@ -103,9 +103,11 @@ const queryClient = new QueryClient({
       staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh
       gcTime: 30 * 60 * 1000, // 30 minutes - cache time
       refetchOnWindowFocus: false, // Don't refetch on tab switch
-      // Trust cached data on mount when still fresh (staleTime) — avoids
-      // hammering the DB with duplicate requests on every navigation.
-      refetchOnMount: false,
+      // Trust cached data on mount only while still fresh (staleTime) — avoids
+      // hammering the DB on every navigation. `false` would never refetch on
+      // mount, so data persisted to IndexedDB (up to 24h) or invalidated while
+      // its page was closed stayed stale — e.g. new quote templates were missing.
+      refetchOnMount: true,
       refetchOnReconnect: "always", // Refetch when connection restored
       // Fewer retries + shorter backoff so a slow/timing-out backend
       // does not stall the UI for 20s+ per failed request.
