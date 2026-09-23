@@ -1,3 +1,4 @@
+import { isItemDone, DONE_TEXT_CLASS } from "@/components/tasks-meetings";
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -240,7 +241,7 @@ export function CalendarListView({
                             <Users className="h-5 w-5 text-white" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium">{meeting.title}</p>
+                            <p className="font-medium"><span className={isItemDone(meeting) ? DONE_TEXT_CLASS : undefined}>{meeting.title}</span></p>
                             <p className="text-sm text-muted-foreground">
                               {format(parseISO(meeting.start_time), "HH:mm:ss")} -{" "}
                               {format(parseISO(meeting.end_time), "HH:mm:ss")}
@@ -284,7 +285,7 @@ export function CalendarListView({
                             <CheckSquare className="h-5 w-5 text-primary-foreground" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium">{task.title}</p>
+                            <p className="font-medium"><span className={isItemDone(task) ? DONE_TEXT_CLASS : undefined}>{task.title}</span></p>
                             <Badge
                               variant="outline"
                               className={cn(
@@ -337,7 +338,7 @@ export function CalendarListView({
                             <Bell className="h-5 w-5 text-warning-foreground" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium">{reminder.title}</p>
+                            <p className="font-medium"><span className={isItemDone(reminder) ? DONE_TEXT_CLASS : undefined}>{reminder.title}</span></p>
                             <p className="text-sm text-muted-foreground">
                               {format(parseISO(reminder.remind_at), "HH:mm:ss")}
                             </p>

@@ -1,3 +1,4 @@
+import { CompletedDisplayToggle, useCompletedDisplay, isItemDone, DONE_TEXT_CLASS } from "@/components/tasks-meetings";
 // Calendar Page - tenarch CRM Pro
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
@@ -340,15 +341,13 @@ const Calendar = () => {
         .eq("created_by", user.id)
         .gte("due_date", start.toISOString())
         .lte("due_date", end.toISOString())
-        .neq("status", "completed")
         .order("due_date", { ascending: true }),
       supabase
         .from("reminders")
-        .select("id, title, remind_at, is_dismissed")
+        .select("id, title, remind_at, is_dismissed, is_sent")
         .eq("user_id", user.id)
         .gte("remind_at", start.toISOString())
         .lte("remind_at", end.toISOString())
-        .eq("is_dismissed", false)
         .order("remind_at", { ascending: true }),
       supabase.from("clients").select("id, name").order("name"),
       supabase.from("projects").select("id, name").order("name"),
@@ -374,6 +373,8 @@ const Calendar = () => {
   }, [user?.id, fetchData]);
 
   // Apply dedup to raw data — runs instantly without triggering re-fetches
+  // בוצע: קו או הסתרה — כפתור אחד ללוח השנה (פגישות, משימות ותזכורות)
+  const calendarDone = useCompletedDisplay("calendar");
   const meetings = useMemo(() => {
     const deduped = showDuplicates
       ? rawMeetings
@@ -386,18 +387,21 @@ const Calendar = () => {
     }
     return deduped;
   }, [rawMeetings, showDuplicates]);
+  const shownMeetings = useMemo(() => calendarDone.visible(meetings), [meetings, calendarDone.mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tasks = useMemo(() => {
     return showDuplicates
       ? rawTasks
       : dedupeByKey(rawTasks, (t) => `${t.title.trim().toLowerCase()}|${(t.due_date || "").slice(0, 16)}`);
   }, [rawTasks, showDuplicates]);
+  const shownTasks = useMemo(() => calendarDone.visible(tasks), [tasks, calendarDone.mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const reminders = useMemo(() => {
     return showDuplicates
       ? rawReminders
       : dedupeByKey(rawReminders, (r) => `${r.title.trim().toLowerCase()}|${r.remind_at.slice(0, 16)}`);
   }, [rawReminders, showDuplicates]);
+  const shownReminders = useMemo(() => calendarDone.visible(reminders), [reminders, calendarDone.mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto sync with Google Calendar when page loads and user is connected
   const lastSyncedMonthRef = React.useRef<string>("");
@@ -453,17 +457,17 @@ const Calendar = () => {
       const key = format(parseISO(e.start_time), "yyyy-MM-dd");
       (entries[key] ||= []).push(e);
     });
-    meetings.forEach((m) => {
+    shownMeetings.forEach((m) => {
       const key = format(parseISO(m.start_time), "yyyy-MM-dd");
       (meetingsMap[key] ||= []).push(m);
     });
-    tasks.forEach((t) => {
+    shownTasks.forEach((t) => {
       if (t.due_date) {
         const key = format(parseISO(t.due_date), "yyyy-MM-dd");
         (tasksMap[key] ||= []).push(t);
       }
     });
-    reminders.forEach((r) => {
+    shownReminders.forEach((r) => {
       const key = format(parseISO(r.remind_at), "yyyy-MM-dd");
       (remindersMap[key] ||= []).push(r);
     });
@@ -474,7 +478,7 @@ const Calendar = () => {
       tasks: tasksMap,
       reminders: remindersMap,
     };
-  }, [timeEntries, meetings, tasks, reminders]);
+  }, [timeEntries, shownMeetings, shownTasks, shownReminders]);
 
   const getEntriesForDate = useCallback(
     (date: Date) => {
@@ -891,7 +895,7 @@ const Calendar = () => {
     }
 
     // Sync current month's meetings
-    const monthMeetings = meetings.filter((m) => {
+    const monthMeetings = shownMeetings.filter((m) => {
       const meetingDate = parseISO(m.start_time);
       return isSameMonth(meetingDate, currentMonth);
     });
@@ -937,7 +941,7 @@ const Calendar = () => {
       await fetchData();
 
       // Then export local meetings to Google
-      const monthMeetings = meetings.filter((m) => {
+      const monthMeetings = shownMeetings.filter((m) => {
         const meetingDate = parseISO(m.start_time);
         return isSameMonth(meetingDate, currentMonth);
       });
@@ -1091,6 +1095,7 @@ const Calendar = () => {
 
         {/* Bottom row: Actions */}
         <div className="flex items-center justify-end gap-2">
+          <CompletedDisplayToggle iconOnly mode={calendarDone.mode} onChange={calendarDone.setMode} />
           <DedupToggleButton />
           {/* Google Calendar Indicator */}
           <GoogleCalendarIndicator
@@ -1228,7 +1233,7 @@ const Calendar = () => {
                     }}
                   >
                     <Users className="h-2 w-2 inline ml-0.5" />
-                    {m.title}
+                    <span className={isItemDone(m) ? DONE_TEXT_CLASS : undefined}>{m.title}</span>
                   </div>
                 ))}
 
@@ -1246,7 +1251,7 @@ const Calendar = () => {
                     }}
                   >
                     <CheckSquare className="h-2 w-2 inline ml-0.5" />
-                    {t.title}
+                    <span className={isItemDone(t) ? DONE_TEXT_CLASS : undefined}>{t.title}</span>
                   </div>
                 ))}
 
@@ -1264,7 +1269,7 @@ const Calendar = () => {
                     }}
                   >
                     <Bell className="h-2 w-2 inline ml-0.5" />
-                    {r.title}
+                    <span className={isItemDone(r) ? DONE_TEXT_CLASS : undefined}>{r.title}</span>
                   </div>
                 ))}
 
@@ -1347,7 +1352,7 @@ const Calendar = () => {
                         className="group p-3 bg-[hsl(220,60%,25%)]/10 rounded-lg flex items-center justify-between hover:bg-[hsl(220,60%,25%)]/20 transition-colors"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium">{m.title}</p>
+                          <p className="font-medium"><span className={isItemDone(m) ? DONE_TEXT_CLASS : undefined}>{m.title}</span></p>
                           <p className="text-sm text-muted-foreground">
                             {format(parseISO(m.start_time), "HH:mm")} -{" "}
                             {format(parseISO(m.end_time), "HH:mm")}
@@ -1391,7 +1396,7 @@ const Calendar = () => {
                         className="group p-3 bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors flex items-center justify-between"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium">{t.title}</p>
+                          <p className="font-medium"><span className={isItemDone(t) ? DONE_TEXT_CLASS : undefined}>{t.title}</span></p>
                           <Badge variant="outline" className="text-xs mt-1">
                             {t.priority === "high"
                               ? "עדיפות גבוהה"
@@ -1438,7 +1443,7 @@ const Calendar = () => {
                         className="group p-3 bg-warning/10 rounded-lg hover:bg-warning/20 transition-colors flex items-center justify-between"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium">{r.title}</p>
+                          <p className="font-medium"><span className={isItemDone(r) ? DONE_TEXT_CLASS : undefined}>{r.title}</span></p>
                           <p className="text-sm text-muted-foreground">
                             {format(parseISO(r.remind_at), "HH:mm")}
                           </p>
@@ -1540,9 +1545,9 @@ const Calendar = () => {
               <CalendarWeekView
                 currentDate={currentMonth}
                 timeEntries={timeEntries}
-                meetings={meetings}
-                tasks={tasks}
-                reminders={reminders}
+                meetings={shownMeetings}
+                tasks={shownTasks}
+                reminders={shownReminders}
                 onDayClick={setSelectedDate}
                 onAddClick={openAddDialog}
                 onMoveMeeting={moveMeetingToDate}
@@ -1561,9 +1566,9 @@ const Calendar = () => {
               <CalendarListView
                 currentMonth={currentMonth}
                 timeEntries={timeEntries}
-                meetings={meetings}
-                tasks={tasks}
-                reminders={reminders}
+                meetings={shownMeetings}
+                tasks={shownTasks}
+                reminders={shownReminders}
                 onDayClick={setSelectedDate}
                 onDeleteMeeting={handleDeleteMeeting}
                 onDeleteTask={handleDeleteTask}
@@ -1578,9 +1583,9 @@ const Calendar = () => {
               <CalendarAgendaView
                 currentMonth={currentMonth}
                 timeEntries={timeEntries}
-                meetings={meetings}
-                tasks={tasks}
-                reminders={reminders}
+                meetings={shownMeetings}
+                tasks={shownTasks}
+                reminders={shownReminders}
                 onDayClick={setSelectedDate}
                 onDeleteMeeting={handleDeleteMeeting}
                 onDeleteTask={handleDeleteTask}
@@ -1595,9 +1600,9 @@ const Calendar = () => {
               <CalendarScheduleView
                 currentMonth={currentMonth}
                 timeEntries={timeEntries}
-                meetings={meetings}
-                tasks={tasks}
-                reminders={reminders}
+                meetings={shownMeetings}
+                tasks={shownTasks}
+                reminders={shownReminders}
                 onDayClick={setSelectedDate}
                 onDeleteMeeting={handleDeleteMeeting}
                 onDeleteTask={handleDeleteTask}

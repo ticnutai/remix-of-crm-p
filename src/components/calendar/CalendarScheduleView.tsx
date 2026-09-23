@@ -1,3 +1,4 @@
+import { isItemDone, DONE_TEXT_CLASS } from "@/components/tasks-meetings";
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -270,7 +271,7 @@ export function CalendarScheduleView({
                             >
                               <Users className="h-3 w-3 text-[hsl(var(--navy))] shrink-0" />
                               <span className="truncate max-w-[100px]">
-                                {m.title}
+                                <span className={isItemDone(m) ? DONE_TEXT_CLASS : undefined}>{m.title}</span>
                               </span>
                               <div className="flex gap-0.5 opacity-0 group-hover/badge:opacity-100 transition-opacity">
                                 <button
@@ -308,7 +309,7 @@ export function CalendarScheduleView({
                             >
                               <CheckSquare className="h-3 w-3 shrink-0" />
                               <span className="truncate max-w-[100px]">
-                                {t.title}
+                                <span className={isItemDone(t) ? DONE_TEXT_CLASS : undefined}>{t.title}</span>
                               </span>
                               <div className="flex gap-0.5 opacity-0 group-hover/badge:opacity-100 transition-opacity">
                                 <button
@@ -339,7 +340,7 @@ export function CalendarScheduleView({
                             >
                               <Bell className="h-3 w-3 text-warning shrink-0" />
                               <span className="truncate max-w-[100px]">
-                                {r.title}
+                                <span className={isItemDone(r) ? DONE_TEXT_CLASS : undefined}>{r.title}</span>
                               </span>
                               <div className="flex gap-0.5 opacity-0 group-hover/badge:opacity-100 transition-opacity">
                                 <button

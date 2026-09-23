@@ -1,3 +1,4 @@
+import { CompletedDisplayToggle, useCompletedDisplay, isItemDone, DONE_TEXT_CLASS } from "@/components/tasks-meetings";
 import React, {
   useState,
   useRef,
@@ -556,14 +557,19 @@ export default function ClientProfile() {
         .filter((r: any) => userFilter.matches(r, "reminders")),
     [clientReminders, reminderSortPref.sortBy, reminderSortPref.sortOrder, userFilter],
   );
+  // בוצע: קו על הפריט או הסתרה — לכל טאב בתיק הלקוח בנפרד
+  const tasksDone = useCompletedDisplay("client-profile-tasks");
+  const meetingsDone = useCompletedDisplay("client-profile-meetings");
+  const remindersDone = useCompletedDisplay("client-profile-reminders");
+  const shownReminders = useMemo(() => remindersDone.visible(sortedReminders), [remindersDone.mode, sortedReminders]); // eslint-disable-line react-hooks/exhaustive-deps
   const remindersGroups = useMemo(
     () =>
       groupRemindersByClient
-        ? groupItems(sortedReminders, () => client?.name || "ללא לקוח")
+        ? groupItems(shownReminders, () => client?.name || "ללא לקוח")
         : reminderSortPref.groupBy === "none"
-        ? [{ key: "", items: sortedReminders }]
-        : groupItems(sortedReminders, (it) => getGroupKey(it, reminderSortPref.groupBy, "reminders", resolveUser)),
-    [sortedReminders, reminderSortPref.groupBy, resolveUser, groupRemindersByClient, client?.name],
+        ? [{ key: "", items: shownReminders }]
+        : groupItems(shownReminders, (it) => getGroupKey(it, reminderSortPref.groupBy, "reminders", resolveUser)),
+    [shownReminders, reminderSortPref.groupBy, resolveUser, groupRemindersByClient, client?.name],
   );
 
   const MANUAL_CONTRACT_SIGNED_DATE_KEY = "contract_signed_date_manual";
@@ -882,23 +888,25 @@ export default function ClientProfile() {
     return null;
   };
 
+  const shownTasks = useMemo(() => tasksDone.visible(sortedTasks as any[]), [tasksDone.mode, sortedTasks]); // eslint-disable-line react-hooks/exhaustive-deps
   const tasksGroups = useMemo(
     () =>
       groupTasksByClient
-        ? groupItems(sortedTasks, () => client?.name || "ללא לקוח")
+        ? groupItems(shownTasks, () => client?.name || "ללא לקוח")
         : taskSortPref.groupBy === "none"
-        ? [{ key: "", items: sortedTasks }]
-        : groupItems(sortedTasks, (it) => getGroupKey(it, taskSortPref.groupBy, "tasks", resolveUser)),
-    [sortedTasks, taskSortPref.groupBy, resolveUser, groupTasksByClient, client?.name],
+        ? [{ key: "", items: shownTasks }]
+        : groupItems(shownTasks, (it) => getGroupKey(it, taskSortPref.groupBy, "tasks", resolveUser)),
+    [shownTasks, taskSortPref.groupBy, resolveUser, groupTasksByClient, client?.name],
   );
+  const shownMeetings = useMemo(() => meetingsDone.visible(sortedMeetings as any[]), [meetingsDone.mode, sortedMeetings]); // eslint-disable-line react-hooks/exhaustive-deps
   const meetingsGroups = useMemo(
     () =>
       groupMeetingsByClient
-        ? groupItems(sortedMeetings, () => client?.name || "ללא לקוח")
+        ? groupItems(shownMeetings, () => client?.name || "ללא לקוח")
         : meetingSortPref.groupBy === "none"
-        ? [{ key: "", items: sortedMeetings }]
-        : groupItems(sortedMeetings, (it) => getGroupKey(it, meetingSortPref.groupBy, "meetings", resolveUser)),
-    [sortedMeetings, meetingSortPref.groupBy, resolveUser, groupMeetingsByClient, client?.name],
+        ? [{ key: "", items: shownMeetings }]
+        : groupItems(shownMeetings, (it) => getGroupKey(it, meetingSortPref.groupBy, "meetings", resolveUser)),
+    [shownMeetings, meetingSortPref.groupBy, resolveUser, groupMeetingsByClient, client?.name],
   );
   const [editForm, setEditForm] = useState({
     name: "",
@@ -2661,7 +2669,7 @@ export default function ClientProfile() {
                           className="group flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
                         >
                           <div className="text-right flex-1 min-w-0">
-                            <p className="font-medium truncate">{reminder.title}</p>
+                            <p className={`font-medium truncate ${isItemDone(reminder) ? DONE_TEXT_CLASS : ""}`}>{reminder.title}</p>
                             <p className="text-sm text-muted-foreground">
                               {format(
                                 new Date(reminder.remind_at),
@@ -2893,6 +2901,7 @@ export default function ClientProfile() {
               <CardHeader className="text-right border-b border-border/50 bg-muted/30">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
+                    <CompletedDisplayToggle iconOnly mode={tasksDone.mode} onChange={tasksDone.setMode} />
                     <ClientGroupingToggle entity="tasks" iconOnly />
                     <SortMenu entity="tasks" />
                   </div>
@@ -2959,7 +2968,7 @@ export default function ClientProfile() {
                             </Badge>
                           </div>
                           <div className="text-right">
-                            <p className="font-medium">{task.title}</p>
+                            <p className={`font-medium ${isItemDone(task) ? DONE_TEXT_CLASS : ""}`}>{task.title}</p>
                             <p className="text-sm text-muted-foreground">
                               {task.project_name && `${task.project_name} • `}
                               {resolveUser(task.assigned_to) || task.assigned_to_name || "לא משויך"}
@@ -2995,6 +3004,7 @@ export default function ClientProfile() {
               <CardHeader className="text-right border-b border-border/50 bg-muted/30">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
+                    <CompletedDisplayToggle iconOnly mode={meetingsDone.mode} onChange={meetingsDone.setMode} />
                     <ClientGroupingToggle entity="meetings" iconOnly />
                     <SortMenu entity="meetings" />
                   </div>
@@ -3064,7 +3074,7 @@ export default function ClientProfile() {
                             </Badge>
                           </div>
                           <div className="text-right">
-                            <p className="font-medium">{meeting.title}</p>
+                            <p className={`font-medium ${isItemDone(meeting) ? DONE_TEXT_CLASS : ""}`}>{meeting.title}</p>
                             <p className="text-sm text-muted-foreground">
                               {format(
                                 new Date(meeting.start_time),
@@ -3178,6 +3188,7 @@ export default function ClientProfile() {
               <CardHeader className="text-right border-b border-border/50 bg-muted/30">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
+                    <CompletedDisplayToggle iconOnly mode={remindersDone.mode} onChange={remindersDone.setMode} />
                     <ClientGroupingToggle entity="reminders" iconOnly />
                     <SortMenu entity="reminders" />
                   </div>
@@ -3245,7 +3256,7 @@ export default function ClientProfile() {
                                 </Button>
                               </div>
                               <div className="text-right">
-                                <p className="font-medium">{reminder.title}</p>
+                                <p className={`font-medium ${isItemDone(reminder) ? DONE_TEXT_CLASS : ""}`}>{reminder.title}</p>
                                 {reminder.message && (
                                   <p className="text-sm text-muted-foreground">
                                     {reminder.message}

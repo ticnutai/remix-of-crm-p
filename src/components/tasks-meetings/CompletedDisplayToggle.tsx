@@ -13,10 +13,39 @@ const OPTIONS: Array<{ mode: CompletedDisplayMode; label: string; hint: string; 
 export function CompletedDisplayToggle({
   mode,
   onChange,
+  iconOnly = false,
 }: {
   mode: CompletedDisplayMode;
   onChange: (mode: CompletedDisplayMode) => void;
+  /** כפתור אייקון אחד שמחליף בין המצבים — לכותרות של כרטיסים קטנים */
+  iconOnly?: boolean;
 }) {
+  if (iconOnly) {
+    const current = OPTIONS.find((o) => o.mode === mode) || OPTIONS[0];
+    const next = OPTIONS.find((o) => o.mode !== mode) || OPTIONS[1];
+    const Icon = current.icon;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant={mode === "hide" ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            aria-label={`${current.hint}. לחיצה: ${next.label}`}
+            onClick={() => onChange(next.mode)}
+          >
+            <Icon className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {current.hint}
+          <br />
+          <span className="text-muted-foreground">לחיצה: {next.label}</span>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
   return (
     <div className="flex items-center rounded-md border bg-background p-0.5" role="radiogroup" aria-label="תצוגת פריטים שהושלמו">
       {OPTIONS.map(({ mode: value, label, hint, icon: Icon }) => {

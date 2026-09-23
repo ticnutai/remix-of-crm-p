@@ -58,6 +58,11 @@ const COLUMNS = [
   { id: "done", title: "הושלם", color: "bg-green-100", icon: CheckCircle2 },
 ];
 
+// שאר המערכת משתמשת ב-pending/completed; הלוח עבד רק עם todo/done ולכן משימות
+// "הושלם"/"ממתין" מדף המשימות לא הופיעו באף עמודה.
+const STATUS_TO_COLUMN: Record<string, string> = { pending: "todo", completed: "done" };
+const COLUMN_TO_STATUS: Record<string, string> = { todo: "pending", done: "completed" };
+
 const PRIORITIES = {
   low: { label: "נמוכה", color: "bg-slate-200 text-slate-700" },
   medium: { label: "בינונית", color: "bg-blue-200 text-blue-700" },
@@ -316,14 +321,16 @@ export function KanbanBoard() {
 
   const handleDrop = async (taskId: string, newStatus: string) => {
     try {
-      await updateTask(taskId, { status: newStatus });
+      // שומרים בסטטוס הקנוני של המערכת (pending/completed) — כך המשימה נחשבת
+      // "לביצוע"/"הושלמה" גם בדף המשימות, בהיום שלי ובתיק הלקוח
+      await updateTask(taskId, { status: COLUMN_TO_STATUS[newStatus] ?? newStatus });
     } catch (error) {
       toast({ title: "שגיאה בעדכון המשימה", variant: "destructive" });
     }
   };
 
   const getTasksByStatus = (status: string) => {
-    return tasks.filter((task) => task.status === status);
+    return tasks.filter((task) => (STATUS_TO_COLUMN[task.status] ?? task.status) === status);
   };
 
   if (loading) {

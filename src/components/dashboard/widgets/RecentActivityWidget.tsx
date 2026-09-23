@@ -157,7 +157,7 @@ export function RecentActivityWidget() {
         activityItems.push({
           id: `task-${t.id}`,
           type: 'task',
-          action: t.status === 'done' ? 'completed' : t.created_at === t.updated_at ? 'created' : 'updated',
+          action: (t.status === 'done' || t.status === 'completed') ? 'completed' : t.created_at === t.updated_at ? 'created' : 'updated',
           title: t.title,
           created_at: t.updated_at,
         });

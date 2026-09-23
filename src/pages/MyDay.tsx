@@ -1,6 +1,7 @@
 // My Day Page - tenarch CRM Pro
 // Shows today's meetings, tasks, reminders and schedule
 import React, { useState, useEffect, useCallback, forwardRef } from "react";
+import { CompletedDisplayToggle, useCompletedDisplay, isItemDone, DONE_TEXT_CLASS } from "@/components/tasks-meetings";
 import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout";
@@ -87,6 +88,7 @@ interface Task {
   created_by?: string | null;
   assigned_to?: string | null;
   status: string;
+  completed_at?: string | null;
   priority: string;
   due_date: string | null;
   created_at: string;
@@ -116,6 +118,7 @@ interface Reminder {
   user_id?: string | null;
   remind_at: string;
   is_dismissed: boolean;
+  is_sent?: boolean | null;
   client?: { name: string } | null;
 }
 
@@ -491,9 +494,19 @@ export default function MyDay() {
     let tasksQuery = supabase
       .from("tasks")
       .select(
-        "id, title, description, created_by, assigned_to, status, priority, due_date, created_at, client:clients(name), project:projects(name)",
+        "id, title, description, created_by, assigned_to, status, priority, due_date, created_at, completed_at, client:clients(name), project:projects(name)",
       )
       .neq("status", "completed");
+
+    // משימות שהושלמו בתקופה — מוצגות עם קו או מוסתרות לפי בחירת המשתמש
+    const completedTasksQuery = supabase
+      .from("tasks")
+      .select(
+        "id, title, description, created_by, assigned_to, status, priority, due_date, created_at, completed_at, client:clients(name), project:projects(name)",
+      )
+      .eq("status", "completed")
+      .gte("completed_at", dayStart)
+      .lte("completed_at", dayEnd);
 
     // On "today" keep overdue open tasks visible. In any other period,
     // show only tasks whose due date belongs to the selected range.
@@ -501,7 +514,7 @@ export default function MyDay() {
       ? tasksQuery.lte("due_date", dayEnd)
       : tasksQuery.gte("due_date", dayStart).lte("due_date", dayEnd);
 
-    const [tasksRes, meetingsRes, remindersRes, timeRes] = await Promise.all([
+    const [tasksRes, meetingsRes, remindersRes, timeRes, completedTasksRes] = await Promise.all([
       tasksQuery.order("priority", { ascending: false }),
 
       // Meetings on the selected day (RLS-scoped, then user-filtered client-side)
@@ -518,11 +531,10 @@ export default function MyDay() {
       supabase
         .from("reminders")
         .select(
-          "id, title, message, user_id, remind_at, is_dismissed, client:clients(name)",
+          "id, title, message, user_id, remind_at, is_dismissed, is_sent, client:clients(name)",
         )
         .gte("remind_at", dayStart)
         .lte("remind_at", dayEnd)
-        .eq("is_dismissed", false)
         .order("remind_at", { ascending: true }),
 
       // Time entries on the selected day
@@ -534,9 +546,12 @@ export default function MyDay() {
         .gte("start_time", dayStart)
         .lte("start_time", dayEnd)
         .order("start_time", { ascending: true }),
+      completedTasksQuery.order("completed_at", { ascending: false }),
     ]);
 
-    if (tasksRes.data) setTasks(tasksRes.data as Task[]);
+    if (tasksRes.data) {
+      setTasks([...(tasksRes.data as Task[]), ...((completedTasksRes?.data as Task[] | null) || [])]);
+    }
     if (meetingsRes.data) setMeetings(meetingsRes.data as unknown as Meeting[]);
     if (remindersRes.data) {
       console.log(
@@ -670,7 +685,16 @@ export default function MyDay() {
     });
     return Array.from(seen.values());
   }, [filteredTasks, showDuplicates]);
-  const totalTasks = visibleTasks.length;
+  // בוצע: קו על הפריט או הסתרה — לכל כרטיס בנפרד (נשמר ומסונכרן)
+  const tasksDone = useCompletedDisplay("myday-tasks");
+  const meetingsDone = useCompletedDisplay("myday-meetings");
+  const remindersDone = useCompletedDisplay("myday-reminders");
+  const displayTasks = tasksDone.visible(visibleTasks);
+  const displayMeetings = meetingsDone.visible(visibleMeetings);
+  const displayReminders = remindersDone.visible(visibleReminders);
+  const openReminders = visibleReminders.filter((r) => !isItemDone(r));
+
+  const totalTasks = visibleTasks.filter((task) => !isItemDone(task)).length;
   const pendingMeetings = visibleMeetings.filter(
     (m) => m.status === "scheduled",
   ).length;
@@ -859,7 +883,7 @@ export default function MyDay() {
                 <Bell className="h-6 w-6 text-warning" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{visibleReminders.length}</p>
+                <p className="text-2xl font-bold">{openReminders.length}</p>
                 <p className="text-sm text-muted-foreground">תזכורות</p>
               </div>
             </CardContent>
@@ -899,6 +923,7 @@ export default function MyDay() {
                   פגישות · {selectedDayShortLabel}
                 </CardTitle>
                 <div className="flex items-center gap-2">
+                  <CompletedDisplayToggle iconOnly mode={meetingsDone.mode} onChange={meetingsDone.setMode} />
                   <ClientGroupingToggle entity="meetings" iconOnly />
                   <DisplayOptions
                     viewType={meetingsView}
@@ -909,7 +934,7 @@ export default function MyDay() {
               </div>
             </CardHeader>
             <CardContent>
-              {visibleMeetings.length === 0 ? (
+              {displayMeetings.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Calendar className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <p>אין פגישות מתוכננות בתאריך זה</p>
@@ -923,8 +948,8 @@ export default function MyDay() {
                   )}
                 >
                   {(groupMeetingsByClient
-                    ? groupItemsByClient(visibleMeetings).flatMap((group) => group.items)
-                    : visibleMeetings
+                    ? groupItemsByClient(displayMeetings).flatMap((group) => group.items)
+                    : displayMeetings
                   ).map((meeting, index, items) => {
                     const MeetingIcon =
                       meetingTypeIcons[
@@ -959,7 +984,7 @@ export default function MyDay() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <MeetingIcon className="h-4 w-4 text-muted-foreground" />
-                              <p className="font-medium truncate">
+                              <p className={cn("font-medium truncate", isItemDone(meeting) && DONE_TEXT_CLASS)}>
                                 {meeting.title}
                               </p>
                             </div>
@@ -1010,6 +1035,7 @@ export default function MyDay() {
                   משימות · {selectedDayShortLabel}
                 </CardTitle>
                 <div className="flex items-center gap-2">
+                  <CompletedDisplayToggle iconOnly mode={tasksDone.mode} onChange={tasksDone.setMode} />
                   <ClientGroupingToggle entity="tasks" iconOnly />
                   <DisplayOptions
                     viewType={tasksView}
@@ -1020,7 +1046,7 @@ export default function MyDay() {
               </div>
             </CardHeader>
             <CardContent>
-              {visibleTasks.length === 0 ? (
+              {displayTasks.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <CheckCircle2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <p>אין משימות פתוחות</p>
@@ -1034,8 +1060,8 @@ export default function MyDay() {
                   )}
                 >
                   {(groupTasksByClient
-                    ? groupItemsByClient(visibleTasks).flatMap((group) => group.items)
-                    : visibleTasks
+                    ? groupItemsByClient(displayTasks).flatMap((group) => group.items)
+                    : displayTasks
                   ).slice(0, 6).map((task, index, items) => {
                     const PriorityIcon =
                       priorityIcons[
@@ -1078,7 +1104,7 @@ export default function MyDay() {
                             <PriorityIcon className="h-4 w-4" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{task.title}</p>
+                            <p className={cn("font-medium truncate", isItemDone(task) && DONE_TEXT_CLASS)}>{task.title}</p>
                             <div className="mt-1 flex flex-wrap items-center gap-2">
                               {task.due_date && (
                                 <span
@@ -1134,13 +1160,13 @@ export default function MyDay() {
                       </React.Fragment>
                     );
                   })}
-                  {visibleTasks.length > 6 && (
+                  {displayTasks.length > 6 && (
                     <Button
                       variant="ghost"
                       className="w-full"
                       onClick={() => navigate("/tasks")}
                     >
-                      עוד {visibleTasks.length - 6} משימות...
+                      עוד {displayTasks.length - 6} משימות...
                     </Button>
                   )}
                 </div>
@@ -1163,11 +1189,14 @@ export default function MyDay() {
                   <Bell className="h-5 w-5 text-warning" />
                   תזכורות · {selectedDayShortLabel}
                 </CardTitle>
-                <ClientGroupingToggle entity="reminders" iconOnly />
+                <div className="flex items-center gap-2">
+                  <CompletedDisplayToggle iconOnly mode={remindersDone.mode} onChange={remindersDone.setMode} />
+                  <ClientGroupingToggle entity="reminders" iconOnly />
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              {visibleReminders.length === 0 ? (
+              {displayReminders.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Bell className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <p>אין תזכורות בתאריך זה</p>
@@ -1175,8 +1204,8 @@ export default function MyDay() {
               ) : (
                 <div className="space-y-2">
                   {(groupRemindersByClient
-                    ? groupItemsByClient(visibleReminders).flatMap((group) => group.items)
-                    : visibleReminders
+                    ? groupItemsByClient(displayReminders).flatMap((group) => group.items)
+                    : displayReminders
                   ).map((reminder, index, items) => (
                     <React.Fragment key={reminder.id}>
                       {groupRemindersByClient &&
@@ -1207,7 +1236,7 @@ export default function MyDay() {
                           <Bell className="h-4 w-4 text-warning" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium">{reminder.title}</p>
+                          <p className={cn("font-medium", isItemDone(reminder) && DONE_TEXT_CLASS)}>{reminder.title}</p>
                           {reminder.message && (
                             <p className="text-sm text-muted-foreground mt-1">
                               {reminder.message}

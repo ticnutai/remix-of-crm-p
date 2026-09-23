@@ -166,9 +166,9 @@ function useDashboardStats() {
         : 0;
       
       const pendingQuotes = quotesRes.data?.filter(q => q.status === 'pending').length || 0;
-      const pendingTasks = tasksRes.data?.filter((t: any) => t.status !== 'done').length || 0;
+      const pendingTasks = tasksRes.data?.filter((t: any) => t.status !== 'done' && t.status !== 'completed').length || 0;
       const overdueTasks = tasksRes.data?.filter((t: any) => 
-        t.status !== 'done' && t.due_date && new Date(t.due_date) < today
+        t.status !== 'done' && t.status !== 'completed' && t.due_date && new Date(t.due_date) < today
       ).length || 0;
       
       const activeContracts = contractsRes.data?.filter((c: any) => c.status === 'active').length || 0;
@@ -190,7 +190,7 @@ function useDashboardStats() {
           { name: 'לביצוע', value: tasksRes.data?.filter((t: any) => t.status === 'todo').length || 0 },
           { name: 'בתהליך', value: tasksRes.data?.filter((t: any) => t.status === 'in_progress').length || 0 },
           { name: 'לבדיקה', value: tasksRes.data?.filter((t: any) => t.status === 'review').length || 0 },
-          { name: 'הושלם', value: tasksRes.data?.filter((t: any) => t.status === 'done').length || 0 },
+          { name: 'הושלם', value: tasksRes.data?.filter((t: any) => (t.status === 'done' || t.status === 'completed')).length || 0 },
         ],
         tasksByPriority: [
           { name: 'נמוכה', value: tasksRes.data?.filter((t: any) => t.priority === 'low').length || 0 },

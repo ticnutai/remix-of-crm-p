@@ -74,12 +74,12 @@ export function PerformanceMetricsWidget() {
         (supabase as any)
           .from('tasks')
           .select('id')
-          .eq('status', 'done')
+          .in('status', ['done', 'completed'])
           .gte('updated_at', startOfMonth.toISOString()),
         (supabase as any)
           .from('tasks')
           .select('id')
-          .eq('status', 'done')
+          .in('status', ['done', 'completed'])
           .gte('updated_at', startOfLastMonth.toISOString())
           .lte('updated_at', endOfLastMonth.toISOString()),
         supabase

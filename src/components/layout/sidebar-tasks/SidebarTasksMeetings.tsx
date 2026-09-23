@@ -38,6 +38,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { useCompletedDisplay } from '@/components/tasks-meetings';
+import { EyeOff as EyeOffIcon, Strikethrough as StrikethroughIcon } from 'lucide-react';
 import {
   CheckSquare,
   Calendar,
@@ -100,6 +102,8 @@ export function SidebarTasksMeetings({ isCollapsed = false }: SidebarTasksMeetin
   });
   const [activeTab, setActiveTab] = useState<'tasks' | 'meetings'>('tasks');
   const [filter, setFilter] = useState<FilterType>('today');
+  // בוצע: קו או הסתרה — אותה בחירה בכל התצוגות (היום / השבוע / הכל)
+  const completedDisplay = useCompletedDisplay('sidebar');
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isAddMeetingOpen, setIsAddMeetingOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'task' | 'meeting'; item: Task | Meeting } | null>(null);
@@ -158,8 +162,8 @@ export function SidebarTasksMeetings({ isCollapsed = false }: SidebarTasksMeetin
     const now = new Date();
     
     return tasks.filter(task => {
-      // Don't show completed tasks in today/week view
-      if (task.status === 'completed' && filter !== 'all') return false;
+      // בוצע: מוסתר רק כשהמשתמש בחר "הסתר"; אחרת מוצג עם קו (SidebarTaskItem)
+      if (task.status === 'completed' && completedDisplay.hide) return false;
       
       if (filter === 'all') return true;
       
@@ -192,7 +196,7 @@ export function SidebarTasksMeetings({ isCollapsed = false }: SidebarTasksMeetin
       }
       return a.due_date ? -1 : 1;
     });
-  }, [tasks, filter]);
+  }, [tasks, filter, completedDisplay.hide]);
   
   // Filter meetings based on selected filter
   const filteredMeetings = useMemo(() => {
@@ -202,8 +206,8 @@ export function SidebarTasksMeetings({ isCollapsed = false }: SidebarTasksMeetin
       // Don't show cancelled meetings
       if (meeting.status === 'cancelled') return false;
       
-      // Don't show completed in today/week view
-      if (meeting.status === 'completed' && filter !== 'all') return false;
+      // בוצע: מוסתר רק כשהמשתמש בחר "הסתר"; אחרת מוצג עם קו (SidebarMeetingItem)
+      if (meeting.status === 'completed' && completedDisplay.hide) return false;
       
       if (filter === 'all') return true;
       
@@ -222,7 +226,7 @@ export function SidebarTasksMeetings({ isCollapsed = false }: SidebarTasksMeetin
       // Sort by start time
       return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
     });
-  }, [meetings, filter]);
+  }, [meetings, filter, completedDisplay.hide]);
   
   // Counts for badges
   const pendingTasksCount = filteredTasks.filter(t => t.status !== 'completed').length;
@@ -489,6 +493,22 @@ export function SidebarTasksMeetings({ isCollapsed = false }: SidebarTasksMeetin
                       {filterLabels[f]}
                     </button>
                   ))}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => completedDisplay.setMode(completedDisplay.hide ? 'strike' : 'hide')}
+                        className="p-1 rounded hover:bg-[#D4A843]/20 transition-all"
+                        style={{ color: completedDisplay.hide ? sidebarColors.gold : sidebarColors.goldLight }}
+                        aria-label={completedDisplay.hide ? 'פריטים שבוצעו מוסתרים — לחיצה: הצג עם קו' : 'פריטים שבוצעו מוצגים עם קו — לחיצה: הסתר'}
+                      >
+                        {completedDisplay.hide ? <EyeOffIcon className="h-3 w-3" /> : <StrikethroughIcon className="h-3 w-3" />}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {completedDisplay.hide ? 'פריטים שבוצעו מוסתרים — לחיצה: הצג עם קו' : 'פריטים שבוצעו מוצגים עם קו — לחיצה: הסתר'}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
                 
                 <Tooltip>

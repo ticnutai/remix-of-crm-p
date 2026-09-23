@@ -407,7 +407,7 @@ export function useGanttTasks(
           type: 'task',
           parent_id: task.project_id || undefined,
           assignee: task.assignee?.full_name,
-          status: task.status === 'done' ? 'completed' :
+          status: (task.status === 'done' || task.status === 'completed') ? 'completed' :
                   task.status === 'in_progress' ? 'in_progress' : 'pending',
         });
       }
