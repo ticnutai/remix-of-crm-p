@@ -106,8 +106,11 @@ interface QuickAddTaskProps {
     description?: string;
     clientId?: string;
     dueDate?: Date;
+    dueTime?: string;
     priority?: string;
     assignedTo?: string | null;
+    status?: string;
+    isPrivate?: boolean;
   };
 }
 
@@ -124,6 +127,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [priority, setPriority] = useState<string>("medium");
+    const [status, setStatus] = useState<string>("pending");
     const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
     const [dueTime, setDueTime] = useState<string>("");
     const [clientIds, setClientIds] = useState<string[]>([]);
@@ -182,14 +186,32 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
 
     // Load initial data when dialog opens
     useEffect(() => {
-      if (open && initialData) {
+      if (!open) return;
+
+      if (initialData) {
         setTitle(initialData.title || "");
         setDescription(initialData.description || "");
         setPriority(initialData.priority || "medium");
+        setStatus(initialData.status || "pending");
         setDueDate(initialData.dueDate);
+        setDueTime(initialData.dueTime || "");
         setDueDateText(initialData.dueDate ? format(initialData.dueDate, "dd/MM/yyyy") : "");
         setClientIds(initialData.clientId ? [initialData.clientId] : []);
         setAssignedTo(initialData.assignedTo ?? user?.id ?? null);
+        setIsPrivate(initialData.isPrivate ?? false);
+      } else {
+        setTitle("");
+        setDescription("");
+        setPriority("medium");
+        setStatus("pending");
+        setDueDate(undefined);
+        setDueTime("");
+        setDueDateText("");
+        setDateError(null);
+        setClientIds([]);
+        setAssignedTo(user?.id ?? null);
+        setIsPrivate(false);
+        setReminderConfig(null);
       }
     }, [open, initialData, user?.id]);
 
@@ -197,6 +219,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
       setTitle("");
       setDescription("");
       setPriority("medium");
+      setStatus("pending");
       setDueDate(undefined);
       setDueTime("");
       setDueDateText("");
@@ -230,7 +253,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
               })()
             : null,
           client_id: clientIds.length > 0 ? clientIds[0] : null,
-          status: "pending",
+          status,
           is_private: isPrivate,
           assigned_to: assignedTo,
         });
