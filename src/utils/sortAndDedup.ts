@@ -4,6 +4,7 @@
 
 export type SortField =
   | "created_at"
+  | "updated_at"
   | "event_date"
   | "due_date"
   | "title"

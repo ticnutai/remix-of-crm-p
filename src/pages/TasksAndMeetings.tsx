@@ -44,6 +44,8 @@ import {
   Pencil,
   Trash2,
   UserRound,
+  Columns3,
+  Rows3,
 } from "lucide-react";
 import { sortItems, SortField, SortOrder } from "@/utils/sortAndDedup";
 import { useReminders, Reminder } from "@/hooks/useReminders";
@@ -120,7 +122,7 @@ const HOVER_DIALOG_SETTINGS_KEY = "tasks-meetings-hover-dialog-settings";
 const COLUMN_SETTINGS_KEY = "tasks-meetings-column-settings";
 
 type ColumnKey = "tasks" | "meetings" | "reminders";
-type ColumnSortField = "time" | "name" | "priority" | "user" | "created";
+type ColumnSortField = "time" | "name" | "priority" | "user" | "created" | "updated";
 type ColumnSortConfig = {
   field: ColumnSortField;
   order: SortOrder;
@@ -201,6 +203,12 @@ const TasksAndMeetings = () => {
   const setCompletedModeFor = (tab: string, mode: CompletedDisplayMode) =>
     setCompletedDisplay({ ...(completedDisplay || {}), [tab]: mode });
   const [priorityFilter, setPriorityFilter] = useSyncedSetting<string>({ key: "tasks-priority-filter", defaultValue: "all" });
+  // "all" tab layout: three side-by-side columns, or stacked (tasks → meetings → reminders)
+  const [allTabLayout, setAllTabLayout] = useSyncedSetting<"columns" | "stacked">({
+    key: "tasks-all-tab-layout",
+    defaultValue: "columns",
+  });
+  const isStackedLayout = allTabLayout === "stacked";
   const [sortBy, setSortBy] = useSyncedSetting<SortField>({ key: "tasks-sort-by", defaultValue: "event_date" });
   const [sortOrder, setSortOrder] = useSyncedSetting<SortOrder>({ key: "tasks-sort-order", defaultValue: "desc" });
   const { isAdmin } = usePermissions();
@@ -441,6 +449,8 @@ const TasksAndMeetings = () => {
       switch (field) {
         case "created_at":
           return task.created_at;
+        case "updated_at":
+          return task.updated_at || task.created_at;
         case "event_date":
           return task.due_date;
         case "title":
@@ -460,6 +470,8 @@ const TasksAndMeetings = () => {
       switch (field) {
         case "created_at":
           return meeting.created_at;
+        case "updated_at":
+          return meeting.updated_at || meeting.created_at;
         case "event_date":
           return meeting.start_time;
         case "title":
@@ -596,6 +608,12 @@ const TasksAndMeetings = () => {
         return (cA - cB) * direction;
       }
 
+      if (config.field === "updated") {
+        const uA = new Date((a as { updated_at?: string | null }).updated_at || a.created_at).getTime();
+        const uB = new Date((b as { updated_at?: string | null }).updated_at || b.created_at).getTime();
+        return (uA - uB) * direction;
+      }
+
       const timeA = a.due_date ? new Date(a.due_date).getTime() : Number.MAX_SAFE_INTEGER;
       const timeB = b.due_date ? new Date(b.due_date).getTime() : Number.MAX_SAFE_INTEGER;
       return (timeA - timeB) * direction;
@@ -621,6 +639,12 @@ const TasksAndMeetings = () => {
         const cA = new Date(a.created_at).getTime();
         const cB = new Date(b.created_at).getTime();
         return (cA - cB) * direction;
+      }
+
+      if (config.field === "updated") {
+        const uA = new Date((a as { updated_at?: string | null }).updated_at || a.created_at).getTime();
+        const uB = new Date((b as { updated_at?: string | null }).updated_at || b.created_at).getTime();
+        return (uA - uB) * direction;
       }
 
       const timeA = new Date(a.start_time).getTime();
@@ -658,6 +682,12 @@ const TasksAndMeetings = () => {
         return (cA - cB) * direction;
       }
 
+      if (config.field === "updated") {
+        const uA = new Date((a as { updated_at?: string | null }).updated_at || a.created_at).getTime();
+        const uB = new Date((b as { updated_at?: string | null }).updated_at || b.created_at).getTime();
+        return (uA - uB) * direction;
+      }
+
       const timeA = new Date(a.remind_at).getTime();
       const timeB = new Date(b.remind_at).getTime();
       return (timeA - timeB) * direction;
@@ -682,10 +712,11 @@ const TasksAndMeetings = () => {
   };
 
   const getSortFieldLabel = (field: ColumnSortField) => {
-    if (field === "time") return "זמן";
+    if (field === "time") return "זמן יעד";
     if (field === "name") return "שם";
     if (field === "user") return "משתמש";
-    if (field === "created") return "יצירה";
+    if (field === "created") return "זמן יצירה";
+    if (field === "updated") return "עדכון";
     return "עדיפות";
   };
 
@@ -1070,7 +1101,19 @@ const TasksAndMeetings = () => {
               onChange={(mode) => setCompletedModeFor(activeTab, mode)}
             />
             {activeTab === "all" && (
-              <ClientGroupingToggle entity="all" />
+              <>
+                <ClientGroupingToggle entity="all" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setAllTabLayout(isStackedLayout ? "columns" : "stacked")}
+                  title={isStackedLayout ? "הצג בעמודות זו לצד זו" : "הצג אחד מתחת לשני"}
+                >
+                  {isStackedLayout ? <Columns3 className="h-4 w-4" /> : <Rows3 className="h-4 w-4" />}
+                  {isStackedLayout ? "תצוגת עמודות" : "תצוגת רשימה"}
+                </Button>
+              </>
             )}
             {activeTab === "tasks" && (
               <div className="flex items-center gap-2">
@@ -1153,10 +1196,11 @@ const TasksAndMeetings = () => {
                       <SelectValue placeholder="מיון" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="created_at">תאריך יצירה</SelectItem>
                       <SelectItem value="event_date">
-                        {activeTab === "tasks" ? "תאריך יעד" : "מועד פגישה"}
+                        {activeTab === "meetings" ? "זמן פגישה" : "זמן יעד"}
                       </SelectItem>
+                      <SelectItem value="created_at">זמן יצירה</SelectItem>
+                      <SelectItem value="updated_at">עדכון אחרון</SelectItem>
                       <SelectItem value="title">שם</SelectItem>
                     </SelectContent>
                   </Select>
@@ -1181,7 +1225,7 @@ const TasksAndMeetings = () => {
 
           {/* ALL Content - 3 columns */}
           <TabsContent value="all" className="mt-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
+            <div className={`grid grid-cols-1 gap-2 ${isStackedLayout ? "" : "lg:grid-cols-3"}`}>
               {/* Tasks Column */}
               <div className="rounded-xl border-2 border-primary/20 bg-card shadow-sm overflow-hidden">
                 <div className="flex items-center justify-between px-3 py-3 bg-gradient-to-l from-primary/10 to-primary/5 border-b">
@@ -1215,18 +1259,19 @@ const TasksAndMeetings = () => {
                         }))
                       }
                     >
-                      <SelectTrigger className="h-6 w-[72px] text-[10px] px-1.5">
+                      <SelectTrigger className="h-6 w-[84px] text-[10px] px-1.5">
                         <div className="flex items-center gap-0.5">
                           <Filter className="h-2.5 w-2.5" />
                           <span>{getSortFieldLabel(columnSortConfig.tasks.field)}</span>
                         </div>
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="time">זמן</SelectItem>
+                        <SelectItem value="time">זמן יעד</SelectItem>
+                        <SelectItem value="created">זמן יצירה</SelectItem>
+                        <SelectItem value="updated">עדכון אחרון</SelectItem>
                         <SelectItem value="name">שם</SelectItem>
                         <SelectItem value="user">משתמש</SelectItem>
                         <SelectItem value="priority">עדיפות</SelectItem>
-                        <SelectItem value="created">יצירה</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
@@ -1305,7 +1350,7 @@ const TasksAndMeetings = () => {
                   </div>
                 )}
 
-                <div className="max-h-[500px] overflow-y-auto overflow-x-hidden p-2 space-y-1.5">
+                <div className={`${isStackedLayout ? "max-h-[360px]" : "max-h-[500px]"} overflow-y-auto overflow-x-hidden p-2 space-y-1.5`}>
                   {tasksLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -1526,18 +1571,18 @@ const TasksAndMeetings = () => {
                         }))
                       }
                     >
-                      <SelectTrigger className="h-6 w-[72px] text-[10px] px-1.5">
+                      <SelectTrigger className="h-6 w-[84px] text-[10px] px-1.5">
                         <div className="flex items-center gap-0.5">
                           <Filter className="h-2.5 w-2.5" />
                           <span>{getSortFieldLabel(columnSortConfig.meetings.field)}</span>
                         </div>
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="time">זמן</SelectItem>
+                        <SelectItem value="time">זמן פגישה</SelectItem>
+                        <SelectItem value="created">זמן יצירה</SelectItem>
+                        <SelectItem value="updated">עדכון אחרון</SelectItem>
                         <SelectItem value="name">שם</SelectItem>
                         <SelectItem value="user">משתמש</SelectItem>
-                        <SelectItem value="priority" disabled>עדיפות</SelectItem>
-                        <SelectItem value="created">יצירה</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
@@ -1616,7 +1661,7 @@ const TasksAndMeetings = () => {
                   </div>
                 )}
 
-                <div className="max-h-[500px] overflow-y-auto overflow-x-hidden p-2 space-y-1.5">
+                <div className={`${isStackedLayout ? "max-h-[360px]" : "max-h-[500px]"} overflow-y-auto overflow-x-hidden p-2 space-y-1.5`}>
                   {meetingsLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -1818,18 +1863,18 @@ const TasksAndMeetings = () => {
                         }))
                       }
                     >
-                      <SelectTrigger className="h-6 w-[72px] text-[10px] px-1.5">
+                      <SelectTrigger className="h-6 w-[84px] text-[10px] px-1.5">
                         <div className="flex items-center gap-0.5">
                           <Filter className="h-2.5 w-2.5" />
                           <span>{getSortFieldLabel(columnSortConfig.reminders.field)}</span>
                         </div>
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="time">זמן</SelectItem>
+                        <SelectItem value="time">זמן יעד</SelectItem>
+                        <SelectItem value="created">זמן יצירה</SelectItem>
                         <SelectItem value="name">שם</SelectItem>
                         <SelectItem value="user">משתמש</SelectItem>
                         <SelectItem value="priority">עדיפות</SelectItem>
-                        <SelectItem value="created">יצירה</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
@@ -1911,7 +1956,7 @@ const TasksAndMeetings = () => {
                   </div>
                 )}
 
-                <div className="max-h-[500px] overflow-y-auto overflow-x-hidden p-2 space-y-1.5">
+                <div className={`${isStackedLayout ? "max-h-[360px]" : "max-h-[500px]"} overflow-y-auto overflow-x-hidden p-2 space-y-1.5`}>
                   {remindersLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-5 w-5 animate-spin text-amber-500" />

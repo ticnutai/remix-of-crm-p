@@ -434,8 +434,8 @@ export function RemindersTabContent({
               <SelectValue placeholder="מיון" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="created_at">תאריך יצירה</SelectItem>
-              <SelectItem value="event_date">מועד תזכורת</SelectItem>
+              <SelectItem value="event_date">זמן יעד</SelectItem>
+              <SelectItem value="created_at">זמן יצירה</SelectItem>
               <SelectItem value="title">שם</SelectItem>
             </SelectContent>
           </Select>
