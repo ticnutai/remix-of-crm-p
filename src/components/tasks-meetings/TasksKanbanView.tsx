@@ -147,9 +147,9 @@ const DraggableTaskCard = React.memo(function DraggableTaskCard({
               completed={task.status === "completed"}
               compact
             />
-            <h4
+            <h4 title={cleanTitle(task.title)}
               className={cn(
-                "text-sm font-medium text-right line-clamp-2",
+                "text-sm font-medium text-right line-clamp-2 hover:line-clamp-none",
                 task.status === "completed" &&
                   "line-through text-muted-foreground",
               )}

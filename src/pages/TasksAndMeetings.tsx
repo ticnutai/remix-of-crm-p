@@ -91,6 +91,30 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+/** One-line title for the compact columns; hovering a cut-off title shows the full text. */
+function TruncatedTitle({ text, className = "" }: { text: string; className?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Tooltip open={open}>
+      <TooltipTrigger asChild>
+        <p
+          className={`text-xs font-medium truncate ${className}`}
+          onMouseEnter={(event) =>
+            setOpen(event.currentTarget.scrollWidth > event.currentTarget.clientWidth)
+          }
+          onMouseLeave={() => setOpen(false)}
+        >
+          {text}
+        </p>
+      </TooltipTrigger>
+      <TooltipContent side="top" dir="rtl" className="max-w-sm whitespace-normal break-words text-right">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 const HOVER_DIALOG_SETTINGS_KEY = "tasks-meetings-hover-dialog-settings";
 const COLUMN_SETTINGS_KEY = "tasks-meetings-column-settings";
@@ -181,6 +205,14 @@ const TasksAndMeetings = () => {
   const [sortOrder, setSortOrder] = useSyncedSetting<SortOrder>({ key: "tasks-sort-order", defaultValue: "desc" });
   const { isAdmin } = usePermissions();
   const userFilter = useUserFilter();
+  // Tasks whose status was changed during this visit — kept visible even if
+  // the status filter would now hide them. Reset when the filter or tab changes.
+  const [recentlyToggledTaskIds, setRecentlyToggledTaskIds] = useState<string[]>([]);
+  useEffect(() => {
+    setRecentlyToggledTaskIds([]);
+  }, [statusFilter, activeTab]);
+  const markTaskToggled = (taskId: string) =>
+    setRecentlyToggledTaskIds((prev) => (prev.includes(taskId) ? prev : [...prev, taskId]));
 
 
   // Dialog states
@@ -335,11 +367,13 @@ const TasksAndMeetings = () => {
   const projectNameById = (id?: string | null) =>
     id ? projects.find((p) => p.id === id)?.name ?? null : null;
 
-  // Filter tasks
-  const filteredTasks = tasks.filter((task) => {
+  // Filter tasks — scope + search only. The status/priority dropdowns live in
+  // the "tasks" tab, so they apply there only (see filteredTasks below);
+  // applying them here hid tasks in the "all" tab with no visible filter.
+  const baseFilteredTasks = tasks.filter((task) => {
     if (!isAdmin && !ownsTask(task)) return false;
     if (isAdmin && !userFilter.matches(task, "tasks")) return false;
-    const matchesSearch = matchesSearchFields(
+    return matchesSearchFields(
       task.title,
       task.description,
       task.status,
@@ -349,6 +383,12 @@ const TasksAndMeetings = () => {
       task.client?.name ?? clientNameById(task.client_id),
       task.project?.name ?? projectNameById(task.project_id),
     );
+  });
+
+  const filteredTasks = baseFilteredTasks.filter((task) => {
+    // A task toggled during this visit stays visible (struck through) even if
+    // it no longer matches the status filter — otherwise it vanishes on click.
+    if (recentlyToggledTaskIds.includes(task.id)) return true;
     const matchesStatus =
       statusFilter === "all" ||
       (statusFilter === "overdue"
@@ -358,7 +398,7 @@ const TasksAndMeetings = () => {
         : task.status === statusFilter);
     const matchesPriority =
       priorityFilter === "all" || task.priority === priorityFilter;
-    return matchesSearch && matchesStatus && matchesPriority;
+    return matchesStatus && matchesPriority;
   });
 
   // Filter meetings
@@ -445,7 +485,8 @@ const TasksAndMeetings = () => {
       ? sortedMeetings.filter((meeting) => !isMeetingDone(meeting))
       : sortedMeetings;
   const hideDoneInAll = completedModeFor("all") === "hide";
-  const allTabTasks = hideDoneInAll ? sortedTasks.filter((task) => !isTaskDone(task)) : sortedTasks;
+  // The "all" tab re-sorts per column, so it starts from the unsorted base list
+  const allTabTasks = hideDoneInAll ? baseFilteredTasks.filter((task) => !isTaskDone(task)) : baseFilteredTasks;
   const allTabMeetings = hideDoneInAll ? sortedMeetings.filter((meeting) => !isMeetingDone(meeting)) : sortedMeetings;
   const allTabReminders = hideDoneInAll ? scopedReminders.filter((reminder) => !isReminderDone(reminder)) : scopedReminders;
 
@@ -518,7 +559,7 @@ const TasksAndMeetings = () => {
 
   // Collect all created_by ids to resolve to names for sorting "by user"
   const allCreatorIds = [
-    ...sortedTasks.map((t) => t.created_by),
+    ...baseFilteredTasks.map((t) => t.created_by),
     ...sortedMeetings.map((m) => m.created_by),
     ...reminders.map((r: any) => r.created_by),
   ];
@@ -839,10 +880,12 @@ const TasksAndMeetings = () => {
 
   const handleToggleComplete = async (task: Task) => {
     const newStatus = task.status === "completed" ? "pending" : "completed";
+    markTaskToggled(task.id);
     await updateTask(task.id, { status: newStatus });
   };
 
   const handleStatusChange = async (taskId: string, newStatus: string) => {
+    markTaskToggled(taskId);
     await updateTask(taskId, { status: newStatus });
   };
 
@@ -993,7 +1036,7 @@ const TasksAndMeetings = () => {
         </div>
 
         {/* Stats */}
-        <TasksStatsHeader tasks={filteredTasks} meetings={filteredMeetings} />
+        <TasksStatsHeader tasks={baseFilteredTasks} meetings={filteredMeetings} />
 
         {/* Main Tabs */}
         <Tabs
@@ -1159,7 +1202,7 @@ const TasksAndMeetings = () => {
                       }
                       onClick={() => setShowTinyTaskNumbers((prev) => !prev)}
                     >
-                      {filteredTasks.length}
+                      {baseFilteredTasks.length}
                     </button>
                   </div>
                   <div className="flex items-center gap-1">
@@ -1267,7 +1310,7 @@ const TasksAndMeetings = () => {
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-5 w-5 animate-spin text-primary" />
                     </div>
-                  ) : sortedTasks.length === 0 ? (
+                  ) : allTabTasks.length === 0 ? (
                     <p className="text-center text-xs text-muted-foreground py-8">אין משימות</p>
                   ) : (
                     displayedAllColumnItems.tasks.slice(0, 20).map((entry, index) => {
@@ -1332,12 +1375,15 @@ const TasksAndMeetings = () => {
                         </button>
                         <div
                           className="flex-1 min-w-0 text-right cursor-pointer"
-                          onClick={() => handleToggleComplete(task)}
-                          title="לחץ לסימון כבוצע"
+                          onClick={() => {
+                            if (selectionMode.tasks) toggleTaskSelection(task.id);
+                            else handleEditTask(task);
+                          }}
                         >
-                          <p className={`text-xs font-medium truncate ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
-                            {task.title}
-                          </p>
+                          <TruncatedTitle
+                            text={task.title}
+                            className={task.status === "completed" ? "line-through text-muted-foreground" : ""}
+                          />
                           {hoveredTaskId === task.id && task.created_at && (() => {
                             const days = (Date.now() - new Date(task.created_at).getTime()) / 86400000;
                             const color = days < 7 ? "text-green-600" : days < 14 ? "text-amber-500" : "text-red-500";
@@ -1442,10 +1488,10 @@ const TasksAndMeetings = () => {
                     })
                   )}
                 </div>
-                {filteredTasks.length > 20 && (
+                {allTabTasks.length > 20 && (
                   <div className="border-t px-3 py-2">
                     <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setActiveTab("tasks")}>
-                      הצג את כל {filteredTasks.length} המשימות
+                      הצג את כל {allTabTasks.length} המשימות
                     </Button>
                   </div>
                 )}
@@ -1648,12 +1694,29 @@ const TasksAndMeetings = () => {
                             {index + 1}
                           </span>
                         )}
+                        <button
+                          type="button"
+                          className={`shrink-0 h-4 w-4 rounded border-2 flex items-center justify-center transition-colors ${
+                            meeting.status === "completed"
+                              ? "bg-green-500 border-green-500 text-white opacity-100"
+                              : `border-muted-foreground/40 hover:border-primary ${selectionMode.meetings ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`
+                          }`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (!selectionMode.meetings) handleToggleMeetingComplete(meeting);
+                          }}
+                          title="סימון כהושלם"
+                        >
+                          {meeting.status === "completed" && <span className="text-[10px]">✓</span>}
+                        </button>
                         <div
                           className="flex-1 min-w-0 text-right cursor-pointer"
-                          onClick={() => handleToggleMeetingComplete(meeting)}
-                          title="לחץ לסימון כהושלם"
+                          onClick={() => {
+                            if (selectionMode.meetings) toggleMeetingSelection(meeting.id);
+                            else handleEditMeeting(meeting);
+                          }}
                         >
-                          <p className={`text-xs font-medium truncate ${meeting.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{meeting.title}</p>
+                          <TruncatedTitle text={meeting.title} className={meeting.status === "completed" ? "line-through text-muted-foreground" : ""} />
                           {hoveredMeetingId === meeting.id && meeting.created_at && (() => {
                             const days = (Date.now() - new Date(meeting.created_at).getTime()) / 86400000;
                             const color = days < 7 ? "text-green-600" : days < 14 ? "text-amber-500" : "text-red-500";
@@ -1926,16 +1989,32 @@ const TasksAndMeetings = () => {
                             {index + 1}
                           </span>
                         )}
+                        <button
+                          type="button"
+                          className={`shrink-0 h-4 w-4 rounded border-2 flex items-center justify-center transition-colors ${
+                            isReminderDone(reminder)
+                              ? "bg-green-500 border-green-500 text-white opacity-100"
+                              : `border-muted-foreground/40 hover:border-primary ${selectionMode.reminders ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}`
+                          }`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (!selectionMode.reminders) { if (!reminder.is_dismissed) dismissReminder(reminder.id); }
+                          }}
+                          title="סימון כטופל"
+                        >
+                          {isReminderDone(reminder) && <span className="text-[10px]">✓</span>}
+                        </button>
                         <div
                           className="flex-1 min-w-0 text-right cursor-pointer"
                           onClick={() => {
-                            if (!reminder.is_dismissed) dismissReminder(reminder.id);
+                            if (selectionMode.reminders) toggleReminderSelection(reminder.id);
+                            else {
+                              setEditingReminder(reminder);
+                              setReminderEditOpen(true);
+                            }
                           }}
-                          title="לחץ לסימון כטופל"
                         >
-                          <p className={`text-xs font-medium truncate ${isReminderDone(reminder) ? "line-through text-muted-foreground" : ""}`}>
-                            {reminder.title}
-                          </p>
+                          <TruncatedTitle text={reminder.title} className={isReminderDone(reminder) ? "line-through text-muted-foreground" : ""} />
                           {hoveredReminderId === reminder.id && reminder.created_at && (() => {
                             const days = (Date.now() - new Date(reminder.created_at).getTime()) / 86400000;
                             const color = days < 7 ? "text-green-600" : days < 14 ? "text-amber-500" : "text-red-500";
@@ -2022,6 +2101,27 @@ const TasksAndMeetings = () => {
 
           {/* Tasks Content */}
           <TabsContent value="tasks" className="mt-4">
+            {!tasksLoading &&
+              (statusFilter !== "all" || priorityFilter !== "all") &&
+              baseFilteredTasks.length > filteredTasks.length && (
+                <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+                  <span className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 shrink-0" />
+                    מסנן פעיל — מוצגות {filteredTasks.length} מתוך {baseFilteredTasks.length} משימות
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      setStatusFilter("all");
+                      setPriorityFilter("all");
+                    }}
+                  >
+                    הצג הכל
+                  </Button>
+                </div>
+              )}
             {tasksLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />

@@ -140,9 +140,9 @@ export function TasksGridView({
                     completed={task.status === "completed"}
                     compact
                   />
-                  <h3
+                  <h3 title={cleanTitle(task.title)}
                     className={cn(
-                      "font-medium text-sm text-right line-clamp-2",
+                      "font-medium text-sm text-right line-clamp-2 hover:line-clamp-none",
                       task.status === "completed" &&
                         "line-through text-muted-foreground",
                     )}
