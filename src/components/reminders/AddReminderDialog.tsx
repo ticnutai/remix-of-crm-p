@@ -516,7 +516,7 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
               ) : (
                 <>
                   <Bell className="h-4 w-4" />
-                  צור תזכורת
+                  {editingReminder ? 'עדכן תזכורת' : 'צור תזכורת'}
                 </>
               )}
             </Button>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout";
@@ -190,6 +190,41 @@ const TasksAndMeetings = () => {
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [reminderEditOpen, setReminderEditOpen] = useState(false);
+
+  // Memoized so the dialogs' "load initial data" effects run once per open
+  // and don't overwrite the user's edits on every parent re-render.
+  const editingTaskInitialData = useMemo(
+    () =>
+      editingTask
+        ? {
+            title: editingTask.title,
+            description: editingTask.description || "",
+            clientId: editingTask.client_id || undefined,
+            dueDate: editingTask.due_date ? new Date(editingTask.due_date) : undefined,
+            priority: editingTask.priority || "medium",
+            assignedTo: editingTask.assigned_to ?? null,
+            isPrivate: Boolean((editingTask as any).is_private),
+          }
+        : undefined,
+    [editingTask],
+  );
+
+  const editingMeetingInitialData = useMemo(
+    () =>
+      editingMeeting
+        ? {
+            title: editingMeeting.title,
+            description: editingMeeting.description || "",
+            clientId: editingMeeting.client_id || undefined,
+            date: new Date(editingMeeting.start_time),
+            startTime: format(new Date(editingMeeting.start_time), "HH:mm"),
+            endTime: format(new Date(editingMeeting.end_time), "HH:mm"),
+            location: editingMeeting.location || "",
+            meetingType: editingMeeting.meeting_type || "in_person",
+          }
+        : undefined,
+    [editingMeeting],
+  );
 
   // Preview dialog
   const [previewEvent, setPreviewEvent] = useState<any>(null);
@@ -845,8 +880,10 @@ const TasksAndMeetings = () => {
 
   const handleCreateTask = async (task: TaskInsert) => {
     if (editingTask) {
-      await updateTask(editingTask.id, task);
-      return { ...editingTask, ...task } as Task;
+      // The dialog always sends status "pending" — keep the task's real status.
+      const { status: _status, ...updates } = task;
+      await updateTask(editingTask.id, updates);
+      return { ...editingTask, ...updates } as Task;
     } else {
       const createdTask = await createTask(task);
       // Make the task the user just created immediately discoverable in both
@@ -938,6 +975,8 @@ const TasksAndMeetings = () => {
               }}
               onSubmit={handleCreateTask}
               clients={clients}
+              isEditing={!!editingTask}
+              initialData={editingTaskInitialData}
             />
             <QuickAddMeeting
               open={meetingDialogOpen}
@@ -948,23 +987,7 @@ const TasksAndMeetings = () => {
               onSubmit={handleCreateMeeting}
               editingMeeting={editingMeeting}
               clients={clients}
-              initialData={
-                editingMeeting
-                  ? {
-                      title: editingMeeting.title,
-                      description: editingMeeting.description || "",
-                      clientId: editingMeeting.client_id || undefined,
-                      date: new Date(editingMeeting.start_time),
-                      startTime: format(
-                        new Date(editingMeeting.start_time),
-                        "HH:mm",
-                      ),
-                      endTime: format(new Date(editingMeeting.end_time), "HH:mm"),
-                      location: editingMeeting.location || "",
-                      meetingType: editingMeeting.meeting_type || "in_person",
-                    }
-                  : undefined
-              }
+              initialData={editingMeetingInitialData}
             />
           </div>
         </div>

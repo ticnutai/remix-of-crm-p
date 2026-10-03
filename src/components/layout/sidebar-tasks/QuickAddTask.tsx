@@ -108,6 +108,7 @@ interface QuickAddTaskProps {
     dueDate?: Date;
     priority?: string;
     assignedTo?: string | null;
+    isPrivate?: boolean;
   };
 }
 
@@ -188,8 +189,14 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
         setPriority(initialData.priority || "medium");
         setDueDate(initialData.dueDate);
         setDueDateText(initialData.dueDate ? format(initialData.dueDate, "dd/MM/yyyy") : "");
+        // Midnight means "no specific time" (see handleSubmit)
+        const hasTime =
+          !!initialData.dueDate &&
+          (initialData.dueDate.getHours() !== 0 || initialData.dueDate.getMinutes() !== 0);
+        setDueTime(hasTime ? format(initialData.dueDate!, "HH:mm") : "");
         setClientIds(initialData.clientId ? [initialData.clientId] : []);
         setAssignedTo(initialData.assignedTo ?? user?.id ?? null);
+        setIsPrivate(initialData.isPrivate ?? false);
       }
     }, [open, initialData, user?.id]);
 
