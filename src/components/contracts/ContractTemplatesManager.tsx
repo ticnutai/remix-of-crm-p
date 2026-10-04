@@ -1,6 +1,7 @@
 // ניהול תבניות חוזים
 // יצירה, עריכה ומחיקה של תבניות
 
+import { useRegisteredCustomFields } from "@/lib/customFieldRegistry";
 import React, { useState } from 'react';
 import { 
   FileText, 
@@ -623,6 +624,7 @@ function TemplateEditorDialog({
   template, 
   onSave 
 }: TemplateEditorDialogProps) {
+  const customFields = useRegisteredCustomFields();
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
   
@@ -817,7 +819,11 @@ function TemplateEditorDialog({
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-2">
                   <div className="grid grid-cols-3 gap-2 p-3 bg-muted rounded-lg">
-                    {Object.entries(TEMPLATE_VARIABLES).map(([variable, label]) => (
+                    {[
+                      ...Object.entries(TEMPLATE_VARIABLES),
+                      // שדות שהמשתמש הוסיף ללקוח מופיעים כאן אוטומטית
+                      ...customFields.map((f) => [`{{client.custom.${f.key}}}`, f.label] as const),
+                    ].map(([variable, label]) => (
                       <Button
                         key={variable}
                         variant="ghost"

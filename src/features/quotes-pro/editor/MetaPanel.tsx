@@ -6,6 +6,8 @@ import { ClientCombobox } from "@/components/quotes/QuoteDocumentEditor/ClientCo
 import type { Client } from "@/hooks/useClients";
 import type { QPDocMeta } from "../model/types";
 import { supabase } from "@/integrations/supabase/client";
+import { CLIENT_SYNCED_COLUMNS, quoteValuesFromClient } from "@/lib/clientSyncedFields";
+import { customDataValues, useRegisteredCustomFields } from "@/lib/customFieldRegistry";
 
 interface Props {
   meta: QPDocMeta;
@@ -41,6 +43,9 @@ function MetaField({
 
 export function MetaPanel({ meta, onChange }: Props) {
   const set = (patch: Partial<QPDocMeta>) => onChange({ ...meta, ...patch });
+  const customFields = useRegisteredCustomFields();
+  const setCustomValue = (key: string, value: string) =>
+    set({ customData: { ...(meta.customData || {}), [key]: value } });
 
   const handleClientSelect = (client: Client) => {
     set({
@@ -51,14 +56,14 @@ export function MetaPanel({ meta, onChange }: Props) {
       clientCompany: client.company || "",
       projectAddress: meta.projectAddress || client.address || "",
     });
-    // The clients list is loaded without this column — fetch it for the picked client.
+    // The clients list is loaded without these columns — fetch them for the picked client.
     void supabase
       .from("clients")
-      .select("minhal_contract_number")
+      .select([...CLIENT_SYNCED_COLUMNS, "custom_data"].join(", "))
       .eq("id", client.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.minhal_contract_number) {
+        if (data) {
           onChange({
             ...meta,
             clientId: client.id,
@@ -67,7 +72,12 @@ export function MetaPanel({ meta, onChange }: Props) {
             clientEmail: client.email || "",
             clientCompany: client.company || "",
             projectAddress: meta.projectAddress || client.address || "",
-            minhalContract: data.minhal_contract_number,
+            ...quoteValuesFromClient(data as any),
+            // A different client starts from its own custom values only.
+            customData: {
+              ...(client.id === meta.clientId ? meta.customData || {} : {}),
+              ...customDataValues((data as any).custom_data),
+            },
           });
         }
       });
@@ -101,8 +111,25 @@ export function MetaPanel({ meta, onChange }: Props) {
           <MetaField label="מגרש" value={meta.migrash} onChange={(v) => set({ migrash: v })} />
           <MetaField label='תב"ע' value={meta.taba} onChange={(v) => set({ taba: v })} />
           <MetaField label="מספר חוזה מנהל" value={meta.minhalContract} onChange={(v) => set({ minhalContract: v })} />
+          <MetaField label='מספר תב"ע חדשה' value={meta.newTaba} onChange={(v) => set({ newTaba: v })} />
         </div>
       </div>
+
+      {customFields.length > 0 && (
+        <div className="border-t pt-3 space-y-2">
+          <Label className="text-xs font-semibold text-muted-foreground">שדות מותאמים אישית</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {customFields.map((field) => (
+              <MetaField
+                key={field.key}
+                label={field.label}
+                value={meta.customData?.[field.key]}
+                onChange={(v) => setCustomValue(field.key, v)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="border-t pt-3 grid grid-cols-2 gap-2">
         <MetaField label="מספר הצעה" value={meta.quoteNumber} onChange={(v) => set({ quoteNumber: v })} />

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { setRegisteredCustomFields } from "@/lib/customFieldRegistry";
 // Use 'any' table reference since this table isn't in generated types yet
 const customFieldsTable = () =>
   supabase.from("client_custom_field_definitions" as any);
@@ -111,6 +112,14 @@ export function useClientCustomFields(options: { enabled?: boolean } = {}) {
   useEffect(() => {
     fetchDefinitions();
   }, [fetchDefinitions]);
+
+  // Publish to the app-wide registry (quote tokens, contracts, search).
+  useEffect(() => {
+    if (!enabled || isLoading) return;
+    setRegisteredCustomFields(
+      definitions.map((d) => ({ key: d.field_key, label: d.label })),
+    );
+  }, [enabled, isLoading, definitions]);
 
   // Keep every screen that uses this hook in sync. Several dialogs mount their
   // own hook instance, so updating local state alone leaves the parent stale.

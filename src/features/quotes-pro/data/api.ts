@@ -1,6 +1,8 @@
 // Quotes Pro — שכבת נתונים (Supabase CRUD)
 // הטבלאות qp_* עדיין לא בטיפוסים המחוללים → שימוש ב-(supabase as any).
 import { supabase } from "@/integrations/supabase/client";
+import { clientUpdatesFromQuote } from "@/lib/clientSyncedFields";
+import { customDataValues } from "@/lib/customFieldRegistry";
 import {
   DEFAULT_QP_PAGE,
   DEFAULT_QP_PRICING,
@@ -86,15 +88,35 @@ export async function getDocument(id: string): Promise<QPDocument | null> {
   return data ? normalizeDocument(data) : null;
 }
 
-/** מספר חוזה מנהל entered in a quote belongs to the linked client too. */
-async function syncMinhalContractToClient(meta?: Partial<QPDocument["meta"]>) {
-  const value = meta?.minhalContract?.trim();
-  if (!meta?.clientId || !value) return;
+/** Synced client fields (מספר חוזה מנהל…) entered in a quote belong to the linked client too. */
+async function syncQuoteFieldsToClient(meta?: Partial<QPDocument["meta"]>) {
+  if (!meta?.clientId) return;
+  const updates: Record<string, unknown> = { ...clientUpdatesFromQuote(meta) };
+
+  // Custom field values: merge non-empty ones into the client's latest
+  // custom_data so keys the quote doesn't know about are kept.
+  const customValues = customDataValues(meta.customData);
+  if (Object.keys(customValues).length > 0) {
+    const { data: current, error: readError } = await db()
+      .from("clients")
+      .select("custom_data")
+      .eq("id", meta.clientId)
+      .maybeSingle();
+    if (readError) {
+      console.warn("Could not read client custom fields:", readError);
+    } else {
+      const existing =
+        current?.custom_data && typeof current.custom_data === "object" ? current.custom_data : {};
+      updates.custom_data = { ...existing, ...customValues };
+    }
+  }
+
+  if (Object.keys(updates).length === 0) return;
   const { error } = await db()
     .from("clients")
-    .update({ minhal_contract_number: value })
+    .update(updates)
     .eq("id", meta.clientId);
-  if (error) console.warn("Could not sync minhal contract number to client:", error);
+  if (error) console.warn("Could not sync quote fields to client:", error);
 }
 
 export async function createDocument(
@@ -106,7 +128,7 @@ export async function createDocument(
     .select("*")
     .single();
   if (error) throw error;
-  await syncMinhalContractToClient(doc.meta);
+  await syncQuoteFieldsToClient(doc.meta);
   return normalizeDocument(data);
 }
 
@@ -119,7 +141,7 @@ export async function updateDocument(
     .update({ ...toPayload(doc), updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw error;
-  await syncMinhalContractToClient(doc.meta);
+  await syncQuoteFieldsToClient(doc.meta);
 }
 
 export async function deleteDocument(id: string): Promise<void> {

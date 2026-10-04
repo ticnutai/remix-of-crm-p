@@ -1,5 +1,6 @@
 // Quotes Pro — מנוע רינדור: בלוק → HTML
 // פונקציות טהורות, ללא React. משמשות גם בתצוגה מקדימה וגם בייצוא PDF.
+import { customFieldTokenMap } from "@/lib/customFieldRegistry";
 import type {
   QPBlock,
   QPDocument,
@@ -359,7 +360,9 @@ export function renderBlock(block: QPBlock, ctxIn: RenderCtx): string {
 // Placeholders — מחליף {{מפתח}} בערכים מפרטי הלקוח/פרויקט (meta)
 // תומך גם במפתחות אנגלית וגם בתוויות עברית.
 // ----------------------------------------------------------------
-const MERGE_ALIASES: Record<string, keyof QPDocument["meta"]> = {
+type QPStringMetaKey = Exclude<keyof QPDocument["meta"], "customData">;
+
+const MERGE_ALIASES: Record<string, QPStringMetaKey> = {
   clientName: "clientName", "שם לקוח": "clientName", "שם הלקוח": "clientName",
   clientPhone: "clientPhone", טלפון: "clientPhone",
   clientEmail: "clientEmail", אימייל: "clientEmail", מייל: "clientEmail",
@@ -371,15 +374,24 @@ const MERGE_ALIASES: Record<string, keyof QPDocument["meta"]> = {
   migrash: "migrash", מגרש: "migrash",
   taba: "taba", "תבע": "taba", 'תב"ע': "taba",
   minhalContract: "minhalContract", "מספר חוזה מנהל": "minhalContract",
+  newTaba: "newTaba", 'מספר תב"ע חדשה': "newTaba", "מספר תבע חדשה": "newTaba",
   quoteNumber: "quoteNumber", "מספר הצעה": "quoteNumber",
   issueDate: "issueDate", תאריך: "issueDate",
 };
 
 export function applyMergeTokens(html: string, meta: QPDocument["meta"]): string {
+  // Custom client fields: {{label}} or {{custom.<field_key>}}
+  const customValues = meta.customData || {};
+  const customByLabel = customFieldTokenMap(customValues);
   return html.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_m, raw) => {
-    const key = MERGE_ALIASES[String(raw).trim()];
-    const val = key ? meta[key] : undefined;
-    return val != null && val !== "" ? esc(val) : "";
+    const token = String(raw).trim();
+    const key = MERGE_ALIASES[token];
+    let val: string | null | undefined = key ? meta[key] : undefined;
+    if (val == null || val === "") {
+      if (token.startsWith("custom.")) val = customValues[token.slice("custom.".length)];
+      else val = customByLabel[token.replace(/[״“”]/g, '"')] ?? customByLabel[token];
+    }
+    return val != null && val !== "" ? esc(String(val)) : "";
   });
 }
 

@@ -250,6 +250,7 @@ export function convertLegacyToDocument(
       helka: pd.helka || "",
       migrash: pd.migrash || "",
       minhalContract: pd.minhalContract || "",
+      newTaba: pd.newTaba || "",
     },
     is_active: true,
   };

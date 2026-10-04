@@ -5,6 +5,7 @@
 // מקור האמת הוא הנתונים המובנים בלבד. html_content וטיוטות HTML ישנות אינן
 // גוברות עליהם; גם תיבות טקסט, שדרוגים וחבילות מחיר מסורלזים מכאן.
 
+import { getRegisteredCustomFields } from "@/lib/customFieldRegistry";
 import type { QuoteTemplate, TemplateStage } from "../types";
 import type {
   FlowBlock,
@@ -57,11 +58,17 @@ const HEBREW_TOKEN_TO_KEY: Record<string, string> = {
   'תב"ע': "parcel.taba",
   "תבע": "parcel.taba",
   "מספר חוזה מנהל": "parcel.minhalContract",
+  'מספר תב"ע חדשה': "parcel.newTaba",
   "סוג פרויקט": "project.type",
 };
 function normalizeHebrewToken(raw: string): string | undefined {
   const t = String(raw || "").trim().replace(/[״“”]/g, '"');
-  return HEBREW_TOKEN_TO_KEY[t];
+  if (HEBREW_TOKEN_TO_KEY[t]) return HEBREW_TOKEN_TO_KEY[t];
+  // Custom client fields: [label] → {{custom.<field_key>}}
+  const custom = getRegisteredCustomFields().find(
+    (f) => f.label.replace(/[״“”]/g, '"') === t,
+  );
+  return custom ? `custom.${custom.key}` : undefined;
 }
 
 const esc = (s: string) =>

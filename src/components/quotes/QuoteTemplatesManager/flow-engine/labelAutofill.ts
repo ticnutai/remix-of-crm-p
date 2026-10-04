@@ -3,6 +3,7 @@
 // כללי ומתמלא מחדש לכל לקוח (בעורך דרך decorations, ובתצוגה/PDF דרך ה-renderer).
 
 import type { FlowInline } from "./types";
+import { getRegisteredCustomFields } from "@/lib/customFieldRegistry";
 
 export interface AutofillEntry {
   /** הטקסט שמחפשים במסמך */
@@ -38,6 +39,7 @@ export const BUILTIN_AUTOFILL_ENTRIES: AutofillEntry[] = [
   { label: 'התב"ע החלה', key: "parcel.taba" },
   { label: 'תב"ע', key: "parcel.taba", requireMarker: true },
   { label: "מספר חוזה מנהל", key: "parcel.minhalContract" },
+  { label: 'מספר תב"ע חדשה', key: "parcel.newTaba" },
   { label: "משפחת", key: "customer.family" },
   { label: "משפחה", key: "customer.family", requireMarker: true },
   { label: "שם הלקוח", key: "customer.name" },
@@ -60,7 +62,17 @@ export function setCustomAutofillEntries(entries: AutofillEntry[]) {
 }
 
 export function getAutofillEntries(): AutofillEntry[] {
-  return [...BUILTIN_AUTOFILL_ENTRIES, ...customEntries];
+  // The app-wide registry covers renders outside FlowEditor (preview, export),
+  // where setCustomAutofillEntries was never called.
+  const registered = getRegisteredCustomFields()
+    .filter((f) => f.label.length >= 2)
+    .map((f) => ({ label: f.label, key: `custom.${f.key}` }));
+  const seen = new Set(customEntries.map((e) => e.key));
+  return [
+    ...BUILTIN_AUTOFILL_ENTRIES,
+    ...customEntries,
+    ...registered.filter((e) => !seen.has(e.key)),
+  ];
 }
 
 const QUOTE_CLASS = '["\u05F4\u201C\u201D]';

@@ -24,6 +24,7 @@ const FIELD_LABELS: Record<string, string> = {
   "parcel.moshav": "מושב",
   "parcel.taba": 'תב"ע',
   "parcel.minhalContract": "מספר חוזה מנהל",
+  "parcel.newTaba": 'מספר תב"ע חדשה',
   "project.type": "סוג פרויקט",
   "customer.idNumber": "ת.ז. לקוח",
   "plan.area": "שטח התכנית",

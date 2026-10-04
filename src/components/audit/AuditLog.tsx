@@ -1,6 +1,7 @@
 // לוג שינויים (Audit Log)
 // מעקב אחרי כל השינויים במערכת
 
+import { customDataValues, useRegisteredCustomFields } from "@/lib/customFieldRegistry";
 import React, { useState } from 'react';
 import { useSyncedSetting } from '@/hooks/useSyncedSetting';
 import { useQuery } from '@tanstack/react-query';
@@ -124,11 +125,13 @@ const FIELD_LABELS: Record<string, string> = {
   gush: 'גוש',
   helka: 'חלקה',
   migrash: 'מגרש',
-  taba: 'תב"א',
+  taba: 'תב"ע',
   minhal_contract_number: 'מספר חוזה מנהל',
+  new_taba_number: 'מספר תב"ע חדשה',
 };
 
 export function AuditLog() {
+  const customFields = useRegisteredCustomFields();
   const [entityFilter, setEntityFilter] = useSyncedSetting<string>({ key: 'audit-log-entity-filter', defaultValue: 'all' });
   const [actionFilter, setActionFilter] = useSyncedSetting<string>({ key: 'audit-log-action-filter', defaultValue: 'all' });
   const [searchQuery, setSearchQuery] = useState('');
@@ -181,11 +184,27 @@ export function AuditLog() {
 
   // פורמט שינויים
   const formatChanges = (changes: Record<string, { old: any; new: any }>) => {
-    return Object.entries(changes).map(([field, { old: oldVal, new: newVal }]) => ({
-      field: FIELD_LABELS[field] || field,
-      old: formatValue(oldVal),
-      new: formatValue(newVal),
-    }));
+    return Object.entries(changes).flatMap(([field, { old: oldVal, new: newVal }]) => {
+      // custom_data holds the user's own fields — show each changed field by
+      // its label instead of one raw JSON blob.
+      if (field === 'custom_data') {
+        const before = customDataValues(oldVal);
+        const after = customDataValues(newVal);
+        const labelByKey = new Map(customFields.map((f) => [f.key, f.label]));
+        return [...new Set([...Object.keys(before), ...Object.keys(after)])]
+          .filter((key) => before[key] !== after[key])
+          .map((key) => ({
+            field: labelByKey.get(key) || key,
+            old: formatValue(before[key]),
+            new: formatValue(after[key]),
+          }));
+      }
+      return [{
+        field: FIELD_LABELS[field] || field,
+        old: formatValue(oldVal),
+        new: formatValue(newVal),
+      }];
+    });
   };
 
   // פורמט ערך

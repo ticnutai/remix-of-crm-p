@@ -132,7 +132,10 @@ export interface QPDocMeta {
   migrash?: string;
   taba?: string; // תב"ע
   minhalContract?: string; // מספר חוזה מנהל — מסונכרן עם clients.minhal_contract_number
+  newTaba?: string; // מספר תב"ע חדשה — מסונכרן עם clients.new_taba_number
   issueDate?: string; // ISO
+  /** ערכי שדות לקוח מותאמים אישית (clients.custom_data) — {{label}} / {{custom.key}} */
+  customData?: Record<string, string>;
 }
 
 // ============================================================

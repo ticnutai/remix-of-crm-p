@@ -172,6 +172,17 @@ const DEFAULT_FIELDS: BuiltInField[] = [
     order: 25,
     protected: false,
   },
+  {
+    key: "newTaba",
+    label: 'מספר תב"ע חדשה',
+    section: "realestate",
+    sectionLabel: 'פרטי נדל"ן',
+    type: "text",
+    required: false,
+    visible: true,
+    order: 26,
+    protected: false,
+  },
   // ועד האגודה
   {
     key: "agudaAddress",

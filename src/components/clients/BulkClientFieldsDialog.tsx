@@ -37,6 +37,7 @@ const BUILT_IN_FIELDS: BulkField[] = [
   { key: "helka", column: "helka", label: "חלקה", section: "פרטי נדל״ן" },
   { key: "migrash", column: "migrash", label: "מגרש", section: "פרטי נדל״ן" },
   { key: "minhalContract", column: "minhal_contract_number", label: "מספר חוזה מנהל", section: "פרטי נדל״ן" },
+  { key: "newTaba", column: "new_taba_number", label: "מספר תב״ע חדשה", section: "פרטי נדל״ן" },
   { key: "agudaAddress", column: "aguda_address", label: "כתובת ועד האגודה", section: "ועד האגודה" },
   { key: "agudaEmail", column: "aguda_email", label: "מייל ועד האגודה", section: "ועד האגודה" },
   { key: "vaadMoshavAddress", column: "vaad_moshav_address", label: "כתובת ועד המושב", section: "ועד המושב" },

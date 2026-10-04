@@ -15,6 +15,7 @@ import { DesignModeProvider } from "@/components/design-mode/DesignModeProvider"
 import { DesignModeOverlay } from "@/components/design-mode/DesignModeOverlay";
 import { CloudSyncProvider } from "@/components/CloudSyncProvider";
 import { DataSyncInitializer } from "@/components/DataSyncInitializer";
+import { CustomFieldRegistryInitializer } from "@/components/CustomFieldRegistryInitializer";
 import { NetworkRecoveryInitializer } from "@/components/NetworkRecoveryInitializer";
 import { UnifiedDevTools } from "@/components/dev-tools/UnifiedDevTools";
 import { FullPageLoader } from "@/components/ui/loading";
@@ -171,6 +172,7 @@ const App = () => {
             <TooltipProvider>
               <AuthProvider>
                 <DataSyncInitializer />
+                <CustomFieldRegistryInitializer />
                 <NetworkRecoveryInitializer />
                 <CloudSyncProvider>
                   <TimerProvider>

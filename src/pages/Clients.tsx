@@ -85,7 +85,8 @@ import { ViewPresetsMenu, type ViewPresetState } from "@/components/clients/View
 import { BulkClientFieldsDialog } from "@/components/clients/BulkClientFieldsDialog";
 import {
   SmartSearchPopover,
-  SMART_SEARCH_FIELDS,
+  smartSearchValue,
+  useSmartSearchFields,
   type SmartSearchValues,
 } from "@/components/clients/SmartSearchPopover";
 
@@ -886,6 +887,7 @@ export default function Clients() {
     migrash: "",
     taba: "",
     minhalContract: "",
+    newTaba: "",
     street: "",
     moshav: "",
     agudaAddress: "",
@@ -1469,6 +1471,7 @@ export default function Clients() {
 
   // Memoized filtered clients for performance - replaces applyFilters + useEffect pattern
   // MUST be defined before useEffects that use it
+  const smartSearchFields = useSmartSearchFields();
   const filteredClients = useMemo(() => {
     let result = [...clients];
 
@@ -1483,7 +1486,7 @@ export default function Clients() {
           const match = token.match(/^([^:：]+)[:：](.+)$/);
           if (!match) return true;
           const rawKey = match[1].trim().toLowerCase();
-          const field = SMART_SEARCH_FIELDS.find((f) =>
+          const field = smartSearchFields.find((f) =>
             f.aliases.some((alias) => alias.toLowerCase() === rawKey),
           );
           if (!field) return true;
@@ -1501,7 +1504,7 @@ export default function Clients() {
           client.email,
           client.phone,
           client.company,
-          ...SMART_SEARCH_FIELDS.map((field) => record[field.key]),
+          ...smartSearchFields.map((field) => smartSearchValue(record, field.key)),
         ]
           .filter((value) => value !== null && value !== undefined && value !== "")
           .join(" ");
@@ -1522,7 +1525,7 @@ export default function Clients() {
       result = result.filter((client) => {
         const record = client as unknown as Record<string, unknown>;
         return fieldFilters.every(({ key, value }) =>
-          matchesQueryTokens(String(record[key] ?? ""), value),
+          matchesQueryTokens(smartSearchValue(record, key), value),
         );
       });
     }
@@ -1800,6 +1803,7 @@ export default function Clients() {
     clients,
     searchQuery,
     smartSearch,
+    smartSearchFields,
 
     filters,
     clientStageTasks,
@@ -3077,6 +3081,7 @@ export default function Clients() {
     migrash: newClientForm.migrash.trim() || null,
     taba: newClientForm.taba.trim() || null,
     minhal_contract_number: newClientForm.minhalContract.trim() || null,
+    new_taba_number: newClientForm.newTaba.trim() || null,
     street: newClientForm.street.trim() || null,
     moshav: newClientForm.moshav.trim() || null,
     aguda_address: newClientForm.agudaAddress.trim() || null,
@@ -3202,9 +3207,27 @@ export default function Clients() {
 
     setIsAddingClient(true);
     try {
+      // Merge custom_data into the existing client's: it also holds phone
+      // labels, the manual contract date and fields the new form did not fill.
+      const { data: existing } = await supabase
+        .from("clients")
+        .select("custom_data")
+        .eq("id", duplicateClient.id)
+        .maybeSingle();
+      const existingCustomData =
+        existing?.custom_data && typeof existing.custom_data === "object" && !Array.isArray(existing.custom_data)
+          ? (existing.custom_data as Record<string, unknown>)
+          : {};
+      const pendingCustomData =
+        (pendingClientData as any).custom_data && typeof (pendingClientData as any).custom_data === "object"
+          ? ((pendingClientData as any).custom_data as Record<string, unknown>)
+          : {};
       const { error } = await supabase
         .from("clients")
-        .update(pendingClientData)
+        .update({
+          ...pendingClientData,
+          custom_data: { ...existingCustomData, ...pendingCustomData },
+        } as any)
         .eq("id", duplicateClient.id);
 
       if (error) throw error;
@@ -3272,6 +3295,7 @@ export default function Clients() {
       migrash: "",
       taba: "",
       minhalContract: "",
+      newTaba: "",
       street: "",
       moshav: "",
       agudaAddress: "",
@@ -7275,6 +7299,7 @@ export default function Clients() {
             {(isVisible("idNumber") ||
               isVisible("taba") ||
               isVisible("minhalContract") ||
+              isVisible("newTaba") ||
               isVisible("gush") ||
               isVisible("helka") ||
               isVisible("migrash")) && (
@@ -7331,6 +7356,28 @@ export default function Clients() {
                           setNewClientForm((prev) => ({
                             ...prev,
                             minhalContract: e.target.value,
+                          }))
+                        }
+                        placeholder="מספרים, אותיות וסימנים"
+                        className="text-right"
+                      />
+                    </div>
+                  )}
+                  {isVisible("newTaba") && (
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="client-new-taba"
+                        className="text-right text-xs"
+                      >
+                        מספר תב"ע חדשה
+                      </Label>
+                      <Input
+                        id="client-new-taba"
+                        value={newClientForm.newTaba}
+                        onChange={(e) =>
+                          setNewClientForm((prev) => ({
+                            ...prev,
+                            newTaba: e.target.value,
                           }))
                         }
                         placeholder="מספרים, אותיות וסימנים"

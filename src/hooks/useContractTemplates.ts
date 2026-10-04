@@ -1,6 +1,7 @@
 // Hook לניהול תבניות חוזים
 // מערכת תבניות עם מילוי אוטומטי מנתוני לקוח
 
+import { customDataValues } from "@/lib/customFieldRegistry";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -75,6 +76,9 @@ export interface ClientData {
   migrash?: string | null;
   taba?: string | null;
   minhal_contract_number?: string | null;
+  new_taba_number?: string | null;
+  /** ערכי שדות מותאמים אישית — {{client.custom.<field_key>}} */
+  custom_data?: unknown;
 }
 
 // צד לחוזה (מזמין/ספק/ערב)
@@ -122,6 +126,7 @@ export const TEMPLATE_VARIABLES = {
   '{{client.migrash}}': 'מגרש',
   '{{client.taba}}': 'תב"ע',
   '{{client.minhal_contract_number}}': 'מספר חוזה מנהל',
+  '{{client.new_taba_number}}': 'מספר תב"ע חדשה',
   '{{client.block_info}}': 'גוש/חלקה/מגרש',
   
   // צדדים (מזמינים מרובים)
@@ -457,6 +462,11 @@ export function replaceTemplateVariables(
     result = result.replace(/\{\{client\.migrash\}\}/g, client.migrash || '');
     result = result.replace(/\{\{client\.taba\}\}/g, client.taba || '');
     result = result.replace(/\{\{client\.minhal_contract_number\}\}/g, client.minhal_contract_number || '');
+    result = result.replace(/\{\{client\.new_taba_number\}\}/g, client.new_taba_number || '');
+
+    // שדות מותאמים אישית שהמשתמש הוסיף: {{client.custom.<field_key>}}
+    const customValues = customDataValues(client.custom_data);
+    result = result.replace(/\{\{client\.custom\.([^}\s]+)\}\}/g, (_m, key: string) => customValues[key] || '');
     
     // מידע מאוחד על גוש/חלקה/מגרש
     const blockInfo = [client.gush, client.helka, client.migrash]

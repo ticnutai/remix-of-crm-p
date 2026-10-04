@@ -23,6 +23,7 @@ export const FLOW_DYNAMIC_FIELDS: DynamicFieldDefinition[] = [
   { key: "parcel.plot", label: "מגרש", group: "נכס" },
   { key: "parcel.taba", label: 'תב"ע', group: "נכס" },
   { key: "parcel.minhalContract", label: "מספר חוזה מנהל", group: "נכס" },
+  { key: "parcel.newTaba", label: 'מספר תב"ע חדשה', group: "נכס" },
   { key: "plan.area", label: "שטח התכנית", group: "נכס" },
   { key: "plan.authority", label: "תכנית בסמכות", group: "נכס" },
   { key: "quote.number", label: "מספר הצעה", group: "הצעה" },

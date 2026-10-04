@@ -8,6 +8,8 @@ import React, {
   createContext,
   useContext,
 } from "react";
+import { clientUpdatesFromQuote, quoteValuesFromClient } from "@/lib/clientSyncedFields";
+import { customDataValues, customFieldTokenMap } from "@/lib/customFieldRegistry";
 import { createPortal } from "react-dom";
 import { PreviewIframe, type InlineEditPayload } from "./PreviewIframe";
 import { FrameDesignPanel } from "./FrameDesignPanel";
@@ -567,6 +569,8 @@ interface ProjectDetails {
   taba: string;
   /** מספר חוזה מנהל — מסונכרן עם clients.minhal_contract_number */
   minhalContract?: string;
+  /** מספר תב"ע חדשה — מסונכרן עם clients.new_taba_number */
+  newTaba?: string;
   address: string;
   projectType: string;
   phone?: string;
@@ -618,27 +622,41 @@ function applyProjectDetailsTokens(content: string, pd: any): string {
     'תב"ע': pd?.taba || "",
     "תבע": pd?.taba || "",
     "מספר חוזה מנהל": pd?.minhalContract || "",
+    'מספר תב"ע חדשה': pd?.newTaba || "",
     "טלפון": pd?.phone || "",
   };
 
+  // Custom client fields (added by the user) resolve by their label. They are
+  // used for [label] and "label ____" only — never as a bare keyword, since a
+  // custom label can be an ordinary word.
+  const fullMap: Record<string, string> = { ...map };
+  for (const [label, value] of Object.entries(customFieldTokenMap(pd?.customData))) {
+    const normalizedLabel = normalizeQuoteChars(label);
+    if (!Object.prototype.hasOwnProperty.call(map, normalizedLabel)) fullMap[normalizedLabel] = value;
+  }
+
   // Helper: look up a captured keyword (which may contain gershayim/smart quotes) in map.
-  const lookup = (kw: string): string | undefined => {
-    if (Object.prototype.hasOwnProperty.call(map, kw)) return map[kw];
+  const lookupIn = (source: Record<string, string>, kw: string): string | undefined => {
+    if (Object.prototype.hasOwnProperty.call(source, kw)) return source[kw];
     const normalized = normalizeQuoteChars(kw);
-    if (Object.prototype.hasOwnProperty.call(map, normalized)) return map[normalized];
+    if (Object.prototype.hasOwnProperty.call(source, normalized)) return source[normalized];
     return undefined;
   };
+  const lookup = (kw: string): string | undefined => lookupIn(fullMap, kw);
 
   // Build regex pattern from map keys. Replace " in keys with a char-class that also
   // matches Hebrew gershayim (״) and smart quotes so תב״ע matches the תב"ע key.
-  const keys = Object.keys(map)
-    .sort((a, b) => b.length - a.length)
-    .map((k) =>
-      k
-        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-        .replace(/"/g, '["\\u05F4\\u201C\\u201D]'),   // match any quote variant
-    )
-    .join("|");
+  const toPattern = (source: Record<string, string>) =>
+    Object.keys(source)
+      .sort((a, b) => b.length - a.length)
+      .map((k) =>
+        k
+          .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+          .replace(/"/g, '["\\u05F4\\u201C\\u201D]'),   // match any quote variant
+      )
+      .join("|");
+  const keys = toPattern(map);
+  const allKeys = toPattern(fullMap);
 
   // 1) Bracket tokens: [גוש] / [תב"ע] / [תב״ע] -> value (or empty)
   let out = content.replace(/\[([^\]\n]+)\]/g, (full, raw) => {
@@ -648,7 +666,7 @@ function applyProjectDetailsTokens(content: string, pd: any): string {
   });
 
   // 2) Bareword pattern: "גוש ____" / "חלקה: ___" / "משפחת______"
-  const barewordRe = new RegExp(`(${keys})(\\s*:?\\s*)_{2,}`, "g");
+  const barewordRe = new RegExp(`(${allKeys})(\\s*:?\\s*)_{2,}`, "g");
   out = out.replace(barewordRe, (_full, kw, sep) => {
     const v = lookup(kw) ?? "";
     const cleanSep = sep && sep.includes(":") ? ": " : " ";
@@ -666,7 +684,7 @@ function applyProjectDetailsTokens(content: string, pd: any): string {
     "g",
   );
   out = out.replace(bareRe, (_full, kw) => {
-    const v = lookup(kw);
+    const v = lookupIn(map, kw);
     return v ? `${kw} ${v}` : _full;
   });
 
@@ -1286,16 +1304,17 @@ function ProjectDetailsEditor({
         helka: client.helka || "",
         migrash: client.migrash || "",
         taba: client.taba || "",
-        minhalContract: client.minhal_contract_number || "",
+        ...quoteValuesFromClient(client),
         address: client.address || "",
         projectType: details.projectType || "",
         phone: client.phone || details.phone,
         email: client.email || "",
+        // A different client starts from its own values — the previous
+        // client's custom values must not carry over. Re-picking the same
+        // client keeps what was typed for fields the client has no value for.
         customData: {
-          ...(details.customData || {}),
-          ...((client.custom_data && typeof client.custom_data === "object")
-            ? (client.custom_data as Record<string, string>)
-            : {}),
+          ...(client.id === details.clientId ? details.customData || {} : {}),
+          ...customDataValues(client.custom_data),
         },
       } as any);
       setShowClientDropdown(false);
@@ -1359,6 +1378,7 @@ function ProjectDetailsEditor({
     { key: "migrash", label: "מגרש", icon: MapPin },
     { key: "taba", label: 'תב"ע', icon: FileText },
     { key: "minhalContract", label: "מספר חוזה מנהל", icon: FileText },
+    { key: "newTaba", label: 'מספר תב"ע חדשה', icon: FileText },
     { key: "address", label: "כתובת/ישוב", icon: MapPin },
     { key: "projectType", label: "סוג הפרויקט", icon: FileText },
     { key: "planArea", label: "שטח התכנית", icon: MapPin },
@@ -1391,6 +1411,7 @@ function ProjectDetailsEditor({
               migrash: "",
               taba: "",
               minhalContract: "",
+              newTaba: "",
               moshav: "",
               family: "",
               idNumber: "",
@@ -5697,6 +5718,7 @@ export function HtmlTemplateEditor({
         migrash: saved.migrash || "",
         taba: saved.taba || "",
         minhalContract: saved.minhalContract || "",
+        newTaba: saved.newTaba || "",
         address: saved.address || "",
         projectType: saved.projectType || "",
         phone: saved.phone || "",
@@ -6409,7 +6431,7 @@ export function HtmlTemplateEditor({
         while (true) {
           const { data, error } = await supabase
             .from("clients")
-            .select("id, name, email, phone, gush, helka, migrash, taba, minhal_contract_number, address, source, notes, custom_data, id_number")
+            .select("id, name, email, phone, gush, helka, migrash, taba, minhal_contract_number, new_taba_number, address, source, notes, custom_data, id_number")
             .order("name")
             .range(from, from + pageSize - 1);
 
@@ -6448,6 +6470,7 @@ export function HtmlTemplateEditor({
         migrash: c.migrash || null,
         taba: c.taba || null,
         minhal_contract_number: c.minhal_contract_number || null,
+        new_taba_number: c.new_taba_number || null,
         address: c.address || null,
         source: c.source || null,
         notes: c.notes || null,
@@ -6593,6 +6616,7 @@ export function HtmlTemplateEditor({
         migrash: pd.migrash || "",
         taba: pd.taba || "",
         minhalContract: pd.minhalContract || "",
+        newTaba: pd.newTaba || "",
         address: pd.address || "",
         projectType: pd.projectType || "",
         phone: pd.phone || "",
@@ -6650,7 +6674,7 @@ export function HtmlTemplateEditor({
                 helka: resolvedProjectDetails.helka || null,
                 migrash: resolvedProjectDetails.migrash || null,
                 taba: resolvedProjectDetails.taba || null,
-                minhal_contract_number: resolvedProjectDetails.minhalContract || null,
+                ...clientUpdatesFromQuote(resolvedProjectDetails),
                 address: resolvedProjectDetails.address || null,
                 phone: resolvedProjectDetails.phone || null,
                 email: resolvedProjectDetails.email || null,
@@ -6697,17 +6721,17 @@ export function HtmlTemplateEditor({
         console.warn("Could not auto-link client on save:", linkErr);
       }
 
-      // מספר חוזה מנהל edited in the quote belongs to the linked client too.
-      // Only a non-empty value is written, so an older quote without the field
-      // never clears the client's number.
-      const quoteMinhalContract = String(resolvedProjectDetails.minhalContract || "").trim();
-      if (resolvedProjectDetails.clientId && quoteMinhalContract) {
-        const { error: minhalSyncError } = await (supabase as any)
+      // Synced client fields (מספר חוזה מנהל, מספר תב"ע חדשה…) edited in the
+      // quote belong to the linked client too. Only non-empty values are
+      // written, so an older quote without a field never clears the client's value.
+      const quoteClientUpdates = clientUpdatesFromQuote(resolvedProjectDetails);
+      if (resolvedProjectDetails.clientId && Object.keys(quoteClientUpdates).length > 0) {
+        const { error: syncedFieldsError } = await (supabase as any)
           .from("clients")
-          .update({ minhal_contract_number: quoteMinhalContract })
+          .update(quoteClientUpdates)
           .eq("id", resolvedProjectDetails.clientId);
-        if (minhalSyncError) {
-          console.warn("Could not sync minhal contract number to client:", minhalSyncError);
+        if (syncedFieldsError) {
+          console.warn("Could not sync quote fields to client:", syncedFieldsError);
         }
       }
 
@@ -6959,6 +6983,7 @@ export function HtmlTemplateEditor({
         migrash: "",
         taba: "",
         minhalContract: "",
+        newTaba: "",
         projectName: "",
         idNumber: "",
         family: "",
@@ -7590,6 +7615,7 @@ export function HtmlTemplateEditor({
           ${projectDetails.migrash ? `<tr><td>מגרש</td><td>${projectDetails.migrash}</td></tr>` : ""}
           ${projectDetails.taba ? `<tr><td>תב"ע</td><td>${projectDetails.taba}</td></tr>` : ""}
           ${projectDetails.minhalContract ? `<tr><td>מספר חוזה מנהל</td><td>${projectDetails.minhalContract}</td></tr>` : ""}
+          ${projectDetails.newTaba ? `<tr><td>מספר תב"ע חדשה</td><td>${projectDetails.newTaba}</td></tr>` : ""}
           ${projectDetails.projectType ? `<tr><td>סוג פרויקט</td><td>${projectDetails.projectType}</td></tr>` : ""}
         </table>
       </div>`
@@ -9451,7 +9477,7 @@ ${tbAt('footer')}
           helka: projectDetails.helka || null,
           migrash: projectDetails.migrash || null,
           taba: projectDetails.taba || null,
-          minhal_contract_number: projectDetails.minhalContract || null,
+          ...clientUpdatesFromQuote(projectDetails),
           address: projectDetails.address || null,
           phone: (projectDetails as any).phone || null,
           email: (projectDetails as any).email || null,
@@ -9486,14 +9512,14 @@ ${tbAt('footer')}
       const result = data as AtomicQuoteClientResult;
       if (!result?.client_id) throw new Error("INVALID_ATOMIC_CREATION_RESULT");
 
-      // The atomic RPC predates this column — write it directly.
-      const minhalContract = projectDetails.minhalContract?.trim();
-      if (minhalContract) {
-        const { error: minhalError } = await (supabase as any)
+      // The atomic RPC predates these columns — write them directly.
+      const syncedClientUpdates = clientUpdatesFromQuote(projectDetails);
+      if (Object.keys(syncedClientUpdates).length > 0) {
+        const { error: syncedFieldsError } = await (supabase as any)
           .from("clients")
-          .update({ minhal_contract_number: minhalContract })
+          .update(syncedClientUpdates)
           .eq("id", result.client_id);
-        if (minhalError) throw minhalError;
+        if (syncedFieldsError) throw syncedFieldsError;
       }
 
       // The atomic RPC predates custom client fields. Keep those values in sync
@@ -16293,6 +16319,7 @@ ${tbAt('footer')}
                     {projectDetails.migrash && <li>📍 מגרש: {projectDetails.migrash}</li>}
                     {projectDetails.taba && <li>📄 תב"ע: {projectDetails.taba}</li>}
                     {projectDetails.minhalContract && <li>📄 מספר חוזה מנהל: {projectDetails.minhalContract}</li>}
+                    {projectDetails.newTaba && <li>📄 מספר תב"ע חדשה: {projectDetails.newTaba}</li>}
                     {projectDetails.address && <li>🏠 כתובת: {projectDetails.address}</li>}
                     {projectDetails.projectType && <li>🏗️ סוג: {projectDetails.projectType}</li>}
                   </ul>

@@ -923,6 +923,7 @@ export default function ClientProfile() {
     migrash: "",
     taba: "",
     minhal_contract_number: "",
+    new_taba_number: "",
     contract_signed_date_manual: "",
   });
   const [editPhoneLabels, setEditPhoneLabels] = useState<{
@@ -1091,6 +1092,7 @@ export default function ClientProfile() {
         migrash: client.migrash || "",
         taba: client.taba || "",
         minhal_contract_number: (client as any).minhal_contract_number || "",
+        new_taba_number: (client as any).new_taba_number || "",
         contract_signed_date_manual: normalizeDateInput(
           ((client as any)?.custom_data as Record<string, any> | undefined)?.[
             MANUAL_CONTRACT_SIGNED_DATE_KEY
@@ -1143,8 +1145,13 @@ export default function ClientProfile() {
         ? { ...((client as any).custom_data as Record<string, any>) }
         : {};
 
+    // Clear only fields the form actually loaded: a field whose definition
+    // arrived after the dialog opened was never shown, so its stored value
+    // must stay rather than be wiped.
     for (const def of customFieldDefs) {
-      delete existingCustomData[def.field_key];
+      if (Object.prototype.hasOwnProperty.call(editCustomFieldValues, def.field_key)) {
+        delete existingCustomData[def.field_key];
+      }
     }
     delete existingCustomData[MANUAL_CONTRACT_SIGNED_DATE_KEY];
     delete existingCustomData[PHONE_LABELS_CUSTOM_DATA_KEY];
@@ -3927,6 +3934,7 @@ export default function ClientProfile() {
               {(fieldConfig.isVisible("idNumber") ||
                 fieldConfig.isVisible("taba") ||
                 fieldConfig.isVisible("minhalContract") ||
+                fieldConfig.isVisible("newTaba") ||
                 fieldConfig.isVisible("gush") ||
                 fieldConfig.isVisible("helka") ||
                 fieldConfig.isVisible("migrash")) && (
@@ -3974,6 +3982,21 @@ export default function ClientProfile() {
                             setEditForm((prev) => ({
                               ...prev,
                               minhal_contract_number: e.target.value,
+                            }))
+                          }
+                          placeholder="מספרים, אותיות וסימנים"
+                        />
+                      </div>
+                    )}
+                    {fieldConfig.isVisible("newTaba") && (
+                      <div className="space-y-2">
+                        <Label>מספר תב"ע חדשה</Label>
+                        <Input
+                          value={editForm.new_taba_number}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              new_taba_number: e.target.value,
                             }))
                           }
                           placeholder="מספרים, אותיות וסימנים"

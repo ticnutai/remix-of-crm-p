@@ -2,6 +2,8 @@
 // של HtmlTemplateEditor. מטרה: לאפשר ל-Flow לקבל את אותם נתוני הלקוח/הפרויקט
 // שהוטמעו במערכת התבניות הישנה, כדי שהשם, הגוש, החלקה וכו' יופיעו בעורך.
 
+import { customFieldTokenMap } from "@/lib/customFieldRegistry";
+
 export interface ProjectTokenData {
   clientId?: string;
   clientName?: string;
@@ -11,6 +13,8 @@ export interface ProjectTokenData {
   taba?: string;
   /** מספר חוזה מנהל (clients.minhal_contract_number) */
   minhalContract?: string;
+  /** מספר תב"ע חדשה (clients.new_taba_number) */
+  newTaba?: string;
   moshav?: string;
   family?: string;
   address?: string;
@@ -73,35 +77,46 @@ function buildMap(pd: ProjectTokenData): Record<string, string> {
     'תב"ע': pd.taba || "",
     "תבע": pd.taba || "",
     "מספר חוזה מנהל": pd.minhalContract || "",
+    'מספר תב"ע חדשה': pd.newTaba || "",
     "טלפון": pd.phone || "",
   };
 }
 
-/** Replaces [גוש], "גוש ____", and bare "גוש" forms — same as legacy editor. */
+/** Replaces [גוש], "גוש ____", and bare "גוש" forms — same as legacy editor.
+ *  Custom client fields resolve by label in [label] and "label ____" only. */
 export function applyProjectTokens(content: string, pd?: ProjectTokenData): string {
   if (!content || !pd) return content;
   const map = buildMap(pd);
-  const lookup = (kw: string): string | undefined => {
-    if (Object.prototype.hasOwnProperty.call(map, kw)) return map[kw];
+  const fullMap: Record<string, string> = { ...map };
+  for (const [label, value] of Object.entries(customFieldTokenMap(pd.customData))) {
+    const n = normalizeQuote(label);
+    if (!Object.prototype.hasOwnProperty.call(map, n)) fullMap[n] = value;
+  }
+  const lookupIn = (source: Record<string, string>, kw: string): string | undefined => {
+    if (Object.prototype.hasOwnProperty.call(source, kw)) return source[kw];
     const n = normalizeQuote(kw);
-    if (Object.prototype.hasOwnProperty.call(map, n)) return map[n];
+    if (Object.prototype.hasOwnProperty.call(source, n)) return source[n];
     return undefined;
   };
-  const keys = Object.keys(map)
-    .sort((a, b) => b.length - a.length)
-    .map((k) =>
-      k
-        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-        .replace(/"/g, '["\\u05F4\\u201C\\u201D]'),
-    )
-    .join("|");
+  const lookup = (kw: string) => lookupIn(fullMap, kw);
+  const toPattern = (source: Record<string, string>) =>
+    Object.keys(source)
+      .sort((a, b) => b.length - a.length)
+      .map((k) =>
+        k
+          .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+          .replace(/"/g, '["\\u05F4\\u201C\\u201D]'),
+      )
+      .join("|");
+  const keys = toPattern(map);
+  const allKeys = toPattern(fullMap);
 
   let out = content.replace(/\[([^\]\n]+)\]/g, (full, raw) => {
     const v = lookup(String(raw).trim());
     return v !== undefined ? v : full;
   });
 
-  const bareUnder = new RegExp(`(${keys})(\\s*:?\\s*)_{2,}`, "g");
+  const bareUnder = new RegExp(`(${allKeys})(\\s*:?\\s*)_{2,}`, "g");
   out = out.replace(bareUnder, (_f, kw, sep) => {
     const v = lookup(kw) ?? "";
     const cleanSep = sep && sep.includes(":") ? ": " : " ";
@@ -113,7 +128,7 @@ export function applyProjectTokens(content: string, pd?: ProjectTokenData): stri
     "g",
   );
   out = out.replace(bare, (_f, kw) => {
-    const v = lookup(kw);
+    const v = lookupIn(map, kw);
     return v ? `${kw} ${v}` : _f;
   });
 
@@ -133,6 +148,7 @@ export function projectToMergeData(pd?: ProjectTokenData): Record<string, string
     "parcel.plot": pd.migrash || "",
     "parcel.taba": pd.taba || "",
     "parcel.minhalContract": pd.minhalContract || "",
+    "parcel.newTaba": pd.newTaba || "",
     "parcel.moshav": pd.moshav || "",
     "project.type": pd.projectType || "",
     "customer.idNumber": pd.idNumber || "",

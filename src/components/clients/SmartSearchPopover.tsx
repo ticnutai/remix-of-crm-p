@@ -5,6 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { SlidersHorizontal, X } from "lucide-react";
 import { FloatingDialog } from "@/components/ui/FloatingDialog";
+import {
+  customDataValues,
+  useRegisteredCustomFields,
+  type RegisteredCustomField,
+} from "@/lib/customFieldRegistry";
 
 /** Smart search fields — key must match the clients table column name. */
 export const SMART_SEARCH_FIELDS = [
@@ -12,7 +17,8 @@ export const SMART_SEARCH_FIELDS = [
   { key: "helka", label: "חלקה", aliases: ["חלקה", "helka"] },
   { key: "migrash", label: "מגרש", aliases: ["מגרש", "migrash"] },
   { key: "taba", label: 'תב"ע', aliases: ["תבע", 'תב"ע', "taba"] },
-  { key: "minhal_contract_number", label: "מספר חוזה מנהל", aliases: ["חוזה מנהל", "חוזה", "מנהל"] },
+  { key: "minhal_contract_number", label: "מספר חוזה מנהל", aliases: ["חוזהמנהל", "חוזה", "מנהל"] },
+  { key: "new_taba_number", label: 'מספר תב"ע חדשה', aliases: ["תבעחדשה", 'תב"עחדשה', "חדשה"] },
   { key: "id_number", label: "ת.ז / ח.פ", aliases: ["תז", "ת.ז", "id"] },
   { key: "street", label: "רחוב", aliases: ["רחוב", "street"] },
   { key: "moshav", label: "מושב / עיר", aliases: ["מושב", "עיר", "moshav"] },
@@ -24,6 +30,45 @@ export const SMART_SEARCH_FIELDS = [
 
 export type SmartSearchValues = Partial<Record<string, string>>;
 
+export interface SmartSearchField {
+  key: string;
+  label: string;
+  aliases: readonly string[];
+}
+
+/** Custom client fields are searched under the key "custom:<field_key>". */
+const CUSTOM_KEY_PREFIX = "custom:";
+
+/** Built-in fields + every custom field the user added (live). */
+export function buildSmartSearchFields(
+  customFields: RegisteredCustomField[],
+): SmartSearchField[] {
+  return [
+    ...SMART_SEARCH_FIELDS,
+    ...customFields.map((f) => ({
+      key: `${CUSTOM_KEY_PREFIX}${f.key}`,
+      label: f.label,
+      // Inline "label:value" — the search box splits on spaces, so the alias
+      // is the label without spaces or quote marks.
+      aliases: [f.label.replace(/[\s"״'׳]/g, "")],
+    })),
+  ];
+}
+
+export function useSmartSearchFields(): SmartSearchField[] {
+  const customFields = useRegisteredCustomFields();
+  return useMemo(() => buildSmartSearchFields(customFields), [customFields]);
+}
+
+/** Value of a search field on a client row (top-level column or custom_data). */
+export function smartSearchValue(record: Record<string, unknown>, key: string): string {
+  if (key.startsWith(CUSTOM_KEY_PREFIX)) {
+    return customDataValues(record.custom_data)[key.slice(CUSTOM_KEY_PREFIX.length)] || "";
+  }
+  const value = record[key];
+  return value === null || value === undefined ? "" : String(value);
+}
+
 interface SmartSearchPopoverProps {
   values: SmartSearchValues;
   onChange: (values: SmartSearchValues) => void;
@@ -31,6 +76,7 @@ interface SmartSearchPopoverProps {
 
 export function SmartSearchPopover({ values, onChange }: SmartSearchPopoverProps) {
   const [open, setOpen] = useState(false);
+  const fields = useSmartSearchFields();
   const activeCount = useMemo(
     () => Object.values(values).filter((v) => (v || "").trim() !== "").length,
     [values],
@@ -92,7 +138,7 @@ export function SmartSearchPopover({ values, onChange }: SmartSearchPopoverProps
         }
       >
         <div className="grid grid-cols-2 gap-3">
-          {SMART_SEARCH_FIELDS.map((field) => (
+          {fields.map((field) => (
             <div key={field.key} className="space-y-1">
               <Label className="text-[11px] text-muted-foreground">
                 {field.label}

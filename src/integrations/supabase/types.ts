@@ -3234,6 +3234,7 @@ export type Database = {
           linkedin: string | null
           migrash: string | null
           minhal_contract_number: string | null
+          new_taba_number: string | null
           moshav: string | null
           name: string
           name_clean: string | null
@@ -3279,6 +3280,7 @@ export type Database = {
           linkedin?: string | null
           migrash?: string | null
           minhal_contract_number?: string | null
+          new_taba_number?: string | null
           moshav?: string | null
           name: string
           name_clean?: string | null
@@ -3324,6 +3326,7 @@ export type Database = {
           linkedin?: string | null
           migrash?: string | null
           minhal_contract_number?: string | null
+          new_taba_number?: string | null
           moshav?: string | null
           name?: string
           name_clean?: string | null

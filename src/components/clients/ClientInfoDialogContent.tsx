@@ -271,9 +271,10 @@ export function ClientInfoDialogContent({
     { key: "budget_range", label: "טווח תקציב", filled: !!client.budget_range },
     { key: "gush", label: "גוש", filled: !!client.gush },
     { key: "helka", label: "חלקה", filled: !!client.helka },
-    { key: "taba", label: 'תב"א', filled: !!client.taba },
+    { key: "taba", label: 'תב"ע', filled: !!client.taba },
     { key: "migrash", label: "מגרש", filled: !!client.migrash },
     { key: "minhal_contract_number", label: "מספר חוזה מנהל", filled: !!client.minhal_contract_number },
+    { key: "new_taba_number", label: 'מספר תב"ע חדשה', filled: !!client.new_taba_number },
     { key: "notes", label: "הערות", filled: !!client.notes },
   ];
   const filledCount = allFields.filter((f) => f.filled).length;
@@ -286,17 +287,25 @@ export function ClientInfoDialogContent({
     setEditValue(currentValue || "");
   };
 
+  /** A copy of the client's full custom_data — not only the defined fields. */
+  const rawCustomData = (): Record<string, unknown> => {
+    const raw = (client as any).custom_data;
+    return raw && typeof raw === "object" && !Array.isArray(raw) ? { ...raw } : {};
+  };
+
   const saveEdit = async () => {
     if (!editingField) return;
 
     // Check if it's a custom field
-    const customData = parseCustomData((client as any).custom_data);
     const isCustom = customFieldDefs.some((d) => d.field_key === editingField);
 
     if (isCustom) {
-      const updatedCustom = { ...customData, [editingField]: editValue };
-      const built = buildCustomData(updatedCustom);
-      await updateClient({ custom_data: built } as any);
+      // Change only this key — custom_data also holds phone labels, the manual
+      // contract-signed date and other fields that must survive the save.
+      const nextCustomData = rawCustomData();
+      if (editValue.trim()) nextCustomData[editingField] = editValue;
+      else delete nextCustomData[editingField];
+      await updateClient({ custom_data: nextCustomData } as any);
     } else {
       await updateClient({ [editingField]: editValue || null } as any);
     }
@@ -319,11 +328,10 @@ export function ClientInfoDialogContent({
       const def = customFieldDefs.find((d) => d.field_key === fieldKey);
       if (def) {
         await deleteCustomField(def.id);
-        // Also remove from client custom_data
-        const customData = parseCustomData((client as any).custom_data);
-        delete customData[fieldKey];
-        const built = buildCustomData(customData);
-        await updateClient({ custom_data: built } as any);
+        // Also remove from client custom_data (keep every other key)
+        const nextCustomData = rawCustomData();
+        delete nextCustomData[fieldKey];
+        await updateClient({ custom_data: nextCustomData } as any);
       }
     } else {
       await updateClient({ [fieldKey]: null } as any);
@@ -660,13 +668,16 @@ export function ClientInfoDialogContent({
                   <FieldCard icon={Hash} label="חלקה" value={client.helka} fieldKey="helka" mono onEdit={() => startEdit("helka", client.helka || "")} onDelete={() => handleDeleteField("helka")} isEditing={editingField === "helka"} editValue={editValue} onEditChange={setEditValue} onEditSave={saveEdit} onEditCancel={cancelEdit} />
                 )}
                 {client.taba && (
-                  <FieldCard icon={Hash} label='תב"א' value={client.taba} fieldKey="taba" mono onEdit={() => startEdit("taba", client.taba || "")} onDelete={() => handleDeleteField("taba")} isEditing={editingField === "taba"} editValue={editValue} onEditChange={setEditValue} onEditSave={saveEdit} onEditCancel={cancelEdit} />
+                  <FieldCard icon={Hash} label='תב"ע' value={client.taba} fieldKey="taba" mono onEdit={() => startEdit("taba", client.taba || "")} onDelete={() => handleDeleteField("taba")} isEditing={editingField === "taba"} editValue={editValue} onEditChange={setEditValue} onEditSave={saveEdit} onEditCancel={cancelEdit} />
                 )}
                 {client.migrash && (
                   <FieldCard icon={Hash} label="מגרש" value={client.migrash} fieldKey="migrash" mono onEdit={() => startEdit("migrash", client.migrash || "")} onDelete={() => handleDeleteField("migrash")} isEditing={editingField === "migrash"} editValue={editValue} onEditChange={setEditValue} onEditSave={saveEdit} onEditCancel={cancelEdit} />
                 )}
                 {client.minhal_contract_number && (
                   <FieldCard icon={Hash} label="מספר חוזה מנהל" value={client.minhal_contract_number} fieldKey="minhal_contract_number" mono onEdit={() => startEdit("minhal_contract_number", client.minhal_contract_number || "")} onDelete={() => handleDeleteField("minhal_contract_number")} isEditing={editingField === "minhal_contract_number"} editValue={editValue} onEditChange={setEditValue} onEditSave={saveEdit} onEditCancel={cancelEdit} />
+                )}
+                {client.new_taba_number && (
+                  <FieldCard icon={Hash} label='מספר תב"ע חדשה' value={client.new_taba_number} fieldKey="new_taba_number" mono onEdit={() => startEdit("new_taba_number", client.new_taba_number || "")} onDelete={() => handleDeleteField("new_taba_number")} isEditing={editingField === "new_taba_number"} editValue={editValue} onEditChange={setEditValue} onEditSave={saveEdit} onEditCancel={cancelEdit} />
                 )}
               </div>
             </div>
