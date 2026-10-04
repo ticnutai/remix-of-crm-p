@@ -48,7 +48,9 @@ export interface NewFieldDefinition {
 
 /**
  * Hook for managing client custom field definitions and values.
- * Field definitions are per-user, field values are stored in clients.custom_data.
+ * Field definitions are shared by the whole team (user_id = creator); renaming
+ * or deleting is limited to the creator or an admin by RLS. Values are stored
+ * in clients.custom_data.
  */
 export function useClientCustomFields(options: { enabled?: boolean } = {}) {
   const { enabled = true } = options;
@@ -89,18 +91,33 @@ export function useClientCustomFields(options: { enabled?: boolean } = {}) {
 
     setIsLoading(true);
     try {
+      // Fields are shared by the whole team (any user may have created them).
       const { data, error } = await customFieldsTable()
         .select("*")
-        .eq("user_id", userId)
-        .order("sort_order", { ascending: true });
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
 
       if (error) throw error;
 
+      // Two users may have created the same field before fields were shared.
+      // Values live in clients.custom_data under field_key, so one definition
+      // per key is enough — keep the oldest.
+      const byKey = new Map<string, CustomFieldDefinition>();
+      for (const d of (data || []) as any[]) {
+        const existing = byKey.get(d.field_key);
+        if (!existing || String(d.created_at) < String(existing.created_at)) {
+          byKey.set(d.field_key, {
+            ...d,
+            options: Array.isArray(d.options) ? d.options : [],
+          });
+        }
+      }
       setDefinitions(
-        (data || []).map((d: any) => ({
-          ...d,
-          options: Array.isArray(d.options) ? d.options : [],
-        })),
+        [...byKey.values()].sort(
+          (a, b) =>
+            a.sort_order - b.sort_order ||
+            String(a.created_at).localeCompare(String(b.created_at)),
+        ),
       );
     } catch (err) {
       console.error("Error fetching custom field definitions:", err);
@@ -161,8 +178,8 @@ export function useClientCustomFields(options: { enabled?: boolean } = {}) {
       try {
         const { data: dupCheck } = await customFieldsTable()
           .select("id")
-          .eq("user_id", userId)
           .eq("field_key", field_key)
+          .limit(1)
           .maybeSingle();
 
         if (dupCheck) {
@@ -247,12 +264,20 @@ export function useClientCustomFields(options: { enabled?: boolean } = {}) {
           userId = sessionData?.session?.user?.id;
         }
         if (!userId) throw new Error("No authenticated user");
-        const { error } = await customFieldsTable()
+        const { data: updatedRows, error } = await customFieldsTable()
           .update({ ...updates, updated_at: new Date().toISOString() })
           .eq("id", fieldId)
-          .eq("user_id", userId);
+          .select("id");
 
         if (error) throw error;
+        if (!updatedRows || updatedRows.length === 0) {
+          toast({
+            title: "אין הרשאה",
+            description: "רק מי שיצר את השדה או מנהל יכולים לשנות אותו",
+            variant: "destructive",
+          });
+          return false;
+        }
 
         setDefinitions((prev) =>
           prev.map((d) => (d.id === fieldId ? { ...d, ...updates } : d)),
@@ -281,12 +306,20 @@ export function useClientCustomFields(options: { enabled?: boolean } = {}) {
         userId = sessionData?.session?.user?.id;
       }
       if (!userId) throw new Error("No authenticated user");
-      const { error } = await customFieldsTable()
+      const { data: deletedRows, error } = await customFieldsTable()
         .delete()
         .eq("id", fieldId)
-        .eq("user_id", userId);
+        .select("id");
 
       if (error) throw error;
+      if (!deletedRows || deletedRows.length === 0) {
+        toast({
+          title: "אין הרשאה",
+          description: "רק מי שיצר את השדה או מנהל יכולים למחוק אותו",
+          variant: "destructive",
+        });
+        return false;
+      }
 
       setDefinitions((prev) => prev.filter((d) => d.id !== fieldId));
       notifyCustomFieldsChanged();
