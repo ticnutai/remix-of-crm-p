@@ -161,6 +161,17 @@ const DEFAULT_FIELDS: BuiltInField[] = [
     order: 24,
     protected: false,
   },
+  {
+    key: "minhalContract",
+    label: "מספר חוזה מנהל",
+    section: "realestate",
+    sectionLabel: 'פרטי נדל"ן',
+    type: "text",
+    required: false,
+    visible: true,
+    order: 25,
+    protected: false,
+  },
   // ועד האגודה
   {
     key: "agudaAddress",

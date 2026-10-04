@@ -50,6 +50,7 @@ export interface ClientDetails {
   helka: string | null;
   migrash: string | null;
   taba: string | null;
+  minhal_contract_number: string | null;
   user_id: string | null;
   created_at: string;
   updated_at: string;
@@ -257,6 +258,7 @@ export function useClientData(clientId: string | undefined) {
       helka: data.helka ?? null,
       migrash: data.migrash ?? null,
       taba: data.taba ?? null,
+      minhal_contract_number: (data as any).minhal_contract_number ?? null,
     };
     setClient(clientData);
   }, [clientId]);

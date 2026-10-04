@@ -76,7 +76,7 @@ interface ContractFormProps {
 }
 
 export function ContractForm({ open, onOpenChange, onSubmit, initialData, quoteData, isLoading }: ContractFormProps) {
-  const [clients, setClients] = useState<{ id: string; name: string; email?: string; phone?: string; address?: string; company?: string; id_number?: string; gush?: string; helka?: string; migrash?: string; taba?: string }[]>([]);
+  const [clients, setClients] = useState<{ id: string; name: string; email?: string; phone?: string; address?: string; company?: string; id_number?: string; gush?: string; helka?: string; migrash?: string; taba?: string; minhal_contract_number?: string }[]>([]);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [templatesManagerOpen, setTemplatesManagerOpen] = useState(false);
@@ -114,7 +114,7 @@ export function ContractForm({ open, onOpenChange, onSubmit, initialData, quoteD
   useEffect(() => {
     const fetchData = async () => {
       const [clientsRes, projectsRes] = await Promise.all([
-        supabase.from('clients').select('id, name, email, phone, address, company, id_number, gush, helka, migrash, taba').order('name'),
+        supabase.from('clients').select('id, name, email, phone, address, company, id_number, gush, helka, migrash, taba, minhal_contract_number').order('name'),
         supabase.from('projects').select('id, name').order('name'),
       ]);
       

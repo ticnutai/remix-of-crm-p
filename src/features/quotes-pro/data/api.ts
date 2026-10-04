@@ -86,6 +86,17 @@ export async function getDocument(id: string): Promise<QPDocument | null> {
   return data ? normalizeDocument(data) : null;
 }
 
+/** מספר חוזה מנהל entered in a quote belongs to the linked client too. */
+async function syncMinhalContractToClient(meta?: Partial<QPDocument["meta"]>) {
+  const value = meta?.minhalContract?.trim();
+  if (!meta?.clientId || !value) return;
+  const { error } = await db()
+    .from("clients")
+    .update({ minhal_contract_number: value })
+    .eq("id", meta.clientId);
+  if (error) console.warn("Could not sync minhal contract number to client:", error);
+}
+
 export async function createDocument(
   doc: Partial<QPDocument>,
 ): Promise<QPDocument> {
@@ -95,6 +106,7 @@ export async function createDocument(
     .select("*")
     .single();
   if (error) throw error;
+  await syncMinhalContractToClient(doc.meta);
   return normalizeDocument(data);
 }
 
@@ -107,6 +119,7 @@ export async function updateDocument(
     .update({ ...toPayload(doc), updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw error;
+  await syncMinhalContractToClient(doc.meta);
 }
 
 export async function deleteDocument(id: string): Promise<void> {

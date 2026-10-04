@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { ClientCombobox } from "@/components/quotes/QuoteDocumentEditor/ClientCombobox";
 import type { Client } from "@/hooks/useClients";
 import type { QPDocMeta } from "../model/types";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   meta: QPDocMeta;
@@ -50,6 +51,26 @@ export function MetaPanel({ meta, onChange }: Props) {
       clientCompany: client.company || "",
       projectAddress: meta.projectAddress || client.address || "",
     });
+    // The clients list is loaded without this column — fetch it for the picked client.
+    void supabase
+      .from("clients")
+      .select("minhal_contract_number")
+      .eq("id", client.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.minhal_contract_number) {
+          onChange({
+            ...meta,
+            clientId: client.id,
+            clientName: client.name,
+            clientPhone: client.phone || "",
+            clientEmail: client.email || "",
+            clientCompany: client.company || "",
+            projectAddress: meta.projectAddress || client.address || "",
+            minhalContract: data.minhal_contract_number,
+          });
+        }
+      });
   };
 
   return (
@@ -79,6 +100,7 @@ export function MetaPanel({ meta, onChange }: Props) {
           <MetaField label="חלקה" value={meta.helka} onChange={(v) => set({ helka: v })} />
           <MetaField label="מגרש" value={meta.migrash} onChange={(v) => set({ migrash: v })} />
           <MetaField label='תב"ע' value={meta.taba} onChange={(v) => set({ taba: v })} />
+          <MetaField label="מספר חוזה מנהל" value={meta.minhalContract} onChange={(v) => set({ minhalContract: v })} />
         </div>
       </div>
 

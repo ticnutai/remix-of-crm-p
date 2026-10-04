@@ -3233,6 +3233,7 @@ export type Database = {
           is_sample: boolean | null
           linkedin: string | null
           migrash: string | null
+          minhal_contract_number: string | null
           moshav: string | null
           name: string
           name_clean: string | null
@@ -3277,6 +3278,7 @@ export type Database = {
           is_sample?: boolean | null
           linkedin?: string | null
           migrash?: string | null
+          minhal_contract_number?: string | null
           moshav?: string | null
           name: string
           name_clean?: string | null
@@ -3321,6 +3323,7 @@ export type Database = {
           is_sample?: boolean | null
           linkedin?: string | null
           migrash?: string | null
+          minhal_contract_number?: string | null
           moshav?: string | null
           name?: string
           name_clean?: string | null

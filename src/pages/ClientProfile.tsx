@@ -922,6 +922,7 @@ export default function ClientProfile() {
     helka: "",
     migrash: "",
     taba: "",
+    minhal_contract_number: "",
     contract_signed_date_manual: "",
   });
   const [editPhoneLabels, setEditPhoneLabels] = useState<{
@@ -1089,6 +1090,7 @@ export default function ClientProfile() {
         helka: client.helka || "",
         migrash: client.migrash || "",
         taba: client.taba || "",
+        minhal_contract_number: (client as any).minhal_contract_number || "",
         contract_signed_date_manual: normalizeDateInput(
           ((client as any)?.custom_data as Record<string, any> | undefined)?.[
             MANUAL_CONTRACT_SIGNED_DATE_KEY
@@ -3924,6 +3926,7 @@ export default function ClientProfile() {
               {/* שדות נדל"ן */}
               {(fieldConfig.isVisible("idNumber") ||
                 fieldConfig.isVisible("taba") ||
+                fieldConfig.isVisible("minhalContract") ||
                 fieldConfig.isVisible("gush") ||
                 fieldConfig.isVisible("helka") ||
                 fieldConfig.isVisible("migrash")) && (
@@ -3959,6 +3962,21 @@ export default function ClientProfile() {
                             }))
                           }
                           placeholder="תב''ע"
+                        />
+                      </div>
+                    )}
+                    {fieldConfig.isVisible("minhalContract") && (
+                      <div className="space-y-2">
+                        <Label>מספר חוזה מנהל</Label>
+                        <Input
+                          value={editForm.minhal_contract_number}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              minhal_contract_number: e.target.value,
+                            }))
+                          }
+                          placeholder="מספרים, אותיות וסימנים"
                         />
                       </div>
                     )}

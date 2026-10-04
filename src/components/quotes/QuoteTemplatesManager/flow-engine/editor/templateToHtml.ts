@@ -23,6 +23,7 @@ const FIELD_LABELS: Record<string, string> = {
   "parcel.plot": "מגרש",
   "parcel.moshav": "מושב",
   "parcel.taba": 'תב"ע',
+  "parcel.minhalContract": "מספר חוזה מנהל",
   "project.type": "סוג פרויקט",
   "customer.idNumber": "ת.ז. לקוח",
   "plan.area": "שטח התכנית",

@@ -131,6 +131,7 @@ export interface QPDocMeta {
   helka?: string;
   migrash?: string;
   taba?: string; // תב"ע
+  minhalContract?: string; // מספר חוזה מנהל — מסונכרן עם clients.minhal_contract_number
   issueDate?: string; // ISO
 }
 

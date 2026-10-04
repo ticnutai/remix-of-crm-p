@@ -125,6 +125,7 @@ const FIELD_LABELS: Record<string, string> = {
   helka: 'חלקה',
   migrash: 'מגרש',
   taba: 'תב"א',
+  minhal_contract_number: 'מספר חוזה מנהל',
 };
 
 export function AuditLog() {

@@ -12,6 +12,7 @@ export const SMART_SEARCH_FIELDS = [
   { key: "helka", label: "חלקה", aliases: ["חלקה", "helka"] },
   { key: "migrash", label: "מגרש", aliases: ["מגרש", "migrash"] },
   { key: "taba", label: 'תב"ע', aliases: ["תבע", 'תב"ע', "taba"] },
+  { key: "minhal_contract_number", label: "מספר חוזה מנהל", aliases: ["חוזה מנהל", "חוזה", "מנהל"] },
   { key: "id_number", label: "ת.ז / ח.פ", aliases: ["תז", "ת.ז", "id"] },
   { key: "street", label: "רחוב", aliases: ["רחוב", "street"] },
   { key: "moshav", label: "מושב / עיר", aliases: ["מושב", "עיר", "moshav"] },

@@ -9,6 +9,8 @@ export interface ProjectTokenData {
   helka?: string;
   migrash?: string;
   taba?: string;
+  /** מספר חוזה מנהל (clients.minhal_contract_number) */
+  minhalContract?: string;
   moshav?: string;
   family?: string;
   address?: string;
@@ -70,6 +72,7 @@ function buildMap(pd: ProjectTokenData): Record<string, string> {
     "סוג פרויקט": pd.projectType || "",
     'תב"ע': pd.taba || "",
     "תבע": pd.taba || "",
+    "מספר חוזה מנהל": pd.minhalContract || "",
     "טלפון": pd.phone || "",
   };
 }
@@ -129,6 +132,7 @@ export function projectToMergeData(pd?: ProjectTokenData): Record<string, string
     "parcel.lot": pd.helka || "",
     "parcel.plot": pd.migrash || "",
     "parcel.taba": pd.taba || "",
+    "parcel.minhalContract": pd.minhalContract || "",
     "parcel.moshav": pd.moshav || "",
     "project.type": pd.projectType || "",
     "customer.idNumber": pd.idNumber || "",

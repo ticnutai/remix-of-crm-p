@@ -249,6 +249,7 @@ export function convertLegacyToDocument(
       gush: pd.gush || "",
       helka: pd.helka || "",
       migrash: pd.migrash || "",
+      minhalContract: pd.minhalContract || "",
     },
     is_active: true,
   };

@@ -565,6 +565,8 @@ interface ProjectDetails {
   helka: string;
   migrash: string;
   taba: string;
+  /** מספר חוזה מנהל — מסונכרן עם clients.minhal_contract_number */
+  minhalContract?: string;
   address: string;
   projectType: string;
   phone?: string;
@@ -615,6 +617,7 @@ function applyProjectDetailsTokens(content: string, pd: any): string {
     "סוג פרויקט": pd?.projectType || "",
     'תב"ע': pd?.taba || "",
     "תבע": pd?.taba || "",
+    "מספר חוזה מנהל": pd?.minhalContract || "",
     "טלפון": pd?.phone || "",
   };
 
@@ -1283,6 +1286,7 @@ function ProjectDetailsEditor({
         helka: client.helka || "",
         migrash: client.migrash || "",
         taba: client.taba || "",
+        minhalContract: client.minhal_contract_number || "",
         address: client.address || "",
         projectType: details.projectType || "",
         phone: client.phone || details.phone,
@@ -1354,6 +1358,7 @@ function ProjectDetailsEditor({
     { key: "helka", label: "חלקה", icon: MapPin },
     { key: "migrash", label: "מגרש", icon: MapPin },
     { key: "taba", label: 'תב"ע', icon: FileText },
+    { key: "minhalContract", label: "מספר חוזה מנהל", icon: FileText },
     { key: "address", label: "כתובת/ישוב", icon: MapPin },
     { key: "projectType", label: "סוג הפרויקט", icon: FileText },
     { key: "planArea", label: "שטח התכנית", icon: MapPin },
@@ -1385,6 +1390,7 @@ function ProjectDetailsEditor({
               helka: "",
               migrash: "",
               taba: "",
+              minhalContract: "",
               moshav: "",
               family: "",
               idNumber: "",
@@ -5690,6 +5696,7 @@ export function HtmlTemplateEditor({
         helka: saved.helka || "",
         migrash: saved.migrash || "",
         taba: saved.taba || "",
+        minhalContract: saved.minhalContract || "",
         address: saved.address || "",
         projectType: saved.projectType || "",
         phone: saved.phone || "",
@@ -6402,7 +6409,7 @@ export function HtmlTemplateEditor({
         while (true) {
           const { data, error } = await supabase
             .from("clients")
-            .select("id, name, email, phone, gush, helka, migrash, taba, address, source, notes, custom_data, id_number")
+            .select("id, name, email, phone, gush, helka, migrash, taba, minhal_contract_number, address, source, notes, custom_data, id_number")
             .order("name")
             .range(from, from + pageSize - 1);
 
@@ -6440,6 +6447,7 @@ export function HtmlTemplateEditor({
         helka: c.helka || null,
         migrash: c.migrash || null,
         taba: c.taba || null,
+        minhal_contract_number: c.minhal_contract_number || null,
         address: c.address || null,
         source: c.source || null,
         notes: c.notes || null,
@@ -6584,6 +6592,7 @@ export function HtmlTemplateEditor({
         helka: pd.helka || "",
         migrash: pd.migrash || "",
         taba: pd.taba || "",
+        minhalContract: pd.minhalContract || "",
         address: pd.address || "",
         projectType: pd.projectType || "",
         phone: pd.phone || "",
@@ -6641,6 +6650,7 @@ export function HtmlTemplateEditor({
                 helka: resolvedProjectDetails.helka || null,
                 migrash: resolvedProjectDetails.migrash || null,
                 taba: resolvedProjectDetails.taba || null,
+                minhal_contract_number: resolvedProjectDetails.minhalContract || null,
                 address: resolvedProjectDetails.address || null,
                 phone: resolvedProjectDetails.phone || null,
                 email: resolvedProjectDetails.email || null,
@@ -6685,6 +6695,20 @@ export function HtmlTemplateEditor({
         }
       } catch (linkErr) {
         console.warn("Could not auto-link client on save:", linkErr);
+      }
+
+      // מספר חוזה מנהל edited in the quote belongs to the linked client too.
+      // Only a non-empty value is written, so an older quote without the field
+      // never clears the client's number.
+      const quoteMinhalContract = String(resolvedProjectDetails.minhalContract || "").trim();
+      if (resolvedProjectDetails.clientId && quoteMinhalContract) {
+        const { error: minhalSyncError } = await (supabase as any)
+          .from("clients")
+          .update({ minhal_contract_number: quoteMinhalContract })
+          .eq("id", resolvedProjectDetails.clientId);
+        if (minhalSyncError) {
+          console.warn("Could not sync minhal contract number to client:", minhalSyncError);
+        }
       }
 
       // A custom value edited in the quote belongs to the linked client too.
@@ -6934,6 +6958,7 @@ export function HtmlTemplateEditor({
         helka: "",
         migrash: "",
         taba: "",
+        minhalContract: "",
         projectName: "",
         idNumber: "",
         family: "",
@@ -7564,6 +7589,7 @@ export function HtmlTemplateEditor({
           ${projectDetails.helka ? `<tr><td>חלקה</td><td>${projectDetails.helka}</td></tr>` : ""}
           ${projectDetails.migrash ? `<tr><td>מגרש</td><td>${projectDetails.migrash}</td></tr>` : ""}
           ${projectDetails.taba ? `<tr><td>תב"ע</td><td>${projectDetails.taba}</td></tr>` : ""}
+          ${projectDetails.minhalContract ? `<tr><td>מספר חוזה מנהל</td><td>${projectDetails.minhalContract}</td></tr>` : ""}
           ${projectDetails.projectType ? `<tr><td>סוג פרויקט</td><td>${projectDetails.projectType}</td></tr>` : ""}
         </table>
       </div>`
@@ -9425,6 +9451,7 @@ ${tbAt('footer')}
           helka: projectDetails.helka || null,
           migrash: projectDetails.migrash || null,
           taba: projectDetails.taba || null,
+          minhal_contract_number: projectDetails.minhalContract || null,
           address: projectDetails.address || null,
           phone: (projectDetails as any).phone || null,
           email: (projectDetails as any).email || null,
@@ -9458,6 +9485,16 @@ ${tbAt('footer')}
 
       const result = data as AtomicQuoteClientResult;
       if (!result?.client_id) throw new Error("INVALID_ATOMIC_CREATION_RESULT");
+
+      // The atomic RPC predates this column — write it directly.
+      const minhalContract = projectDetails.minhalContract?.trim();
+      if (minhalContract) {
+        const { error: minhalError } = await (supabase as any)
+          .from("clients")
+          .update({ minhal_contract_number: minhalContract })
+          .eq("id", result.client_id);
+        if (minhalError) throw minhalError;
+      }
 
       // The atomic RPC predates custom client fields. Keep those values in sync
       // for both newly-created and already-linked clients without overwriting
@@ -16255,6 +16292,7 @@ ${tbAt('footer')}
                     {projectDetails.helka && <li>📍 חלקה: {projectDetails.helka}</li>}
                     {projectDetails.migrash && <li>📍 מגרש: {projectDetails.migrash}</li>}
                     {projectDetails.taba && <li>📄 תב"ע: {projectDetails.taba}</li>}
+                    {projectDetails.minhalContract && <li>📄 מספר חוזה מנהל: {projectDetails.minhalContract}</li>}
                     {projectDetails.address && <li>🏠 כתובת: {projectDetails.address}</li>}
                     {projectDetails.projectType && <li>🏗️ סוג: {projectDetails.projectType}</li>}
                   </ul>

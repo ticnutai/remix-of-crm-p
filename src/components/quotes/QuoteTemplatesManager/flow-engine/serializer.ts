@@ -56,6 +56,7 @@ const HEBREW_TOKEN_TO_KEY: Record<string, string> = {
   "מושב": "parcel.moshav",
   'תב"ע': "parcel.taba",
   "תבע": "parcel.taba",
+  "מספר חוזה מנהל": "parcel.minhalContract",
   "סוג פרויקט": "project.type",
 };
 function normalizeHebrewToken(raw: string): string | undefined {

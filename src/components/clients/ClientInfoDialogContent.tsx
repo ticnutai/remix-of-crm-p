@@ -273,6 +273,7 @@ export function ClientInfoDialogContent({
     { key: "helka", label: "חלקה", filled: !!client.helka },
     { key: "taba", label: 'תב"א', filled: !!client.taba },
     { key: "migrash", label: "מגרש", filled: !!client.migrash },
+    { key: "minhal_contract_number", label: "מספר חוזה מנהל", filled: !!client.minhal_contract_number },
     { key: "notes", label: "הערות", filled: !!client.notes },
   ];
   const filledCount = allFields.filter((f) => f.filled).length;
@@ -663,6 +664,9 @@ export function ClientInfoDialogContent({
                 )}
                 {client.migrash && (
                   <FieldCard icon={Hash} label="מגרש" value={client.migrash} fieldKey="migrash" mono onEdit={() => startEdit("migrash", client.migrash || "")} onDelete={() => handleDeleteField("migrash")} isEditing={editingField === "migrash"} editValue={editValue} onEditChange={setEditValue} onEditSave={saveEdit} onEditCancel={cancelEdit} />
+                )}
+                {client.minhal_contract_number && (
+                  <FieldCard icon={Hash} label="מספר חוזה מנהל" value={client.minhal_contract_number} fieldKey="minhal_contract_number" mono onEdit={() => startEdit("minhal_contract_number", client.minhal_contract_number || "")} onDelete={() => handleDeleteField("minhal_contract_number")} isEditing={editingField === "minhal_contract_number"} editValue={editValue} onEditChange={setEditValue} onEditSave={saveEdit} onEditCancel={cancelEdit} />
                 )}
               </div>
             </div>

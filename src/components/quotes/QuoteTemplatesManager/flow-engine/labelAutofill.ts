@@ -37,6 +37,7 @@ export const BUILTIN_AUTOFILL_ENTRIES: AutofillEntry[] = [
   { label: "מגרש", key: "parcel.plot" },
   { label: 'התב"ע החלה', key: "parcel.taba" },
   { label: 'תב"ע', key: "parcel.taba", requireMarker: true },
+  { label: "מספר חוזה מנהל", key: "parcel.minhalContract" },
   { label: "משפחת", key: "customer.family" },
   { label: "משפחה", key: "customer.family", requireMarker: true },
   { label: "שם הלקוח", key: "customer.name" },

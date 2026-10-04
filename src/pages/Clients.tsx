@@ -885,6 +885,7 @@ export default function Clients() {
     helka: "",
     migrash: "",
     taba: "",
+    minhalContract: "",
     street: "",
     moshav: "",
     agudaAddress: "",
@@ -3075,6 +3076,7 @@ export default function Clients() {
     helka: newClientForm.helka.trim() || null,
     migrash: newClientForm.migrash.trim() || null,
     taba: newClientForm.taba.trim() || null,
+    minhal_contract_number: newClientForm.minhalContract.trim() || null,
     street: newClientForm.street.trim() || null,
     moshav: newClientForm.moshav.trim() || null,
     aguda_address: newClientForm.agudaAddress.trim() || null,
@@ -3269,6 +3271,7 @@ export default function Clients() {
       helka: "",
       migrash: "",
       taba: "",
+      minhalContract: "",
       street: "",
       moshav: "",
       agudaAddress: "",
@@ -7271,6 +7274,7 @@ export default function Clients() {
             {/* שדות נדל"ן */}
             {(isVisible("idNumber") ||
               isVisible("taba") ||
+              isVisible("minhalContract") ||
               isVisible("gush") ||
               isVisible("helka") ||
               isVisible("migrash")) && (
@@ -7311,6 +7315,28 @@ export default function Clients() {
                       placeholder="תב''ע"
                       fieldColumn="taba"
                     />
+                  )}
+                  {isVisible("minhalContract") && (
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="client-minhal-contract"
+                        className="text-right text-xs"
+                      >
+                        מספר חוזה מנהל
+                      </Label>
+                      <Input
+                        id="client-minhal-contract"
+                        value={newClientForm.minhalContract}
+                        onChange={(e) =>
+                          setNewClientForm((prev) => ({
+                            ...prev,
+                            minhalContract: e.target.value,
+                          }))
+                        }
+                        placeholder="מספרים, אותיות וסימנים"
+                        className="text-right"
+                      />
+                    </div>
                   )}
                 </div>
                 <div className="grid grid-cols-3 gap-3 mt-3">

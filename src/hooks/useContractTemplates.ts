@@ -74,6 +74,7 @@ export interface ClientData {
   helka?: string | null;
   migrash?: string | null;
   taba?: string | null;
+  minhal_contract_number?: string | null;
 }
 
 // צד לחוזה (מזמין/ספק/ערב)
@@ -120,6 +121,7 @@ export const TEMPLATE_VARIABLES = {
   '{{client.helka}}': 'חלקה',
   '{{client.migrash}}': 'מגרש',
   '{{client.taba}}': 'תב"ע',
+  '{{client.minhal_contract_number}}': 'מספר חוזה מנהל',
   '{{client.block_info}}': 'גוש/חלקה/מגרש',
   
   // צדדים (מזמינים מרובים)
@@ -454,6 +456,7 @@ export function replaceTemplateVariables(
     result = result.replace(/\{\{client\.helka\}\}/g, client.helka || '');
     result = result.replace(/\{\{client\.migrash\}\}/g, client.migrash || '');
     result = result.replace(/\{\{client\.taba\}\}/g, client.taba || '');
+    result = result.replace(/\{\{client\.minhal_contract_number\}\}/g, client.minhal_contract_number || '');
     
     // מידע מאוחד על גוש/חלקה/מגרש
     const blockInfo = [client.gush, client.helka, client.migrash]

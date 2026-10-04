@@ -370,6 +370,7 @@ const MERGE_ALIASES: Record<string, keyof QPDocument["meta"]> = {
   helka: "helka", חלקה: "helka",
   migrash: "migrash", מגרש: "migrash",
   taba: "taba", "תבע": "taba", 'תב"ע': "taba",
+  minhalContract: "minhalContract", "מספר חוזה מנהל": "minhalContract",
   quoteNumber: "quoteNumber", "מספר הצעה": "quoteNumber",
   issueDate: "issueDate", תאריך: "issueDate",
 };
