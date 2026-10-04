@@ -93,12 +93,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 /** One-line title for the compact columns; hovering a cut-off title shows the full text. */
 function TruncatedTitle({ text, className = "" }: { text: string; className?: string }) {
   const [open, setOpen] = useState(false);
+  // Own provider so the title also works where no app-level provider exists.
   return (
+    <TooltipProvider>
     <Tooltip open={open}>
       <TooltipTrigger asChild>
         <p
@@ -115,6 +117,7 @@ function TruncatedTitle({ text, className = "" }: { text: string; className?: st
         {text}
       </TooltipContent>
     </Tooltip>
+    </TooltipProvider>
   );
 }
 
