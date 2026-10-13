@@ -423,6 +423,9 @@ export default function TimeLogs() {
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [inlineEditValue, setInlineEditValue] = useState<string>("");
 
+  // Date picker in the add/edit dialogs closes itself once a date is picked
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+
   // Client folders, used as the "topic" of a time entry
   const { topicNames } = useClientFolderTopics();
 
@@ -2105,7 +2108,7 @@ export default function TimeLogs() {
               {/* Date */}
               <div className="space-y-2">
                 <Label>תאריך</Label>
-                <Popover>
+                <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -2123,10 +2126,11 @@ export default function TimeLogs() {
                     <Calendar
                       mode="single"
                       selected={formData.log_date}
-                      onSelect={(date) =>
-                        date &&
-                        setFormData((prev) => ({ ...prev, log_date: date }))
-                      }
+                      onSelect={(date) => {
+                        if (!date) return;
+                        setFormData((prev) => ({ ...prev, log_date: date }));
+                        setDatePickerOpen(false);
+                      }}
                       locale={he}
                     />
                   </PopoverContent>
@@ -2334,7 +2338,7 @@ export default function TimeLogs() {
               {/* Date for Edit Dialog */}
               <div className="space-y-2">
                 <Label>תאריך</Label>
-                <Popover>
+                <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -2352,10 +2356,11 @@ export default function TimeLogs() {
                     <Calendar
                       mode="single"
                       selected={formData.log_date}
-                      onSelect={(date) =>
-                        date &&
-                        setFormData((prev) => ({ ...prev, log_date: date }))
-                      }
+                      onSelect={(date) => {
+                        if (!date) return;
+                        setFormData((prev) => ({ ...prev, log_date: date }));
+                        setDatePickerOpen(false);
+                      }}
                       locale={he}
                     />
                   </PopoverContent>
