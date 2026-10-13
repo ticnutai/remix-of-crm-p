@@ -4,8 +4,7 @@ import { useReminders, Reminder } from "@/hooks/useReminders";
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useSyncedSetting } from "@/hooks/useSyncedSetting";
-import type { ViewScope } from "@/components/shared/ScopeToggle";
+import { useUserFilter } from "@/components/shared/UserFilterMenu";
 import {
   sortItems,
   processDedup,
@@ -131,8 +130,9 @@ export function RemindersTabContent({
   } = useReminders();
   const { user } = useAuth();
   const { isAdmin } = usePermissions();
-  const [viewScope] = useSyncedSetting<ViewScope>({ key: "tasks-meetings-scope", defaultValue: "all" });
-  const effectiveScope: ViewScope = isAdmin ? viewScope : "mine";
+  // Admins filter by the shared user filter (one or more users); everyone
+  // else only sees their own reminders.
+  const userFilter = useUserFilter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [reminderSortBy, setReminderSortBy] = useState<SortField>("event_date");
@@ -152,7 +152,8 @@ export function RemindersTabContent({
 
   const filteredReminders = reminders.filter(
     (r) => {
-      if (effectiveScope === "mine" && user && r.user_id !== user.id) return false;
+      if (!isAdmin && user && r.user_id !== user.id) return false;
+      if (isAdmin && !userFilter.matches(r, "reminders")) return false;
       if (hideCompleted && (r.is_dismissed || r.is_sent)) return false;
       return !searchQuery ||
         r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||

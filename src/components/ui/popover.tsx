@@ -2,6 +2,7 @@ import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 
 import { cn } from "@/lib/utils";
+import { InsideDialogContext } from "@/components/ui/dialog";
 
 const Popover = PopoverPrimitive.Root;
 
@@ -136,6 +137,8 @@ const PopoverContent = React.forwardRef<
   PopoverContentProps
 >(({ className, align = "end", sideOffset = 24, collisionPadding = 32, avoidDialogOverlap = false, keepInsideDialog = false, separationGap = DEFAULT_DIALOG_GAP, style, ...props }, ref) => {
   const localRef = React.useRef<React.ElementRef<typeof PopoverPrimitive.Content>>(null);
+  // Dialogs sit at z-[10050]; a popover opened from inside one must stack above it.
+  const insideDialog = React.useContext(InsideDialogContext);
   const separationOffset = useDialogSeparation(localRef, avoidDialogOverlap, separationGap);
   const dialogHost = keepInsideDialog && typeof window !== "undefined"
     ? (window.document.querySelector<HTMLElement>("[data-dialog-content='true']") ?? undefined)
@@ -172,7 +175,7 @@ const PopoverContent = React.forwardRef<
           "resize overflow-auto min-w-[260px] min-h-[180px] max-w-[95vw] max-h-[85vh]",
           keepInsideDialog && "static mt-7 mb-2 w-full min-w-0 max-w-full max-h-[45vh] shrink-0 rounded-lg",
           className,
-          "z-[700]",
+          insideDialog ? "z-[10070]" : "z-[700]",
         )}
         {...props}
       />

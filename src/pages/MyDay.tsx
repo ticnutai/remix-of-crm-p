@@ -102,6 +102,7 @@ interface Meeting {
   description: string | null;
   created_by?: string | null;
   assigned_to?: string | null;
+  attendees?: string[] | null;
   start_time: string;
   end_time: string;
   location: string | null;
@@ -188,9 +189,11 @@ export default function MyDay() {
   const navigate = useNavigate();
   const { user, isLoading: authLoading, isManager } = useAuth();
   const {
-    value: userFilterValue,
     setValue: setUserFilterValue,
     targetId: userFilterTargetId,
+    targetIds: userFilterTargetIds,
+    isAll: userFilterIsAll,
+    isOnlyMine: userFilterIsOnlyMine,
     matches: userFilterMatches,
   } = useUserFilter();
   const [loading, setLoading] = useState(true);
@@ -214,7 +217,7 @@ export default function MyDay() {
 
   const showUserFilter = isManager;
   const createTargetUserId =
-    showUserFilter && userFilterValue !== "all" && userFilterTargetId
+    showUserFilter && !userFilterIsAll && userFilterTargetId
       ? userFilterTargetId
       : (user?.id ?? null);
 
@@ -287,7 +290,7 @@ export default function MyDay() {
       created_by: createTargetUserId,
       assigned_to:
         cleanData.assigned_to ??
-        (showUserFilter && userFilterValue !== "all" ? userFilterTargetId : null),
+        (showUserFilter && !userFilterIsAll ? userFilterTargetId : null),
     };
 
     console.log(
@@ -521,7 +524,7 @@ export default function MyDay() {
       supabase
         .from("meetings")
         .select(
-          "id, title, description, created_by, assigned_to, start_time, end_time, location, meeting_type, status, client:clients(name), project:projects(name)",
+          "id, title, description, created_by, assigned_to, attendees, start_time, end_time, location, meeting_type, status, client:clients(name), project:projects(name)",
         )
         .gte("start_time", dayStart)
         .lte("start_time", dayEnd)
@@ -646,24 +649,24 @@ export default function MyDay() {
   };
 
   const filteredTasks = React.useMemo(() => {
-    if (!showUserFilter || !userFilterTargetId) return tasks;
+    if (!showUserFilter || userFilterIsAll) return tasks;
     return tasks.filter((task) => userFilterMatches(task, "tasks"));
-  }, [tasks, showUserFilter, userFilterTargetId, userFilterMatches]);
+  }, [tasks, showUserFilter, userFilterIsAll, userFilterMatches]);
 
   const filteredMeetings = React.useMemo(() => {
-    if (!showUserFilter || !userFilterTargetId) return meetings;
+    if (!showUserFilter || userFilterIsAll) return meetings;
     return meetings.filter((meeting) => userFilterMatches(meeting, "meetings"));
-  }, [meetings, showUserFilter, userFilterTargetId, userFilterMatches]);
+  }, [meetings, showUserFilter, userFilterIsAll, userFilterMatches]);
 
   const visibleReminders = React.useMemo(() => {
-    if (!showUserFilter || !userFilterTargetId) return reminders;
+    if (!showUserFilter || userFilterIsAll) return reminders;
     return reminders.filter((reminder) => userFilterMatches(reminder, "reminders"));
-  }, [reminders, showUserFilter, userFilterTargetId, userFilterMatches]);
+  }, [reminders, showUserFilter, userFilterIsAll, userFilterMatches]);
 
   const visibleTimeEntries = React.useMemo(() => {
-    if (!showUserFilter || !userFilterTargetId) return timeEntries;
-    return timeEntries.filter((entry) => entry.user_id === userFilterTargetId);
-  }, [timeEntries, showUserFilter, userFilterTargetId]);
+    if (!showUserFilter || userFilterIsAll) return timeEntries;
+    return timeEntries.filter((entry) => userFilterTargetIds.includes(entry.user_id));
+  }, [timeEntries, showUserFilter, userFilterIsAll, userFilterTargetIds]);
 
   // Client-side dedup for meetings and tasks (extra safety layer)
   const visibleMeetings = React.useMemo(() => {
@@ -812,10 +815,10 @@ export default function MyDay() {
                 <Button
                   type="button"
                   size="sm"
-                  variant={userFilterValue === "mine" ? "default" : "ghost"}
+                  variant={userFilterIsOnlyMine ? "default" : "ghost"}
                   className={cn(
                     "h-9 rounded-lg",
-                    userFilterValue === "mine" &&
+                    userFilterIsOnlyMine &&
                       "bg-[hsl(220,60%,25%)] text-white hover:bg-[hsl(220,60%,20%)]",
                   )}
                   onClick={() => setUserFilterValue("mine")}
@@ -826,10 +829,10 @@ export default function MyDay() {
                 <Button
                   type="button"
                   size="sm"
-                  variant={userFilterValue === "all" ? "default" : "ghost"}
+                  variant={userFilterIsAll ? "default" : "ghost"}
                   className={cn(
                     "h-9 rounded-lg",
-                    userFilterValue === "all" &&
+                    userFilterIsAll &&
                       "bg-[hsl(220,60%,25%)] text-white hover:bg-[hsl(220,60%,20%)]",
                   )}
                   onClick={() => setUserFilterValue("all")}

@@ -12,6 +12,13 @@ const Dialog = ({ modal = false, ...props }: DialogRootProps) => (
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
+/**
+ * True for anything rendered inside a DialogContent. Floating layers
+ * (popovers, date pickers) read it to stack above the dialog instead of
+ * opening behind it.
+ */
+export const InsideDialogContext = React.createContext(false);
+
 const DialogPortal = DialogPrimitive.Portal;
 
 const DialogClose = DialogPrimitive.Close;
@@ -221,7 +228,9 @@ const DialogContent = React.forwardRef<
             contentClassName,
           )}
         >
-          {children}
+          <InsideDialogContext.Provider value={true}>
+            {children}
+          </InsideDialogContext.Provider>
         </div>
 
         <DialogPrimitive.Close
