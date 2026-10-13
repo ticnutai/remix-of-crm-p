@@ -10,6 +10,9 @@ import { useAuth } from "@/hooks/useAuth";
 const LS_PREFIX = "synced::";
 const SYNCED_SETTING_EVENT = "synced-setting-change";
 const cloudSaveTimers = new Map<string, number>();
+/** When this tab last changed each key locally (ms). A cloud value older than
+ *  this must not overwrite the newer local choice. */
+const lastLocalWriteAt = new Map<string, number>();
 
 interface UseSyncedSettingOptions<T> {
   /** Stable key. Will be used as both `localStorage` key and `user_settings.setting_key`. */
@@ -65,7 +68,6 @@ export function useSyncedSetting<T>({
   const [value, setValueState] = useState<T>(() => readLocal(key, defaultValue));
   const valueRef = useRef(value);
   valueRef.current = value;
-  const skipNextWriteRef = useRef(false);
 
   // Keep multiple hook instances with the same key in sync in the current
   // browser tab. The native `storage` event only fires in other tabs, so
@@ -92,16 +94,22 @@ export function useSyncedSetting<T>({
       try {
         const { data } = await supabase
           .from("user_settings")
-          .select("setting_value")
+          .select("setting_value, updated_at")
           .eq("user_id", user.id)
           .eq("setting_key", LS_PREFIX + key)
           .maybeSingle();
         if (cancelled) return;
         const cloudVal = (data as any)?.setting_value;
         if (cloudVal !== undefined && cloudVal !== null) {
+          // A local change made in this tab that is newer than the cloud row
+          // (or still waiting for its debounced save) wins - otherwise a
+          // component mounting a moment after the user changed a setting
+          // would restore the old cloud value and undo the user's choice.
+          const cloudUpdatedAt = Date.parse((data as any)?.updated_at ?? "") || 0;
+          const localAt = lastLocalWriteAt.get(key) ?? 0;
+          if (cloudSaveTimers.has(key) || localAt > cloudUpdatedAt) return;
           // Only update if different from current
           if (JSON.stringify(cloudVal) !== JSON.stringify(valueRef.current)) {
-            skipNextWriteRef.current = true; // don't echo back to cloud
             setValueState(cloudVal as T);
             writeLocal(key, cloudVal);
           }
@@ -125,11 +133,7 @@ export function useSyncedSetting<T>({
       // Dispatching the same-key sync event from inside a React state updater
       // can update another component while the first one is still rendering.
       writeLocal(key, resolved);
-
-      if (skipNextWriteRef.current) {
-        skipNextWriteRef.current = false;
-        return;
-      }
+      lastLocalWriteAt.set(key, Date.now());
 
       if (cloud && user?.id) {
         const existing = cloudSaveTimers.get(key);
