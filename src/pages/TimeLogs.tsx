@@ -95,6 +95,7 @@ import {
   TimeLogsCompactView,
 } from "@/components/timer/TimeLogsAdditionalViews";
 import { TimeLogsModernTable } from "@/components/timer/TimeLogsModernTable";
+import { TimeTopicSelect, useClientFolderTopics } from "@/components/timer/TimeTopicSelect";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -131,6 +132,8 @@ interface TimeEntry {
   is_running: boolean | null;
   tags: string[] | null;
   created_at: string;
+  /** Topic: one of the client's folders (e.g. "שינוי תב״ע") */
+  folder_id?: string | null;
 }
 
 // Inline editing state
@@ -420,10 +423,14 @@ export default function TimeLogs() {
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [inlineEditValue, setInlineEditValue] = useState<string>("");
 
+  // Client folders, used as the "topic" of a time entry
+  const { topicNames } = useClientFolderTopics();
+
   // Form state for adding/editing
   const [formData, setFormData] = useState({
     client_id: "",
     project_id: "",
+    folder_id: "",
     description: "",
     log_date: new Date(),
     start_hour: new Date().getHours(),
@@ -638,11 +645,16 @@ export default function TimeLogs() {
         const clientName = getClientName(entry.client_id).toLowerCase();
         const projectName = getProjectName(entry.project_id).toLowerCase();
         const description = (entry.description || "").toLowerCase();
+        const topicName = (
+          (entry.folder_id && topicNames[entry.folder_id]) ||
+          ""
+        ).toLowerCase();
 
         if (
           !clientName.includes(search) &&
           !projectName.includes(search) &&
-          !description.includes(search)
+          !description.includes(search) &&
+          !topicName.includes(search)
         ) {
           return false;
         }
@@ -661,6 +673,7 @@ export default function TimeLogs() {
     searchTerm,
     clients,
     projects,
+    topicNames,
   ]);
 
   // Calculate summaries by client
@@ -952,6 +965,7 @@ export default function TimeLogs() {
     setFormData({
       client_id: "",
       project_id: "",
+      folder_id: "",
       description: "",
       log_date: now,
       start_hour: now.getHours(),
@@ -1011,6 +1025,7 @@ export default function TimeLogs() {
       user_id: user.id,
       client_id: formData.client_id || null,
       project_id: formData.project_id || null,
+      folder_id: formData.folder_id || null,
       description: formData.description || null,
       start_time: startTime.toISOString(),
       end_time: endTime.toISOString(),
@@ -1054,9 +1069,10 @@ export default function TimeLogs() {
     const totalMinutes =
       formData.duration_hours * 60 + formData.duration_minutes;
 
-    // Calculate end_time based on start_time and duration
+    // Start = the date and start time chosen in the dialog.
     // duration_minutes is a generated column, so we update end_time instead
-    const startTime = new Date(editingEntry.start_time);
+    const startTime = new Date(formData.log_date);
+    startTime.setHours(formData.start_hour, formData.start_minute, 0, 0);
     const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
 
     const { error } = await supabase
@@ -1064,7 +1080,9 @@ export default function TimeLogs() {
       .update({
         client_id: formData.client_id || null,
         project_id: formData.project_id || null,
+        folder_id: formData.folder_id || null,
         description: formData.description || null,
+        start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
         is_billable: formData.is_billable,
         hourly_rate: formData.hourly_rate || null,
@@ -1137,6 +1155,7 @@ export default function TimeLogs() {
     setFormData({
       client_id: entry.client_id || "",
       project_id: entry.project_id || "",
+      folder_id: entry.folder_id || "",
       description: entry.description || "",
       log_date: entryDate,
       start_hour: entryDate.getHours(),
@@ -1669,6 +1688,7 @@ export default function TimeLogs() {
                 clients={clients}
                 projects={projects}
                 users={users}
+                topicNames={topicNames}
                 onEdit={openEditDialog}
                 onDelete={handleDeleteEntry}
                 onDuplicate={(entry) => {
@@ -1677,6 +1697,7 @@ export default function TimeLogs() {
                   setFormData({
                     client_id: entry.client_id || "",
                     project_id: entry.project_id || "",
+                    folder_id: entry.folder_id || "",
                     description: entry.description || "",
                     log_date: now,
                     start_hour: now.getHours(),
@@ -2028,7 +2049,7 @@ export default function TimeLogs() {
                 <Select
                   value={formData.client_id}
                   onValueChange={(v) =>
-                    setFormData((prev) => ({ ...prev, client_id: v }))
+                    setFormData((prev) => ({ ...prev, client_id: v, folder_id: "" }))
                   }
                 >
                   <SelectTrigger>
@@ -2071,6 +2092,15 @@ export default function TimeLogs() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Topic (client folder) */}
+              <TimeTopicSelect
+                clientId={formData.client_id}
+                value={formData.folder_id}
+                onChange={(folderId) =>
+                  setFormData((prev) => ({ ...prev, folder_id: folderId }))
+                }
+              />
 
               {/* Date */}
               <div className="space-y-2">
@@ -2248,7 +2278,7 @@ export default function TimeLogs() {
                 <Select
                   value={formData.client_id}
                   onValueChange={(v) =>
-                    setFormData((prev) => ({ ...prev, client_id: v }))
+                    setFormData((prev) => ({ ...prev, client_id: v, folder_id: "" }))
                   }
                 >
                   <SelectTrigger>
@@ -2290,6 +2320,46 @@ export default function TimeLogs() {
                       ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Topic (client folder) */}
+              <TimeTopicSelect
+                clientId={formData.client_id}
+                value={formData.folder_id}
+                onChange={(folderId) =>
+                  setFormData((prev) => ({ ...prev, folder_id: folderId }))
+                }
+              />
+
+              {/* Date for Edit Dialog */}
+              <div className="space-y-2">
+                <Label>תאריך</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-right"
+                    >
+                      <CalendarIcon className="h-4 w-4 ml-2" />
+                      {format(formData.log_date, "dd/MM/yyyy", { locale: he })}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    dir="rtl"
+                    className="w-auto p-0"
+                    align="start"
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={formData.log_date}
+                      onSelect={(date) =>
+                        date &&
+                        setFormData((prev) => ({ ...prev, log_date: date }))
+                      }
+                      locale={he}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Start Time for Edit Dialog */}

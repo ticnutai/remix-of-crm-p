@@ -123,6 +123,7 @@ import {
   CopyStagesDialog,
 } from "./StageTemplateDialogs";
 import { useClientFolders } from "@/hooks/useClientFolders";
+import { CommitteeQuestionsBoard } from "./CommitteeQuestionsBoard";
 import { TaskPaymentBadge } from "./TaskPaymentBadge";
 import { TaskClientMessageButton } from "./TaskClientMessageButton";
 import { ActivityFollowUpActions } from "@/components/shared/ActivityFollowUpActions";
@@ -4707,6 +4708,16 @@ export function ClientStagesBoard({
           );
         })}
       </div>
+      )}
+
+      {/* Committee questions board for the selected folder */}
+      {selectedFolderId && (
+        <CommitteeQuestionsBoard
+          key={selectedFolderId}
+          clientId={clientId}
+          folderId={selectedFolderId}
+          folderName={folders.find((f) => f.id === selectedFolderId)?.folder_name}
+        />
       )}
 
       {/* Expanded Stage Dialog */}

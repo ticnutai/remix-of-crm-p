@@ -20,6 +20,7 @@ import {
   Calendar as CalendarIcon,
   User,
   Briefcase,
+  FolderOpen,
   FileText,
   Copy,
   ChevronDown,
@@ -46,6 +47,7 @@ interface TimeEntry {
   is_running: boolean | null;
   tags: string[] | null;
   created_at: string;
+  folder_id?: string | null;
 }
 
 interface Client {
@@ -71,6 +73,8 @@ interface TimeLogsModernTableProps {
   clients: Client[];
   projects: Project[];
   users?: UserInfo[];
+  /** folder id -> folder name, for the entry's topic badge */
+  topicNames?: Record<string, string>;
   onEdit: (entry: TimeEntry) => void;
   onDelete: (id: string) => void;
   onDuplicate?: (entry: TimeEntry) => void;
@@ -83,6 +87,7 @@ export function TimeLogsModernTable({
   clients,
   projects,
   users = [],
+  topicNames = {},
   onEdit,
   onDelete,
   onDuplicate,
@@ -390,6 +395,16 @@ export function TimeLogsModernTable({
                                 >
                                   <Briefcase className="h-3.5 w-3.5" />
                                   {projectName}
+                                </Badge>
+                              )}
+                              {entry.folder_id && topicNames[entry.folder_id] && (
+                                <Badge
+                                  variant="outline"
+                                  className="gap-1.5 bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400"
+                                  title="נושא"
+                                >
+                                  <FolderOpen className="h-3.5 w-3.5" />
+                                  {topicNames[entry.folder_id]}
                                 </Badge>
                               )}
                               {/* User Badge */}
