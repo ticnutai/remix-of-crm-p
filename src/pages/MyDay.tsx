@@ -524,7 +524,8 @@ export default function MyDay() {
       supabase
         .from("meetings")
         .select(
-          "id, title, description, created_by, assigned_to, attendees, start_time, end_time, location, meeting_type, status, client:clients(name), project:projects(name)",
+          // meetings has no assigned_to column - asking for it fails the whole query
+          "id, title, description, created_by, attendees, start_time, end_time, location, meeting_type, status, client:clients(name), project:projects(name)",
         )
         .gte("start_time", dayStart)
         .lte("start_time", dayEnd)
