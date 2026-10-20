@@ -73,7 +73,16 @@ export function TimerPiPController() {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [mode, setModeState] = useState<PipMode>(getInitialMode);
   const [hovered, setHovered] = useState(false);
+  const [pipNow, setPipNow] = useState(() => Date.now());
   const autoOpenedRef = useRef(false);
+  const pipWindowRef = useRef<Window | null>(null);
+  pipWindowRef.current = pipWindow;
+
+  // If this controller ever unmounts while the window is open, close the window
+  // instead of leaving an empty one floating on the desktop.
+  useEffect(() => () => {
+    try { pipWindowRef.current?.close(); } catch { /* ignore */ }
+  }, []);
 
   const clientName = timerState.currentEntry?.client_id
     ? clients.find((c) => c.id === timerState.currentEntry?.client_id)?.name
@@ -171,6 +180,20 @@ export function TimerPiPController() {
     }
   }, [pipWindow, mode]);
 
+  // Tick from inside the floating window (see displayedElapsed below).
+  useEffect(() => {
+    if (!pipWindow) return;
+    let id: number | undefined;
+    try {
+      id = pipWindow.setInterval(() => setPipNow(Date.now()), 1000);
+    } catch {
+      /* window already closed */
+    }
+    return () => {
+      try { if (id !== undefined) pipWindow.clearInterval(id); } catch { /* ignore */ }
+    };
+  }, [pipWindow]);
+
   useEffect(() => {
     const handler = () => void openPiP();
     window.addEventListener(PIP_OPEN_EVENT, handler);
@@ -198,7 +221,15 @@ export function TimerPiPController() {
   const RUNNING_GLOW = "0 0 14px hsla(45,80%,55%,0.55)";
 
   const timeColor = timerState.isRunning ? GOLD : WHITE;
-  const timeText = formatHMS(timerState.elapsed);
+  // While running, compute the time from the start moment on every tick of the
+  // floating window's own clock. The floating window stays visible, so Chrome does
+  // not slow its timers - unlike the hidden main tab, whose timers can drop to
+  // once a minute after a few minutes in the background.
+  const displayedElapsed =
+    timerState.isRunning && timerState.startTime
+      ? Math.max(0, Math.floor((pipNow - timerState.startTime.getTime()) / 1000))
+      : timerState.elapsed;
+  const timeText = formatHMS(displayedElapsed);
 
   const shell: React.CSSProperties = useMemo(() => ({
     height: "100vh",

@@ -29,6 +29,7 @@ import { withErrorBoundary } from "@/components/RouteErrorBoundary";
 import { DedupProvider } from "@/contexts/DedupContext";
 import { AutoPreload } from "@/components/AutoPreload";
 import { AttendanceFAB } from "@/components/attendance/AttendanceFAB";
+import { TimerPiPController } from "@/components/timer/TimerPiPController";
 import { DashboardThemeProvider } from "@/components/dashboard/DashboardThemeProvider";
 import { WidgetLayoutProvider } from "@/components/dashboard/WidgetLayoutManager";
 
@@ -471,6 +472,11 @@ const App = () => {
 
                           {/* Global Attendance Clock-in FAB */}
                           <AttendanceFAB />
+
+                          {/* Floating timer window above all desktop windows. Mounted once here,
+                              not inside each page's AppLayout: a page change remounts AppLayout,
+                              which left the open window empty (no time, no client name). */}
+                          <TimerPiPController />
 
                           {/* Auto Preload - Background data prefetching */}
                           <AutoPreload />
